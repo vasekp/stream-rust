@@ -50,9 +50,8 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn construct(session: &Session, node: Node) -> Result<Item, BaseError> {
-        node.check_args(false, 0..=2)?;
-        let node = node.eval_all(session)?;
+    fn construct(session: &Session, node: Node) -> Result<Item, StreamError> {
+        let node = node.check_args(false, 0..=2)?.eval_all(session)?;
         let nums = node.args.iter()
             .map(|x| x.value().as_num())
             .collect::<Result<Vec<_>, _>>()?;
@@ -73,7 +72,7 @@ impl Describe for Seq {
 }
 
 impl Iterator for SeqIter {
-    type Item = Result<Item, BaseError>;
+    type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ret = Item::new_number(self.value.clone());
@@ -171,9 +170,8 @@ impl Stream for Range {
 }
 
 impl Range {
-    fn construct(session: &Session, node: Node) -> Result<Item, BaseError> {
-        node.check_args(false, 1..=3)?;
-        let node = node.eval_all(session)?;
+    fn construct(session: &Session, node: Node) -> Result<Item, StreamError> {
+        let node = node.check_args(false, 1..=3)?.eval_all(session)?;
         let nums = node.args.iter()
             .map(|x| x.value().as_num())
             .collect::<Result<Vec<_>, _>>()?;
@@ -194,7 +192,7 @@ impl Describe for Range {
 }
 
 impl Iterator for RangeIter {
-    type Item = Result<Item, BaseError>;
+    type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.step.is_zero()

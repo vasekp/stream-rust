@@ -4,6 +4,7 @@ use dyn_clone::DynClone;
 use crate::utils::describe_range;
 use num::{Signed, One, Zero};
 use crate::session::Session;
+use std::error::Error;
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -225,7 +226,13 @@ fn test_char() {
 #[derive(PartialEq, Debug)]
 pub struct BaseError(String);
 
-impl std::error::Error for BaseError { }
+impl BaseError {
+    pub(crate) fn with_expr(self, expr: Expr) -> StreamError {
+        StreamError{base: self, expr: Some(expr)}
+    }
+}
+
+impl Error for BaseError { }
 
 impl<T> From<T> for BaseError where T: Into<String> {
     fn from(text: T) -> BaseError {
@@ -236,6 +243,41 @@ impl<T> From<T> for BaseError where T: Into<String> {
 impl Display for BaseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", self.0)
+    }
+}
+
+
+/// Error evaluating stream expressions or enumerating iterators.
+#[derive(Debug)]
+pub struct StreamError {
+    base: BaseError,
+    expr: Option<Expr>
+}
+
+impl StreamError {
+    pub(crate) fn new(text: impl Into<BaseError>, expr: Option<Expr>) -> StreamError {
+        StreamError{base: text.into(), expr}
+    }
+}
+
+impl Display for StreamError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match &self.expr {
+            Some(e) => write!(f, "{}: {}", e.describe(), self.base),
+            None => Display::fmt(&self.base, f)
+        }
+    }
+}
+
+impl Error for StreamError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&self.base)
+    }
+}
+
+impl<T> From<T> for StreamError where T: Into<BaseError> {
+    fn from(value: T) -> StreamError {
+        StreamError{base: value.into(), expr: None}
     }
 }
 
@@ -402,7 +444,7 @@ impl Display for dyn Stream {
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
+pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. If it can't, or is known to be infinite, returns `None`.
     ///
@@ -450,7 +492,7 @@ pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
 
 impl<T, U, V> SIterator for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<Item, BaseError>
+      U: FnMut(V) -> Result<Item, StreamError>
 { }
 
 
@@ -563,10 +605,10 @@ impl Expr {
         }
     }
 
-    pub fn into_node(self) -> Result<Node, BaseError> {
+    pub fn into_node(self) -> Result<Node, StreamError> {
         match self {
             Expr::Eval(node) => Ok(node),
-            Expr::Imm(value) => Err(BaseError::from(format!("expected node, found {:?}", &value)))
+            Expr::Imm(value) => Err(StreamError::from(format!("expected node, found {:?}", &value)))
         }
     }
 }
@@ -587,24 +629,25 @@ impl Describe for Expr {
 }
 
 impl Node {
-    pub(crate) fn check_args(&self, source: bool, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
+    pub(crate) fn check_args(self, source: bool, range: impl RangeBounds<usize>) -> Result<Node, StreamError> {
         use std::ops::Bound::*;
+        let err = |text| Err(StreamError::new(text, Some(self.into_expr())));
         match (&self.source, source) {
-            (Some(_), false) => return Err(BaseError::from("no source accepted")),
-            (None, true) => return Err(BaseError::from("source requested")),
+            (Some(_), false) => return err("no source accepted"),
+            (None, true) => return err("source requested"),
             _ => { }
         };
         if range.contains(&self.args.len()) {
-            Ok(())
+            Ok(self)
         } else {
-            Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
+            Err(StreamError::from(match (range.start_bound(), range.end_bound()) {
                 (Included(0), Included(0)) => "no arguments allowed".to_string(),
                 _ => format!("{} arguments required", describe_range(&range))
             }))
         }
     }
 
-    pub(crate) fn eval_all(self, session: &Session) -> Result<Node, BaseError> {
+    pub(crate) fn eval_all(self, session: &Session) -> Result<Node, StreamError> {
         let source = self.source.map(|x| session.eval(*x))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
@@ -612,6 +655,10 @@ impl Node {
             .map(|x| session.eval(x).map(|x| Expr::new_imm(x)))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Node{head: self.head, source, args})
+    }
+
+    pub fn into_expr(self) -> Expr {
+        Expr::Eval(self)
     }
 }
 

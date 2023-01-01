@@ -42,8 +42,8 @@ impl From<Vec<Item>> for List {
     }
 }
 
-fn construct_list(session: &Session, node: Node) -> Result<Item, BaseError> {
-    node.check_args(false, 0..)?;
+fn construct_list(session: &Session, node: Node) -> Result<Item, StreamError> {
+    let node = node.check_args(false, 0..)?;
     node.args.into_iter()
         .map(|x| session.eval(x))
         .collect::<Result<Vec<Item>, _>>()
@@ -88,18 +88,19 @@ impl From<String> for LiteralString {
 
 
 
-fn construct_part(session: &Session, node: Node) -> Result<Item, BaseError> {
-    node.check_args(true, 1..)?;
+fn construct_part(session: &Session, node: Node) -> Result<Item, StreamError> {
+    let node = node.check_args(true, 1..)?;
     let mut item = session.eval(*node.source.unwrap())?;
     let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num_within(Number::one()..))
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| StreamError::new(e, Some(node.to_expr)))?;
     for index in args {
         let mut iter = item.into_stream()?.iter();
         if iter.skip_n(&(index - Number::one())).is_err() {
-            return Err(BaseError::from("index past end of stream"));
+            return Err(StreamError::from("index past end of stream"));
         }
-        item = iter.next().unwrap_or(Err(BaseError::from("index past end of stream")))?;
+        item = iter.next().unwrap_or(Err(StreamError::from("index past end of stream")))?;
     }
     Ok(item)
 }
@@ -115,12 +116,12 @@ struct MapIter {
 }
 
 impl Map {
-    fn construct(session: &Session, mut node: Node) -> Result<Item, BaseError> {
-        node.check_args(true, 1..=1)?;
+    fn construct(session: &Session, mut node: Node) -> Result<Item, StreamError> {
+        let node = node.check_args(true, 1..=1)?;
         let source = session.eval(*node.source.unwrap())?.into_stream()?;
         let body = node.args.pop().unwrap().into_node()?;
         if body.source.is_some() {
-            return Err(BaseError::from("body already has source"));
+            return Err(StreamError::from("body already has source"));
         }
         Ok(Item::new_stream(Map{source, body}))
     }
@@ -152,7 +153,7 @@ impl Clone for Map {
 }
 
 impl Iterator for MapIter {
-    type Item = Result<Item, BaseError>;
+    type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let source = self.source.next()?;
@@ -178,8 +179,8 @@ impl SIterator for MapIter {
     }
 }
 
-fn construct_plus(session: &Session, node: Node) -> Result<Item, BaseError> {
-    node.check_args(false, 1..)?;
+fn construct_plus(session: &Session, node: Node) -> Result<Item, StreamError> {
+    let node = node.check_args(false, 1..)?;
     let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
@@ -187,8 +188,8 @@ fn construct_plus(session: &Session, node: Node) -> Result<Item, BaseError> {
     Ok(Item::new_number(ans))
 }
 
-fn construct_minus(session: &Session, node: Node) -> Result<Item, BaseError> {
-    node.check_args(false, 1..=2)?;
+fn construct_minus(session: &Session, node: Node) -> Result<Item, StreamError> {
+    let node = node.check_args(false, 1..=2)?;
     let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
@@ -200,8 +201,8 @@ fn construct_minus(session: &Session, node: Node) -> Result<Item, BaseError> {
     Ok(Item::new_number(ans))
 }
 
-fn construct_times(session: &Session, node: Node) -> Result<Item, BaseError> {
-    node.check_args(false, 1..)?;
+fn construct_times(session: &Session, node: Node) -> Result<Item, StreamError> {
+    let node = node.check_args(false, 1..)?;
     let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
@@ -209,20 +210,20 @@ fn construct_times(session: &Session, node: Node) -> Result<Item, BaseError> {
     Ok(Item::new_number(ans))
 }
 
-fn construct_div(session: &Session, node: Node) -> Result<Item, BaseError> {
-    node.check_args(false, 2..=2)?;
+fn construct_div(session: &Session, node: Node) -> Result<Item, StreamError> {
+    let node = node.check_args(false, 2..=2)?;
     let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     if args[1].is_zero() {
-        return Err(BaseError::from("division by zero"));
+        return Err(StreamError::from("division by zero"));
     }
     let ans = &args[0] / &args[1];
     Ok(Item::new_number(ans))
 }
 
-fn construct_pow(session: &Session, node: Node) -> Result<Item, BaseError> {
-    node.check_args(false, 2..=2)?;
+fn construct_pow(session: &Session, node: Node) -> Result<Item, StreamError> {
+    let node = node.check_args(false, 2..=2)?;
     let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
@@ -230,9 +231,9 @@ fn construct_pow(session: &Session, node: Node) -> Result<Item, BaseError> {
     let x = it.next().unwrap();
     let y = it.next().unwrap();
     if y.is_negative() {
-        return Err(BaseError::from("negative exponent"));
+        return Err(StreamError::from("negative exponent"));
     }
-    let ans = pow(x, y.try_into().map_err(|_| BaseError::from("exponent too large"))?);
+    let ans = pow(x, y.try_into().map_err(|_| StreamError::from("exponent too large"))?);
     Ok(Item::new_number(ans))
 }
 
