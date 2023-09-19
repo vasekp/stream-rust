@@ -1,6 +1,5 @@
-use streamlang::create_iota;
+use streamlang::lib_main;
 
 fn main() {
-    let s = create_iota();
-    println!("{}", s);
+    lib_main();
 }

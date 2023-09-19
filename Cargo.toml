@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 num-bigint = "0.4"
 num-iter = "0.1"
+itertools = "0.11"
