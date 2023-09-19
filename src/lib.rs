@@ -1,83 +1,17 @@
-use std::fmt::{Display, Formatter, Debug};
-use num_bigint::BigInt;
-
-type TNumber = BigInt;
-
-pub struct StreamError { }
-
-impl Debug for StreamError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
-        write!(f, "error")
-    }
-}
-
-type Result<T> = ::core::result::Result<T, StreamError>;
-
-pub enum Node {
-    Atom(TAtom),
-    Stream(Box<dyn TStream>)
-}
-
-use Node::{Atom, Stream};
-
-pub enum TAtom {
-    Number(TNumber)
-}
-
-use TAtom::Number;
-
-pub trait TIter {
-    fn next(&mut self) -> Result<Option<Node>>;
-}
-
-pub trait TStream {
-    fn iter(&self) -> Box<dyn TIter>;
-}
-
-impl<T, U> TIter for U
-where T: Into<TNumber>, U: Iterator<Item = T> {
-    fn next(&mut self) -> Result<Option<Node>> {
-        Ok(Iterator::next(self).map(|x| Atom(Number(x.into()))))
-    }
-}
+mod base;
+use base::*;
 
 pub struct IotaStream();
 
-impl IotaStream {
-    fn new_node() -> Node {
-        Stream(Box::new(IotaStream()))
-    }
-}
-
 impl TStream for IotaStream {
-    fn iter(&self) -> Box<dyn TIter> {
-        Box::new(1..3)
+    fn iter(&self) -> Box<dyn TIterator> {
+        let a = "10000000000000000000000000".parse::<TNumber>().unwrap();
+        let b = TNumber::from(10);
+        let c = &a + &b + &b;
+        Box::new(num_iter::range_step(a, c, b))
     }
 }
 
-impl Node {
-    pub fn parse(_s: &str) -> Result<Node> {
-        Ok(IotaStream::new_node())
-    }
-}
-
-impl Display for Node {
-    fn fmt(&self, f: &mut Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
-        write!(f, "{}", match self {
-            Atom(a) => a.to_string(),
-            Stream(s) => writeout(&mut (*s).iter()) // TODO f
-        })
-    }
-}
-
-impl Display for TAtom {
-    fn fmt(&self, f: &mut Formatter<'_>) -> ::std::result::Result<(), ::std::fmt::Error> {
-        write!(f, "{}", match self {
-            Number(n) => n.to_string()
-        })
-    }
-}
-
-fn writeout(iter: &mut Box<dyn TIter>) -> String {
-    format!("[{}, {}, ...]", iter.next().unwrap().unwrap(), iter.next().unwrap().unwrap())
+pub fn create_iota() -> Item {
+    IotaStream().as_item()
 }

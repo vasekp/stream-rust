@@ -1,6 +1,6 @@
-use streamlang::Node;
+use streamlang::create_iota;
 
 fn main() {
-    let s = Node::parse("iota");
-    println!("{}", s.unwrap());
+    let s = create_iota();
+    println!("{}", s);
 }
