@@ -23,17 +23,6 @@ impl Display for Imm {
     }
 }
 
-impl TryInto<TNumber> for Imm {
-    type Error = StreamError;
-
-    fn try_into(self) -> StreamResult<TNumber> {
-        match self {
-            Number(x) => Ok(x)//,
-            //_ => Err(StreamError())
-        }
-    }
-}
-
 
 pub enum Item {
     Atom(Imm),
@@ -43,17 +32,26 @@ pub enum Item {
 pub use Item::{Atom, Stream};
 
 impl Item {
-    pub fn imm(self) -> StreamResult<Imm> {
+    pub fn new_imm(value: impl Into<Imm>) -> Item {
+        Atom(value.into())
+    }
+
+    pub fn new_stream(value: impl TStream + 'static) -> Item {
+        Stream(Box::new(value))
+    }
+
+    pub fn as_num(&self) -> StreamResult<&TNumber> {
         match self {
-            Atom(x) => Ok(x),
+            Atom(Number(x)) => Ok(&x),
             _ => Err(StreamError())
         }
     }
-}
 
-impl<T> From<T> for Item where T: Into<Imm> {
-    fn from(value: T) -> Self {
-        Atom(value.into())
+    pub fn into_num(self) -> StreamResult<TNumber> {
+        match self {
+            Atom(Number(x)) => Ok(x),
+            _ => Err(StreamError())
+        }
     }
 }
 
@@ -79,18 +77,7 @@ pub type StreamResult<T> = Result<T, StreamError>;
 
 pub trait TStream {
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>>;
-
-    fn into_item(self) -> Item where Self: Sized + 'static {
-        Stream(Box::new(self))
-    }
 }
-
-/*impl<T, U> TIterator for U
-where T: Into<TNumber>, U: Iterator<Item = T> {
-    fn next(&mut self) -> StreamResult<Option<Item>> {
-        Ok(Iterator::next(self).map(|x| Item::from(x.into())))
-    }
-}*/
 
 fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>) -> String {
     format!("[{}, {}, ...]", iter.next().unwrap().unwrap(), iter.next().unwrap().unwrap())
