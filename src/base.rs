@@ -120,6 +120,7 @@ fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Form
             return Err(::std::fmt::Error)
         }
         let mut s = String::from('[');
+        let mut first = true;
         'a: while s.len() < prec {
             match iter.next() {
                 None => {
@@ -127,8 +128,11 @@ fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Form
                     break 'a;
                 },
                 Some(Ok(item)) => {
+                    if !first {
+                        s += ", ";
+                    }
                     s += &format!("{:.*}", prec - s.len(), item);
-                    s += ", ";
+                    first = false;
                 },
                 Some(Err(_err)) => {
                     s += "<!>";
@@ -143,6 +147,7 @@ fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Form
         }
     } else {
         let mut s = String::from('[');
+        let mut first = true;
         'a: {
             for _ in 0..3 {
                 match iter.next() {
@@ -151,8 +156,11 @@ fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Form
                         break 'a;
                     },
                     Some(Ok(item)) => {
+                        if !first {
+                            s += ", ";
+                        }
                         s += &format!("{}", item);
-                        s += ", ";
+                        first = false;
                     },
                     Some(Err(_err)) => {
                         s += "<!>";
@@ -162,7 +170,7 @@ fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Form
             }
             s += match iter.next() {
                 None => "]",
-                Some(_) => "..."
+                Some(_) => ", ..."
             };
         }
         write!(f, "{}", s)
