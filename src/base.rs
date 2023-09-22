@@ -75,7 +75,7 @@ impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         match self {
             Atom(a) => Display::fmt(&a, f),
-            Stream(s) => writeout((*s).iter(), f)
+            Stream(s) => (*s).writeout(f)
         }
     }
 }
@@ -112,46 +112,47 @@ pub type StreamResult<T> = Result<T, StreamError>;
 
 pub trait TStream {
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>>;
-}
 
-fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
-    let (prec, max) = match f.precision() {
-        Some(prec) => (prec, usize::MAX),
-        None => (usize::MAX, 3)
-    };
-    if prec < 4 {
-        return Err(::std::fmt::Error)
-    }
-    let mut s = String::from('[');
-    let mut i = 0;
-    'a: {
-        while s.len() < prec && i < max {
-            match iter.next() {
-                None => {
-                    s += "]";
-                    break 'a;
-                },
-                Some(Ok(item)) => {
-                    if i > 0 {
-                        s += ", ";
-                    }
-                    s += &format!("{:.*}", prec - s.len(), item);
-                },
-                Some(Err(_err)) => {
-                    s += "<!>";
-                    break 'a;
-                }
-            };
-            i = i + 1;
-        }
-        s += match iter.next() {
-            None => "]",
-            Some(_) => ", ..."
+    fn writeout(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        let mut iter = self.iter();
+        let (prec, max) = match f.precision() {
+            Some(prec) => (prec, usize::MAX),
+            None => (usize::MAX, 3)
         };
-    }
-    if s.len() < prec {
-        write!(f, "{}", s)
-    } else {
-        write!(f, "{:.*}...", prec - 3, s)
+        if prec < 4 {
+            return Err(::std::fmt::Error)
+        }
+        let mut s = String::from('[');
+        let mut i = 0;
+        'a: {
+            while s.len() < prec && i < max {
+                match iter.next() {
+                    None => {
+                        s += "]";
+                        break 'a;
+                    },
+                    Some(Ok(item)) => {
+                        if i > 0 {
+                            s += ", ";
+                        }
+                        s += &format!("{:.*}", prec - s.len(), item);
+                    },
+                    Some(Err(_err)) => {
+                        s += "<!>";
+                        break 'a;
+                    }
+                };
+                i = i + 1;
+            }
+            s += match iter.next() {
+                None => "]",
+                Some(_) => ", ..."
+            };
+        }
+        if s.len() < prec {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "{:.*}...", prec - 3, s)
+        }
     }
 }
