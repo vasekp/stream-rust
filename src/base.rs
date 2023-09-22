@@ -84,7 +84,7 @@ impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         match self {
             Atom(a) => Debug::fmt(&a, f),
-            Stream(_) => write!(f, "stream")
+            Stream(s) => write!(f, "stream {}", s.describe())
         }
     }
 }
@@ -155,4 +155,6 @@ pub trait TStream {
             write!(f, "{:.*}...", prec - 3, s)
         }
     }
+
+    fn describe(&self) -> String;
 }
