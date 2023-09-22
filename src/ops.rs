@@ -4,23 +4,23 @@ use crate::base::*;
 ///
 /// ```
 /// use streamlang::base::Item;
-/// use streamlang::ops::IotaStream;
-/// let stream = IotaStream::construct(vec![]).unwrap();
+/// use streamlang::ops::SeqStream;
+/// let stream = SeqStream::construct(vec![]).unwrap();
 /// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
-/// let stream = IotaStream::construct(vec![Item::new_imm(3)]).unwrap();
+/// let stream = SeqStream::construct(vec![Item::new_imm(3)]).unwrap();
 /// assert_eq!(stream.to_string(), "[3, 4, 5, ...");
-/// let stream = IotaStream::construct(vec![Item::new_imm(1), Item::new_imm(3)]).unwrap();
+/// let stream = SeqStream::construct(vec![Item::new_imm(1), Item::new_imm(3)]).unwrap();
 /// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
-/// let stream = IotaStream::construct(vec![Item::new_imm(3), Item::new_imm(0)]).unwrap();
+/// let stream = SeqStream::construct(vec![Item::new_imm(3), Item::new_imm(0)]).unwrap();
 /// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
 /// ```
-pub struct IotaStream {
+pub struct SeqStream {
     from: TNumber,
     step: TNumber
 }
 
-impl IotaStream {
-    /// Constructs [`IotaStream`].
+impl SeqStream {
+    /// Constructs [`SeqStream`].
     ///
     /// Possible inputs:
     /// - []
@@ -39,28 +39,28 @@ impl IotaStream {
         let mut it = nums.into_iter();
         let from = it.next().unwrap_or(TNumber::from(1));
         let step = it.next().unwrap_or(TNumber::from(1));
-        Ok(Item::new_stream(IotaStream{from, step}))
+        Ok(Item::new_stream(SeqStream{from, step}))
     }
 }
 
-impl TStream for IotaStream {
+impl TStream for SeqStream {
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>> {
-        Box::new(IotaIterator::new(&self.from, &self.step))
+        Box::new(SeqIterator::new(&self.from, &self.step))
     }
 }
 
-struct IotaIterator {
+struct SeqIterator {
     value: TNumber,
     step: TNumber
 }
 
-impl IotaIterator {
-    fn new(from: &TNumber, step: &TNumber) -> IotaIterator {
-        IotaIterator{ value: from.clone(), step: step.clone() }
+impl SeqIterator {
+    fn new(from: &TNumber, step: &TNumber) -> SeqIterator {
+        SeqIterator{ value: from.clone(), step: step.clone() }
     }
 }
 
-impl Iterator for IotaIterator {
+impl Iterator for SeqIterator {
     type Item = StreamResult<Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
