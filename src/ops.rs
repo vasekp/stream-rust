@@ -3,28 +3,16 @@ use crate::base::*;
 /// An infinite stream returning consecutive numbers.
 ///
 /// ```
-/// use streamlang::base::*;
-/// use streamlang::ops::*;
+/// use streamlang::base::Item;
+/// use streamlang::ops::IotaStream;
 /// let stream = IotaStream::construct(vec![]).unwrap();
-/// let mut iter = stream.as_stream().unwrap().iter();
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(1))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(2))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(3))))));
+/// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
 /// let stream = IotaStream::construct(vec![Item::new_imm(3)]).unwrap();
-/// let mut iter = stream.as_stream().unwrap().iter();
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(3))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(4))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(5))))));
+/// assert_eq!(stream.to_string(), "[3, 4, 5, ...");
 /// let stream = IotaStream::construct(vec![Item::new_imm(1), Item::new_imm(3)]).unwrap();
-/// let mut iter = stream.as_stream().unwrap().iter();
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(1))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(4))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(7))))));
+/// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
 /// let stream = IotaStream::construct(vec![Item::new_imm(3), Item::new_imm(0)]).unwrap();
-/// let mut iter = stream.as_stream().unwrap().iter();
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(3))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(3))))));
-/// assert_eq!(iter.next(), Some(Ok(Atom(Number(TNumber::from(3))))));
+/// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
 /// ```
 pub struct IotaStream {
     from: TNumber,

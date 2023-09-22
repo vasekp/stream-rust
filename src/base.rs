@@ -73,17 +73,17 @@ impl Item {
 
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
-        write!(f, "{}", match self {
-            Atom(a) => a.to_string(),
-            Stream(s) => writeout((*s).iter()) // TODO f
-        })
+        match self {
+            Atom(a) => Display::fmt(&a, f),
+            Stream(s) => writeout((*s).iter(), f)
+        }
     }
 }
 
 impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         match self {
-            Atom(a) => Debug::fmt(a, f),
+            Atom(a) => Debug::fmt(&a, f),
             Stream(_) => write!(f, "stream")
         }
     }
@@ -114,6 +114,57 @@ pub trait TStream {
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>>;
 }
 
-fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>) -> String {
-    format!("[{}, {}, ...]", iter.next().unwrap().unwrap(), iter.next().unwrap().unwrap())
+fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    if let Some(prec) = f.precision() {
+        if prec < 4 {
+            return Err(::std::fmt::Error)
+        }
+        let mut s = String::from('[');
+        'a: while s.len() < prec {
+            match iter.next() {
+                None => {
+                    s += "]";
+                    break 'a;
+                },
+                Some(Ok(item)) => {
+                    s += &format!("{:.*}", prec - s.len(), item);
+                    s += ", ";
+                },
+                Some(Err(_err)) => {
+                    s += "<!>";
+                    break 'a;
+                }
+            }
+        }
+        if s.len() < prec {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "{:.*}...", prec - 3, s)
+        }
+    } else {
+        let mut s = String::from('[');
+        'a: {
+            for _ in 0..3 {
+                match iter.next() {
+                    None => {
+                        s += "]";
+                        break 'a;
+                    },
+                    Some(Ok(item)) => {
+                        s += &format!("{}", item);
+                        s += ", ";
+                    },
+                    Some(Err(_err)) => {
+                        s += "<!>";
+                        break 'a;
+                    }
+                }
+            }
+            s += match iter.next() {
+                None => "]",
+                Some(_) => "..."
+            };
+        }
+        write!(f, "{}", s)
+    }
 }
