@@ -115,64 +115,43 @@ pub trait TStream {
 }
 
 fn writeout(mut iter: Box<dyn Iterator<Item = StreamResult<Item>>>, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
-    if let Some(prec) = f.precision() {
-        if prec < 4 {
-            return Err(::std::fmt::Error)
-        }
-        let mut s = String::from('[');
-        let mut first = true;
-        'a: while s.len() < prec {
+    let (prec, max) = match f.precision() {
+        Some(prec) => (prec, usize::MAX),
+        None => (usize::MAX, 3)
+    };
+    if prec < 4 {
+        return Err(::std::fmt::Error)
+    }
+    let mut s = String::from('[');
+    let mut i = 0;
+    'a: {
+        while s.len() < prec && i < max {
             match iter.next() {
                 None => {
                     s += "]";
                     break 'a;
                 },
                 Some(Ok(item)) => {
-                    if !first {
+                    if i > 0 {
                         s += ", ";
                     }
                     s += &format!("{:.*}", prec - s.len(), item);
-                    first = false;
                 },
                 Some(Err(_err)) => {
                     s += "<!>";
                     break 'a;
                 }
-            }
-        }
-        if s.len() < prec {
-            write!(f, "{}", s)
-        } else {
-            write!(f, "{:.*}...", prec - 3, s)
-        }
-    } else {
-        let mut s = String::from('[');
-        let mut first = true;
-        'a: {
-            for _ in 0..3 {
-                match iter.next() {
-                    None => {
-                        s += "]";
-                        break 'a;
-                    },
-                    Some(Ok(item)) => {
-                        if !first {
-                            s += ", ";
-                        }
-                        s += &format!("{}", item);
-                        first = false;
-                    },
-                    Some(Err(_err)) => {
-                        s += "<!>";
-                        break 'a;
-                    }
-                }
-            }
-            s += match iter.next() {
-                None => "]",
-                Some(_) => ", ..."
             };
+            i = i + 1;
         }
+        s += match iter.next() {
+            None => "]",
+            Some(_) => ", ..."
+        };
+    }
+    if s.len() < prec {
         write!(f, "{}", s)
+    } else {
+        write!(f, "{:.*}...", prec - 3, s)
     }
 }
