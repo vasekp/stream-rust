@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter, Debug};
 pub type TNumber = num_bigint::BigInt;
 
 
+#[derive(PartialEq)]
 pub enum Imm {
     Number(TNumber)
 }
@@ -19,6 +20,14 @@ impl Display for Imm {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         write!(f, "{}", match self {
             Number(n) => n.to_string()
+        })
+    }
+}
+
+impl Debug for Imm {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        write!(f, "{}", match self {
+            Number(n) => "number ".to_string() + &n.to_string()
         })
     }
 }
@@ -53,6 +62,13 @@ impl Item {
             _ => Err(StreamError())
         }
     }
+
+    pub fn as_stream(&self) -> StreamResult<&dyn TStream> {
+        match self {
+            Stream(s) => Ok(&**s),
+            _ => Err(StreamError())
+        }
+    }
 }
 
 impl Display for Item {
@@ -64,7 +80,26 @@ impl Display for Item {
     }
 }
 
+impl Debug for Item {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        match self {
+            Atom(a) => Debug::fmt(a, f),
+            Stream(_) => write!(f, "stream")
+        }
+    }
+}
 
+impl PartialEq for Item {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Atom(i1), Atom(i2)) => i1 == i2,
+            _ => false
+        }
+    }
+}
+
+
+#[derive(PartialEq)]
 pub struct StreamError();
 
 impl Debug for StreamError {
