@@ -46,28 +46,8 @@ impl SeqStream {
 
 impl TStream for SeqStream {
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>> {
-        Box::new(SeqIterator::new(&self.from, &self.step))
-    }
-}
-
-struct SeqIterator {
-    value: TNumber,
-    step: TNumber
-}
-
-impl SeqIterator {
-    fn new(from: &TNumber, step: &TNumber) -> SeqIterator {
-        SeqIterator{ value: from.clone(), step: step.clone() }
-    }
-}
-
-impl Iterator for SeqIterator {
-    type Item = StreamResult<Item>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let res = Item::new_imm(self.value.clone());
-        self.value += &self.step;
-        Some(Ok(res))
+        Box::new(num_iter::range_step_from(self.from.clone(), self.step.clone())
+                 .map(|x| Ok(Item::new_imm(x))))
     }
 }
 
