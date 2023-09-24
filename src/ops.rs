@@ -32,7 +32,7 @@ impl SeqStream {
     /// Default values for both `start` and `step` are 1.
     pub fn construct(ins: Vec<Item>) -> StreamResult<Item> {
         if ins.len() > 2 {
-            return Err(StreamError())
+            return Err(StreamError(format!("expected 0 to 2 arguments, found {}", ins.len())))
         }
         let mut nums: Vec<TNumber> = vec![];
         for input in ins {
@@ -99,7 +99,7 @@ impl RangeStream {
             1 => (TNumber::from(1), it.next().unwrap(), TNumber::from(1)), // TODO check nonneg
             2 => (it.next().unwrap(), it.next().unwrap(), TNumber::from(1)),
             3 => (it.next().unwrap(), it.next().unwrap(), it.next().unwrap()),
-            _ => return Err(StreamError())
+            _ => return Err(StreamError(format!("expected 1 to 3 arguments, found {}", len)))
         };
         Ok(Item::new_stream(RangeStream{from, to, step}))
     }

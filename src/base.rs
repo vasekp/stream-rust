@@ -60,21 +60,21 @@ impl Item {
     pub fn as_num(&self) -> StreamResult<&TNumber> {
         match self {
             Atom(Number(x)) => Ok(&x),
-            _ => Err(StreamError())
+            _ => Err(StreamError(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn into_num(self) -> StreamResult<TNumber> {
         match self {
             Atom(Number(x)) => Ok(x),
-            _ => Err(StreamError())
+            _ => Err(StreamError(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn as_stream(&self) -> StreamResult<&dyn TStream> {
         match self {
             Stream(s) => Ok(&**s),
-            _ => Err(StreamError())
+            _ => Err(StreamError(format!("expected stream, found {:?}", &self)))
         }
     }
 }
@@ -107,12 +107,15 @@ impl PartialEq for Item {
 }
 
 
-#[derive(PartialEq)]
-pub struct StreamError();
+/// The base error type for use for this library. Currently only holds a String description.
+#[derive(PartialEq, Debug)]
+pub struct StreamError(pub String);
 
-impl Debug for StreamError {
+impl ::std::error::Error for StreamError { }
+
+impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
-        write!(f, "error")
+        write!(f, "{}", self.0)
     }
 }
 
