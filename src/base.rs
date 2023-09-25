@@ -1,8 +1,14 @@
 use std::fmt::{Display, Formatter, Debug};
 
+
+/// The type for representing all numbers in Stream. The requirement is that it allows
+/// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
+/// BigInt fallback in the future for better performance.
 pub type TNumber = num_bigint::BigInt;
 
 
+/// Encompasses all "immediate" values. This is directly comparable and cloneable, and appear both
+/// as an [`Item`] and a [`Node`].
 #[derive(PartialEq)]
 pub enum Imm {
     Number(TNumber)
@@ -33,6 +39,8 @@ impl Debug for Imm {
 }
 
 
+/// An `Item` is the result of evaluation. Either an `Atom`, which is an immediate value ([`Imm`]),
+/// or a `Stream` (see [`TStream`]).
 pub enum Item {
     Atom(Imm),
     Stream(Box<dyn TStream>)
@@ -110,9 +118,21 @@ impl Debug for StreamError {
 
 pub type StreamResult<T> = Result<T, StreamError>;
 
+
+/// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]'s. Internally,
+/// types implementing this trait need to hold enough information to produce a reconstructible
+/// [`Iterator`].
 pub trait TStream {
+    /// Create an [`Iterator`] of this stream. Every instance of the iterator must produce the same
+    /// values.
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>>;
 
+    /// Write the contents of the stream (i.e., the items returned by its iterator) in a
+    /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
+    /// maximum width (using the `"{:.n}"` syntax), in which case the output is truncated using
+    /// ellipsis (the width must be at least 4 to accommodate the string `"[..."`); if no width is
+    /// given, first three items are written out.  If an error happens during reading the stream,
+    /// it is represented as `"<!>"`.
     fn writeout(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
@@ -156,5 +176,8 @@ pub trait TStream {
         }
     }
 
+    /// Describe the stream using the stream syntax. This should be parseable back to reconstruct a
+    /// copy, but it is not a strict requirement. The primary purpose of this function is for the
+    /// implementation of the [`Debug`] trait.
     fn describe(&self) -> String;
 }
