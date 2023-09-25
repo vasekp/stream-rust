@@ -181,28 +181,38 @@ pub trait TStream {
     /// implementation of the [`Debug`] trait.
     fn describe(&self) -> String;
 
+    /// Returns the length of this stream, in as much information as available *without* consuming
+    /// the iterator. See [`Length`] for the possible return values. The default implementation
+    /// relies on [`Iterator::size_hint()`] to return one of `Exact`, `AtMost`, `Unknown` or
+    /// `LikelyInfinite`. The latter is produced if `size_hint` returned `(usize::MAX, None)`,
+    /// which is a customary indication of infiniteness in the standard library, but may have false
+    /// positives, like an iterator whose size can't fit into `usize`.
     fn length(&self) -> Length {
         let iter = self.iter();
         match iter.size_hint() {
-            (lo, Some(hi)) => if lo == hi {
-                return Exact(lo.into());
-            },
-            (usize::MAX, None) => {
-                return Infinite;
-            },
-            _ => ()
+            (lo, Some(hi)) => if lo == hi { Exact(lo.into()) } else { AtMost(hi.into()) },
+            (usize::MAX, None) => Infinite,
+            _ => Unknown
         }
-        Exact(iter.count().into())
     }
 }
 
 
+/// The enum returned by [`TStream::length`]. The information must be consistent with the actual
+/// behaviour of the stream.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Length {
+    /// The length is known exactly, including empty streams.
     Exact(TNumber),
+    /// The length has a known upper bound.
     AtMost(TNumber),
+    /// The stream is known to be infinite.
     Infinite,
+    /// A special value for when a standard [`Iterator::size_hint()`] returns `(usize::MAX, None)`.
+    LikelyInfinite,
+    /// The length is not known but promises to be finite.
     UnknownFinite,
+    /// Nothing can be inferred about the length.
     Unknown
 }
 
