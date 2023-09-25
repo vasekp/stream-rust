@@ -180,4 +180,47 @@ pub trait TStream {
     /// copy, but it is not a strict requirement. The primary purpose of this function is for the
     /// implementation of the [`Debug`] trait.
     fn describe(&self) -> String;
+
+    fn length(&self) -> Length {
+        let iter = self.iter();
+        match iter.size_hint() {
+            (lo, Some(hi)) => if lo == hi {
+                return Exact(lo.into());
+            },
+            (usize::MAX, None) => {
+                return Infinite;
+            },
+            _ => ()
+        }
+        Exact(iter.count().into())
+    }
+}
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Length {
+    Exact(TNumber),
+    AtMost(TNumber),
+    Infinite,
+    UnknownFinite,
+    Unknown
+}
+
+pub use Length::*;
+
+impl Length {
+    fn _at_most(value: &Length) -> Length {
+        match value {
+            Exact(x) => AtMost(x.clone()),
+            AtMost(x) => AtMost(x.clone()),
+            UnknownFinite => UnknownFinite,
+            _ => Unknown
+        }
+    }
+}
+
+impl<T> From<T> for Length where T: Into<TNumber> {
+    fn from(value: T) -> Self {
+        Exact(value.into())
+    }
 }

@@ -1,4 +1,5 @@
 use crate::base::*;
+use num::{Zero, ToPrimitive, Signed};
 
 
 /// An infinite stream returning consecutive numbers.
@@ -52,6 +53,10 @@ impl TStream for SeqStream {
 
     fn describe(&self) -> String {
         format!("seq({}, {})", self.from, self.step)
+    }
+
+    fn length(&self) -> Length {
+        Infinite
     }
 }
 
@@ -109,20 +114,54 @@ impl TStream for RangeStream {
     fn describe(&self) -> String {
         format!("range({}, {}, {})", self.from, self.to, self.step)
     }
+
+    fn length(&self) -> Length {
+        if (self.to > self.from && self.step.is_negative())
+                || (self.to < self.from && self.step.is_positive()) {
+            return Exact(TNumber::zero());
+        }
+        match self.step.to_i32() {
+            Some(1) => Exact(&self.to - &self.from + 1),
+            Some(-1) => Exact(&self.from - &self.to + 1),
+            Some(0) => Infinite,
+            _ => Exact((&self.to - &self.from) / &self.step + 1),
+        }
+    }
 }
 
 #[test]
 fn range_tests() {
     let stream = RangeStream::construct(vec![Item::new_imm(1), Item::new_imm(10), Item::new_imm(4)]).unwrap();
     assert_eq!(stream.to_string(), "[1, 5, 9]");
-    //assert_eq!(stream.as_stream().unwrap().iter().size_hint(), (3, Some(3)));
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(3));
     let stream = RangeStream::construct(vec![Item::new_imm(1), Item::new_imm(10), Item::new_imm(10)]).unwrap();
     assert_eq!(stream.to_string(), "[1]");
-    //assert_eq!(stream.as_stream().unwrap().iter().size_hint(), (1, Some(1)));
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
     let stream = RangeStream::construct(vec![Item::new_imm(1), Item::new_imm(10), Item::new_imm(0)]).unwrap();
     assert_eq!(stream.to_string(), "[1, 1, 1, ...");
-    //assert_eq!(stream.as_stream().unwrap().iter().size_hint(), (0, None));
+    assert_eq!(stream.as_stream().unwrap().length(), Infinite);
     let stream = RangeStream::construct(vec![Item::new_imm(1), Item::new_imm(10), Item::new_imm(-1)]).unwrap();
     assert_eq!(stream.to_string(), "[]");
-    //assert_eq!(stream.as_stream().unwrap().iter().size_hint(), (0, Some(0)));
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(0));
+    let stream = RangeStream::construct(vec![Item::new_imm(1), Item::new_imm(-10), Item::new_imm(-1)]).unwrap();
+    assert_eq!(stream.to_string(), "[1, 0, -1, ...");
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(12));
+}
+
+#[test]
+fn range_test_neg_lengths() {
+    let stream = RangeStream::construct(vec![Item::new_imm(10), Item::new_imm(1), Item::new_imm(-2)]).unwrap();
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(5));
+    let stream = RangeStream::construct(vec![Item::new_imm(10), Item::new_imm(1), Item::new_imm(-3)]).unwrap();
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(4));
+    let stream = RangeStream::construct(vec![Item::new_imm(10), Item::new_imm(1), Item::new_imm(-4)]).unwrap();
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(3));
+    let stream = RangeStream::construct(vec![Item::new_imm(10), Item::new_imm(1), Item::new_imm(-5)]).unwrap();
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(2));
+    let stream = RangeStream::construct(vec![Item::new_imm(10), Item::new_imm(1), Item::new_imm(-9)]).unwrap();
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(2));
+    let stream = RangeStream::construct(vec![Item::new_imm(10), Item::new_imm(1), Item::new_imm(-10)]).unwrap();
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
+    let stream = RangeStream::construct(vec![Item::new_imm(10), Item::new_imm(1), Item::new_imm(-11)]).unwrap();
+    assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
 }
