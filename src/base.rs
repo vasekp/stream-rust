@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter, Debug};
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
 /// BigInt fallback in the future for better performance.
-pub type TNumber = num_bigint::BigInt;
+pub type TNumber = num::BigInt;
 
 
 /// Encompasses all "immediate" values. This is directly comparable and cloneable, and appear both

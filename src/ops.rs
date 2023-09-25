@@ -46,7 +46,7 @@ impl SeqStream {
 
 impl TStream for SeqStream {
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>> {
-        Box::new(num_iter::range_step_from(self.from.clone(), self.step.clone())
+        Box::new(num::iter::range_step_from(self.from.clone(), self.step.clone())
                  .map(|x| Ok(Item::new_imm(x))))
     }
 
@@ -102,7 +102,7 @@ impl RangeStream {
 
 impl TStream for RangeStream {
     fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>> {
-        Box::new(num_iter::range_step_inclusive(self.from.clone(), self.to.clone(), self.step.clone())
+        Box::new(num::iter::range_step_inclusive(self.from.clone(), self.to.clone(), self.step.clone())
                  .map(|x| Ok(Item::new_imm(x))))
     }
 
