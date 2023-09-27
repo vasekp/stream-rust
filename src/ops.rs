@@ -3,19 +3,6 @@ use num::{Zero, ToPrimitive, Signed};
 
 
 /// An infinite stream returning consecutive numbers.
-///
-/// ```
-/// use streamlang::base::Item;
-/// use streamlang::ops::SeqStream;
-/// let stream = SeqStream::construct(vec![]).unwrap();
-/// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
-/// let stream = SeqStream::construct(vec![Item::new_imm(3)]).unwrap();
-/// assert_eq!(stream.to_string(), "[3, 4, 5, ...");
-/// let stream = SeqStream::construct(vec![Item::new_imm(1), Item::new_imm(3)]).unwrap();
-/// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
-/// let stream = SeqStream::construct(vec![Item::new_imm(3), Item::new_imm(0)]).unwrap();
-/// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
-/// ```
 pub struct SeqStream {
     from: TNumber,
     step: TNumber
@@ -30,6 +17,20 @@ impl SeqStream {
     /// - [`start` (number), `step` (number)].
     ///
     /// Default values for both `start` and `step` are 1.
+    ///
+    /// # Examples
+    /// ```
+    /// use streamlang::base::Item;
+    /// use streamlang::ops::SeqStream;
+    /// let stream = SeqStream::construct(vec![]).unwrap();
+    /// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
+    /// let stream = SeqStream::construct(vec![Item::new_imm(3)]).unwrap();
+    /// assert_eq!(stream.to_string(), "[3, 4, 5, ...");
+    /// let stream = SeqStream::construct(vec![Item::new_imm(1), Item::new_imm(3)]).unwrap();
+    /// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
+    /// let stream = SeqStream::construct(vec![Item::new_imm(3), Item::new_imm(0)]).unwrap();
+    /// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
+    /// ```
     pub fn construct(ins: Vec<Item>) -> StreamResult<Item> {
         if ins.len() > 2 {
             return Err(StreamError(format!("expected 0 to 2 arguments, found {}", ins.len())))
@@ -62,17 +63,6 @@ impl TStream for SeqStream {
 
 
 /// A range of equidistant numbers.
-///
-/// ```
-/// use streamlang::base::Item;
-/// use streamlang::ops::RangeStream;
-/// let stream = RangeStream::construct(vec![Item::new_imm(3)]).unwrap();
-/// assert_eq!(stream.to_string(), "[1, 2, 3]");
-/// let stream = RangeStream::construct(vec![Item::new_imm(0), Item::new_imm(2)]).unwrap();
-/// assert_eq!(stream.to_string(), "[0, 1, 2]");
-/// let stream = RangeStream::construct(vec![Item::new_imm(3), Item::new_imm(1), Item::new_imm(-1)]).unwrap();
-/// assert_eq!(stream.to_string(), "[3, 2, 1]");
-/// ```
 pub struct RangeStream {
     from: TNumber,
     to: TNumber,
@@ -88,6 +78,18 @@ impl RangeStream {
     /// - [`start` (number), `end` (number), `step` (number)].
     ///
     /// Default values for both `start` and `step` are 1.
+    ///
+    /// # Examples
+    /// ```
+    /// use streamlang::base::Item;
+    /// use streamlang::ops::RangeStream;
+    /// let stream = RangeStream::construct(vec![Item::new_imm(3)]).unwrap();
+    /// assert_eq!(stream.to_string(), "[1, 2, 3]");
+    /// let stream = RangeStream::construct(vec![Item::new_imm(0), Item::new_imm(2)]).unwrap();
+    /// assert_eq!(stream.to_string(), "[0, 1, 2]");
+    /// let stream = RangeStream::construct(vec![Item::new_imm(3), Item::new_imm(1), Item::new_imm(-1)]).unwrap();
+    /// assert_eq!(stream.to_string(), "[3, 2, 1]");
+    /// ```
     pub fn construct(ins: Vec<Item>) -> StreamResult<Item> {
         let mut nums: Vec<TNumber> = vec![];
         for input in ins {

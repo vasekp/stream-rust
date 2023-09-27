@@ -122,7 +122,7 @@ impl Display for StreamError {
 pub type StreamResult<T> = Result<T, StreamError>;
 
 
-/// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]'s. Internally,
+/// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
 pub trait TStream {
