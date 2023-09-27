@@ -1,5 +1,5 @@
 use crate::base::*;
-use num::{Zero, ToPrimitive, Signed};
+use num::{Zero, One, ToPrimitive, Signed};
 
 
 /// An infinite stream returning consecutive numbers.
@@ -33,13 +33,10 @@ impl SeqStream {
     /// ```
     pub fn construct(ins: Vec<Item>) -> StreamResult<Item> {
         check_args(&ins, 0..=2)?;
-        let mut nums: Vec<TNumber> = vec![];
-        for input in ins {
-            nums.push(input.into_num()?)
-        }
+        let nums = ins.into_iter().map(|x| x.into_num()).collect::<Result<Vec<_>, _>>()?;
         let mut it = nums.into_iter();
-        let from = it.next().unwrap_or(TNumber::from(1));
-        let step = it.next().unwrap_or(TNumber::from(1));
+        let from = it.next().unwrap_or(TNumber::one());
+        let step = it.next().unwrap_or(TNumber::one());
         Ok(Item::new_stream(SeqStream{from, step}))
     }
 }
@@ -90,15 +87,12 @@ impl RangeStream {
     /// ```
     pub fn construct(ins: Vec<Item>) -> StreamResult<Item> {
         check_args(&ins, 1..=3)?;
-        let mut nums: Vec<TNumber> = vec![];
-        for input in ins {
-            nums.push(input.into_num()?)
-        }
-        let len = nums.len();
+        let len = ins.len();
+        let nums = ins.into_iter().map(|x| x.into_num()).collect::<Result<Vec<_>, _>>()?;
         let mut it = nums.into_iter();
         let (from, to, step) = match len {
-            1 => (TNumber::from(1), it.next().unwrap(), TNumber::from(1)), // TODO check nonneg
-            2 => (it.next().unwrap(), it.next().unwrap(), TNumber::from(1)),
+            1 => (TNumber::one(), it.next().unwrap(), TNumber::one()),
+            2 => (it.next().unwrap(), it.next().unwrap(), TNumber::one()),
             3 => (it.next().unwrap(), it.next().unwrap(), it.next().unwrap()),
             _ => unreachable!()
         };
