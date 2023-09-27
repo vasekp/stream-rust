@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter, Debug};
+use std::ops::RangeBounds;
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -235,5 +236,22 @@ impl Length {
 impl<T> From<T> for Length where T: Into<TNumber> {
     fn from(value: T) -> Self {
         Exact(value.into())
+    }
+}
+
+
+pub fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<(), StreamError> {
+    use std::ops::Bound::*;
+    if range.contains(&args.len()) {
+        Ok(())
+    } else {
+        Err(StreamError(match (range.start_bound(), range.end_bound()) {
+            (Included(0), Included(0)) => "no arguments allowed".to_string(),
+            (Included(min), Included(max)) if min == max => format!("exactly {min} arguments required"),
+            (Included(min), Included(max)) => format!("between {min} and {max} arguments required"),
+            (Included(min), Unbounded) => format!("at least {min} arguments required"),
+            (Unbounded, Included(max)) => format!("at most {max} arguments required"),
+            _ => panic!("checkArgs: bounds {:?}, {:?}", range.start_bound(), range.end_bound())
+        }))
     }
 }
