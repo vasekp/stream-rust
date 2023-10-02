@@ -31,44 +31,27 @@ impl<'a> Tokenizer<'a> {
         Tokenizer{input, iter: input.char_indices().peekable()}
     }
 
-    fn byte_pos(&mut self) -> usize {
-        match self.iter.peek() {
-            Some(&(pos, _)) => pos,
-            None => self.input.len()
-        }
-    }
-
-    fn read_single(&mut self) -> Result<(), StreamError> {
-        self.iter.next();
-        Ok(())
-    }
-
-    fn read_same(&mut self, class: CharClass) -> Result<(), StreamError> {
+    fn skip_same(&mut self, class: &CharClass) {
         while let Some(&(_, ch)) = self.iter.peek() {
-            if char_class(ch) == class {
+            if char_class(ch) == *class {
                 self.iter.next();
             } else {
                 break;
             }
         }
-        Ok(())
     }
 
-    fn read_string(&mut self) -> Result<(), StreamError> {
-        let (_, delim) = self.iter.next().unwrap();
-        'b: {
-            while let Some((_, ch)) = self.iter.next() {
-                if ch == '\\' {
-                    if self.iter.next().is_none() {
-                        return Err(StreamError("unterminated string".to_string()));
-                    }
-                } else if ch == delim {
-                    break 'b;
+    fn skip_until(&mut self, delim: char) -> Result<(), StreamError> {
+        while let Some((_, ch)) = self.iter.next() {
+            if ch == '\\' {
+                if self.iter.next().is_none() {
+                    return Err(StreamError("unterminated string".to_string()));
                 }
+            } else if ch == delim {
+                return Ok(());
             }
-            return Err(StreamError("unterminated string".to_string()));
         }
-        Ok(())
+        return Err(StreamError("unterminated string".to_string()));
     }
 }
 
@@ -76,18 +59,20 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = StreamResult<&'a str>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(&(_, ch)) = self.iter.peek() {
-            let start = self.byte_pos();
-            let res = match char_class(ch) {
-                CharClass::Space => {
-                    self.iter.next();
-                    return self.next();
-                },
-                class @ (CharClass::Ident | CharClass::Rel) => self.read_same(class),
-                CharClass::Delim => self.read_string(),
-                CharClass::Other => self.read_single()
+        if let Some((start, ch)) = self.iter.next() {
+            let class = char_class(ch);
+            let res = match class {
+                CharClass::Ident | CharClass::Rel | CharClass::Space => Ok(self.skip_same(&class)),
+                CharClass::Delim => self.skip_until(ch),
+                CharClass::Other => Ok(())
             };
-            let end = self.byte_pos();
+            if class == CharClass::Space {
+                return self.next();
+            }
+            let end = match self.iter.peek() {
+                Some(&(pos, _)) => pos,
+                None => self.input.len()
+            };
             Some(res.map(|_| &self.input[start..end]))
         } else {
             None
