@@ -1,35 +1,25 @@
-use std::str::Chars;
+use std::str::CharIndices;
 use std::iter::Peekable;
 use crate::base::{StreamError, StreamResult};
 
 pub struct Tokenizer<'a> {
     input: &'a str,
-    chars: Peekable<Chars<'a>>,
-    index: usize
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Token<'a> {
-    slice: &'a str,
-    start: usize,
-    length: usize
+    iter: Peekable<CharIndices<'a>>,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Tokenizer<'a> {
-        Tokenizer{input, chars: input.chars().peekable(), index: 0}
+        Tokenizer{input, iter: input.char_indices().peekable()}
     }
 
     fn read_string(&mut self) -> Option<StreamResult<&'a str>> {
-        let start = self.index;
-        let mut length = self.chars.next().unwrap().len_utf8();
+        let start = self.byte_pos();
+        self.iter.next();
         'b: {
-            while let Some(ch) = self.chars.next() {
-                length = length + ch.len_utf8();
+            while let Some((_, ch)) = self.iter.next() {
                 if ch == '\\' {
-                    match self.chars.next() {
-                        Some(ch2) => length = length + ch2.len_utf8(),
-                        None => return Some(Err(StreamError("unterminated string".to_string())))
+                    if self.iter.next().is_none() {
+                        return Some(Err(StreamError("unterminated string".to_string())));
                     }
                 } else if ch == '"' {
                     break 'b;
@@ -37,8 +27,15 @@ impl<'a> Tokenizer<'a> {
             }
             return Some(Err(StreamError("unterminated string".to_string())));
         }
-        self.index = self.index + length;
-        Some(Ok(&self.input[start..self.index]))
+        let end = self.byte_pos();
+        Some(Ok(&self.input[start..end]))
+    }
+
+    fn byte_pos(&mut self) -> usize {
+        match self.iter.peek() {
+            Some(&(pos, _)) => pos,
+            None => self.input.len()
+        }
     }
 }
 
@@ -46,21 +43,19 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = StreamResult<&'a str>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(&ch) = self.chars.peek() {
+        if let Some(&(_, ch)) = self.iter.peek() {
             if ch == '"' {
                 return self.read_string();
             }
-            let start = self.index;
-            let mut length = self.chars.next().unwrap().len_utf8();
-            while let Some(&ch2) = self.chars.peek() {
+            let start = self.byte_pos();
+            while let Some(&(_, ch2)) = self.iter.peek() {
                 if ch2 != ch {
                     break;
                 }
-                length = length + ch2.len_utf8();
-                self.chars.next();
+                self.iter.next();
             }
-            self.index = self.index + length;
-            Some(Ok(&self.input[start..self.index]))
+            let end = self.byte_pos();
+            Some(Ok(&self.input[start..end]))
         } else {
             None
         }
