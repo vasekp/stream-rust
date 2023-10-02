@@ -121,13 +121,19 @@ impl Display for BaseError {
 }
 
 
+pub(crate) type TIterator = dyn Iterator<Item = Result<Item, BaseError>>;
+
+
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
 pub trait TStream {
+    /// Construct this stream with given arguments.
+    fn construct(ins: Vec<Item>) -> Result<Item, BaseError> where Self: Sized;
+
     /// Create an [`Iterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
-    fn iter(&self) -> Box<dyn Iterator<Item = Result<Item, BaseError>>>;
+    fn iter(&self) -> Box<TIterator>;
 
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a

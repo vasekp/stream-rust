@@ -8,7 +8,7 @@ pub struct SeqStream {
     step: TNumber
 }
 
-impl SeqStream {
+impl TStream for SeqStream {
     /// Constructs [`SeqStream`].
     ///
     /// Possible inputs:
@@ -31,7 +31,7 @@ impl SeqStream {
     /// let stream = SeqStream::construct(vec![Item::new_atomic(3), Item::new_atomic(0)]).unwrap();
     /// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
     /// ```
-    pub fn construct(ins: Vec<Item>) -> Result<Item, BaseError> {
+    fn construct(ins: Vec<Item>) -> Result<Item, BaseError> {
         check_args(&ins, 0..=2)?;
         let nums = ins.into_iter().map(|x| x.into_num()).collect::<Result<Vec<_>, _>>()?;
         let mut it = nums.into_iter();
@@ -39,10 +39,8 @@ impl SeqStream {
         let step = it.next().unwrap_or(TNumber::one());
         Ok(Item::new_stream(SeqStream{from, step}))
     }
-}
 
-impl TStream for SeqStream {
-    fn iter(&self) -> Box<dyn Iterator<Item = Result<Item, BaseError>>> {
+    fn iter(&self) -> Box<TIterator> {
         Box::new(num::iter::range_step_from(self.from.clone(), self.step.clone())
                  .map(|x| Ok(Item::new_atomic(x))))
     }
@@ -64,7 +62,7 @@ pub struct RangeStream {
     step: TNumber
 }
 
-impl RangeStream {
+impl TStream for RangeStream {
     /// Constructs [`RangeStream`].
     ///
     /// Possible inputs:
@@ -85,7 +83,7 @@ impl RangeStream {
     /// let stream = RangeStream::construct(vec![Item::new_atomic(3), Item::new_atomic(1), Item::new_atomic(-1)]).unwrap();
     /// assert_eq!(stream.to_string(), "[3, 2, 1]");
     /// ```
-    pub fn construct(ins: Vec<Item>) -> Result<Item, BaseError> {
+    fn construct(ins: Vec<Item>) -> Result<Item, BaseError> {
         check_args(&ins, 1..=3)?;
         let len = ins.len();
         let nums = ins.into_iter().map(|x| x.into_num()).collect::<Result<Vec<_>, _>>()?;
@@ -98,10 +96,8 @@ impl RangeStream {
         };
         Ok(Item::new_stream(RangeStream{from, to, step}))
     }
-}
 
-impl TStream for RangeStream {
-    fn iter(&self) -> Box<dyn Iterator<Item = Result<Item, BaseError>>> {
+    fn iter(&self) -> Box<TIterator> {
         Box::new(num::iter::range_step_inclusive(self.from.clone(), self.to.clone(), self.step.clone())
                  .map(|x| Ok(Item::new_atomic(x))))
     }
