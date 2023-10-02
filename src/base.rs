@@ -8,22 +8,22 @@ use std::ops::RangeBounds;
 pub type TNumber = num::BigInt;
 
 
-/// Encompasses all "immediate" values. This is directly comparable and cloneable, and appear both
-/// as an [`Item`] and a [`Node`].
+/// Encompasses all atomic values. This is directly comparable and cloneable, and appear both as an
+/// [`Item`] and a `Node`.
 #[derive(PartialEq)]
-pub enum Imm {
+pub enum Atomic {
     Number(TNumber)
 }
 
-pub use Imm::Number;
+pub use Atomic::*;
 
-impl<T> From<T> for Imm where T : Into<TNumber> {
+impl<T> From<T> for Atomic where T : Into<TNumber> {
     fn from(value: T) -> Self {
         Number(value.into())
     }
 }
 
-impl Display for Imm {
+impl Display for Atomic {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         write!(f, "{}", match self {
             Number(n) => n.to_string()
@@ -31,7 +31,7 @@ impl Display for Imm {
     }
 }
 
-impl Debug for Imm {
+impl Debug for Atomic {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         write!(f, "{}", match self {
             Number(n) => "number ".to_string() + &n.to_string()
@@ -40,17 +40,17 @@ impl Debug for Imm {
 }
 
 
-/// An `Item` is the result of evaluation. Either an `Atom`, which is an immediate value ([`Imm`]),
+/// An `Item` is the result of evaluation. Either an `Atom`, which is an atomic value ([`Atomic`]),
 /// or a `Stream` (see [`TStream`]).
 pub enum Item {
-    Atom(Imm),
+    Atom(Atomic),
     Stream(Box<dyn TStream>)
 }
 
 pub use Item::{Atom, Stream};
 
 impl Item {
-    pub fn new_imm(value: impl Into<Imm>) -> Item {
+    pub fn new_atomic(value: impl Into<Atomic>) -> Item {
         Atom(value.into())
     }
 
@@ -58,24 +58,24 @@ impl Item {
         Stream(Box::new(value))
     }
 
-    pub fn as_num(&self) -> StreamResult<&TNumber> {
+    pub fn as_num(&self) -> Result<&TNumber, BaseError> {
         match self {
             Atom(Number(x)) => Ok(&x),
-            _ => Err(StreamError(format!("expected number, found {:?}", &self)))
+            _ => Err(BaseError(format!("expected number, found {:?}", &self)))
         }
     }
 
-    pub fn into_num(self) -> StreamResult<TNumber> {
+    pub fn into_num(self) -> Result<TNumber, BaseError> {
         match self {
             Atom(Number(x)) => Ok(x),
-            _ => Err(StreamError(format!("expected number, found {:?}", &self)))
+            _ => Err(BaseError(format!("expected number, found {:?}", &self)))
         }
     }
 
-    pub fn as_stream(&self) -> StreamResult<&dyn TStream> {
+    pub fn as_stream(&self) -> Result<&dyn TStream, BaseError> {
         match self {
             Stream(s) => Ok(&**s),
-            _ => Err(StreamError(format!("expected stream, found {:?}", &self)))
+            _ => Err(BaseError(format!("expected stream, found {:?}", &self)))
         }
     }
 }
@@ -110,17 +110,15 @@ impl PartialEq for Item {
 
 /// The base error type for use for this library. Currently only holds a String description.
 #[derive(PartialEq, Debug)]
-pub struct StreamError(pub String);
+pub struct BaseError(pub String);
 
-impl ::std::error::Error for StreamError { }
+impl ::std::error::Error for BaseError { }
 
-impl Display for StreamError {
+impl Display for BaseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
         write!(f, "{}", self.0)
     }
 }
-
-pub type StreamResult<T> = Result<T, StreamError>;
 
 
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
@@ -129,7 +127,7 @@ pub type StreamResult<T> = Result<T, StreamError>;
 pub trait TStream {
     /// Create an [`Iterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
-    fn iter(&self) -> Box<dyn Iterator<Item = StreamResult<Item>>>;
+    fn iter(&self) -> Box<dyn Iterator<Item = Result<Item, BaseError>>>;
 
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
@@ -240,12 +238,12 @@ impl<T> From<T> for Length where T: Into<TNumber> {
 }
 
 
-pub fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<(), StreamError> {
+pub fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
     use std::ops::Bound::*;
     if range.contains(&args.len()) {
         Ok(())
     } else {
-        Err(StreamError(match (range.start_bound(), range.end_bound()) {
+        Err(BaseError(match (range.start_bound(), range.end_bound()) {
             (Included(0), Included(0)) => "no arguments allowed".to_string(),
             (Included(min), Included(max)) if min == max => format!("exactly {min} arguments required"),
             (Included(min), Included(max)) => format!("between {min} and {max} arguments required"),

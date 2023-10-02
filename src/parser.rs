@@ -1,6 +1,6 @@
 use std::str::CharIndices;
 use std::iter::Peekable;
-use crate::base::{StreamError, StreamResult};
+use crate::base::BaseError;
 
 pub struct Tokenizer<'a> {
     input: &'a str,
@@ -41,22 +41,22 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn skip_until(&mut self, delim: char) -> Result<(), StreamError> {
+    fn skip_until(&mut self, delim: char) -> Result<(), BaseError> {
         while let Some((_, ch)) = self.iter.next() {
             if ch == '\\' {
                 if self.iter.next().is_none() {
-                    return Err(StreamError("unterminated string".to_string()));
+                    return Err(BaseError("unterminated string".to_string()));
                 }
             } else if ch == delim {
                 return Ok(());
             }
         }
-        return Err(StreamError("unterminated string".to_string()));
+        return Err(BaseError("unterminated string".to_string()));
     }
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
-    type Item = StreamResult<&'a str>;
+    type Item = Result<&'a str, BaseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((start, ch)) = self.iter.next() {
@@ -90,13 +90,13 @@ fn test_parser() {
 
     let mut tk = Tokenizer::new(r#"a"d"#); // single "
     assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Err(StreamError("unterminated string".to_string()))));
+    assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"""d"#); // triple "
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\"\"")));
-    assert_eq!(tk.next(), Some(Err(StreamError("unterminated string".to_string()))));
+    assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a""""d"#); // quadruple "
@@ -121,7 +121,7 @@ fn test_parser() {
     let mut tk = Tokenizer::new(r#"a\"d"#); // backslash out of string (not escape!)
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\\")));
-    assert_eq!(tk.next(), Some(Err(StreamError("unterminated string".to_string()))));
+    assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a💖b"#); // wide character
