@@ -82,56 +82,73 @@ impl<'a> Iterator for Tokenizer<'a> {
 
 #[test]
 fn test_parser() {
-    let mut tk = Tokenizer::new(r#"a""d"#);
+    let mut tk = Tokenizer::new(r#"a""d"#); // empty string
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\"\"")));
     assert_eq!(tk.next(), Some(Ok("d")));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"a"d"#);
+    let mut tk = Tokenizer::new(r#"a"d"#); // single "
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Err(StreamError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"a"""d"#);
+    let mut tk = Tokenizer::new(r#"a"""d"#); // triple "
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\"\"")));
     assert_eq!(tk.next(), Some(Err(StreamError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"a"\""d"#);
+    let mut tk = Tokenizer::new(r#"a""""d"#); // quadruple "
+    assert_eq!(tk.next(), Some(Ok("a")));
+    assert_eq!(tk.next(), Some(Ok("\"\"")));
+    assert_eq!(tk.next(), Some(Ok("\"\"")));
+    assert_eq!(tk.next(), Some(Ok("d")));
+    assert_eq!(tk.next(), None);
+
+    let mut tk = Tokenizer::new(r#"a"\""d"#); // escaped "
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\"\\\"\"")));
     assert_eq!(tk.next(), Some(Ok("d")));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"a"\\"d"#);
+    let mut tk = Tokenizer::new(r#"a"\\"d"#); // escaped \
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\"\\\\\"")));
     assert_eq!(tk.next(), Some(Ok("d")));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"a\"d"#);
+    let mut tk = Tokenizer::new(r#"a\"d"#); // backslash out of string (not escape!)
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\\")));
     assert_eq!(tk.next(), Some(Err(StreamError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"a💖b"#);
+    let mut tk = Tokenizer::new(r#"a💖b"#); // wide character
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("💖")));
     assert_eq!(tk.next(), Some(Ok("b")));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"abc_12  3.:<=>'a"b'c"d'e"f"#);
-    assert_eq!(tk.next(), Some(Ok("abc_12")));
-    assert_eq!(tk.next(), Some(Ok("3")));
-    assert_eq!(tk.next(), Some(Ok(".")));
-    assert_eq!(tk.next(), Some(Ok(":")));
-    assert_eq!(tk.next(), Some(Ok("<=>")));
-    assert_eq!(tk.next(), Some(Ok("'a\"b'")));
-    assert_eq!(tk.next(), Some(Ok("c")));
-    assert_eq!(tk.next(), Some(Ok("\"d'e\"")));
-    assert_eq!(tk.next(), Some(Ok("f")));
+    let mut tk = Tokenizer::new(r#"abc_12  3..:<=>xy'a"b'c"d'e""""#); // character classes
+    assert_eq!(tk.next(), Some(Ok("abc_12"))); // mixed alpha, numeric, _ should be single token
+    assert_eq!(tk.next(), Some(Ok("3"))); // space ignored, but prevents gluing to previous
+    assert_eq!(tk.next(), Some(Ok("."))); // should remain single character
+    assert_eq!(tk.next(), Some(Ok("."))); // should remain separate
+    assert_eq!(tk.next(), Some(Ok(":"))); // ditto
+    assert_eq!(tk.next(), Some(Ok("<=>"))); // relational symbols merged
+    assert_eq!(tk.next(), Some(Ok("xy"))); // alphanumeric merged, but not with previous
+    assert_eq!(tk.next(), Some(Ok("'a\"b'"))); // " within '
+    assert_eq!(tk.next(), Some(Ok("c"))); // outside any string
+    assert_eq!(tk.next(), Some(Ok("\"d'e\""))); // ' within "
+    assert_eq!(tk.next(), Some(Ok("\"\""))); // correctly paired
+    assert_eq!(tk.next(), None);
+
+    let mut tk = Tokenizer::new(r#" " " " " "#); // spaces
+    // leading space ignored
+    assert_eq!(tk.next(), Some(Ok("\" \""))); // within string
+    // space outside strings ignored
+    assert_eq!(tk.next(), Some(Ok("\" \""))); // within string
+    // tailing space ignored
     assert_eq!(tk.next(), None);
 }
