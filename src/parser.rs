@@ -7,28 +7,28 @@ pub struct Tokenizer<'a> {
     iter: Peekable<CharIndices<'a>>,
 }
 
+#[derive(PartialEq)]
+enum CharClass {
+    Space,
+    Ident,
+    Delim,
+    Rel,
+    Other
+}
+
+fn char_class(c: char) -> CharClass {
+    match c {
+        ' ' | '\t' | '\n' => CharClass::Space,
+        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => CharClass::Ident,
+        '"' | '\'' => CharClass::Delim,
+        '<' | '=' | '>' => CharClass::Rel,
+        _ => CharClass::Other
+    }
+}
+
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Tokenizer<'a> {
         Tokenizer{input, iter: input.char_indices().peekable()}
-    }
-
-    fn read_string(&mut self) -> Option<StreamResult<&'a str>> {
-        let start = self.byte_pos();
-        self.iter.next();
-        'b: {
-            while let Some((_, ch)) = self.iter.next() {
-                if ch == '\\' {
-                    if self.iter.next().is_none() {
-                        return Some(Err(StreamError("unterminated string".to_string())));
-                    }
-                } else if ch == '"' {
-                    break 'b;
-                }
-            }
-            return Some(Err(StreamError("unterminated string".to_string())));
-        }
-        let end = self.byte_pos();
-        Some(Ok(&self.input[start..end]))
     }
 
     fn byte_pos(&mut self) -> usize {
@@ -37,6 +37,39 @@ impl<'a> Tokenizer<'a> {
             None => self.input.len()
         }
     }
+
+    fn read_single(&mut self) -> Result<(), StreamError> {
+        self.iter.next();
+        Ok(())
+    }
+
+    fn read_same(&mut self, class: CharClass) -> Result<(), StreamError> {
+        while let Some(&(_, ch)) = self.iter.peek() {
+            if char_class(ch) == class {
+                self.iter.next();
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    fn read_string(&mut self) -> Result<(), StreamError> {
+        let (_, delim) = self.iter.next().unwrap();
+        'b: {
+            while let Some((_, ch)) = self.iter.next() {
+                if ch == '\\' {
+                    if self.iter.next().is_none() {
+                        return Err(StreamError("unterminated string".to_string()));
+                    }
+                } else if ch == delim {
+                    break 'b;
+                }
+            }
+            return Err(StreamError("unterminated string".to_string()));
+        }
+        Ok(())
+    }
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
@@ -44,18 +77,18 @@ impl<'a> Iterator for Tokenizer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(&(_, ch)) = self.iter.peek() {
-            if ch == '"' {
-                return self.read_string();
-            }
             let start = self.byte_pos();
-            while let Some(&(_, ch2)) = self.iter.peek() {
-                if ch2 != ch {
-                    break;
-                }
-                self.iter.next();
-            }
+            let res = match char_class(ch) {
+                CharClass::Space => {
+                    self.iter.next();
+                    return self.next();
+                },
+                class @ (CharClass::Ident | CharClass::Rel) => self.read_same(class),
+                CharClass::Delim => self.read_string(),
+                CharClass::Other => self.read_single()
+            };
             let end = self.byte_pos();
-            Some(Ok(&self.input[start..end]))
+            Some(res.map(|_| &self.input[start..end]))
         } else {
             None
         }
@@ -103,5 +136,17 @@ fn test_parser() {
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("💖")));
     assert_eq!(tk.next(), Some(Ok("b")));
+    assert_eq!(tk.next(), None);
+
+    let mut tk = Tokenizer::new(r#"abc_12  3.:<=>'a"b'c"d'e"f"#);
+    assert_eq!(tk.next(), Some(Ok("abc_12")));
+    assert_eq!(tk.next(), Some(Ok("3")));
+    assert_eq!(tk.next(), Some(Ok(".")));
+    assert_eq!(tk.next(), Some(Ok(":")));
+    assert_eq!(tk.next(), Some(Ok("<=>")));
+    assert_eq!(tk.next(), Some(Ok("'a\"b'")));
+    assert_eq!(tk.next(), Some(Ok("c")));
+    assert_eq!(tk.next(), Some(Ok("\"d'e\"")));
+    assert_eq!(tk.next(), Some(Ok("f")));
     assert_eq!(tk.next(), None);
 }
