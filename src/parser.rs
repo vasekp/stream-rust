@@ -22,16 +22,15 @@ impl<'a> Tokenizer<'a> {
 
     fn read_string(&mut self) -> Option<StreamResult<&'a str>> {
         let start = self.index;
-        self.chars.next();
-        let mut length = 1;
+        let mut length = self.chars.next().unwrap().len_utf8();
         'b: {
             while let Some(ch) = self.chars.next() {
-                length = length + 1;
+                length = length + ch.len_utf8();
                 if ch == '\\' {
-                    if let None = self.chars.next() {
-                        return Some(Err(StreamError("unterminated string".to_string())));
+                    match self.chars.next() {
+                        Some(ch2) => length = length + ch2.len_utf8(),
+                        None => return Some(Err(StreamError("unterminated string".to_string())))
                     }
-                    length = length + 1;
                 } else if ch == '"' {
                     break 'b;
                 }
@@ -52,13 +51,12 @@ impl<'a> Iterator for Tokenizer<'a> {
                 return self.read_string();
             }
             let start = self.index;
-            self.chars.next();
-            let mut length = 1;
+            let mut length = self.chars.next().unwrap().len_utf8();
             while let Some(&ch2) = self.chars.peek() {
                 if ch2 != ch {
                     break;
                 }
-                length = length + 1;
+                length = length + ch2.len_utf8();
                 self.chars.next();
             }
             self.index = self.index + length;
@@ -104,5 +102,11 @@ fn test_parser() {
     assert_eq!(tk.next(), Some(Ok("a")));
     assert_eq!(tk.next(), Some(Ok("\\")));
     assert_eq!(tk.next(), Some(Err(StreamError("unterminated string".to_string()))));
+    assert_eq!(tk.next(), None);
+
+    let mut tk = Tokenizer::new(r#"a💖b"#);
+    assert_eq!(tk.next(), Some(Ok("a")));
+    assert_eq!(tk.next(), Some(Ok("💖")));
+    assert_eq!(tk.next(), Some(Ok("b")));
     assert_eq!(tk.next(), None);
 }
