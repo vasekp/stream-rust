@@ -1,10 +1,10 @@
 use streamlang::*;
 
 fn main() {
-    /*let params = vec![Item::new_imm(1), Item::new_imm(3)];
+    let params = vec![Item::new_atomic(1), Item::new_atomic(3)];
     let s = RangeStream::construct(params).unwrap();
-    println!("{:.80?}", s);*/
-    let input = r#"123 + 45"#;
+    println!("{:.80?}", s);
+    /*let input = r#"123 + 45"#;
     let tk = Tokenizer::new(input);
     for t in tk {
         if let Ok(slice) = t {
@@ -15,5 +15,5 @@ fn main() {
         } else {
             println!("<!>");
         }
-    }
+    }*/
 }

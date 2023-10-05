@@ -2,7 +2,8 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use crate::base::BaseError;
 
-pub struct Tokenizer<'a> {
+
+struct Tokenizer<'a> {
     input: &'a str,
     iter: Peekable<CharIndices<'a>>,
 }
@@ -17,12 +18,13 @@ enum CharClass {
 }
 
 fn char_class(c: char) -> CharClass {
+    use CharClass::*;
     match c {
-        ' ' | '\t' | '\n' => CharClass::Space,
-        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => CharClass::Ident,
-        '"' | '\'' => CharClass::Delim,
-        '<' | '=' | '>' => CharClass::Rel,
-        _ => CharClass::Other
+        ' ' | '\t' | '\n' => Space,
+        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => Ident,
+        '"' | '\'' => Delim,
+        '<' | '=' | '>' => Rel,
+        _ => Other
     }
 }
 
@@ -61,10 +63,11 @@ impl<'a> Iterator for Tokenizer<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((start, ch)) = self.iter.next() {
             let class = char_class(ch);
+            use CharClass::*;
             let res = match class {
-                CharClass::Ident | CharClass::Rel | CharClass::Space => Ok(self.skip_same(&class)),
-                CharClass::Delim => self.skip_until(ch),
-                CharClass::Other => Ok(())
+                Ident | Rel | Space => Ok(self.skip_same(&class)),
+                Delim => self.skip_until(ch),
+                Other => Ok(())
             };
             if class == CharClass::Space {
                 return self.next();
@@ -151,4 +154,68 @@ fn test_parser() {
     assert_eq!(tk.next(), Some(Ok("\" \""))); // within string
     // tailing space ignored
     assert_eq!(tk.next(), None);
+}
+
+
+#[derive(PartialEq, Debug)]
+enum TokenClass {
+    Number,
+    BaseNum,
+    Ident,
+    Str,
+    Char,
+    Oper,
+    Open,
+    Close,
+    Comma,
+    Special,
+    Unknown
+}
+
+struct Token<'a>(TokenClass, &'a str);
+
+impl TokenClass {
+    fn classify(slice: &str) -> TokenClass {
+        use TokenClass::*;
+        match slice.chars().next().unwrap() {
+            '0'..='9' => if slice.contains('_') {
+                    BaseNum
+                } else {
+                    Number
+                },
+            'a'..='z' | 'A'..='Z' => Ident,
+            '"' => Str,
+            '\'' => Char,
+            '.' | ':' => Oper, // TODO
+            '(' | '[' | '{' => Open,
+            ')' | ']' | '}' => Close,
+            ',' => Comma,
+            '#' | '$' => Special,
+            _ => Unknown
+        }
+    }
+}
+
+#[test]
+fn test_classify() {
+    use TokenClass::*;
+
+    let mut it = Tokenizer::new("a.b0_1(3_012,#4)").map(|r| r.map(TokenClass::classify));
+    assert_eq!(it.next(), Some(Ok(Ident)));
+    assert_eq!(it.next(), Some(Ok(Oper)));
+    assert_eq!(it.next(), Some(Ok(Ident)));
+    assert_eq!(it.next(), Some(Ok(Open)));
+    assert_eq!(it.next(), Some(Ok(BaseNum)));
+    assert_eq!(it.next(), Some(Ok(Comma)));
+    assert_eq!(it.next(), Some(Ok(Special)));
+    assert_eq!(it.next(), Some(Ok(Number)));
+    assert_eq!(it.next(), Some(Ok(Close)));
+    assert_eq!(it.next(), None);
+
+    let mut it = Tokenizer::new(r#""a'b"c'd"é'ř"#).map(|r| r.map(TokenClass::classify));
+    assert_eq!(it.next(), Some(Ok(Str)));
+    assert_eq!(it.next(), Some(Ok(Ident)));
+    assert_eq!(it.next(), Some(Ok(Char)));
+    assert_eq!(it.next(), Some(Ok(Unknown)));
+    assert_eq!(it.next(), None);
 }

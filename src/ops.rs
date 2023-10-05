@@ -20,7 +20,7 @@ impl TStream for SeqStream {
     ///
     /// # Examples
     /// ```
-    /// use streamlang::base::Item;
+    /// use streamlang::base::{Item, TStream};
     /// use streamlang::ops::SeqStream;
     /// let stream = SeqStream::construct(vec![]).unwrap();
     /// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
@@ -74,7 +74,7 @@ impl TStream for RangeStream {
     ///
     /// # Examples
     /// ```
-    /// use streamlang::base::Item;
+    /// use streamlang::base::{Item, TStream};
     /// use streamlang::ops::RangeStream;
     /// let stream = RangeStream::construct(vec![Item::new_atomic(3)]).unwrap();
     /// assert_eq!(stream.to_string(), "[1, 2, 3]");
