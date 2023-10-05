@@ -58,7 +58,7 @@ fn token_class(slice: &str) -> Result<TokenClass, BaseError> {
         ')' | ']' | '}' => Close,
         ',' => Comma,
         '#' | '$' => Special,
-        _ => return Err(BaseError("invalid character".to_string()))
+        _ => return Err(BaseError::from("invalid character"))
     };
     Ok(class)
 }
@@ -85,13 +85,13 @@ impl<'a> Tokenizer<'a> {
         while let Some((_, ch)) = self.iter.next() {
             if ch == '\\' {
                 if self.iter.next().is_none() {
-                    return Err(BaseError("unterminated string".to_string()));
+                    return Err(BaseError::from("unterminated string"));
                 }
             } else if ch == delim {
                 return Ok(());
             }
         }
-        return Err(BaseError("unterminated string".to_string()));
+        return Err(BaseError::from("unterminated string"));
     }
 }
 
@@ -136,13 +136,13 @@ fn test_parser() {
 
     let mut tk = Tokenizer::new(r#"a"d"#); // single "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
+    assert_eq!(tk.next(), Some(Err(BaseError::from("unterminated string"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"""d"#); // triple "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
     assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
-    assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
+    assert_eq!(tk.next(), Some(Err(BaseError::from("unterminated string"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a""""d"#); // quadruple "
@@ -166,13 +166,13 @@ fn test_parser() {
 
     let mut tk = Tokenizer::new(r#"a\"d"#); // backslash out of string (not escape!)
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(BaseError("invalid character".to_string()))));
-    assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
+    assert_eq!(tk.next(), Some(Err(BaseError::from("invalid character"))));
+    assert_eq!(tk.next(), Some(Err(BaseError::from("unterminated string"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a💖b"#); // wide character
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(BaseError("invalid character".to_string()))));
+    assert_eq!(tk.next(), Some(Err(BaseError::from("invalid character"))));
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "b"))));
     assert_eq!(tk.next(), None);
 
@@ -214,6 +214,6 @@ fn test_parser() {
     assert_eq!(it.next(), Some(Ok(Token(Str, "\"a'b\""))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "c"))));
     assert_eq!(it.next(), Some(Ok(Token(Char, "'d\"é'")))); // non-ASCII in quotes
-    assert_eq!(it.next(), Some(Err(BaseError("invalid character".to_string())))); // non-ASCII
+    assert_eq!(it.next(), Some(Err(BaseError::from("invalid character")))); // non-ASCII
     assert_eq!(it.next(), None);
 }

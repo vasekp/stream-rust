@@ -61,21 +61,21 @@ impl Item {
     pub fn as_num(&self) -> Result<&TNumber, BaseError> {
         match self {
             Atom(Number(x)) => Ok(&x),
-            _ => Err(BaseError(format!("expected number, found {:?}", &self)))
+            _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn into_num(self) -> Result<TNumber, BaseError> {
         match self {
             Atom(Number(x)) => Ok(x),
-            _ => Err(BaseError(format!("expected number, found {:?}", &self)))
+            _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn as_stream(&self) -> Result<&dyn TStream, BaseError> {
         match self {
             Stream(s) => Ok(&**s),
-            _ => Err(BaseError(format!("expected stream, found {:?}", &self)))
+            _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
         }
     }
 }
@@ -110,9 +110,15 @@ impl PartialEq for Item {
 
 /// The base error type for use for this library. Currently only holds a String description.
 #[derive(PartialEq, Debug)]
-pub struct BaseError(pub String);
+pub struct BaseError(String);
 
 impl ::std::error::Error for BaseError { }
+
+impl<T> From<T> for BaseError where T: Into<String> {
+    fn from(text: T) -> BaseError {
+        BaseError(text.into())
+    }
+}
 
 impl Display for BaseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
@@ -249,7 +255,7 @@ pub fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<()
     if range.contains(&args.len()) {
         Ok(())
     } else {
-        Err(BaseError(match (range.start_bound(), range.end_bound()) {
+        Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
             (Included(0), Included(0)) => "no arguments allowed".to_string(),
             (Included(min), Included(max)) if min == max => format!("exactly {min} arguments required"),
             (Included(min), Included(max)) => format!("between {min} and {max} arguments required"),
