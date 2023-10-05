@@ -28,6 +28,44 @@ fn char_class(c: char) -> CharClass {
     }
 }
 
+#[derive(PartialEq, Debug)]
+enum TokenClass {
+    Number,
+    BaseNum,
+    Ident,
+    Str,
+    Char,
+    Oper,
+    Open,
+    Close,
+    Comma,
+    Special
+}
+
+fn token_class(slice: &str) -> Result<TokenClass, BaseError> {
+    use TokenClass::*;
+    let class = match slice.chars().next().unwrap() {
+        '0'..='9' => if slice.contains('_') {
+                BaseNum
+            } else {
+                Number
+            },
+        'a'..='z' | 'A'..='Z' => Ident,
+        '"' => Str,
+        '\'' => Char,
+        '.' | ':' | '<' | '=' | '>' => Oper, // TODO
+        '(' | '[' | '{' => Open,
+        ')' | ']' | '}' => Close,
+        ',' => Comma,
+        '#' | '$' => Special,
+        _ => return Err(BaseError("invalid character".to_string()))
+    };
+    Ok(class)
+}
+
+#[derive(PartialEq, Debug)]
+struct Token<'a>(TokenClass, &'a str);
+
 impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Tokenizer<'a> {
         Tokenizer{input, iter: input.char_indices().peekable()}
@@ -58,7 +96,7 @@ impl<'a> Tokenizer<'a> {
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
-    type Item = Result<&'a str, BaseError>;
+    type Item = Result<Token<'a>, BaseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((start, ch)) = self.iter.next() {
@@ -76,7 +114,10 @@ impl<'a> Iterator for Tokenizer<'a> {
                 Some(&(pos, _)) => pos,
                 None => self.input.len()
             };
-            Some(res.map(|_| &self.input[start..end]))
+            Some(res.and_then(|_| {
+                let slice = &self.input[start..end];
+                token_class(slice).map(|class| Token(class, slice))
+            }))
         } else {
             None
         }
@@ -85,137 +126,94 @@ impl<'a> Iterator for Tokenizer<'a> {
 
 #[test]
 fn test_parser() {
+    use TokenClass::*;
+
     let mut tk = Tokenizer::new(r#"a""d"#); // empty string
-    assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Ok("\"\"")));
-    assert_eq!(tk.next(), Some(Ok("d")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"d"#); // single "
-    assert_eq!(tk.next(), Some(Ok("a")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
     assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"""d"#); // triple "
-    assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Ok("\"\"")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
     assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a""""d"#); // quadruple "
-    assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Ok("\"\"")));
-    assert_eq!(tk.next(), Some(Ok("\"\"")));
-    assert_eq!(tk.next(), Some(Ok("d")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"\""d"#); // escaped "
-    assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Ok("\"\\\"\"")));
-    assert_eq!(tk.next(), Some(Ok("d")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\\\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"\\"d"#); // escaped \
-    assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Ok("\"\\\\\"")));
-    assert_eq!(tk.next(), Some(Ok("d")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\\\\\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a\"d"#); // backslash out of string (not escape!)
-    assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Ok("\\")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(tk.next(), Some(Err(BaseError("invalid character".to_string()))));
     assert_eq!(tk.next(), Some(Err(BaseError("unterminated string".to_string()))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a💖b"#); // wide character
-    assert_eq!(tk.next(), Some(Ok("a")));
-    assert_eq!(tk.next(), Some(Ok("💖")));
-    assert_eq!(tk.next(), Some(Ok("b")));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(tk.next(), Some(Err(BaseError("invalid character".to_string()))));
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "b"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"abc_12  3..:<=>xy'a"b'c"d'e""""#); // character classes
-    assert_eq!(tk.next(), Some(Ok("abc_12"))); // mixed alpha, numeric, _ should be single token
-    assert_eq!(tk.next(), Some(Ok("3"))); // space ignored, but prevents gluing to previous
-    assert_eq!(tk.next(), Some(Ok("."))); // should remain single character
-    assert_eq!(tk.next(), Some(Ok("."))); // should remain separate
-    assert_eq!(tk.next(), Some(Ok(":"))); // ditto
-    assert_eq!(tk.next(), Some(Ok("<=>"))); // relational symbols merged
-    assert_eq!(tk.next(), Some(Ok("xy"))); // alphanumeric merged, but not with previous
-    assert_eq!(tk.next(), Some(Ok("'a\"b'"))); // " within '
-    assert_eq!(tk.next(), Some(Ok("c"))); // outside any string
-    assert_eq!(tk.next(), Some(Ok("\"d'e\""))); // ' within "
-    assert_eq!(tk.next(), Some(Ok("\"\""))); // correctly paired
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "abc_12")))); // mixed alpha, numeric, _ should be single token
+    assert_eq!(tk.next(), Some(Ok(Token(Number, "3")))); // space ignored, but prevents gluing to previous
+    assert_eq!(tk.next(), Some(Ok(Token(Oper, ".")))); // should remain single character
+    assert_eq!(tk.next(), Some(Ok(Token(Oper, ".")))); // should remain separate
+    assert_eq!(tk.next(), Some(Ok(Token(Oper, ":")))); // ditto
+    assert_eq!(tk.next(), Some(Ok(Token(Oper, "<=>")))); // relational symbols merged
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "xy")))); // alphanumeric merged, but not with previous
+    assert_eq!(tk.next(), Some(Ok(Token(Char, "'a\"b'")))); // " within '
+    assert_eq!(tk.next(), Some(Ok(Token(Ident, "c")))); // outside any string
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"d'e\"")))); // ' within "
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\"")))); // correctly paired
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#" " " " " "#); // spaces
     // leading space ignored
-    assert_eq!(tk.next(), Some(Ok("\" \""))); // within string
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\" \"")))); // within string
     // space outside strings ignored
-    assert_eq!(tk.next(), Some(Ok("\" \""))); // within string
+    assert_eq!(tk.next(), Some(Ok(Token(Str, "\" \"")))); // within string
     // tailing space ignored
     assert_eq!(tk.next(), None);
-}
 
-
-#[derive(PartialEq, Debug)]
-enum TokenClass {
-    Number,
-    BaseNum,
-    Ident,
-    Str,
-    Char,
-    Oper,
-    Open,
-    Close,
-    Comma,
-    Special,
-    Unknown
-}
-
-struct Token<'a>(TokenClass, &'a str);
-
-impl TokenClass {
-    fn classify(slice: &str) -> TokenClass {
-        use TokenClass::*;
-        match slice.chars().next().unwrap() {
-            '0'..='9' => if slice.contains('_') {
-                    BaseNum
-                } else {
-                    Number
-                },
-            'a'..='z' | 'A'..='Z' => Ident,
-            '"' => Str,
-            '\'' => Char,
-            '.' | ':' => Oper, // TODO
-            '(' | '[' | '{' => Open,
-            ')' | ']' | '}' => Close,
-            ',' => Comma,
-            '#' | '$' => Special,
-            _ => Unknown
-        }
-    }
-}
-
-#[test]
-fn test_classify() {
-    use TokenClass::*;
-
-    let mut it = Tokenizer::new("a.b0_1(3_012,#4)").map(|r| r.map(TokenClass::classify));
-    assert_eq!(it.next(), Some(Ok(Ident)));
-    assert_eq!(it.next(), Some(Ok(Oper)));
-    assert_eq!(it.next(), Some(Ok(Ident)));
-    assert_eq!(it.next(), Some(Ok(Open)));
-    assert_eq!(it.next(), Some(Ok(BaseNum)));
-    assert_eq!(it.next(), Some(Ok(Comma)));
-    assert_eq!(it.next(), Some(Ok(Special)));
-    assert_eq!(it.next(), Some(Ok(Number)));
-    assert_eq!(it.next(), Some(Ok(Close)));
+    let mut it = Tokenizer::new("a.b0_1(3_012,#4)");
+    assert_eq!(it.next(), Some(Ok(Token(Ident, "a"))));
+    assert_eq!(it.next(), Some(Ok(Token(Oper, "."))));
+    assert_eq!(it.next(), Some(Ok(Token(Ident, "b0_1"))));
+    assert_eq!(it.next(), Some(Ok(Token(Open, "("))));
+    assert_eq!(it.next(), Some(Ok(Token(BaseNum, "3_012"))));
+    assert_eq!(it.next(), Some(Ok(Token(Comma, ","))));
+    assert_eq!(it.next(), Some(Ok(Token(Special, "#"))));
+    assert_eq!(it.next(), Some(Ok(Token(Number, "4"))));
+    assert_eq!(it.next(), Some(Ok(Token(Close, ")"))));
     assert_eq!(it.next(), None);
 
-    let mut it = Tokenizer::new(r#""a'b"c'd"é'ř"#).map(|r| r.map(TokenClass::classify));
-    assert_eq!(it.next(), Some(Ok(Str)));
-    assert_eq!(it.next(), Some(Ok(Ident)));
-    assert_eq!(it.next(), Some(Ok(Char)));
-    assert_eq!(it.next(), Some(Ok(Unknown)));
+    let mut it = Tokenizer::new(r#""a'b"c'd"é'ř"#);
+    assert_eq!(it.next(), Some(Ok(Token(Str, "\"a'b\""))));
+    assert_eq!(it.next(), Some(Ok(Token(Ident, "c"))));
+    assert_eq!(it.next(), Some(Ok(Token(Char, "'d\"é'")))); // non-ASCII in quotes
+    assert_eq!(it.next(), Some(Err(BaseError("invalid character".to_string())))); // non-ASCII
     assert_eq!(it.next(), None);
 }
