@@ -60,7 +60,7 @@ impl Item {
 
     pub fn as_num(&self) -> Result<&TNumber, BaseError> {
         match self {
-            Atom(Number(x)) => Ok(&x),
+            Atom(Number(x)) => Ok(x),
             _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
@@ -176,7 +176,7 @@ pub trait TStream {
                         break 'a;
                     }
                 };
-                i = i + 1;
+                i += 1;
             }
             s += match iter.next() {
                 None => "]",

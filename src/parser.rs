@@ -145,7 +145,7 @@ impl<'a> Tokenizer<'a> {
                 return Ok(());
             }
         }
-        return Err(BaseError::from("unterminated string"));
+        Err(BaseError::from("unterminated string"))
     }
 }
 
@@ -157,7 +157,10 @@ impl<'a> Iterator for Tokenizer<'a> {
             let class = char_class(ch);
             use CharClass::*;
             let res = match class {
-                Ident | Rel | Space => Ok(self.skip_same(&class)),
+                Ident | Rel | Space => {
+                    self.skip_same(&class);
+                    Ok(())
+                },
                 Delim => self.skip_until(ch),
                 Other => Ok(())
             };
