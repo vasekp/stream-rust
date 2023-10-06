@@ -15,7 +15,7 @@ fn main() {
             break;
         }
         let input = buffer.trim();
-        parse0(input);
+        parse(input);
         buffer.clear();
         println!();
     }

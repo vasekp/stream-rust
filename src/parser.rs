@@ -46,17 +46,6 @@ impl<'a> PartialEq for ParseError<'a> {
 }
 
 
-pub fn parse(input: &str) {
-    let tk = Tokenizer::new(input);
-    for t in tk {
-        if let Err(err) = t {
-            err.display(input);
-            println!("{}", err);
-        }
-    }
-}
-
-
 struct Tokenizer<'a> {
     input: &'a str,
     iter: Peekable<CharIndices<'a>>,
@@ -309,26 +298,20 @@ enum TValue<'a> {
     String(Token<'a>)
 }
 
-pub fn parse0(input: &str) { //-> Result<(), ParserError> {
+pub fn parse_main(input: &str) -> Result<(), ParseError> {
     let mut tk = Tokenizer::new(input);
     let mut expr: Expr = vec![];
     use ExprPart::*;
     use TTerm::*;
     use TokenClass::*;
     while let Some(t0) = tk.next() {
-        let t = match t0 {
-            Ok(token) => token,
-            Err(err) => {
-                println!("{err}");
-                return;
-            }
-        };
+        let t = t0?;
         println!("{t:?}");
         let last = expr.last();
         match t.0 {
             Number | BaseNum | String | Char | Ident => {
                 if let Some(Term(_) | Part(_)) = last {
-                    println!("cannot appear here")
+                    return Err(ParseError::new("cannot appear here", t.1));
                 }
                 expr.push(Term(match t {
                     Token(Number, _) => Value(TValue::Number(t)),
@@ -343,7 +326,7 @@ pub fn parse0(input: &str) { //-> Result<(), ParserError> {
             },
             Oper => {
                 if let Some(Op(_)) | None = last {
-                    println!("cannot appear here")
+                    return Err(ParseError::new("cannot appear here", t.1));
                 }
                 expr.push(Op(t));
                 println!("pushed {:?}", expr.last().unwrap());
@@ -352,17 +335,16 @@ pub fn parse0(input: &str) { //-> Result<(), ParserError> {
                 "(" => match last {
                     Some(Op(_)) | None => println!("parens"),
                     Some(Term(_)) => println!("args"),
-                    Some(Part(_)) => println!("error")
+                    Some(Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 "[" => match last {
                     Some(Op(_)) | None => println!("list"),
                     Some(Term(_)) => println!("part"),
-                    Some(Part(_)) => println!("error")
+                    Some(Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 "{" => match last {
                     Some(Op(_)) | None => println!("block"),
-                    Some(Term(_)) => println!("error"),
-                    Some(Part(_)) => println!("error")
+                    Some(Term(_) | Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 _ => unreachable!()
             },
@@ -370,4 +352,13 @@ pub fn parse0(input: &str) { //-> Result<(), ParserError> {
         }
     }
     println!("{expr:?}");
+    Ok(())
+}
+
+
+pub fn parse(input: &str) {
+    if let Err(err) = parse_main(input) {
+        err.display(input);
+        println!("{}", err);
+    }
 }
