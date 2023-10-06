@@ -87,7 +87,7 @@ enum TokenClass {
     Number,
     BaseNum,
     Ident,
-    Str,
+    String,
     Char,
     Oper,
     Open,
@@ -105,7 +105,7 @@ fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
                 Number
             },
         'a'..='z' | 'A'..='Z' => Ident,
-        '"' => Str,
+        '"' => String,
         '\'' => Char,
         '.' | ':' | '<' | '=' | '>' => Oper, // TODO
         '(' | '[' | '{' => Open,
@@ -187,7 +187,7 @@ fn test_parser() {
 
     let mut tk = Tokenizer::new(r#"a""d"#); // empty string
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"\""))));
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
@@ -198,26 +198,26 @@ fn test_parser() {
 
     let mut tk = Tokenizer::new(r#"a"""d"#); // triple "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"\""))));
     assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("unterminated string"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a""""d"#); // quadruple "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"\""))));
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"\""d"#); // escaped "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\\\"\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"\\\"\""))));
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"\\"d"#); // escaped \
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\\\\\""))));
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"\\\\\""))));
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "d"))));
     assert_eq!(tk.next(), None);
 
@@ -243,15 +243,15 @@ fn test_parser() {
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "xy")))); // alphanumeric merged, but not with previous
     assert_eq!(tk.next(), Some(Ok(Token(Char, "'a\"b'")))); // " within '
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "c")))); // outside any string
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"d'e\"")))); // ' within "
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\"")))); // correctly paired
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"d'e\"")))); // ' within "
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\"\"")))); // correctly paired
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#" " " " " "#); // spaces
     // leading space ignored
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\" \"")))); // within string
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\" \"")))); // within string
     // space outside strings ignored
-    assert_eq!(tk.next(), Some(Ok(Token(Str, "\" \"")))); // within string
+    assert_eq!(tk.next(), Some(Ok(Token(String, "\" \"")))); // within string
     // tailing space ignored
     assert_eq!(tk.next(), None);
 
@@ -268,9 +268,106 @@ fn test_parser() {
     assert_eq!(it.next(), None);
 
     let mut it = Tokenizer::new(r#""a'b"c'd"é'ř"#);
-    assert_eq!(it.next(), Some(Ok(Token(Str, "\"a'b\""))));
+    assert_eq!(it.next(), Some(Ok(Token(String, "\"a'b\""))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "c"))));
     assert_eq!(it.next(), Some(Ok(Token(Char, "'d\"é'")))); // non-ASCII in quotes
     assert_eq!(it.next(), Some(Err(ParseError::cmp_ref("invalid character")))); // non-ASCII
     assert_eq!(it.next(), None);
+}
+
+
+type Expr<'a> = Vec<ExprPart<'a>>;
+
+#[derive(Debug)]
+enum ExprPart<'a> {
+    Op(Token<'a>),
+    Term(TTerm<'a>),
+    Part(Vec<Expr<'a>>)
+}
+
+#[derive(Debug)]
+enum TTerm<'a> {
+    Node(TNode<'a>),
+    NodeArgs(TNode<'a>, Vec<Expr<'a>>),
+    ParExpr(Box<Expr<'a>>),
+    Value(TValue<'a>),
+    List(Vec<Expr<'a>>)
+}
+
+#[derive(Debug)]
+enum TNode<'a> {
+    Ident(Token<'a>),
+    Block(Box<Expr<'a>>)
+}
+
+#[derive(Debug)]
+enum TValue<'a> {
+    Number(Token<'a>),
+    BaseNum(Token<'a>),
+    Bool(Token<'a>),
+    Char(Token<'a>),
+    String(Token<'a>)
+}
+
+pub fn parse0(input: &str) { //-> Result<(), ParserError> {
+    let mut tk = Tokenizer::new(input);
+    let mut expr: Expr = vec![];
+    use ExprPart::*;
+    use TTerm::*;
+    use TokenClass::*;
+    while let Some(t0) = tk.next() {
+        let t = match t0 {
+            Ok(token) => token,
+            Err(err) => {
+                println!("{err}");
+                return;
+            }
+        };
+        println!("{t:?}");
+        let last = expr.last();
+        match t.0 {
+            Number | BaseNum | String | Char | Ident => {
+                if let Some(Term(_) | Part(_)) = last {
+                    println!("cannot appear here")
+                }
+                expr.push(Term(match t {
+                    Token(Number, _) => Value(TValue::Number(t)),
+                    Token(BaseNum, _) => Value(TValue::BaseNum(t)),
+                    Token(String, _) => Value(TValue::String(t)),
+                    Token(Char, _) => Value(TValue::Char(t)),
+                    Token(Ident, "true" | "false") => Value(TValue::Bool(t)),
+                    Token(Ident, _) => Node(TNode::Ident(t)),
+                    _ => unreachable!()
+                }));
+                println!("pushed {:?}", expr.last().unwrap());
+            },
+            Oper => {
+                if let Some(Op(_)) | None = last {
+                    println!("cannot appear here")
+                }
+                expr.push(Op(t));
+                println!("pushed {:?}", expr.last().unwrap());
+            },
+            Open => match t.1 {
+                "(" => match last {
+                    Some(Op(_)) | None => println!("parens"),
+                    Some(Term(_)) => println!("args"),
+                    Some(Part(_)) => println!("error")
+                },
+                "[" => match last {
+                    Some(Op(_)) | None => println!("list"),
+                    Some(Term(_)) => println!("part"),
+                    Some(Part(_)) => println!("error")
+                },
+                "{" => match last {
+                    Some(Op(_)) | None => println!("block"),
+                    Some(Term(_)) => println!("error"),
+                    Some(Part(_)) => println!("error")
+                },
+                _ => unreachable!()
+            },
+            _ => { }
+        }
+    }
+    println!("{expr:?}");
 }
