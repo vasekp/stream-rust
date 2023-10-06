@@ -361,12 +361,34 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
                     _ => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 "[" => match last {
-                    Some(Op(_)) | None => println!("list"),
-                    Some(Term(_)) => println!("part"),
+                    Some(Op(_)) | None => {
+                        println!("list");
+                        let vec = parse_main(tk, Some("]"))?;
+                        expr.push(Term(List(vec)));
+                    },
+                    Some(Term(_)) => {
+                        println!("part");
+                        let vec = parse_main(tk, Some("]"))?;
+                        if vec.is_empty() {
+                            return Err(ParseError::new("empty parts", t.1));
+                        }
+                        expr.push(Part(vec));
+                    },
                     Some(Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 "{" => match last {
-                    Some(Op(_)) | None => println!("block"),
+                    Some(Op(_)) | None => {
+                        println!("block");
+                        let vec = parse_main(tk, Some("}"))?;
+                        match vec.len() {
+                            1 => {
+                                let e = vec.into_iter().next().unwrap();
+                                expr.push(Term(Node(TNode::Block(Box::new(e)), None)));
+                            },
+                            0 => return Err(ParseError::new("empty block", t.1)),
+                            _ => return Err(ParseError::new("only one expression expected", t.1))
+                        }
+                    },
                     Some(Term(_) | Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 _ => unreachable!()
