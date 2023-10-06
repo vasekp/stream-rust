@@ -87,6 +87,7 @@ enum TokenClass {
 
 fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
     use TokenClass::*;
+    const OPERS: &str = ".:<=>+-*/%";
     let class = match slice.chars().next().unwrap() {
         '0'..='9' => if slice.contains('_') {
                 BaseNum
@@ -96,7 +97,7 @@ fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
         'a'..='z' | 'A'..='Z' => Ident,
         '"' => String,
         '\'' => Char,
-        '.' | ':' | '<' | '=' | '>' => Oper, // TODO
+        c if OPERS.contains(c) => Oper,
         '(' | '[' | '{' => Open,
         ')' | ']' | '}' => Close,
         ',' => Comma,
@@ -298,9 +299,11 @@ enum TValue<'a> {
     String(Token<'a>)
 }
 
-pub fn parse_main(input: &str) -> Result<(), ParseError> {
+fn parse_main<'a>(input: &'a str, close: Option<&'static str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
     let mut tk = Tokenizer::new(input);
+    let mut exprs: Vec<Expr> = vec![];
     let mut expr: Expr = vec![];
+    let mut last_comma = None;
     use ExprPart::*;
     use TTerm::*;
     use TokenClass::*;
@@ -326,7 +329,10 @@ pub fn parse_main(input: &str) -> Result<(), ParseError> {
             },
             Oper => {
                 if let Some(Op(_)) | None = last {
-                    return Err(ParseError::new("cannot appear here", t.1));
+                    match (last, t.1) {
+                        (None, "-" | "+") => { },
+                        _ => return Err(ParseError::new("cannot appear here", t.1))
+                    };
                 }
                 expr.push(Op(t));
                 println!("pushed {:?}", expr.last().unwrap());
@@ -348,17 +354,35 @@ pub fn parse_main(input: &str) -> Result<(), ParseError> {
                 },
                 _ => unreachable!()
             },
+            Comma => {
+                if let Some(Op(_)) | None = last {
+                    return Err(ParseError::new("incomplete expression", t.1));
+                }
+                let mut new = vec![];
+                std::mem::swap(&mut expr, &mut new);
+                exprs.push(new);
+                last_comma = Some(t);
+            },
             _ => { }
         }
     }
-    println!("{expr:?}");
-    Ok(())
+    match expr.last() {
+        Some(Term(_) | Part(_)) => exprs.push(expr),
+        Some(Op(t)) => return Err(ParseError::new("incomplete expression", t.1)),
+        None => if let Some(t) = last_comma {
+            return Err(ParseError::new("incomplete expression", t.1));
+        }
+    }
+    Ok(exprs)
 }
 
 
 pub fn parse(input: &str) {
-    if let Err(err) = parse_main(input) {
-        err.display(input);
-        println!("{}", err);
+    match parse_main(input, None) {
+        Ok(vec) => println!("{vec:?}"),
+        Err(err) => {
+            err.display(input);
+            println!("{}", err);
+        }
     }
 }
