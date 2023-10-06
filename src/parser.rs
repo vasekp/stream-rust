@@ -1,6 +1,49 @@
 use std::str::CharIndices;
 use std::iter::Peekable;
+use std::fmt::{Display, Formatter, Debug};
 use crate::base::BaseError;
+
+
+#[derive(Debug)]
+pub struct ParseError<'a> {
+    base: BaseError,
+    slice: &'a str
+}
+
+impl<'a> ParseError<'a> {
+    fn new<T>(text: T, slice: &'a str) -> ParseError where T: Into<BaseError> {
+        ParseError{base: text.into(), slice}
+    }
+
+    fn display(&self, input: &'a str) {
+        let start = unsafe { self.slice.as_ptr().offset_from(input.as_ptr()) } as usize;
+        let length = self.slice.len();
+        println!("\x1b[8m{}\x1b[0m{}", &input[0..start], &input[start..(start + length)]);
+    }
+}
+
+impl<'a> Display for ParseError<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        Display::fmt(&self.base, f)
+    }
+}
+
+impl<'a> std::error::Error for ParseError<'a> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.base)
+    }
+}
+
+
+pub fn parse(input: &str) {
+    let tk = Tokenizer::new(input);
+    for t in tk {
+        if let Err(err) = t {
+            err.display(input);
+            println!("{}", err);
+        }
+    }
+}
 
 
 struct Tokenizer<'a> {
@@ -42,7 +85,7 @@ enum TokenClass {
     Special
 }
 
-fn token_class(slice: &str) -> Result<TokenClass, BaseError> {
+fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
     use TokenClass::*;
     let class = match slice.chars().next().unwrap() {
         '0'..='9' => if slice.contains('_') {
@@ -58,7 +101,7 @@ fn token_class(slice: &str) -> Result<TokenClass, BaseError> {
         ')' | ']' | '}' => Close,
         ',' => Comma,
         '#' | '$' => Special,
-        _ => return Err(BaseError::from("invalid character"))
+        _ => return Err(ParseError::new("invalid character", slice))
     };
     Ok(class)
 }
@@ -96,7 +139,7 @@ impl<'a> Tokenizer<'a> {
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
-    type Item = Result<Token<'a>, BaseError>;
+    type Item = Result<Token<'a>, ParseError<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((start, ch)) = self.iter.next() {
@@ -114,10 +157,10 @@ impl<'a> Iterator for Tokenizer<'a> {
                 Some(&(pos, _)) => pos,
                 None => self.input.len()
             };
-            Some(res.and_then(|_| {
-                let slice = &self.input[start..end];
-                token_class(slice).map(|class| Token(class, slice))
-            }))
+            let slice = &self.input[start..end];
+            Some(res
+                .map_err(|base| ParseError::new(base, slice))
+                .and_then(|_| token_class(slice).map(|class| Token(class, slice)) ))
         } else {
             None
         }
