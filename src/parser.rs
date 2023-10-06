@@ -1,6 +1,7 @@
 use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
+use std::cell::RefCell;
 use crate::base::BaseError;
 
 
@@ -299,16 +300,18 @@ enum TValue<'a> {
     String(Token<'a>)
 }
 
-fn parse_main<'a>(input: &'a str, close: Option<&'static str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
-    let mut tk = Tokenizer::new(input);
+fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
     let mut exprs: Vec<Expr> = vec![];
     let mut expr: Expr = vec![];
     let mut last_comma = None;
     use ExprPart::*;
     use TTerm::*;
     use TokenClass::*;
-    while let Some(t0) = tk.next() {
-        let t = t0?;
+    loop {
+        let t = match tk.borrow_mut().next() {
+            Some(t0) => t0?,
+            None => break
+        };
         println!("{t:?}");
         let last = expr.last();
         match t.0 {
@@ -339,7 +342,18 @@ fn parse_main<'a>(input: &'a str, close: Option<&'static str>) -> Result<Vec<Exp
             },
             Open => match t.1 {
                 "(" => match last {
-                    Some(Op(_)) | None => println!("parens"),
+                    Some(Op(_)) | None => {
+                        println!("parens");
+                        let vec = parse_main(tk, Some(")"))?;
+                        match vec.len() {
+                            1 => {
+                                let e = vec.into_iter().next().unwrap();
+                                expr.push(Term(ParExpr(Box::new(e))));
+                            },
+                            0 => return Err(ParseError::new("empty expression", t.1)),
+                            _ => return Err(ParseError::new("only one expression expected", t.1))
+                        }
+                    },
                     Some(Term(_)) => println!("args"),
                     Some(Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
                 },
@@ -353,6 +367,15 @@ fn parse_main<'a>(input: &'a str, close: Option<&'static str>) -> Result<Vec<Exp
                     Some(Term(_) | Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 _ => unreachable!()
+            },
+            Close => {
+                if Some(t.1) == close {
+                    break;
+                } else if close == None {
+                    return Err(ParseError::new("unexpected closing bracket", t.1));
+                } else {
+                    return Err(ParseError::new("wrong bracket: expected '{close}'", t.1));
+                }
             },
             Comma => {
                 if let Some(Op(_)) | None = last {
@@ -378,7 +401,7 @@ fn parse_main<'a>(input: &'a str, close: Option<&'static str>) -> Result<Vec<Exp
 
 
 pub fn parse(input: &str) {
-    match parse_main(input, None) {
+    match parse_main(&RefCell::new(Tokenizer::new(input)), None) {
         Ok(vec) => println!("{vec:?}"),
         Err(err) => {
             err.display(input);
