@@ -278,8 +278,7 @@ enum ExprPart<'a> {
 
 #[derive(Debug)]
 enum TTerm<'a> {
-    Node(TNode<'a>),
-    NodeArgs(TNode<'a>, Vec<Expr<'a>>),
+    Node(TNode<'a>, Option<Vec<Expr<'a>>>),
     ParExpr(Box<Expr<'a>>),
     Value(TValue<'a>),
     List(Vec<Expr<'a>>)
@@ -313,7 +312,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
             None => break
         };
         println!("{t:?}");
-        let last = expr.last();
+        let last = expr.last_mut();
         match t.0 {
             Number | BaseNum | String | Char | Ident => {
                 if let Some(Term(_) | Part(_)) = last {
@@ -325,7 +324,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
                     Token(String, _) => Value(TValue::String(t)),
                     Token(Char, _) => Value(TValue::Char(t)),
                     Token(Ident, "true" | "false") => Value(TValue::Bool(t)),
-                    Token(Ident, _) => Node(TNode::Ident(t)),
+                    Token(Ident, _) => Node(TNode::Ident(t), None),
                     _ => unreachable!()
                 }));
                 println!("pushed {:?}", expr.last().unwrap());
@@ -354,8 +353,12 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
                             _ => return Err(ParseError::new("only one expression expected", t.1))
                         }
                     },
-                    Some(Term(_)) => println!("args"),
-                    Some(Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
+                    Some(Term(Node(_, args @ None))) => {
+                        println!("args");
+                        let vec = parse_main(tk, Some(")"))?;
+                        *args = Some(vec);
+                    },
+                    _ => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 "[" => match last {
                     Some(Op(_)) | None => println!("list"),
