@@ -88,7 +88,7 @@ enum TokenClass {
 
 fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
     use TokenClass::*;
-    const OPERS: &str = ".:<=>+-*/%";
+    const OPERS: &str = ".:<=>+-*/%@^~&|";
     let class = match slice.chars().next().unwrap() {
         '0'..='9' => if slice.contains('_') {
                 BaseNum
