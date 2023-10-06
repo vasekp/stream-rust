@@ -11,8 +11,13 @@ pub struct ParseError<'a> {
 }
 
 impl<'a> ParseError<'a> {
-    fn new<T>(text: T, slice: &'a str) -> ParseError where T: Into<BaseError> {
+    fn new<T>(text: T, slice: &'a str) -> ParseError<'a> where T: Into<BaseError> {
         ParseError{base: text.into(), slice}
+    }
+
+    #[cfg(test)]
+    fn cmp_ref<T>(text: T) -> ParseError<'a> where T: Into<BaseError> {
+        Self::new(text, Default::default())
     }
 
     fn display(&self, input: &'a str) {
@@ -31,6 +36,12 @@ impl<'a> Display for ParseError<'a> {
 impl<'a> std::error::Error for ParseError<'a> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.base)
+    }
+}
+
+impl<'a> PartialEq for ParseError<'a> {
+    fn eq(&self, other: &ParseError<'a>) -> bool {
+        self.base == other.base
     }
 }
 
@@ -179,13 +190,13 @@ fn test_parser() {
 
     let mut tk = Tokenizer::new(r#"a"d"#); // single "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(BaseError::from("unterminated string"))));
+    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("unterminated string"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"""d"#); // triple "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
     assert_eq!(tk.next(), Some(Ok(Token(Str, "\"\""))));
-    assert_eq!(tk.next(), Some(Err(BaseError::from("unterminated string"))));
+    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("unterminated string"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a""""d"#); // quadruple "
@@ -209,13 +220,13 @@ fn test_parser() {
 
     let mut tk = Tokenizer::new(r#"a\"d"#); // backslash out of string (not escape!)
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(BaseError::from("invalid character"))));
-    assert_eq!(tk.next(), Some(Err(BaseError::from("unterminated string"))));
+    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("invalid character"))));
+    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("unterminated string"))));
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a💖b"#); // wide character
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(BaseError::from("invalid character"))));
+    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("invalid character"))));
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "b"))));
     assert_eq!(tk.next(), None);
 
@@ -257,6 +268,6 @@ fn test_parser() {
     assert_eq!(it.next(), Some(Ok(Token(Str, "\"a'b\""))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "c"))));
     assert_eq!(it.next(), Some(Ok(Token(Char, "'d\"é'")))); // non-ASCII in quotes
-    assert_eq!(it.next(), Some(Err(BaseError::from("invalid character")))); // non-ASCII
+    assert_eq!(it.next(), Some(Err(ParseError::cmp_ref("invalid character")))); // non-ASCII
     assert_eq!(it.next(), None);
 }
