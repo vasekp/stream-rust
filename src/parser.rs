@@ -138,6 +138,15 @@ impl<'a> Tokenizer<'a> {
         }
         Err(BaseError::from("unterminated string"))
     }
+
+    fn slice_from(&mut self, start: &'a str) -> &'a str {
+        let start_index = unsafe { start.as_ptr().offset_from(self.input.as_ptr()) } as usize;
+        let end_index = match self.iter.peek() {
+            Some(&(pos, _)) => pos,
+            None => self.input.len()
+        };
+        &self.input[start_index..end_index]
+    }
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
@@ -300,7 +309,16 @@ enum TValue<'a> {
     String(Token<'a>)
 }
 
-fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
+fn closing(bracket: &str) -> &'static str {
+    match bracket {
+        "(" => ")",
+        "[" => "]",
+        "{" => "}",
+        _ => unreachable!()
+    }
+}
+
+fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
     let mut exprs: Vec<Expr> = vec![];
     let mut expr: Expr = vec![];
     let mut last_comma = None;
@@ -308,9 +326,17 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
     use TTerm::*;
     use TokenClass::*;
     loop {
-        let t = match tk.borrow_mut().next() {
-            Some(t0) => t0?,
-            None => break
+        let t = {
+            let mut tk = tk.borrow_mut();
+            match tk.next() {
+                Some(t0) => t0?,
+                None => {
+                    if let Some(open) = bracket {
+                        return Err(ParseError::new(format!("missing close bracket: '{}'", closing(open)),tk.slice_from(open)));
+                    }
+                    break;
+                }
+            }
         };
         let last = expr.last_mut();
         match t.0 {
@@ -348,31 +374,31 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
             Open => match t.1 {
                 "(" => match last {
                     Some(Op(_)) | None => {
-                        let vec = parse_main(tk, Some(")"))?;
+                        let vec = parse_main(tk, Some(&t.1))?;
                         match vec.len() {
                             1 => {
                                 let e = vec.into_iter().next().unwrap();
                                 expr.push(Term(ParExpr(Box::new(e))));
                             },
-                            0 => return Err(ParseError::new("empty expression", t.1)),
-                            _ => return Err(ParseError::new("only one expression expected", t.1))
+                            0 => return Err(ParseError::new("empty expression", tk.borrow_mut().slice_from(&t.1))),
+                            _ => return Err(ParseError::new("only one expression expected", tk.borrow_mut().slice_from(&t.1)))
                         }
                     },
                     Some(Term(Node(_, args @ None))) => {
-                        let vec = parse_main(tk, Some(")"))?;
+                        let vec = parse_main(tk, Some(&t.1))?;
                         *args = Some(vec);
                     },
                     _ => return Err(ParseError::new("cannot appear here", t.1))
                 },
                 "[" => match last {
                     Some(Op(_)) | None => {
-                        let vec = parse_main(tk, Some("]"))?;
+                        let vec = parse_main(tk, Some(&t.1))?;
                         expr.push(Term(List(vec)));
                     },
                     Some(Term(_)) => {
-                        let vec = parse_main(tk, Some("]"))?;
+                        let vec = parse_main(tk, Some(&t.1))?;
                         if vec.is_empty() {
-                            return Err(ParseError::new("empty parts", t.1));
+                            return Err(ParseError::new("empty parts", tk.borrow_mut().slice_from(&t.1)));
                         }
                         expr.push(Part(vec));
                     },
@@ -380,14 +406,14 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
                 },
                 "{" => match last {
                     Some(Op(_)) | None => {
-                        let vec = parse_main(tk, Some("}"))?;
+                        let vec = parse_main(tk, Some(&t.1))?;
                         match vec.len() {
                             1 => {
                                 let e = vec.into_iter().next().unwrap();
                                 expr.push(Term(Node(TNode::Block(Box::new(e)), None)));
                             },
-                            0 => return Err(ParseError::new("empty block", t.1)),
-                            _ => return Err(ParseError::new("only one expression expected", t.1))
+                            0 => return Err(ParseError::new("empty block", tk.borrow_mut().slice_from(&t.1))),
+                            _ => return Err(ParseError::new("only one expression expected", tk.borrow_mut().slice_from(&t.1)))
                         }
                     },
                     Some(Term(_) | Part(_)) => return Err(ParseError::new("cannot appear here", t.1))
@@ -395,17 +421,20 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
                 _ => unreachable!()
             },
             Close => {
-                if Some(t.1) == close {
-                    break;
-                } else if close == None {
-                    return Err(ParseError::new("unexpected closing bracket", t.1));
+                if let Some(open) = bracket {
+                    let close = closing(open);
+                    if t.1 == close {
+                        break;
+                    } else {
+                        return Err(ParseError::new(format!("wrong bracket: expected '{close}'"), t.1));
+                    }
                 } else {
-                    return Err(ParseError::new("wrong bracket: expected '{close}'", t.1));
+                    return Err(ParseError::new("unexpected closing bracket", t.1));
                 }
             },
             Comma => {
                 if let Some(Op(_)) | None = last {
-                    return Err(ParseError::new("incomplete expression", t.1));
+                    return Err(ParseError::new("incomplete expression", tk.borrow_mut().slice_from(&t.1)));
                 }
                 let mut new = vec![];
                 std::mem::swap(&mut expr, &mut new);
@@ -422,9 +451,9 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
     }
     match expr.last() {
         Some(Term(_) | Part(_)) => exprs.push(expr),
-        Some(Op(t)) => return Err(ParseError::new("incomplete expression", t.1)),
+        Some(Op(t)) => return Err(ParseError::new("incomplete expression", tk.borrow_mut().slice_from(&t.1))),
         None => if let Some(t) = last_comma {
-            return Err(ParseError::new("incomplete expression", t.1));
+            return Err(ParseError::new("incomplete expression", tk.borrow_mut().slice_from(&t.1)));
         }
     }
     Ok(exprs)
@@ -433,7 +462,11 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, close: Option<&'static str>) -> R
 
 pub fn parse(input: &str) {
     match parse_main(&RefCell::new(Tokenizer::new(input)), None) {
-        Ok(vec) => println!("{vec:?}"),
+        Ok(vec) => match vec.len() {
+            1 => println!("{vec:?}"),
+            0 => println!("empty input"),
+            _ => println!("multiple expressions")
+        },
         Err(err) => {
             err.display(input);
             println!("{}", err);
