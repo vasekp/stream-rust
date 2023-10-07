@@ -73,7 +73,7 @@ fn char_class(c: char) -> CharClass {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 enum TokenClass {
     Number,
     BaseNum,
@@ -325,7 +325,7 @@ fn closing(bracket: &str) -> &'static str {
 fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
     let mut exprs: Vec<Expr> = vec![];
     let mut expr: Expr = vec![];
-    let mut last_comma = None;
+    let mut last_comma: Option<Token<'a>> = None;
     use ExprPart::*;
     use TTerm::*;
     use TokenClass as TC;
@@ -344,78 +344,67 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
             }
         };
         let last = expr.last_mut();
-        match t.0 {
-            TC::Number | TC::BaseNum | TC::String | TC::Char | TC::Ident => match (last, &t.0) {
-                (Some(Oper(_)) | None, _) => expr.push(Term(match t {
+        match (t.0, last, t.1) {
+            (TC::Number | TC::BaseNum | TC::String | TC::Char, Some(Oper(_)) | None, _)
+                => expr.push(Term(match t {
                     Token(TC::Number, _) => Value(TValue::Number(t)),
                     Token(TC::BaseNum, _) => Value(TValue::BaseNum(t)),
                     Token(TC::String, _) => Value(TValue::String(t)),
                     Token(TC::Char, _) => Value(TValue::Char(t)),
                     Token(TC::Ident, "true" | "false") => Value(TValue::Bool(t)),
-                    Token(TC::Ident, _) => Node(TNode::Ident(t), None),
                     _ => unreachable!()
                 })),
-                (Some(Chain(_)), &TC::Ident) => expr.push(Term(Node(TNode::Ident(t), None))),
-                // Special case: # -> #1, $ -> $1
-                (Some(Term(TTerm::Special(_, arg @ None))), &TC::Number) => *arg = Some(t),
-                _ => return Err(ParseError::new("cannot appear here", t.1))
+            (TC::Ident, Some(Oper(_) | Chain(_)) | None, _)
+                => expr.push(Term(Node(TNode::Ident(t), None))),
+            // # -> #1, $ -> $1
+            (TC::Number, Some(Term(TTerm::Special(_, arg @ None))), _)
+                => *arg = Some(t),
+            (TC::Oper, Some(Term(_) | Part(_)), _)
+                => expr.push(Oper(t)),
+            // Special case: unary minus
+            (TC::Oper, None, "-" | "+")
+                => expr.push(Oper(t)),
+            (TC::Chain, Some(Term(_) | Part(_)), _)
+                => expr.push(Chain(t)),
+            // Parentheses
+            (TC::Open, Some(Oper(_)) | None, "(") => {
+                let vec = parse_main(tk, Some(t.1))?;
+                match vec.len() {
+                    1 => {
+                        let e = vec.into_iter().next().unwrap();
+                        expr.push(Term(ParExpr(Box::new(e))));
+                    },
+                    0 => return Err(ParseError::new("empty expression", slice_from(t.1))),
+                    _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
+                }
             },
-            TC::Oper => match (last, t.1) {
-                (Some(Term(_) | Part(_)), _) => expr.push(Oper(t)),
-                // Special case: unary minus
-                (None, "-" | "+") => expr.push(Oper(t)),
-                _ => return Err(ParseError::new("cannot appear here", t.1))
+            // Arguments
+            (TC::Open, Some(Term(Node(_, args @ None))), "(")
+                => *args = Some(parse_main(tk, Some(t.1))?),
+            // List
+            (TC::Open, Some(Oper(_)) | None, "[")
+                => expr.push(Term(List(parse_main(tk, Some(t.1))?))),
+            // Parts
+            (TC::Open, Some(Term(_)), "[") => {
+                let vec = parse_main(tk, Some(t.1))?;
+                if vec.is_empty() {
+                    return Err(ParseError::new("empty parts", slice_from(t.1)));
+                }
+                expr.push(Part(vec));
             },
-            TC::Chain => match (last, t.1) {
-                (Some(Term(_) | Part(_)), _) => expr.push(Chain(t)),
-                _ => return Err(ParseError::new("cannot appear here", t.1))
+            // Block
+            (TC::Open, Some(Oper(_)) | Some(Chain(_)) | None, "{") => {
+                let vec = parse_main(tk, Some(t.1))?;
+                match vec.len() {
+                    1 => {
+                        let e = vec.into_iter().next().unwrap();
+                        expr.push(Term(Node(TNode::Block(Box::new(e)), None)));
+                    },
+                    0 => return Err(ParseError::new("empty block", slice_from(t.1))),
+                    _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
+                }
             },
-            TC::Open => match (t.1, last) {
-                // Parentheses
-                ("(", Some(Oper(_)) | None) => {
-                    let vec = parse_main(tk, Some(t.1))?;
-                    match vec.len() {
-                        1 => {
-                            let e = vec.into_iter().next().unwrap();
-                            expr.push(Term(ParExpr(Box::new(e))));
-                        },
-                        0 => return Err(ParseError::new("empty expression", slice_from(t.1))),
-                        _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
-                    }
-                },
-                // Arguments
-                ("(", Some(Term(Node(_, args @ None)))) => {
-                    let vec = parse_main(tk, Some(t.1))?;
-                    *args = Some(vec);
-                },
-                // List
-                ("[", Some(Oper(_)) | None) => {
-                    let vec = parse_main(tk, Some(t.1))?;
-                    expr.push(Term(List(vec)));
-                },
-                // Parts
-                ("[", Some(Term(_))) => {
-                    let vec = parse_main(tk, Some(t.1))?;
-                    if vec.is_empty() {
-                        return Err(ParseError::new("empty parts", slice_from(t.1)));
-                    }
-                    expr.push(Part(vec));
-                },
-                // Block
-                ("{", Some(Oper(_)) | Some(Chain(_)) | None) => {
-                    let vec = parse_main(tk, Some(t.1))?;
-                    match vec.len() {
-                        1 => {
-                            let e = vec.into_iter().next().unwrap();
-                            expr.push(Term(Node(TNode::Block(Box::new(e)), None)));
-                        },
-                        0 => return Err(ParseError::new("empty block", slice_from(t.1))),
-                        _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
-                    }
-                },
-                _ => return Err(ParseError::new("cannot appear here", t.1))
-            },
-            TC::Close => {
+            (TC::Close, _, _) => {
                 if let Some(open) = bracket {
                     let close = closing(open);
                     if t.1 == close {
@@ -427,19 +416,17 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                     return Err(ParseError::new("unexpected closing bracket", t.1));
                 }
             },
-            TC::Comma => {
-                if let Some(Oper(_)) | Some(Chain(_)) | None = last {
-                    return Err(ParseError::new("incomplete expression", slice_from(t.1)));
-                }
+            (TC::Comma, Some(Term(_) | Part(_)), _) => {
                 let mut new = vec![];
                 std::mem::swap(&mut expr, &mut new);
                 exprs.push(new);
                 last_comma = Some(t);
             },
-            TC::Special => match last {
-                Some(Oper(_)) | Some(Chain(_)) | None => expr.push(Term(Special(t, None))),
-                _ => return Err(ParseError::new("cannot appear here", t.1))
-            }
+            (TC::Comma, Some(Oper(_) | Chain(_)) | None, _)
+                => return Err(ParseError::new("incomplete expression", slice_from(t.1))),
+            (TC::Special, Some(Oper(_) | Chain(_)) | None, _)
+                => expr.push(Term(Special(t, None))),
+            _ => return Err(ParseError::new("cannot appear here", t.1))
         }
     }
     match expr.last() {
