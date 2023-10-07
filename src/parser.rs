@@ -97,7 +97,7 @@ fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
             } else {
                 Number
             },
-        'a'..='z' | 'A'..='Z' => Ident,
+        'a'..='z' | 'A'..='Z' | '_' => Ident,
         '"' => String,
         '\'' => Char,
         '.' | ':' => Chain,
@@ -323,7 +323,9 @@ fn closing(bracket: &str) -> &'static str {
 }
 
 fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
+    // This may parse several expressions separated by commas.
     let mut exprs: Vec<Expr> = vec![];
+    // Each expression is a string of terms separated by operators OR chaining.
     let mut expr: Expr = vec![];
     let mut last_comma: Option<Token<'a>> = None;
     use ExprPart::*;
@@ -331,20 +333,28 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
     use TokenClass as TC;
     let slice_from = |start| tk.borrow_mut().slice_from(start);
     loop {
+        // Get next token.
         let t = {
+            // We need the borrow to be temporary and strictly localized as this fn is recursive.
             let mut tk = tk.borrow_mut();
             match tk.next() {
+                // Some: test for ParseError
                 Some(t0) => t0?,
+                // None (end of input): test for unclosed brackets
                 None => {
                     if let Some(open) = bracket {
                         return Err(ParseError::new(format!("missing close bracket: '{}'", closing(open)), tk.slice_from(open)));
                     }
+                    // NB: after this break it's too late to do so
                     break;
                 }
             }
         };
+        // At this point t = Token(TokenClass, &str).
+
         let last = expr.last_mut();
         match (t.0, last, t.1) {
+            // Immediate values
             (TC::Number | TC::BaseNum | TC::String | TC::Char, Some(Oper(_)) | None, _)
                 => expr.push(Term(match t {
                     Token(TC::Number, _) => Value(TValue::Number(t)),
@@ -354,19 +364,22 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                     Token(TC::Ident, "true" | "false") => Value(TValue::Bool(t)),
                     _ => unreachable!()
                 })),
+            // Identifier: also can follow ., :
             (TC::Ident, Some(Oper(_) | Chain(_)) | None, _)
                 => expr.push(Term(Node(TNode::Ident(t), None))),
-            // # -> #1, $ -> $1
+            // Special use of numbers: # -> #1, $ -> $1
             (TC::Number, Some(Term(TTerm::Special(_, arg @ None))), _)
                 => *arg = Some(t),
+            // Operators (+, -, ...)
             (TC::Oper, Some(Term(_) | Part(_)), _)
                 => expr.push(Oper(t)),
-            // Special case: unary minus
+            // Special case: unary minus, plus can appear at start of expression
             (TC::Oper, None, "-" | "+")
                 => expr.push(Oper(t)),
+            // Chaining (., :)
             (TC::Chain, Some(Term(_) | Part(_)), _)
                 => expr.push(Chain(t)),
-            // Parentheses
+            // Parenthesized expression
             (TC::Open, Some(Oper(_)) | None, "(") => {
                 let vec = parse_main(tk, Some(t.1))?;
                 match vec.len() {
@@ -378,13 +391,13 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                     _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
                 }
             },
-            // Arguments
+            // Arguments to a node
             (TC::Open, Some(Term(Node(_, args @ None))), "(")
                 => *args = Some(parse_main(tk, Some(t.1))?),
             // List
             (TC::Open, Some(Oper(_)) | None, "[")
                 => expr.push(Term(List(parse_main(tk, Some(t.1))?))),
-            // Parts
+            // Parts construction
             (TC::Open, Some(Term(_)), "[") => {
                 let vec = parse_main(tk, Some(t.1))?;
                 if vec.is_empty() {
@@ -392,7 +405,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                 }
                 expr.push(Part(vec));
             },
-            // Block
+            // Block (expression used as a node)
             (TC::Open, Some(Oper(_)) | Some(Chain(_)) | None, "{") => {
                 let vec = parse_main(tk, Some(t.1))?;
                 match vec.len() {
@@ -404,6 +417,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                     _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
                 }
             },
+            // Closing bracket
             (TC::Close, _, _) => {
                 if let Some(open) = bracket {
                     let close = closing(open);
@@ -416,14 +430,15 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                     return Err(ParseError::new("unexpected closing bracket", t.1));
                 }
             },
+            // Separator of multiple exprs.
+            // Checking whether >1 makes sense is caller's responsibility!
             (TC::Comma, Some(Term(_) | Part(_)), _) => {
                 let mut new = vec![];
                 std::mem::swap(&mut expr, &mut new);
                 exprs.push(new);
                 last_comma = Some(t);
             },
-            (TC::Comma, Some(Oper(_) | Chain(_)) | None, _)
-                => return Err(ParseError::new("incomplete expression", slice_from(t.1))),
+            // Special characters #, $
             (TC::Special, Some(Oper(_) | Chain(_)) | None, _)
                 => expr.push(Term(Special(t, None))),
             _ => return Err(ParseError::new("cannot appear here", t.1))
