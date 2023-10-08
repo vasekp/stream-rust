@@ -569,3 +569,91 @@ pub fn parse(input: &str) -> Result<Expr, ParseError> {
         (Some(_), Some(_)) => Err(ParseError::new("multiple expressions", input))
     }
 }
+
+#[test]
+fn test_parser() {
+    use Expr::*;
+    use Core::*;
+    use base::Node;
+
+    assert_eq!(parse("1"), Ok(Imm(Item::new_atomic(1))));
+    assert_eq!(parse("a"), Ok(Eval(Node{
+        core: Simple("a".to_string()), source: None, args: vec![]})));
+    assert_eq!(parse("a(1,2)"), Ok(Eval(Node{
+        core: Simple("a".to_string()),
+        source: None, args: vec![Imm(Item::new_atomic(1)), Imm(Item::new_atomic(2))]})));
+    assert_eq!(parse("1.a"), Ok(Eval(Node{
+        core: Simple("a".to_string()),
+        source: Some(Box::new(Imm(Item::new_atomic(1)))), args: vec![]})));
+    assert_eq!(parse("(1).a"), Ok(Eval(Node{
+        core: Simple("a".to_string()),
+        source: Some(Box::new(Imm(Item::new_atomic(1)))), args: vec![]})));
+    assert_eq!(parse("(1,2).a"), Err(ParseError::cmp_ref("only one expression expected")));
+    assert_eq!(parse("a.b"), Ok(Eval(Node{
+        core: Simple("b".to_string()),
+        source: Some(Box::new(Eval(Node{ core: Simple("a".to_string()), source: None, args: vec![] }))),
+        args: vec![] })));
+    assert_eq!(parse("a.b.c"), Ok(Eval(Node{
+        core: Simple("c".to_string()),
+        source: Some(Box::new(Eval(Node{
+            core: Simple("b".to_string()),
+            source: Some(Box::new(Eval(Node{
+                core: Simple("a".to_string()),
+                source: None,
+                args: vec![] }))),
+            args: vec![] }))),
+        args: vec![] })));
+    assert_eq!(parse("a(1).b(2)"), Ok(Eval(Node{
+        core: Simple("b".to_string()),
+        source: Some(Box::new(Eval(Node{
+            core: Simple("a".to_string()),
+            source: None,
+            args: vec![Imm(Item::new_atomic(1))] }))),
+        args: vec![Imm(Item::new_atomic(2))] })));
+
+    let syntax_err = Err(ParseError::cmp_ref("cannot appear here"));
+    assert_eq!(parse("a.1"), syntax_err);
+    assert_eq!(parse("2(a)"), syntax_err);
+    assert_eq!(parse("1 2"), syntax_err);
+    assert_eq!(parse("a b"), syntax_err);
+    assert_eq!(parse("1,2"), Err(ParseError::cmp_ref("multiple expressions")));
+    assert_eq!(parse("   "), Err(ParseError::cmp_ref("empty input")));
+    assert_eq!(parse("1,"), Err(ParseError::cmp_ref("incomplete expression")));
+    assert_eq!(parse(",2"), syntax_err);
+    assert_eq!(parse("a(1,,2)"), syntax_err);
+    assert_eq!(parse("a(,2)"), syntax_err);
+    assert_eq!(parse("a(1,)"), Err(ParseError::cmp_ref("incomplete expression")));
+    assert_eq!(parse("a."), Err(ParseError::cmp_ref("incomplete expression")));
+    assert_eq!(parse("a()"), parse("a"));
+    assert_eq!(parse("a()(1)"), syntax_err);
+    assert_eq!(parse("(a)(1)"), syntax_err);
+    assert_eq!(parse("(a)"), parse("a"));
+    assert_eq!(parse("((a))"), parse("a"));
+    assert_eq!(parse("a((1))"), parse("a(1)"));
+    assert_eq!(parse("a((1,2))"), Err(ParseError::cmp_ref("only one expression expected"))); 
+    assert_eq!(parse("(1]"), Err(ParseError::cmp_ref("wrong bracket: expected ')'")));
+    assert_eq!(parse("(1"), Err(ParseError::cmp_ref("missing close bracket: ')'")));
+    assert_eq!(parse("1)"), Err(ParseError::cmp_ref("unexpected closing bracket")));
+
+    assert_eq!(parse("{1}"), Ok(Eval(Node{
+        core: Block(Box::new(Imm(Item::new_atomic(1)))), source: None, args: vec![]})));
+    assert_eq!(parse("1.{2}(3)"), Ok(Eval(Node{
+        core: Block(Box::new(Imm(Item::new_atomic(2)))),
+        source: Some(Box::new(Imm(Item::new_atomic(1)))),
+        args: vec![Imm(Item::new_atomic(3))]})));
+    assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Eval(Node{
+        core: Block(Box::new(Eval(Node{
+            core: Simple("a".to_string()),
+            source: Some(Box::new(Imm(Item::new_atomic(2)))),
+            args: vec![Imm(Item::new_atomic(3))]
+        }))),
+        source: Some(Box::new(Imm(Item::new_atomic(1)))),
+        args: vec![Imm(Item::new_atomic(4))]})));
+    assert_eq!(parse("{1}.{2}"), Ok(Eval(Node{
+        core: Block(Box::new(Imm(Item::new_atomic(2)))),
+        source: Some(Box::new(Eval(Node{
+            core: Block(Box::new(Imm(Item::new_atomic(1)))),
+            source: None, args: vec![]
+        }))),
+        args: vec![]})));
+}
