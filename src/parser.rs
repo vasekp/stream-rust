@@ -462,7 +462,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
     Ok(exprs)
 }
 
-fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
+fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
     assert!(!input.is_empty());
     //let mut stack = vec![];
     let mut cur = None;
@@ -484,13 +484,13 @@ fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
             (Term(TT::Node(Ident(tok), args)), src)
                 => cur = Some(Eval(base::Node{
                     core: Core::Simple(tok.1.into()),
-                    source: src.map(|x| Box::new(x)),
+                    source: src.map(Box::new),
                     args: args.unwrap_or(vec![])
                 })),
             (Term(TT::Node(Block(body), args)), src)
                 => cur = Some(Eval(base::Node{
                     core: Core::Block(body),
-                    source: src.map(|x| Box::new(x)),
+                    source: src.map(Box::new),
                     args: args.unwrap_or(vec![])
                 })),
             (Term(TT::ParExpr(expr)), None)
@@ -506,11 +506,11 @@ fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
     Ok(cur.unwrap())
 }
 
-fn parse_basenum<'a>(slice: &'a str) -> Result<BigInt, ParseError<'a>> {
+fn parse_basenum(slice: &str) -> Result<BigInt, ParseError<'_>> {
     let mut iter = slice.split(|c| c == '_');
     let base_str = iter.next().unwrap();
     let base = base_str.parse::<u32>().map_err(|_| ParseError::new("invalid base", base_str))?;
-    if base < 2 || base > 36 {
+    if !(2..=36).contains(&base) {
         return Err(ParseError::new("invalid base", base_str));
     }
     let main_str = iter.next().unwrap();
@@ -519,7 +519,7 @@ fn parse_basenum<'a>(slice: &'a str) -> Result<BigInt, ParseError<'a>> {
     }
     let res = BigInt::parse_bytes(main_str.as_bytes(), base)
         .ok_or(ParseError::new(format!("invalid digits in base {base}"), main_str))?;
-    if !iter.next().is_none() {
+    if iter.next().is_some() {
         return Err(ParseError::new("malformed number", slice));
     }
     Ok(res)
