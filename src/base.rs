@@ -268,8 +268,8 @@ pub(crate) fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Re
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
 #[derive(Debug, PartialEq)]
 pub enum Expr {
-    Direct(Item),
-    Node(Node)
+    Imm(Item),
+    Eval(Node)
 }
 
 /// A `Node` is a type of [`Expr`] representing a core function along with, optionally, its source and arguments. This eventually evaluates to `Item`.

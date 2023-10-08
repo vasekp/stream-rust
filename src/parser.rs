@@ -193,7 +193,7 @@ impl<'a> Iterator for Tokenizer<'a> {
 }
 
 #[test]
-fn test_parser() {
+fn test_tokenizer() {
     use TokenClass::*;
 
     let mut tk = Tokenizer::new(r#"a""d"#); // empty string
@@ -471,23 +471,24 @@ fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
         use TTerm as TT;
         use Node::*;
         use Literal::*;
+        use Expr::*;
         match (part, cur.take()) {
             (Term(TT::Literal(Number(tok))), None)
-                => cur = Some(Expr::Direct(Item::new_atomic(tok.1.parse::<BigInt>()
+                => cur = Some(Imm(Item::new_atomic(tok.1.parse::<BigInt>()
                     .map_err(|_| ParseError::new("invalid number", tok.1))?))),
             (Term(TT::Literal(BaseNum(tok))), None)
-                => cur = Some(Expr::Direct(Item::new_atomic(parse_basenum(tok.1)?))),
+                => cur = Some(Imm(Item::new_atomic(parse_basenum(tok.1)?))),
             // TODO: all other value types
             // TODO: list
             // TODO: Special
             (Term(TT::Node(Ident(tok), args)), src)
-                => cur = Some(Expr::Node(base::Node{
+                => cur = Some(Eval(base::Node{
                     core: Core::Simple(tok.1.into()),
                     source: src.map(|x| Box::new(x)),
                     args: args.unwrap_or(vec![])
                 })),
             (Term(TT::Node(Block(body), args)), src)
-                => cur = Some(Expr::Node(base::Node{
+                => cur = Some(Eval(base::Node{
                     core: Core::Block(body),
                     source: src.map(|x| Box::new(x)),
                     args: args.unwrap_or(vec![])
@@ -548,15 +549,15 @@ fn test_basenum() {
 /// use streamlang::base::*;
 /// use streamlang::parser::parse;
 /// assert_eq!(parse("a.b(3,4)"),
-///     Ok(Expr::Node(Node{
+///     Ok(Expr::Eval(Node{
 ///         core: Core::Simple("b".to_string()),
-///         source: Some(Box::new(Expr::Node(Node{
+///         source: Some(Box::new(Expr::Eval(Node{
 ///             core: Core::Simple("a".to_string()),
 ///             source: None,
 ///             args: vec![]}))),
 ///         args: vec![
-///             Expr::Direct(Item::Atom(Atom::Number(Number::from(3)))),
-///             Expr::Direct(Item::Atom(Atom::Number(Number::from(4))))
+///             Expr::Imm(Item::new_atomic(3)),
+///             Expr::Imm(Item::new_atomic(4))
 ///         ]}))
 ///     );
 /// ```
