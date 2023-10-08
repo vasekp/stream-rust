@@ -7,6 +7,8 @@ use crate::base::{BaseError, Expr, Item, Core};
 use num::BigInt;
 
 
+/// The error type returned by [`parse`]. Contains the description of the error and its location
+/// within the input string. The lifetime is bound to the lifetime of the input string.
 #[derive(Debug)]
 pub struct ParseError<'a> {
     base: BaseError,
@@ -23,6 +25,10 @@ impl<'a> ParseError<'a> {
         Self::new(text, Default::default())
     }
 
+    /// Shows the location of the parse error. For this purpose, the input string is reproduced in
+    /// full. The part causing the error is highlighted using ANSI color sequences.
+    ///
+    /// For the actual description of the error, use the `Display` trait.
     pub fn display(&self, input: &'a str) {
         let start = unsafe { self.slice.as_ptr().offset_from(input.as_ptr()) } as usize;
         let length = self.slice.len();
@@ -535,6 +541,25 @@ fn test_basenum() {
     assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse::<BigInt>().unwrap()));
 }
 
+/// Parse a textual input into an [`Expr`].
+///
+/// # Examples
+/// ```
+/// use streamlang::base::*;
+/// use streamlang::parser::parse;
+/// assert_eq!(parse("a.b(3,4)"),
+///     Ok(Expr::Node(Node{
+///         core: Core::Simple("b".to_string()),
+///         source: Some(Box::new(Expr::Node(Node{
+///             core: Core::Simple("a".to_string()),
+///             source: None,
+///             args: vec![]}))),
+///         args: vec![
+///             Expr::Direct(Item::Atom(Atom::Number(Number::from(3)))),
+///             Expr::Direct(Item::Atom(Atom::Number(Number::from(4))))
+///         ]}))
+///     );
+/// ```
 pub fn parse(input: &str) -> Result<Expr, ParseError> {
     let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
     match (it.next(), it.next()) {
