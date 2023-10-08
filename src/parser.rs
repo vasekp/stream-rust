@@ -2,7 +2,8 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
 use std::cell::RefCell;
-use crate::base::BaseError;
+use crate::base::{BaseError, Item};
+use num::BigInt;
 
 
 #[derive(Debug)]
@@ -279,29 +280,29 @@ fn test_parser() {
 }
 
 
-type Expr<'a> = Vec<ExprPart<'a>>;
+type PreExpr<'a> = Vec<ExprPart<'a>>;
 
 #[derive(Debug)]
 enum ExprPart<'a> {
     Oper(Token<'a>),
     Chain(Token<'a>),
     Term(TTerm<'a>),
-    Part(Vec<Expr<'a>>)
+    Part(Vec<Expr>)
 }
 
 #[derive(Debug)]
 enum TTerm<'a> {
-    Node(TNode<'a>, Option<Vec<Expr<'a>>>),
-    ParExpr(Box<Expr<'a>>),
+    Node(TNode<'a>, Option<Vec<Expr>>),
+    ParExpr(Box<Expr>),
     Value(TValue<'a>),
-    List(Vec<Expr<'a>>),
+    List(Vec<Expr>),
     Special(Token<'a>, Option<Token<'a>>)
 }
 
 #[derive(Debug)]
 enum TNode<'a> {
     Ident(Token<'a>),
-    Block(Box<Expr<'a>>)
+    Block(Box<Expr>)
 }
 
 #[derive(Debug)]
@@ -322,11 +323,11 @@ fn closing(bracket: &str) -> &'static str {
     }
 }
 
-fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'a>>, ParseError<'a>> {
+fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr>, ParseError<'a>> {
     // This may parse several expressions separated by commas.
     let mut exprs: Vec<Expr> = vec![];
     // Each expression is a string of terms separated by operators OR chaining.
-    let mut expr: Expr = vec![];
+    let mut expr: PreExpr = vec![];
     let mut last_comma: Option<Token<'a>> = None;
     use ExprPart::*;
     use TTerm::*;
@@ -435,7 +436,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
             (TC::Comma, Some(Term(_) | Part(_)), _) => {
                 let mut new = vec![];
                 std::mem::swap(&mut expr, &mut new);
-                exprs.push(new);
+                exprs.push(into_expr(new)?);
                 last_comma = Some(t);
             },
             // Special characters #, $
@@ -445,7 +446,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
         }
     }
     match expr.last() {
-        Some(Term(_) | Part(_)) => exprs.push(expr),
+        Some(Term(_) | Part(_)) => exprs.push(into_expr(expr)?),
         Some(Oper(t) | Chain(t)) => return Err(ParseError::new("incomplete expression", slice_from(t.1))),
         None => if let Some(t) = last_comma {
             return Err(ParseError::new("incomplete expression", slice_from(t.1)));
@@ -454,6 +455,103 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
     Ok(exprs)
 }
 
+#[derive(Debug)]
+enum Expr {
+    Direct(Item),
+    Node(Node)
+}
+
+#[derive(Debug)]
+struct Node {
+    core: TCore,
+    source: Option<Box<Expr>>,
+    args: Vec<Expr>
+}
+
+#[derive(Debug)]
+enum TCore {
+    Simple(String),
+    Block(Box<Expr>)
+}
+
+fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
+    assert!(!input.is_empty());
+    //let mut stack = vec![];
+    let mut cur = None;
+    for part in input {
+        use ExprPart::*;
+        use TTerm as TT;
+        use TNode::*;
+        use TValue::*;
+        match (part, cur.take()) {
+            (Term(TT::Value(Number(tok))), None)
+                => cur = Some(Expr::Direct(Item::new_atomic(tok.1.parse::<BigInt>()
+                    .map_err(|_| ParseError::new("invalid number", tok.1))?))),
+            (Term(TT::Value(BaseNum(tok))), None)
+                => cur = Some(Expr::Direct(Item::new_atomic(parse_basenum(tok.1)?))),
+            // TODO: all other value types
+            // TODO: list
+            // TODO: Special
+            (Term(TT::Node(Ident(tok), args)), src)
+                => cur = Some(Expr::Node(Node{
+                    core: TCore::Simple(tok.1.into()),
+                    source: src.map(|x| Box::new(x)),
+                    args: args.unwrap_or(vec![])
+                })),
+            (Term(TT::Node(Block(body), args)), src)
+                => cur = Some(Expr::Node(Node{
+                    core: TCore::Block(body),
+                    source: src.map(|x| Box::new(x)),
+                    args: args.unwrap_or(vec![])
+                })),
+            (Term(TT::ParExpr(expr)), None)
+                => cur = Some(*expr),
+            (Chain(Token(_, ".")), prev)
+                => cur = prev,
+            // TODO: Chain(:)
+            // TODO: Part
+            // TODO: all Opers, priority
+            _ => todo!()
+        }
+    }
+    Ok(cur.unwrap())
+}
+
+fn parse_basenum<'a>(slice: &'a str) -> Result<BigInt, ParseError<'a>> {
+    let mut iter = slice.split(|c| c == '_');
+    let base_str = iter.next().unwrap();
+    let base = base_str.parse::<u32>().map_err(|_| ParseError::new("invalid base", base_str))?;
+    if base < 2 || base > 36 {
+        return Err(ParseError::new("invalid base", base_str));
+    }
+    let main_str = iter.next().unwrap();
+    if main_str.is_empty() {
+        return Err(ParseError::new("malformed number", slice));
+    }
+    let res = BigInt::parse_bytes(main_str.as_bytes(), base)
+        .ok_or(ParseError::new(format!("invalid digits in base {base}"), main_str))?;
+    if !iter.next().is_none() {
+        return Err(ParseError::new("malformed number", slice));
+    }
+    Ok(res)
+}
+
+#[test]
+fn test_basenum() {
+    assert_eq!(parse_basenum("2_"), Err(ParseError::cmp_ref("malformed number")));
+    assert_eq!(parse_basenum("2_1_"), Err(ParseError::cmp_ref("malformed number")));
+    assert_eq!(parse_basenum("2_1_0"), Err(ParseError::cmp_ref("malformed number")));
+    assert_eq!(parse_basenum("1_0"), Err(ParseError::cmp_ref("invalid base")));
+    assert_eq!(parse_basenum("0_0"), Err(ParseError::cmp_ref("invalid base")));
+    assert_eq!(parse_basenum("37_0"), Err(ParseError::cmp_ref("invalid base")));
+    assert_eq!(parse_basenum("999999999999999999_0"), Err(ParseError::cmp_ref("invalid base")));
+    assert_eq!(parse_basenum("2a_0"), Err(ParseError::cmp_ref("invalid base")));
+    assert_eq!(parse_basenum("2_0"), Ok(BigInt::from(0)));
+    assert_eq!(parse_basenum("2_101"), Ok(BigInt::from(5)));
+    assert_eq!(parse_basenum("2_102"), Err(ParseError::cmp_ref("invalid digits in base 2")));
+    assert_eq!(parse_basenum("10_999999999999999999999999"), Ok("999999999999999999999999".parse::<BigInt>().unwrap()));
+    assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse::<BigInt>().unwrap()));
+}
 
 pub fn parse(input: &str) {
     match parse_main(&RefCell::new(Tokenizer::new(input)), None) {
