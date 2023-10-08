@@ -5,73 +5,71 @@ use std::ops::RangeBounds;
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
 /// BigInt fallback in the future for better performance.
-pub type TNumber = num::BigInt;
+pub type Number = num::BigInt;
 
 
 /// Encompasses all atomic values.
 #[derive(PartialEq)]
-pub enum Atomic {
-    Number(TNumber)
+pub enum Atom {
+    Number(Number)
 }
 
-pub use Atomic::*;
-
-impl<T> From<T> for Atomic where T : Into<TNumber> {
+impl<T> From<T> for Atom where T : Into<Number> {
     fn from(value: T) -> Self {
-        Number(value.into())
+        Atom::Number(value.into())
     }
 }
 
-impl Display for Atomic {
+impl Display for Atom {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", match self {
-            Number(n) => n.to_string()
+            Atom::Number(n) => n.to_string()
         })
     }
 }
 
-impl Debug for Atomic {
+impl Debug for Atom {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", match self {
-            Number(n) => "number ".to_string() + &n.to_string()
+            Atom::Number(n) => "number ".to_string() + &n.to_string()
         })
     }
 }
 
 
-/// An `Item` is the result of evaluation. Either an `Atom`, which is an atomic value ([`Atomic`]),
-/// or a `Stream` (see [`TStream`]).
+/// An `Item` is the result of evaluation. Either an [`Atom`], which is an atomic value,
+/// or a [`Stream`].
 pub enum Item {
-    Atom(Atomic),
-    Stream(Box<dyn TStream>)
+    Atom(Atom),
+    Stream(Box<dyn Stream>)
 }
 
 pub use Item::*;
 
 impl Item {
-    pub fn new_atomic(value: impl Into<Atomic>) -> Item {
+    pub fn new_atomic(value: impl Into<Atom>) -> Item {
         Atom(value.into())
     }
 
-    pub fn new_stream(value: impl TStream + 'static) -> Item {
+    pub fn new_stream(value: impl Stream + 'static) -> Item {
         Stream(Box::new(value))
     }
 
-    pub fn as_num(&self) -> Result<&TNumber, BaseError> {
+    pub fn as_num(&self) -> Result<&Number, BaseError> {
         match self {
-            Atom(Number(x)) => Ok(x),
+            Atom(Atom::Number(x)) => Ok(x),
             _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
-    pub fn into_num(self) -> Result<TNumber, BaseError> {
+    pub fn into_num(self) -> Result<Number, BaseError> {
         match self {
-            Atom(Number(x)) => Ok(x),
+            Atom(Atom::Number(x)) => Ok(x),
             _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
-    pub fn as_stream(&self) -> Result<&dyn TStream, BaseError> {
+    pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
         match self {
             Stream(s) => Ok(&**s),
             _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
@@ -126,19 +124,19 @@ impl Display for BaseError {
 }
 
 
-pub(crate) type TIterator = dyn Iterator<Item = Result<Item, BaseError>>;
+pub(crate) type SIterator = dyn Iterator<Item = Result<Item, BaseError>>;
 
 
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
-pub trait TStream {
+pub trait Stream {
     /// Construct this stream with given arguments.
     fn construct(ins: Vec<Item>) -> Result<Item, BaseError> where Self: Sized;
 
     /// Create an [`Iterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
-    fn iter(&self) -> Box<TIterator>;
+    fn iter(&self) -> Box<SIterator>;
 
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
@@ -200,7 +198,7 @@ pub trait TStream {
     /// `LikelyInfinite`. The latter is produced if `size_hint` returned `(usize::MAX, None)`,
     /// which is a customary indication of infiniteness in the standard library, but may have false
     /// positives, like an iterator whose size can't fit into `usize`.
-    /// 
+    ///
     /// The return value must be consistent with the actual behaviour of the stream.
     fn length(&self) -> Length {
         let iter = self.iter();
@@ -213,13 +211,13 @@ pub trait TStream {
 }
 
 
-/// The enum returned by [`TStream::length()`].
+/// The enum returned by [`Stream::length()`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum Length {
     /// The length is known exactly, including empty streams.
-    Exact(TNumber),
+    Exact(Number),
     /// The length has a known upper bound.
-    AtMost(TNumber),
+    AtMost(Number),
     /// The stream is known to be infinite.
     Infinite,
     /// A special value for when a standard [`Iterator::size_hint()`] returns `(usize::MAX, None)`.
@@ -242,7 +240,7 @@ impl Length {
     }
 }
 
-impl<T> From<T> for Length where T: Into<TNumber> {
+impl<T> From<T> for Length where T: Into<Number> {
     fn from(value: T) -> Self {
         Length::Exact(value.into())
     }

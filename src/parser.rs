@@ -2,7 +2,8 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
 use std::cell::RefCell;
-use crate::base::{BaseError, Expr, Node, Item, Core};
+use crate::base;
+use crate::base::{BaseError, Expr, Item, Core};
 use num::BigInt;
 
 
@@ -292,21 +293,21 @@ enum ExprPart<'a> {
 
 #[derive(Debug)]
 enum TTerm<'a> {
-    Node(TNode<'a>, Option<Vec<Expr>>),
+    Node(Node<'a>, Option<Vec<Expr>>),
     ParExpr(Box<Expr>),
-    Value(TValue<'a>),
+    Literal(Literal<'a>),
     List(Vec<Expr>),
     Special(Token<'a>, Option<Token<'a>>)
 }
 
 #[derive(Debug)]
-enum TNode<'a> {
+enum Node<'a> {
     Ident(Token<'a>),
     Block(Box<Expr>)
 }
 
 #[derive(Debug)]
-enum TValue<'a> {
+enum Literal<'a> {
     Number(Token<'a>),
     BaseNum(Token<'a>),
     Bool(Token<'a>),
@@ -330,7 +331,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
     let mut expr: PreExpr = vec![];
     let mut last_comma: Option<Token<'a>> = None;
     use ExprPart::*;
-    use TTerm::*;
+    use TTerm as TT;
     use TokenClass as TC;
     let slice_from = |start| tk.borrow_mut().slice_from(start);
     loop {
@@ -358,18 +359,18 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
             // Immediate values
             (TC::Number | TC::BaseNum | TC::String | TC::Char, Some(Oper(_)) | None, _)
                 => expr.push(Term(match t {
-                    Token(TC::Number, _) => Value(TValue::Number(t)),
-                    Token(TC::BaseNum, _) => Value(TValue::BaseNum(t)),
-                    Token(TC::String, _) => Value(TValue::String(t)),
-                    Token(TC::Char, _) => Value(TValue::Char(t)),
-                    Token(TC::Ident, "true" | "false") => Value(TValue::Bool(t)),
+                    Token(TC::Number, _) => TT::Literal(Literal::Number(t)),
+                    Token(TC::BaseNum, _) => TT::Literal(Literal::BaseNum(t)),
+                    Token(TC::String, _) => TT::Literal(Literal::String(t)),
+                    Token(TC::Char, _) => TT::Literal(Literal::Char(t)),
+                    Token(TC::Ident, "true" | "false") => TT::Literal(Literal::Bool(t)),
                     _ => unreachable!()
                 })),
             // Identifier: also can follow ., :
             (TC::Ident, Some(Oper(_) | Chain(_)) | None, _)
-                => expr.push(Term(Node(TNode::Ident(t), None))),
+                => expr.push(Term(TT::Node(Node::Ident(t), None))),
             // Special use of numbers: # -> #1, $ -> $1
-            (TC::Number, Some(Term(TTerm::Special(_, arg @ None))), _)
+            (TC::Number, Some(Term(TT::Special(_, arg @ None))), _)
                 => *arg = Some(t),
             // Operators (+, -, ...)
             (TC::Oper, Some(Term(_) | Part(_)), _)
@@ -386,18 +387,18 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                 match vec.len() {
                     1 => {
                         let e = vec.into_iter().next().unwrap();
-                        expr.push(Term(ParExpr(Box::new(e))));
+                        expr.push(Term(TT::ParExpr(Box::new(e))));
                     },
                     0 => return Err(ParseError::new("empty expression", slice_from(t.1))),
                     _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
                 }
             },
             // Arguments to a node
-            (TC::Open, Some(Term(Node(_, args @ None))), "(")
+            (TC::Open, Some(Term(TT::Node(_, args @ None))), "(")
                 => *args = Some(parse_main(tk, Some(t.1))?),
             // List
             (TC::Open, Some(Oper(_)) | None, "[")
-                => expr.push(Term(List(parse_main(tk, Some(t.1))?))),
+                => expr.push(Term(TT::List(parse_main(tk, Some(t.1))?))),
             // Parts construction
             (TC::Open, Some(Term(_)), "[") => {
                 let vec = parse_main(tk, Some(t.1))?;
@@ -412,7 +413,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
                 match vec.len() {
                     1 => {
                         let e = vec.into_iter().next().unwrap();
-                        expr.push(Term(Node(TNode::Block(Box::new(e)), None)));
+                        expr.push(Term(TT::Node(Node::Block(Box::new(e)), None)));
                     },
                     0 => return Err(ParseError::new("empty block", slice_from(t.1))),
                     _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
@@ -441,7 +442,7 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
             },
             // Special characters #, $
             (TC::Special, Some(Oper(_) | Chain(_)) | None, _)
-                => expr.push(Term(Special(t, None))),
+                => expr.push(Term(TT::Special(t, None))),
             _ => return Err(ParseError::new("cannot appear here", t.1))
         }
     }
@@ -462,25 +463,25 @@ fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
     for part in input {
         use ExprPart::*;
         use TTerm as TT;
-        use TNode::*;
-        use TValue::*;
+        use Node::*;
+        use Literal::*;
         match (part, cur.take()) {
-            (Term(TT::Value(Number(tok))), None)
+            (Term(TT::Literal(Number(tok))), None)
                 => cur = Some(Expr::Direct(Item::new_atomic(tok.1.parse::<BigInt>()
                     .map_err(|_| ParseError::new("invalid number", tok.1))?))),
-            (Term(TT::Value(BaseNum(tok))), None)
+            (Term(TT::Literal(BaseNum(tok))), None)
                 => cur = Some(Expr::Direct(Item::new_atomic(parse_basenum(tok.1)?))),
             // TODO: all other value types
             // TODO: list
             // TODO: Special
             (Term(TT::Node(Ident(tok), args)), src)
-                => cur = Some(Expr::Node(Node{
+                => cur = Some(Expr::Node(base::Node{
                     core: Core::Simple(tok.1.into()),
                     source: src.map(|x| Box::new(x)),
                     args: args.unwrap_or(vec![])
                 })),
             (Term(TT::Node(Block(body), args)), src)
-                => cur = Some(Expr::Node(Node{
+                => cur = Some(Expr::Node(base::Node{
                     core: Core::Block(body),
                     source: src.map(|x| Box::new(x)),
                     args: args.unwrap_or(vec![])
