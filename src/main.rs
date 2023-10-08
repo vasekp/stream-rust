@@ -15,7 +15,13 @@ fn main() {
             break;
         }
         let input = buffer.trim();
-        parse(input);
+        match parse(input) {
+            Ok(expr) => println!("{expr:#?}"),
+            Err(err) => {
+                err.display(input);
+                println!("{err}");
+            }
+        }
         buffer.clear();
         println!();
     }

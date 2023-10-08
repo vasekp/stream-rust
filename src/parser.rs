@@ -22,7 +22,7 @@ impl<'a> ParseError<'a> {
         Self::new(text, Default::default())
     }
 
-    fn display(&self, input: &'a str) {
+    pub fn display(&self, input: &'a str) {
         let start = unsafe { self.slice.as_ptr().offset_from(input.as_ptr()) } as usize;
         let length = self.slice.len();
         //println!("\x1b[8m{}\x1b[0m{}", &input[0..start], &input[start..(start + length)]);
@@ -456,20 +456,20 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
 }
 
 #[derive(Debug)]
-enum Expr {
+pub enum Expr {
     Direct(Item),
     Node(Node)
 }
 
 #[derive(Debug)]
-struct Node {
+pub struct Node {
     core: TCore,
     source: Option<Box<Expr>>,
     args: Vec<Expr>
 }
 
 #[derive(Debug)]
-enum TCore {
+pub enum TCore {
     Simple(String),
     Block(Box<Expr>)
 }
@@ -553,16 +553,11 @@ fn test_basenum() {
     assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse::<BigInt>().unwrap()));
 }
 
-pub fn parse(input: &str) {
-    match parse_main(&RefCell::new(Tokenizer::new(input)), None) {
-        Ok(vec) => match vec.len() {
-            1 => println!("{vec:#?}"),
-            0 => println!("empty input"),
-            _ => println!("multiple expressions")
-        },
-        Err(err) => {
-            err.display(input);
-            println!("{}", err);
-        }
+pub fn parse(input: &str) -> Result<Expr, ParseError> {
+    let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
+    match (it.next(), it.next()) {
+        (Some(expr), None) => Ok(expr),
+        (None, _) => Err(ParseError::new("empty input", input)),
+        (Some(_), Some(_)) => Err(ParseError::new("multiple expressions", input))
     }
 }
