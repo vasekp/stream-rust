@@ -8,8 +8,7 @@ use std::ops::RangeBounds;
 pub type TNumber = num::BigInt;
 
 
-/// Encompasses all atomic values. This is directly comparable and cloneable, and appear both as an
-/// [`Item`] and a `Node`.
+/// Encompasses all atomic values.
 #[derive(PartialEq)]
 pub enum Atomic {
     Number(TNumber)
@@ -24,7 +23,7 @@ impl<T> From<T> for Atomic where T : Into<TNumber> {
 }
 
 impl Display for Atomic {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", match self {
             Number(n) => n.to_string()
         })
@@ -32,7 +31,7 @@ impl Display for Atomic {
 }
 
 impl Debug for Atomic {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", match self {
             Number(n) => "number ".to_string() + &n.to_string()
         })
@@ -47,7 +46,7 @@ pub enum Item {
     Stream(Box<dyn TStream>)
 }
 
-pub use Item::{Atom, Stream};
+pub use Item::*;
 
 impl Item {
     pub fn new_atomic(value: impl Into<Atomic>) -> Item {
@@ -81,7 +80,7 @@ impl Item {
 }
 
 impl Display for Item {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Atom(a) => Display::fmt(&a, f),
             Stream(s) => (*s).writeout(f)
@@ -90,7 +89,7 @@ impl Display for Item {
 }
 
 impl Debug for Item {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Atom(a) => Debug::fmt(&a, f),
             Stream(s) => write!(f, "stream {}", s.describe())
@@ -112,7 +111,7 @@ impl PartialEq for Item {
 #[derive(PartialEq, Debug)]
 pub struct BaseError(String);
 
-impl ::std::error::Error for BaseError { }
+impl std::error::Error for BaseError { }
 
 impl<T> From<T> for BaseError where T: Into<String> {
     fn from(text: T) -> BaseError {
@@ -121,7 +120,7 @@ impl<T> From<T> for BaseError where T: Into<String> {
 }
 
 impl Display for BaseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         write!(f, "{}", self.0)
     }
 }
@@ -147,7 +146,7 @@ pub trait TStream {
     /// ellipsis (the width must be at least 4 to accommodate the string `"[..."`); if no width is
     /// given, first three items are written out.  If an error happens during reading the stream,
     /// it is represented as `"<!>"`.
-    fn writeout(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    fn writeout(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (prec, usize::MAX),
@@ -201,19 +200,20 @@ pub trait TStream {
     /// `LikelyInfinite`. The latter is produced if `size_hint` returned `(usize::MAX, None)`,
     /// which is a customary indication of infiniteness in the standard library, but may have false
     /// positives, like an iterator whose size can't fit into `usize`.
+    /// 
+    /// The return value must be consistent with the actual behaviour of the stream.
     fn length(&self) -> Length {
         let iter = self.iter();
         match iter.size_hint() {
-            (lo, Some(hi)) => if lo == hi { Exact(lo.into()) } else { AtMost(hi.into()) },
-            (usize::MAX, None) => Infinite,
-            _ => Unknown
+            (lo, Some(hi)) => if lo == hi { Length::Exact(lo.into()) } else { Length::AtMost(hi.into()) },
+            (usize::MAX, None) => Length::Infinite,
+            _ => Length::Unknown
         }
     }
 }
 
 
-/// The enum returned by [`TStream::length`]. The information must be consistent with the actual
-/// behaviour of the stream.
+/// The enum returned by [`TStream::length()`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum Length {
     /// The length is known exactly, including empty streams.
@@ -230,10 +230,9 @@ pub enum Length {
     Unknown
 }
 
-pub use Length::*;
-
 impl Length {
     fn _at_most(value: &Length) -> Length {
+        use Length::*;
         match value {
             Exact(x) => AtMost(x.clone()),
             AtMost(x) => AtMost(x.clone()),
@@ -245,12 +244,12 @@ impl Length {
 
 impl<T> From<T> for Length where T: Into<TNumber> {
     fn from(value: T) -> Self {
-        Exact(value.into())
+        Length::Exact(value.into())
     }
 }
 
 
-pub fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
+pub(crate) fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
     use std::ops::Bound::*;
     if range.contains(&args.len()) {
         Ok(())
@@ -264,4 +263,30 @@ pub fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<()
             _ => panic!("checkArgs: bounds {:?}, {:?}", range.start_bound(), range.end_bound())
         }))
     }
+}
+
+
+/// Any Stream language expression. This may be either a directly accessible [`Item`] (including
+/// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
+#[derive(Debug, PartialEq)]
+pub enum Expr {
+    Direct(Item),
+    Node(Node)
+}
+
+/// A `Node` is a type of [`Expr`] representing a core function along with, optionally, its source and arguments. This eventually evaluates to `Item`.
+#[derive(Debug, PartialEq)]
+pub struct Node {
+    pub core: Core,
+    pub source: Option<Box<Expr>>,
+    pub args: Vec<Expr>
+}
+
+/// The core of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
+/// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
+/// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
+#[derive(Debug, PartialEq)]
+pub enum Core {
+    Simple(String),
+    Block(Box<Expr>)
 }

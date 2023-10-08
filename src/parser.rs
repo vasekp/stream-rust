@@ -2,7 +2,7 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
 use std::cell::RefCell;
-use crate::base::{BaseError, Item};
+use crate::base::{BaseError, Expr, Node, Item, Core};
 use num::BigInt;
 
 
@@ -31,7 +31,7 @@ impl<'a> ParseError<'a> {
 }
 
 impl<'a> Display for ParseError<'a> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         Display::fmt(&self.base, f)
     }
 }
@@ -455,25 +455,6 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
     Ok(exprs)
 }
 
-#[derive(Debug)]
-pub enum Expr {
-    Direct(Item),
-    Node(Node)
-}
-
-#[derive(Debug)]
-pub struct Node {
-    core: TCore,
-    source: Option<Box<Expr>>,
-    args: Vec<Expr>
-}
-
-#[derive(Debug)]
-pub enum TCore {
-    Simple(String),
-    Block(Box<Expr>)
-}
-
 fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
     assert!(!input.is_empty());
     //let mut stack = vec![];
@@ -494,13 +475,13 @@ fn into_expr<'a>(input: PreExpr<'a>) -> Result<Expr, ParseError<'a>> {
             // TODO: Special
             (Term(TT::Node(Ident(tok), args)), src)
                 => cur = Some(Expr::Node(Node{
-                    core: TCore::Simple(tok.1.into()),
+                    core: Core::Simple(tok.1.into()),
                     source: src.map(|x| Box::new(x)),
                     args: args.unwrap_or(vec![])
                 })),
             (Term(TT::Node(Block(body), args)), src)
                 => cur = Some(Expr::Node(Node{
-                    core: TCore::Block(body),
+                    core: Core::Block(body),
                     source: src.map(|x| Box::new(x)),
                     args: args.unwrap_or(vec![])
                 })),

@@ -50,7 +50,7 @@ impl TStream for SeqStream {
     }
 
     fn length(&self) -> Length {
-        Infinite
+        Length::Infinite
     }
 }
 
@@ -107,6 +107,7 @@ impl TStream for RangeStream {
     }
 
     fn length(&self) -> Length {
+        use Length::*;
         if (self.to > self.from && self.step.is_negative())
                 || (self.to < self.from && self.step.is_positive()) {
             return Exact(TNumber::zero());
