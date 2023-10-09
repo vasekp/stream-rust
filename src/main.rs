@@ -19,7 +19,12 @@ fn main() {
         }
         let input = buffer.trim();
         match parse(input) {
-            Ok(expr) => println!("{expr:#?}"),
+            Ok(expr) => {
+                match expr.eval() {
+                    Ok(item) => println!("{item:.80}"),
+                    Err(err) => println!("{err}")
+                }
+            },
             Err(err) => {
                 err.display(input);
                 println!("{err}");

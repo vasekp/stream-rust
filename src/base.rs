@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter, Debug};
 use std::ops::RangeBounds;
 use dyn_clone::DynClone;
+use crate::lang::List;
+use crate::ops::*;
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -279,7 +281,10 @@ pub enum Expr {
     Eval(Node)
 }
 
-/// A `Node` is a type of [`Expr`] representing a core function along with, optionally, its source and arguments. This eventually evaluates to `Item`.
+/// A `Node` is a type of [`Expr`] representing a core function along with, optionally, its source
+/// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
+/// value, potentially depending on the nature of the source or arguments provided. This evaluation
+/// happens in [`Expr::eval()`].
 #[derive(Debug, PartialEq)]
 pub struct Node {
     pub core: Core,
@@ -294,4 +299,25 @@ pub struct Node {
 pub enum Core {
     Symbol(String),
     Block(Box<Expr>)
+}
+
+
+impl Expr {
+    /// A call to `eval` converts an `Expr` into an [`Item`]. If it was an immediate
+    /// ([`Expr::Imm`]), a clone of the content is returned. For a [`Node`], this is the final
+    /// point at which it is decided whether it's an atomic value or a stream.
+    pub fn eval(&self) -> Result<Item, BaseError> {
+        match self {
+            Expr::Imm(item) => Ok(item.clone()),
+            Expr::Eval(Node{core, source, args}) => match core {
+                Core::Symbol(sym) if sym == "list" => {
+                    assert_eq!(*source, None);
+                    (*args).iter().map(|x| x.eval())
+                        .collect::<Result<Vec<Item>, _>>()
+                        .map(Item::new_stream)
+                },
+                _ => Err(BaseError::from("not implemented"))
+            }
+        }
+    }
 }
