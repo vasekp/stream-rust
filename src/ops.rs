@@ -3,7 +3,29 @@ use num::{Zero, One, ToPrimitive, Signed};
 use crate::session::Session;
 
 
-/// An infinite stream returning consecutive numbers.
+/// An infinite stream returning consecutive numbers, `seq`.
+///
+/// Possible forms:
+/// - `seq`
+/// - `seq(start)`
+/// - `seq(start, step)`.
+///
+/// Default values for both `start` and `step` are 1.
+///
+/// # Examples
+/// ```
+/// use streamlang::session::Session;
+/// use streamlang::parser::parse;
+/// let sess = Session::new();
+/// let stream = sess.eval(&parse("seq").unwrap()).unwrap();
+/// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
+/// let stream = sess.eval(&parse("seq(3)").unwrap()).unwrap();
+/// assert_eq!(stream.to_string(), "[3, 4, 5, ...");
+/// let stream = sess.eval(&parse("seq(1, 3)").unwrap()).unwrap();
+/// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
+/// let stream = sess.eval(&parse("seq(3, 0)").unwrap()).unwrap();
+/// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
+/// ```
 #[derive(Clone)]
 pub struct SeqStream {
     from: Number,
@@ -25,28 +47,6 @@ impl Stream for SeqStream {
     }
 }
 
-/*/// Constructs [`SeqStream`].
-///
-/// Possible inputs:
-/// - []
-/// - [`start` (number)]
-/// - [`start` (number), `step` (number)].
-///
-/// Default values for both `start` and `step` are 1.
-///
-/// # Examples
-/// ```
-/// use streamlang::base::{Item, Stream};
-/// use streamlang::ops::SeqStream;
-/// let stream = SeqStream::construct(vec![]).unwrap();
-/// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
-/// let stream = SeqStream::construct(vec![Item::new_atomic(3)]).unwrap();
-/// assert_eq!(stream.to_string(), "[3, 4, 5, ...");
-/// let stream = SeqStream::construct(vec![Item::new_atomic(1), Item::new_atomic(3)]).unwrap();
-/// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
-/// let stream = SeqStream::construct(vec![Item::new_atomic(3), Item::new_atomic(0)]).unwrap();
-/// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
-/// ```*/
 fn construct_seq(session: &Session, node: &Node) -> Result<Item, BaseError> {
     check_args(&node, false, 0..=2)?;
     let nums = node.args.iter()
@@ -62,18 +62,39 @@ fn construct_seq(session: &Session, node: &Node) -> Result<Item, BaseError> {
 fn test_seq() {
     use crate::parser::parse;
     let sess = Session::new();
-    let stream = sess.eval(&parse("seq(3)").unwrap()).unwrap();
-    assert_eq!(stream.to_string(), "[3, 4, 5, ...");
+    // in addition to doc tests
     let stream = sess.eval(&parse("seq(0)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[0, 1, 2, ...");
     let stream = sess.eval(&parse("seq(2, 3)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[2, 5, 8, ...");
     let stream = sess.eval(&parse("seq(2, 0)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[2, 2, 2, ...");
+    /*let stream = sess.eval(&parse("seq(2, -3)").unwrap()).unwrap();
+    assert_eq!(stream.to_string(), "[2, -1, -4, ...");*/
 }
 
 
-/// A range of equidistant numbers.
+/// A range of equidistant numbers, `range`.
+///
+/// Possible inputs:
+/// - `range(end)`
+/// - `range(start, end)`
+/// - `range(start, end, step)`
+///
+/// Default values for both `start` and `step` are 1.
+///
+/// # Examples
+/// ```
+/// use streamlang::session::Session;
+/// use streamlang::parser::parse;
+/// let sess = Session::new();
+/// let stream = sess.eval(&parse("range(3)").unwrap()).unwrap();
+/// assert_eq!(stream.to_string(), "[1, 2, 3]");
+/// let stream = sess.eval(&parse("range(0, 2)").unwrap()).unwrap();
+/// assert_eq!(stream.to_string(), "[0, 1, 2]");
+/// /*let stream = sess.eval(&parse("range(3, 1, -1)").unwrap()).unwrap();
+/// assert_eq!(stream.to_string(), "[3, 2, 1]");*/
+/// ```
 #[derive(Clone)]
 pub struct RangeStream {
     from: Number,
@@ -105,27 +126,6 @@ impl Stream for RangeStream {
         }
     }
 }
-
-/*/// Constructs [`RangeStream`].
-///
-/// Possible inputs:
-/// - [`end` (number)]
-/// - [`start` (number), `end` (number)]
-/// - [`start` (number), `end` (number), `step` (number)].
-///
-/// Default values for both `start` and `step` are 1.
-///
-/// # Examples
-/// ```
-/// use streamlang::base::{Item, Stream};
-/// use streamlang::ops::RangeStream;
-/// let stream = RangeStream::construct(vec![Item::new_atomic(3)]).unwrap();
-/// assert_eq!(stream.to_string(), "[1, 2, 3]");
-/// let stream = RangeStream::construct(vec![Item::new_atomic(0), Item::new_atomic(2)]).unwrap();
-/// assert_eq!(stream.to_string(), "[0, 1, 2]");
-/// let stream = RangeStream::construct(vec![Item::new_atomic(3), Item::new_atomic(1), Item::new_atomic(-1)]).unwrap();
-/// assert_eq!(stream.to_string(), "[3, 2, 1]");
-/// ```*/
 
 fn construct_range(session: &Session, node: &Node) -> Result<Item, BaseError> {
     check_args(&node, false, 1..=3)?;
