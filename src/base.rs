@@ -170,10 +170,11 @@ pub trait Stream: DynClone {
                         break 'a;
                     },
                     Some(Ok(item)) => {
+                        let plen = s.len();
                         if i > 0 {
                             s += ", ";
                         }
-                        s += &format!("{:.*}", prec - s.len(), item);
+                        s += &format!("{:.*}", prec - plen, item);
                     },
                     Some(Err(_err)) => {
                         s += "<!>";
@@ -254,23 +255,6 @@ impl<T> From<T> for Length where T: Into<Number> {
 }
 
 
-pub(crate) fn check_args(args: &Vec<Item>, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
-    use std::ops::Bound::*;
-    if range.contains(&args.len()) {
-        Ok(())
-    } else {
-        Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
-            (Included(0), Included(0)) => "no arguments allowed".to_string(),
-            (Included(min), Included(max)) if min == max => format!("exactly {min} arguments required"),
-            (Included(min), Included(max)) => format!("between {min} and {max} arguments required"),
-            (Included(min), Unbounded) => format!("at least {min} arguments required"),
-            (Unbounded, Included(max)) => format!("at most {max} arguments required"),
-            _ => panic!("checkArgs: bounds {:?}, {:?}", range.start_bound(), range.end_bound())
-        }))
-    }
-}
-
-
 /// Any Stream language expression. This may be either a directly accessible [`Item`] (including
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
 #[derive(Debug, PartialEq)]
@@ -297,4 +281,26 @@ pub struct Node {
 pub enum Core {
     Symbol(String),
     Block(Box<Expr>)
+}
+
+
+pub(crate) fn check_args(node: &Node, source: bool, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
+    use std::ops::Bound::*;
+    match (&node.source, source) {
+        (Some(_), false) => return Err(BaseError::from("no source requested")),
+        (None, true) => return Err(BaseError::from("source requested")),
+        _ => { }
+    };
+    if range.contains(&node.args.len()) {
+        Ok(())
+    } else {
+        Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
+            (Included(0), Included(0)) => "no arguments allowed".to_string(),
+            (Included(min), Included(max)) if min == max => format!("exactly {min} arguments required"),
+            (Included(min), Included(max)) => format!("between {min} and {max} arguments required"),
+            (Included(min), Unbounded) => format!("at least {min} arguments required"),
+            (Unbounded, Included(max)) => format!("at most {max} arguments required"),
+            _ => panic!("checkArgs: bounds {:?}, {:?}", range.start_bound(), range.end_bound())
+        }))
+    }
 }

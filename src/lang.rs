@@ -31,7 +31,7 @@ impl Stream for List {
 
 fn construct_list(session: &Session, node: &Node) -> Result<Item, BaseError> {
     assert_eq!(node.source, None);
-    node.args.iter().map(|x| session.eval(&x))
+    node.args.iter().map(|x| session.eval(x))
         .collect::<Result<Vec<Item>, _>>()
         .map(Item::new_stream)
 }

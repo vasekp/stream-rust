@@ -1,5 +1,6 @@
 use crate::base::*;
 use num::{Zero, One, ToPrimitive, Signed};
+use crate::session::Session;
 
 
 /// An infinite stream returning consecutive numbers.
@@ -45,15 +46,17 @@ impl Stream for SeqStream {
 /// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
 /// let stream = SeqStream::construct(vec![Item::new_atomic(3), Item::new_atomic(0)]).unwrap();
 /// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
-/// ```
-fn construct_seq(ins: Vec<Item>) -> Result<Item, BaseError> {
-    check_args(&ins, 0..=2)?;
-    let nums = ins.into_iter().map(|x| x.into_num()).collect::<Result<Vec<_>, _>>()?;
+/// ```*/
+fn construct_seq(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    check_args(&node, false, 0..=2)?;
+    let nums = node.args.iter()
+        .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
+        .collect::<Result<Vec<_>, _>>()?;
     let mut it = nums.into_iter();
-    let from = it.next().unwrap_or(Number::one());
-    let step = it.next().unwrap_or(Number::one());
+    let from = it.next().unwrap_or(Number::one()).clone();
+    let step = it.next().unwrap_or(Number::one()).clone();
     Ok(Item::new_stream(SeqStream{from, step}))
-}*/
+}
 
 
 /// A range of equidistant numbers.
@@ -110,10 +113,26 @@ impl Stream for RangeStream {
 /// assert_eq!(stream.to_string(), "[3, 2, 1]");
 /// ```*/
 #[cfg(test)]
-fn construct_range(ins: Vec<Item>) -> Result<Item, BaseError> {
-    check_args(&ins, 1..=3)?;
+fn construct_range_test(ins: Vec<Item>) -> Result<Item, BaseError> {
+    //check_args(&ins, 1..=3)?;
     let len = ins.len();
     let nums = ins.into_iter().map(|x| x.into_num()).collect::<Result<Vec<_>, _>>()?;
+    let mut it = nums.into_iter();
+    let (from, to, step) = match len {
+        1 => (Number::one(), it.next().unwrap(), Number::one()),
+        2 => (it.next().unwrap(), it.next().unwrap(), Number::one()),
+        3 => (it.next().unwrap(), it.next().unwrap(), it.next().unwrap()),
+        _ => unreachable!()
+    };
+    Ok(Item::new_stream(RangeStream{from, to, step}))
+}
+
+fn construct_range(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    check_args(&node, false, 1..=3)?;
+    let len = node.args.len();
+    let nums = node.args.iter()
+        .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
+        .collect::<Result<Vec<_>, _>>()?;
     let mut it = nums.into_iter();
     let (from, to, step) = match len {
         1 => (Number::one(), it.next().unwrap(), Number::one()),
@@ -127,37 +146,43 @@ fn construct_range(ins: Vec<Item>) -> Result<Item, BaseError> {
 
 #[test]
 fn range_tests() {
-    let stream = construct_range(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(4)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(4)]).unwrap();
     assert_eq!(stream.to_string(), "[1, 5, 9]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(3));
-    let stream = construct_range(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(10)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(10)]).unwrap();
     assert_eq!(stream.to_string(), "[1]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
-    let stream = construct_range(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(0)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(0)]).unwrap();
     assert_eq!(stream.to_string(), "[1, 1, 1, ...");
     assert_eq!(stream.as_stream().unwrap().length(), Length::Infinite);
-    let stream = construct_range(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(-1)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(1), Item::new_atomic(10), Item::new_atomic(-1)]).unwrap();
     assert_eq!(stream.to_string(), "[]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(0));
-    let stream = construct_range(vec![Item::new_atomic(1), Item::new_atomic(-10), Item::new_atomic(-1)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(1), Item::new_atomic(-10), Item::new_atomic(-1)]).unwrap();
     assert_eq!(stream.to_string(), "[1, 0, -1, ...");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(12));
 }
 
 #[test]
 fn range_test_neg_lengths() {
-    let stream = construct_range(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-2)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-2)]).unwrap();
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(5));
-    let stream = construct_range(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-3)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-3)]).unwrap();
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(4));
-    let stream = construct_range(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-4)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-4)]).unwrap();
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(3));
-    let stream = construct_range(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-5)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-5)]).unwrap();
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(2));
-    let stream = construct_range(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-9)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-9)]).unwrap();
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(2));
-    let stream = construct_range(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-10)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-10)]).unwrap();
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
-    let stream = construct_range(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-11)]).unwrap();
+    let stream = construct_range_test(vec![Item::new_atomic(10), Item::new_atomic(1), Item::new_atomic(-11)]).unwrap();
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
+}
+
+
+pub(crate) fn init(session: &mut Session) {
+    session.register_symbol("seq", construct_seq);
+    session.register_symbol("range", construct_range);
 }

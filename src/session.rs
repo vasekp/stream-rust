@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::base::*;
-use crate::lang;
+use crate::{lang, ops};
 
 type Constructor = fn(&Session, &Node) -> Result<Item, BaseError>;
 
@@ -15,6 +15,7 @@ impl Session {
     pub fn new() -> Session {
         let mut s = Session{ register: Default::default() };
         lang::init(&mut s);
+        ops::init(&mut s);
         s
     }
 
