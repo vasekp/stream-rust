@@ -559,7 +559,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                     source: src.map(Box::new),
                     args: vec
                 })),
-            // TODO: all Opers, priority
+            // TODO: all Opers, priority, unary
             _ => todo!()
         }
     }
@@ -735,4 +735,21 @@ fn test_parser() {
             source: None,
             args: vec![Imm(Item::new_atomic(2))]
         })]})));
+    assert_eq!(parse("([([(1)])])"), Ok(Eval(Node{
+        core: Symbol("list".into()),
+        source: None,
+        args: vec![Eval(Node{
+            core: Symbol("list".into()),
+            source: None,
+            args: vec![Imm(Item::new_atomic(1))]
+        })]})));
+    assert_eq!(parse("([1])[2]"), Ok(Eval(Node{
+        core: Symbol("part".into()),
+        source: Some(Box::new(Eval(Node{
+            core: Symbol("list".into()),
+            source: None,
+            args: vec![Imm(Item::new_atomic(1))]
+        }))),
+        args: vec![Imm(Item::new_atomic(2))]})));
+    assert_eq!(parse("[1]([2])"), syntax_err);
 }
