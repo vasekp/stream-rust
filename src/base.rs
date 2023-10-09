@@ -292,6 +292,6 @@ pub struct Node {
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
 #[derive(Debug, PartialEq)]
 pub enum Core {
-    Simple(String),
+    Symbol(String),
     Block(Box<Expr>)
 }

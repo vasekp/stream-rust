@@ -517,14 +517,14 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
             // TODO: all other value types
             (Term(TT::List(vec)), None)
                 => cur = Some(Eval(base::Node{
-                    core: Core::Simple("list".into()),
+                    core: Core::Symbol("list".into()),
                     source: None,
                     args: vec
                 })),
             // TODO: Special
             (Term(TT::Node(Ident(tok), args)), src)
                 => cur = Some(Eval(base::Node{
-                    core: Core::Simple(tok.1.into()),
+                    core: Core::Symbol(tok.1.into()),
                     source: src.map(Box::new),
                     args: args.unwrap_or(vec![])
                 })),
@@ -541,7 +541,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
             // TODO: Chain(:)
             (Part(vec), src)
                 => cur = Some(Eval(base::Node{
-                    core: Core::Simple("part".into()),
+                    core: Core::Symbol("part".into()),
                     source: src.map(Box::new),
                     args: vec
                 })),
@@ -561,9 +561,9 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
 /// use streamlang::parser::parse;
 /// assert_eq!(parse("a.b(3,4)"),
 ///     Ok(Expr::Eval(Node{
-///         core: Core::Simple("b".to_string()),
+///         core: Core::Symbol("b".to_string()),
 ///         source: Some(Box::new(Expr::Eval(Node{
-///             core: Core::Simple("a".to_string()),
+///             core: Core::Symbol("a".to_string()),
 ///             source: None,
 ///             args: vec![]}))),
 ///         args: vec![
@@ -589,35 +589,35 @@ fn test_parser() {
 
     assert_eq!(parse("1"), Ok(Imm(Item::new_atomic(1))));
     assert_eq!(parse("a"), Ok(Eval(Node{
-        core: Simple("a".to_string()), source: None, args: vec![]})));
+        core: Symbol("a".to_string()), source: None, args: vec![]})));
     assert_eq!(parse("a(1,2)"), Ok(Eval(Node{
-        core: Simple("a".to_string()),
+        core: Symbol("a".to_string()),
         source: None, args: vec![Imm(Item::new_atomic(1)), Imm(Item::new_atomic(2))]})));
     assert_eq!(parse("1.a"), Ok(Eval(Node{
-        core: Simple("a".to_string()),
+        core: Symbol("a".to_string()),
         source: Some(Box::new(Imm(Item::new_atomic(1)))), args: vec![]})));
     assert_eq!(parse("(1).a"), Ok(Eval(Node{
-        core: Simple("a".to_string()),
+        core: Symbol("a".to_string()),
         source: Some(Box::new(Imm(Item::new_atomic(1)))), args: vec![]})));
     assert_eq!(parse("(1,2).a"), Err(ParseError::cmp_ref("only one expression expected")));
     assert_eq!(parse("a.b"), Ok(Eval(Node{
-        core: Simple("b".to_string()),
-        source: Some(Box::new(Eval(Node{ core: Simple("a".to_string()), source: None, args: vec![] }))),
+        core: Symbol("b".to_string()),
+        source: Some(Box::new(Eval(Node{ core: Symbol("a".to_string()), source: None, args: vec![] }))),
         args: vec![] })));
     assert_eq!(parse("a.b.c"), Ok(Eval(Node{
-        core: Simple("c".to_string()),
+        core: Symbol("c".to_string()),
         source: Some(Box::new(Eval(Node{
-            core: Simple("b".to_string()),
+            core: Symbol("b".to_string()),
             source: Some(Box::new(Eval(Node{
-                core: Simple("a".to_string()),
+                core: Symbol("a".to_string()),
                 source: None,
                 args: vec![] }))),
             args: vec![] }))),
         args: vec![] })));
     assert_eq!(parse("a(1).b(2)"), Ok(Eval(Node{
-        core: Simple("b".to_string()),
+        core: Symbol("b".to_string()),
         source: Some(Box::new(Eval(Node{
-            core: Simple("a".to_string()),
+            core: Symbol("a".to_string()),
             source: None,
             args: vec![Imm(Item::new_atomic(1))] }))),
         args: vec![Imm(Item::new_atomic(2))] })));
@@ -654,7 +654,7 @@ fn test_parser() {
         args: vec![Imm(Item::new_atomic(3))]})));
     assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Eval(Node{
         core: Block(Box::new(Eval(Node{
-            core: Simple("a".to_string()),
+            core: Symbol("a".to_string()),
             source: Some(Box::new(Imm(Item::new_atomic(2)))),
             args: vec![Imm(Item::new_atomic(3))]
         }))),
@@ -669,17 +669,17 @@ fn test_parser() {
         args: vec![]})));
 
     assert_eq!(parse("[1,2][3,4]"), Ok(Eval(Node{
-        core: Simple("part".into()),
+        core: Symbol("part".into()),
         source: Some(Box::new(Eval(Node{
-            core: Simple("list".into()),
+            core: Symbol("list".into()),
             source: None,
             args: vec![Imm(Item::new_atomic(1)), Imm(Item::new_atomic(2))]
         }))),
         args: vec![Imm(Item::new_atomic(3)), Imm(Item::new_atomic(4))]})));
     assert_eq!(parse("[][3,4]"), Ok(Eval(Node{
-        core: Simple("part".into()),
+        core: Symbol("part".into()),
         source: Some(Box::new(Eval(Node{
-            core: Simple("list".into()),
+            core: Symbol("list".into()),
             source: None,
             args: vec![]
         }))),
@@ -689,34 +689,34 @@ fn test_parser() {
     assert_eq!(parse("a.[1]"), syntax_err);
     // The following is legal syntax, but error at runtime
     assert_eq!(parse("1[2]"), Ok(Eval(Node{
-        core: Simple("part".into()),
+        core: Symbol("part".into()),
         source: Some(Box::new(Imm(Item::new_atomic(1)))),
         args: vec![Imm(Item::new_atomic(2))]})));
     assert_eq!(parse("a[b]"), Ok(Eval(Node{
-        core: Simple("part".into()),
+        core: Symbol("part".into()),
         source: Some(Box::new(Eval(Node{
-            core: Simple("a".into()),
+            core: Symbol("a".into()),
             source: None,
             args: vec![]
         }))),
         args: vec![Eval(Node{
-            core: Simple("b".into()),
+            core: Symbol("b".into()),
             source: None,
             args: vec![]
         })]})));
     assert_eq!(parse("[[1]][[2]]"), Ok(Eval(Node{
-        core: Simple("part".into()),
+        core: Symbol("part".into()),
         source: Some(Box::new(Eval(Node{
-            core: Simple("list".into()),
+            core: Symbol("list".into()),
             source: None,
             args: vec![Eval(Node{
-                core: Simple("list".into()),
+                core: Symbol("list".into()),
                 source: None,
                 args: vec![Imm(Item::new_atomic(1))]
             })]
         }))),
         args: vec![Eval(Node{
-            core: Simple("list".into()),
+            core: Symbol("list".into()),
             source: None,
             args: vec![Imm(Item::new_atomic(2))]
         })]})));
