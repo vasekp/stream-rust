@@ -1,15 +1,8 @@
-use streamlang::*;
+use streamlang as stream;
 use std::io;
 
 fn main() {
-    /*let params = vec![Item::new_atomic(1), Item::new_atomic(3)];
-    let s = RangeStream::construct(params).unwrap();
-    println!("{:.80?}", s);*/
-
-    /*let list = Item::new_stream(vec![Item::new_atomic(1), Item::new_atomic(2)]);
-    println!("{list:?}");*/
-
-    let session = session::Session::new();
+    let session = stream::Session::new();
     println!("ready >");
 
     let mut buffer = String::new();
@@ -19,7 +12,7 @@ fn main() {
             break;
         }
         let input = buffer.trim();
-        match parse(input) {
+        match stream::parse(input) {
             Ok(expr) => {
                 match session.eval(&expr) {
                     Ok(item) => println!("{item:.80}"),
