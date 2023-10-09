@@ -9,6 +9,7 @@ fn main() {
     /*let list = Item::new_stream(vec![Item::new_atomic(1), Item::new_atomic(2)]);
     println!("{list:?}");*/
 
+    let session = session::Session::new();
     println!("ready >");
 
     let mut buffer = String::new();
@@ -20,7 +21,7 @@ fn main() {
         let input = buffer.trim();
         match parse(input) {
             Ok(expr) => {
-                match expr.eval() {
+                match session.eval(&expr) {
                     Ok(item) => println!("{item:.80}"),
                     Err(err) => println!("{err}")
                 }

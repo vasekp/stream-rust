@@ -1,4 +1,5 @@
 use crate::base::*;
+use crate::session::Session;
 
 
 /// A `Stream` formed by direct enumeration of its `Item`s.
@@ -26,4 +27,16 @@ impl Stream for List {
     fn length(&self) -> Length {
         Length::from(self.len())
     }
+}
+
+fn construct_list(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    assert_eq!(node.source, None);
+    node.args.iter().map(|x| session.eval(&x))
+        .collect::<Result<Vec<Item>, _>>()
+        .map(Item::new_stream)
+}
+
+
+pub(crate) fn init(session: &mut Session) {
+    session.register_symbol("list", construct_list);
 }
