@@ -462,50 +462,6 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
     Ok(exprs)
 }
 
-fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
-    assert!(!input.is_empty());
-    //let mut stack = vec![];
-    let mut cur = None;
-    for part in input {
-        use ExprPart::*;
-        use TTerm as TT;
-        use Node::*;
-        use Literal::*;
-        use Expr::*;
-        match (part, cur.take()) {
-            (Term(TT::Literal(Number(tok))), None)
-                => cur = Some(Imm(Item::new_atomic(tok.1.parse::<BigInt>()
-                    .map_err(|_| ParseError::new("invalid number", tok.1))?))),
-            (Term(TT::Literal(BaseNum(tok))), None)
-                => cur = Some(Imm(Item::new_atomic(parse_basenum(tok.1)?))),
-            // TODO: all other value types
-            // TODO: list
-            // TODO: Special
-            (Term(TT::Node(Ident(tok), args)), src)
-                => cur = Some(Eval(base::Node{
-                    core: Core::Simple(tok.1.into()),
-                    source: src.map(Box::new),
-                    args: args.unwrap_or(vec![])
-                })),
-            (Term(TT::Node(Block(body), args)), src)
-                => cur = Some(Eval(base::Node{
-                    core: Core::Block(body),
-                    source: src.map(Box::new),
-                    args: args.unwrap_or(vec![])
-                })),
-            (Term(TT::ParExpr(expr)), None)
-                => cur = Some(*expr),
-            (Chain(Token(_, ".")), prev)
-                => cur = prev,
-            // TODO: Chain(:)
-            // TODO: Part
-            // TODO: all Opers, priority
-            _ => todo!()
-        }
-    }
-    Ok(cur.unwrap())
-}
-
 fn parse_basenum(slice: &str) -> Result<BigInt, ParseError<'_>> {
     let mut iter = slice.split(|c| c == '_');
     let base_str = iter.next().unwrap();
@@ -541,6 +497,61 @@ fn test_basenum() {
     assert_eq!(parse_basenum("10_999999999999999999999999"), Ok("999999999999999999999999".parse::<BigInt>().unwrap()));
     assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse::<BigInt>().unwrap()));
 }
+
+fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
+    assert!(!input.is_empty());
+    //let mut stack = vec![];
+    let mut cur = None;
+    for part in input {
+        use ExprPart::*;
+        use TTerm as TT;
+        use Node::*;
+        use Literal::*;
+        use Expr::*;
+        match (part, cur.take()) {
+            (Term(TT::Literal(Number(tok))), None)
+                => cur = Some(Imm(Item::new_atomic(tok.1.parse::<BigInt>()
+                    .map_err(|_| ParseError::new("invalid number", tok.1))?))),
+            (Term(TT::Literal(BaseNum(tok))), None)
+                => cur = Some(Imm(Item::new_atomic(parse_basenum(tok.1)?))),
+            // TODO: all other value types
+            (Term(TT::List(vec)), None)
+                => cur = Some(Eval(base::Node{
+                    core: Core::Simple("list".into()),
+                    source: None,
+                    args: vec
+                })),
+            // TODO: Special
+            (Term(TT::Node(Ident(tok), args)), src)
+                => cur = Some(Eval(base::Node{
+                    core: Core::Simple(tok.1.into()),
+                    source: src.map(Box::new),
+                    args: args.unwrap_or(vec![])
+                })),
+            (Term(TT::Node(Block(body), args)), src)
+                => cur = Some(Eval(base::Node{
+                    core: Core::Block(body),
+                    source: src.map(Box::new),
+                    args: args.unwrap_or(vec![])
+                })),
+            (Term(TT::ParExpr(expr)), None)
+                => cur = Some(*expr),
+            (Chain(Token(_, ".")), prev)
+                => cur = prev,
+            // TODO: Chain(:)
+            (Part(vec), src)
+                => cur = Some(Eval(base::Node{
+                    core: Core::Simple("part".into()),
+                    source: src.map(Box::new),
+                    args: vec
+                })),
+            // TODO: all Opers, priority
+            _ => todo!()
+        }
+    }
+    Ok(cur.unwrap())
+}
+
 
 /// Parse a textual input into an [`Expr`].
 ///
@@ -656,4 +667,57 @@ fn test_parser() {
             source: None, args: vec![]
         }))),
         args: vec![]})));
+
+    assert_eq!(parse("[1,2][3,4]"), Ok(Eval(Node{
+        core: Simple("part".into()),
+        source: Some(Box::new(Eval(Node{
+            core: Simple("list".into()),
+            source: None,
+            args: vec![Imm(Item::new_atomic(1)), Imm(Item::new_atomic(2))]
+        }))),
+        args: vec![Imm(Item::new_atomic(3)), Imm(Item::new_atomic(4))]})));
+    assert_eq!(parse("[][3,4]"), Ok(Eval(Node{
+        core: Simple("part".into()),
+        source: Some(Box::new(Eval(Node{
+            core: Simple("list".into()),
+            source: None,
+            args: vec![]
+        }))),
+        args: vec![Imm(Item::new_atomic(3)), Imm(Item::new_atomic(4))]})));
+    assert_eq!(parse("[1,2][]"), Err(ParseError::cmp_ref("empty parts")));
+    assert_eq!(parse("[1][2][3]"), syntax_err);
+    assert_eq!(parse("a.[1]"), syntax_err);
+    // The following is legal syntax, but error at runtime
+    assert_eq!(parse("1[2]"), Ok(Eval(Node{
+        core: Simple("part".into()),
+        source: Some(Box::new(Imm(Item::new_atomic(1)))),
+        args: vec![Imm(Item::new_atomic(2))]})));
+    assert_eq!(parse("a[b]"), Ok(Eval(Node{
+        core: Simple("part".into()),
+        source: Some(Box::new(Eval(Node{
+            core: Simple("a".into()),
+            source: None,
+            args: vec![]
+        }))),
+        args: vec![Eval(Node{
+            core: Simple("b".into()),
+            source: None,
+            args: vec![]
+        })]})));
+    assert_eq!(parse("[[1]][[2]]"), Ok(Eval(Node{
+        core: Simple("part".into()),
+        source: Some(Box::new(Eval(Node{
+            core: Simple("list".into()),
+            source: None,
+            args: vec![Eval(Node{
+                core: Simple("list".into()),
+                source: None,
+                args: vec![Imm(Item::new_atomic(1))]
+            })]
+        }))),
+        args: vec![Eval(Node{
+            core: Simple("list".into()),
+            source: None,
+            args: vec![Imm(Item::new_atomic(2))]
+        })]})));
 }
