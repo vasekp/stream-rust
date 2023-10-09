@@ -6,6 +6,9 @@ fn main() {
     let s = RangeStream::construct(params).unwrap();
     println!("{:.80?}", s);*/
 
+    /*let list = Item::new_stream(vec![Item::new_atomic(1), Item::new_atomic(2)]);
+    println!("{list:?}");*/
+
     println!("ready >");
 
     let mut buffer = String::new();
