@@ -3,6 +3,7 @@ use num::{Zero, One, ToPrimitive, Signed};
 
 
 /// An infinite stream returning consecutive numbers.
+#[derive(Clone)]
 pub struct SeqStream {
     from: Number,
     step: Number
@@ -56,6 +57,7 @@ impl Stream for SeqStream {
 
 
 /// A range of equidistant numbers.
+#[derive(Clone)]
 pub struct RangeStream {
     from: Number,
     to: Number,

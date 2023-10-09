@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter, Debug};
 use std::ops::RangeBounds;
+use dyn_clone::DynClone;
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -9,7 +10,7 @@ pub type Number = num::BigInt;
 
 
 /// Encompasses all atomic values.
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Atom {
     Number(Number)
 }
@@ -99,7 +100,16 @@ impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Atom(i1), Atom(i2)) => i1 == i2,
-            _ => false
+            _ => todo!()
+        }
+    }
+}
+
+impl Clone for Item {
+    fn clone(&self) -> Item {
+        match self {
+            Atom(a) => Atom(a.clone()),
+            Stream(s) => Stream(dyn_clone::clone_box(&**s))
         }
     }
 }
@@ -130,7 +140,7 @@ pub(crate) type SIterator = dyn Iterator<Item = Result<Item, BaseError>>;
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
-pub trait Stream {
+pub trait Stream: DynClone {
     /// Construct this stream with given arguments.
     fn construct(ins: Vec<Item>) -> Result<Item, BaseError> where Self: Sized;
 
