@@ -141,9 +141,6 @@ pub(crate) type SIterator = dyn Iterator<Item = Result<Item, BaseError>>;
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
 pub trait Stream: DynClone {
-    /// Construct this stream with given arguments.
-    fn construct(ins: Vec<Item>) -> Result<Item, BaseError> where Self: Sized;
-
     /// Create an [`Iterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
     fn iter(&self) -> Box<SIterator>;
