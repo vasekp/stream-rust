@@ -7,7 +7,7 @@ use num::ToPrimitive;
 pub type List = Vec<Item>;
 
 impl Stream for List {
-    fn iter(&self) -> Box<SIterator> {
+    fn iter(&self) -> Box<dyn SIterator> {
         Box::new(self.clone().into_iter().map(|x| Ok(x.clone())))
     }
 

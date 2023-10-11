@@ -150,16 +150,13 @@ impl Display for BaseError {
 }
 
 
-pub(crate) type SIterator = dyn Iterator<Item = Result<Item, BaseError>>;
-
-
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
 pub trait Stream: DynClone {
-    /// Create an [`Iterator`] of this stream. Every instance of the iterator must produce the same
+    /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
-    fn iter(&self) -> Box<SIterator>;
+    fn iter(&self) -> Box<dyn SIterator>;
 
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
@@ -233,6 +230,20 @@ pub trait Stream: DynClone {
         }
     }
 }
+
+
+/// The iterator trait returned by [`Stream::iter()`]. Every call to next returns either:
+/// - `Some(Ok(item))`: any [`Item`] ready for direct consumption,
+/// - `Some(Err(err))`: an error occurred at some point,
+/// - `None`: the stream ended.
+///
+/// `next()` should not be called any more after *either* of the two latter conditions.
+/// The iterators are not required to be fused and errors are not meant to be recoverable or
+/// replicable, so the behaviour of doing so is undefined.
+pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
+}
+
+impl<T> SIterator for T where T: Iterator<Item = Result<Item, BaseError>> { }
 
 
 /// The enum returned by [`Stream::length()`].
