@@ -31,7 +31,7 @@ impl Stream for List {
 }
 
 fn construct_list(session: &Session, node: &Node) -> Result<Item, BaseError> {
-    check_args(node, false, 0..)?;
+    node.check_args(false, 0..)?;
     node.args.iter()
         .map(|x| session.eval(x))
         .collect::<Result<Vec<Item>, _>>()
@@ -39,7 +39,7 @@ fn construct_list(session: &Session, node: &Node) -> Result<Item, BaseError> {
 }
 
 fn construct_part(session: &Session, node: &Node) -> Result<Item, BaseError> {
-    check_args(node, true, 1..)?;
+    node.check_args(true, 1..)?;
     let mut item = session.eval(node.source.as_ref().unwrap())?;
     let args = node.args.iter()
         .map(|x| Ok::<_, BaseError>(session.eval(x)?.into_num_within(Number::from(1)..)?))

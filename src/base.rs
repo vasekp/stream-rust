@@ -300,19 +300,21 @@ pub enum Core {
 }
 
 
-pub(crate) fn check_args(node: &Node, source: bool, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
-    use std::ops::Bound::*;
-    match (&node.source, source) {
-        (Some(_), false) => return Err(BaseError::from("no source accepted")),
-        (None, true) => return Err(BaseError::from("source requested")),
-        _ => { }
-    };
-    if range.contains(&node.args.len()) {
-        Ok(())
-    } else {
-        Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
-            (Included(0), Included(0)) => "no arguments allowed".to_string(),
-            _ => format!("{} arguments required", describe_range(&range))
-        }))
+impl Node {
+    pub(crate) fn check_args(&self, source: bool, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
+        use std::ops::Bound::*;
+        match (&self.source, source) {
+            (Some(_), false) => return Err(BaseError::from("no source accepted")),
+            (None, true) => return Err(BaseError::from("source requested")),
+            _ => { }
+        };
+        if range.contains(&self.args.len()) {
+            Ok(())
+        } else {
+            Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
+                (Included(0), Included(0)) => "no arguments allowed".to_string(),
+                _ => format!("{} arguments required", describe_range(&range))
+            }))
+        }
     }
 }

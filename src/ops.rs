@@ -48,7 +48,7 @@ impl Stream for SeqStream {
 }
 
 fn construct_seq(session: &Session, node: &Node) -> Result<Item, BaseError> {
-    check_args(&node, false, 0..=2)?;
+    node.check_args(false, 0..=2)?;
     let nums = node.args.iter()
         .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
         .collect::<Result<Vec<_>, _>>()?;
@@ -128,7 +128,7 @@ impl Stream for RangeStream {
 }
 
 fn construct_range(session: &Session, node: &Node) -> Result<Item, BaseError> {
-    check_args(&node, false, 1..=3)?;
+    node.check_args(false, 1..=3)?;
     let len = node.args.len();
     let nums = node.args.iter()
         .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
