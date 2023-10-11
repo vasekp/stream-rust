@@ -27,7 +27,7 @@ use crate::session::Session;
 /// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
 /// ```
 #[derive(Clone)]
-pub struct SeqStream {
+pub struct Seq {
     from: Number,
     step: Number
 }
@@ -37,7 +37,7 @@ struct SeqIter {
     step: Number
 }
 
-impl Stream for SeqStream {
+impl Stream for Seq {
     fn iter(&self) -> Box<dyn SIterator> {
         Box::new(SeqIter{value: self.from.clone(), step: self.step.clone()})
     }
@@ -48,6 +48,19 @@ impl Stream for SeqStream {
 
     fn length(&self) -> Length {
         Length::Infinite
+    }
+}
+
+impl Seq {
+    fn construct(session: &Session, node: &Node) -> Result<Item, BaseError> {
+        node.check_args(false, 0..=2)?;
+        let nums = node.args.iter()
+            .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut it = nums.into_iter();
+        let from = it.next().unwrap_or(Number::one()).clone();
+        let step = it.next().unwrap_or(Number::one()).clone();
+        Ok(Item::new_stream(Seq{from, step}))
     }
 }
 
@@ -67,17 +80,6 @@ impl SIterator for SeqIter {
         self.value += n * &self.step;
         Ok(())
     }
-}
-
-fn construct_seq(session: &Session, node: &Node) -> Result<Item, BaseError> {
-    node.check_args(false, 0..=2)?;
-    let nums = node.args.iter()
-        .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut it = nums.into_iter();
-    let from = it.next().unwrap_or(Number::one()).clone();
-    let step = it.next().unwrap_or(Number::one()).clone();
-    Ok(Item::new_stream(SeqStream{from, step}))
 }
 
 #[test]
@@ -128,7 +130,7 @@ fn test_seq_skip() {
 /// assert_eq!(stream.to_string(), "[3, 2, 1]");*/
 /// ```
 #[derive(Clone)]
-pub struct RangeStream {
+pub struct Range {
     from: Number,
     to: Number,
     step: Number
@@ -140,7 +142,7 @@ struct RangeIter {
     stop: Number
 }
 
-impl Stream for RangeStream {
+impl Stream for Range {
     fn iter(&self) -> Box<dyn SIterator> {
         Box::new(RangeIter{value: self.from.clone(), stop: self.to.clone(), step: self.step.clone()})
     }
@@ -163,7 +165,23 @@ impl Stream for RangeStream {
     }
 }
 
-impl RangeStream {
+impl Range {
+    fn construct(session: &Session, node: &Node) -> Result<Item, BaseError> {
+        node.check_args(false, 1..=3)?;
+        let len = node.args.len();
+        let nums = node.args.iter()
+            .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut it = nums.into_iter();
+        let (from, to, step) = match len {
+            1 => (Number::one(), it.next().unwrap(), Number::one()),
+            2 => (it.next().unwrap(), it.next().unwrap(), Number::one()),
+            3 => (it.next().unwrap(), it.next().unwrap(), it.next().unwrap()),
+            _ => unreachable!()
+        };
+        Ok(Item::new_stream(Range{from, to, step}))
+    }
+
     fn length_helper(from: &Number, to: &Number, step: &Number) -> Number {
         match step.to_i32() {
             Some(1) => to - from + 1,
@@ -196,7 +214,7 @@ impl SIterator for RangeIter {
         if self.step.is_zero() {
             return Ok(())
         }
-        let max = RangeStream::length_helper(&self.value, &self.stop, &self.step);
+        let max = Range::length_helper(&self.value, &self.stop, &self.step);
         if max >= *n {
             self.value += n * &self.step;
             Ok(())
@@ -204,22 +222,6 @@ impl SIterator for RangeIter {
             Err(n - max)
         }
     }
-}
-
-fn construct_range(session: &Session, node: &Node) -> Result<Item, BaseError> {
-    node.check_args(false, 1..=3)?;
-    let len = node.args.len();
-    let nums = node.args.iter()
-        .map(|x| session.eval(x).and_then(|y| Ok(y.as_num()?.clone())))
-        .collect::<Result<Vec<_>, _>>()?;
-    let mut it = nums.into_iter();
-    let (from, to, step) = match len {
-        1 => (Number::one(), it.next().unwrap(), Number::one()),
-        2 => (it.next().unwrap(), it.next().unwrap(), Number::one()),
-        3 => (it.next().unwrap(), it.next().unwrap(), it.next().unwrap()),
-        _ => unreachable!()
-    };
-    Ok(Item::new_stream(RangeStream{from, to, step}))
 }
 
 #[test]
@@ -305,6 +307,6 @@ fn range_test_neg_lengths() {
 
 
 pub(crate) fn init(session: &mut Session) {
-    session.register_symbol("seq", construct_seq);
-    session.register_symbol("range", construct_range);
+    session.register_symbol("seq", Seq::construct);
+    session.register_symbol("range", Range::construct);
 }
