@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter, Debug};
 use std::ops::RangeBounds;
 use dyn_clone::DynClone;
+use crate::utils::describe_range;
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -70,9 +71,24 @@ impl Item {
         }
     }
 
+    pub fn into_num_within(self, range: impl RangeBounds<Number>) -> Result<Number, BaseError> {
+        match self {
+            Atom(Atom::Number(x)) if range.contains(&x) => Ok(x),
+            _ => Err(BaseError::from(format!("expected number ({}), found {:?}",
+                describe_range(&range), &self)))
+        }
+    }
+
     pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
         match self {
             Stream(s) => Ok(&**s),
+            _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
+        }
+    }
+
+    pub fn into_stream(self) -> Result<Box<dyn Stream>, BaseError> {
+        match self {
+            Stream(s) => Ok(s),
             _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
         }
     }
@@ -287,7 +303,7 @@ pub enum Core {
 pub(crate) fn check_args(node: &Node, source: bool, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
     use std::ops::Bound::*;
     match (&node.source, source) {
-        (Some(_), false) => return Err(BaseError::from("no source requested")),
+        (Some(_), false) => return Err(BaseError::from("no source accepted")),
         (None, true) => return Err(BaseError::from("source requested")),
         _ => { }
     };
@@ -296,11 +312,7 @@ pub(crate) fn check_args(node: &Node, source: bool, range: impl RangeBounds<usiz
     } else {
         Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
             (Included(0), Included(0)) => "no arguments allowed".to_string(),
-            (Included(min), Included(max)) if min == max => format!("exactly {min} arguments required"),
-            (Included(min), Included(max)) => format!("between {min} and {max} arguments required"),
-            (Included(min), Unbounded) => format!("at least {min} arguments required"),
-            (Unbounded, Included(max)) => format!("at most {max} arguments required"),
-            _ => panic!("checkArgs: bounds {:?}, {:?}", range.start_bound(), range.end_bound())
+            _ => format!("{} arguments required", describe_range(&range))
         }))
     }
 }
