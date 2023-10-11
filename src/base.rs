@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter, Debug};
 use std::ops::RangeBounds;
 use dyn_clone::DynClone;
 use crate::utils::describe_range;
+use num::{Signed, One, Zero};
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -241,9 +242,37 @@ pub trait Stream: DynClone {
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
 pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
+    /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
+    /// by `n` elements.
+    ///
+    /// The return value is `Ok(())` if `n` elements were skipped. If the iterator finishes early,
+    /// the result is `Err(k)`, where `k` is the number of remaining elements. This is important to
+    /// know when multiple iterators are chained.
+    ///
+    /// # Panics
+    /// This function will panic if a negative value is passed in `n`.
+    fn skip_n(&mut self, n: &Number) -> Result<(), Number>;
 }
 
-impl<T> SIterator for T where T: Iterator<Item = Result<Item, BaseError>> { }
+impl<T> SIterator for T where T: Iterator<Item = Result<Item, BaseError>> {
+    /// This default implementation calls `next()` an appropriate number of times, and thus is
+    /// reasonably usable only for small values of `n`.
+    ///
+    /// # Panics
+    /// This function will panic if a negative value is passed in `n`.
+    fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
+        assert!(!n.is_negative());
+        let mut n = n.clone();
+        let one = Number::one();
+        while !n.is_zero() {
+            if self.next().is_none() {
+                return Err(n)
+            }
+            n -= &one;
+        }
+        Ok(())
+    }
+}
 
 
 /// The enum returned by [`Stream::length()`].

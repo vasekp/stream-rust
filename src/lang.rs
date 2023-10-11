@@ -1,6 +1,6 @@
 use crate::base::*;
 use crate::session::Session;
-use num::ToPrimitive;
+use num::One;
 
 
 /// A `Stream` formed by direct enumeration of its `Item`s.
@@ -42,13 +42,14 @@ fn construct_part(session: &Session, node: &Node) -> Result<Item, BaseError> {
     node.check_args(true, 1..)?;
     let mut item = session.eval(node.source.as_ref().unwrap())?;
     let args = node.args.iter()
-        .map(|x| Ok::<_, BaseError>(session.eval(x)?.into_num_within(Number::from(1)..)?))
+        .map(|x| session.eval(x)?.into_num_within(Number::one()..))
         .collect::<Result<Vec<_>, _>>()?;
-    for i in args {
-        item = item.into_stream()?
-            .iter()
-            .nth(i.to_usize().unwrap() - 1)
-            .unwrap_or(Err(BaseError::from("index past end of stream")))?
+    for index in args {
+        let mut iter = item.into_stream()?.iter();
+        if iter.skip_n(&(index - Number::one())).is_err() {
+            return Err(BaseError::from("index past end of stream"));
+        }
+        item = iter.next().unwrap_or(Err(BaseError::from("index past end of stream")))?;
     }
     Ok(item)
 }
