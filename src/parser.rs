@@ -67,6 +67,7 @@ enum CharClass {
     Ident,
     Delim,
     Rel,
+    Comment,
     Other
 }
 
@@ -77,6 +78,7 @@ fn char_class(c: char) -> CharClass {
         'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => Ident,
         '"' | '\'' => Delim,
         '<' | '=' | '>' => Rel,
+        ';' => Comment,
         _ => Other
     }
 }
@@ -164,6 +166,9 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Result<Token<'a>, ParseError<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if let Some((_, ';')) = self.iter.peek() {
+            return None;
+        }
         if let Some((start, ch)) = self.iter.next() {
             let class = char_class(ch);
             use CharClass::*;
@@ -173,7 +178,8 @@ impl<'a> Iterator for Tokenizer<'a> {
                     Ok(())
                 },
                 Delim => self.skip_until(ch),
-                Other => Ok(())
+                Other => Ok(()),
+                Comment => unreachable!()
             };
             if class == CharClass::Space {
                 return self.next();
@@ -283,6 +289,14 @@ fn test_tokenizer() {
     assert_eq!(it.next(), Some(Ok(Token(Ident, "c"))));
     assert_eq!(it.next(), Some(Ok(Token(Char, "'d\"é'")))); // non-ASCII in quotes
     assert_eq!(it.next(), Some(Err(ParseError::cmp_ref("invalid character")))); // non-ASCII
+    assert_eq!(it.next(), None);
+
+    let mut it = Tokenizer::new(r#"1;á"#);
+    assert_eq!(it.next(), Some(Ok(Token(Number, "1"))));
+    assert_eq!(it.next(), None);
+
+    let mut it = Tokenizer::new(r#"";";";"#);
+    assert_eq!(it.next(), Some(Ok(Token(String, "\";\""))));
     assert_eq!(it.next(), None);
 }
 
@@ -645,6 +659,7 @@ fn test_parser() {
     assert_eq!(parse("(1]"), Err(ParseError::cmp_ref("wrong bracket: expected ')'")));
     assert_eq!(parse("(1"), Err(ParseError::cmp_ref("missing close bracket: ')'")));
     assert_eq!(parse("1)"), Err(ParseError::cmp_ref("unexpected closing bracket")));
+    assert_eq!(parse("(1;2)"), Err(ParseError::cmp_ref("missing close bracket: ')'")));
 
     assert_eq!(parse("{1}"), Ok(Eval(Node{
         core: Block(Box::new(Imm(Item::new_atomic(1)))), source: None, args: vec![]})));
