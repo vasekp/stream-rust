@@ -247,19 +247,14 @@ pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
     ///
     /// The return value is `Ok(())` if `n` elements were skipped. If the iterator finishes early,
     /// the result is `Err(k)`, where `k` is the number of remaining elements. This is important to
-    /// know when multiple iterators are chained.
+    /// know when multiple iterators are chained. Calling `next()` after this condition is
+    /// undefined behaviour.
     ///
-    /// # Panics
-    /// This function will panic if a negative value is passed in `n`.
-    fn skip_n(&mut self, n: &Number) -> Result<(), Number>;
-}
-
-impl<T> SIterator for T where T: Iterator<Item = Result<Item, BaseError>> {
-    /// This default implementation calls `next()` an appropriate number of times, and thus is
+    /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`.
     ///
     /// # Panics
-    /// This function will panic if a negative value is passed in `n`.
+    /// This function may panic if a negative value is passed in `n`.
     fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
         assert!(!n.is_negative());
         let mut n = n.clone();
@@ -273,6 +268,11 @@ impl<T> SIterator for T where T: Iterator<Item = Result<Item, BaseError>> {
         Ok(())
     }
 }
+
+impl<T, U, V> SIterator for std::iter::Map<T, U>
+where T: Iterator<Item = V>,
+      U: FnMut(V) -> Result<Item, BaseError>
+{ }
 
 
 /// The enum returned by [`Stream::length()`].
