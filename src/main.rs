@@ -14,6 +14,7 @@ fn main() {
         let input = buffer.trim();
         match stream::parse(input) {
             Ok(expr) => {
+                println!("{expr:?}");
                 match session.eval(&expr) {
                     Ok(item) => println!("{item:.80}"),
                     Err(err) => println!("{err}")

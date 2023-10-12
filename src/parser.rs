@@ -513,10 +513,16 @@ fn test_basenum() {
 }
 
 fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
-    assert!(!input.is_empty());
-    //let mut stack = vec![];
+    struct StackEntry {
+        op: String,
+        prec: u32,
+        args: Vec<Expr>
+    }
+
+    debug_assert!(!input.is_empty());
+    let mut stack: Vec<StackEntry> = vec![];
     let mut cur = None;
-    for part in input {
+    'a: for part in input {
         use ExprPart::*;
         use TTerm as TT;
         use Node::*;
@@ -559,11 +565,61 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                     source: src.map(Box::new),
                     args: vec
                 })),
-            // TODO: all Opers, priority, unary
+            (Oper(Token(_, op)), Some(mut prev)) => {
+                let (prec, multi) = get_op(&op);
+                while let Some(entry) = stack.last_mut() {
+                    if entry.prec > prec {
+                        let mut entry = stack.pop().unwrap();
+                        entry.args.push(prev);
+                        prev = Eval(base::Node{
+                            core: Core::Symbol(entry.op),
+                            source: None,
+                            args: entry.args
+                        });
+                    } else if entry.prec == prec && entry.op == op && multi {
+                        entry.args.push(prev);
+                        continue 'a;
+                    } else if entry.prec == prec {
+                        let mut entry = stack.pop().unwrap();
+                        entry.args.push(prev);
+                        prev = Eval(base::Node{
+                            core: Core::Symbol(entry.op),
+                            source: None,
+                            args: entry.args
+                        });
+                        break;
+                    } else {
+                        break;
+                    }
+                }
+                stack.push(StackEntry{ op: op.into(), prec, args: vec![prev] });
+            },
+            (Oper(Token(_, op)), None) if op == "+" || op == "-"
+                => stack.push(StackEntry{ op: op.into(), prec: get_op(op).0, args: vec![] }),
             _ => todo!()
         }
     }
-    Ok(cur.unwrap())
+    let mut ret = cur.unwrap();
+    while let Some(mut entry) = stack.pop() {
+        entry.args.push(ret);
+        ret = Expr::Eval(base::Node{
+            core: Core::Symbol(entry.op),
+            source: None,
+            args: entry.args
+        });
+    }
+    Ok(ret)
+}
+
+fn get_op(op: &str) -> (u32, bool) {
+    match op {
+        "+" => (1, true),
+        "-" => (1, false),
+        "*" => (2, true),
+        "/" => (2, false),
+        "^" => (3, false),
+        _ => todo!()
+    }
 }
 
 
@@ -752,4 +808,118 @@ fn test_parser() {
         }))),
         args: vec![Imm(Item::new_atomic(2))]})));
     assert_eq!(parse("[1]([2])"), syntax_err);
+}
+
+#[test]
+fn test_prec() {
+    use Expr::*;
+    use Core::*;
+    use base::Node;
+
+    // base precedence tests
+    // +(1, *(2, ^(3, 4)), 5)
+    assert_eq!(parse("1+2*3^4+5"), Ok(Eval(Node{
+        core: Symbol("+".into()),
+        source: None,
+        args: vec![
+            Imm(Item::new_atomic(1)),
+            Eval(Node{
+                core: Symbol("*".into()),
+                source: None,
+                args: vec![
+                    Imm(Item::new_atomic(2)),
+                    Eval(Node{
+                        core: Symbol("^".into()),
+                        source: None,
+                        args: vec![ Imm(Item::new_atomic(3)), Imm(Item::new_atomic(4)) ]
+                    })
+                ]}),
+            Imm(Item::new_atomic(5))
+        ]})));
+    // +(1, *( ^(2, 3), 4), 5)
+    assert_eq!(parse("1+2^3*4+5"), Ok(Eval(Node{
+        core: Symbol("+".into()),
+        source: None,
+        args: vec![
+            Imm(Item::new_atomic(1)),
+            Eval(Node{
+                core: Symbol("*".into()),
+                source: None,
+                args: vec![
+                    Eval(Node{
+                        core: Symbol("^".into()),
+                        source: None,
+                        args: vec![ Imm(Item::new_atomic(2)), Imm(Item::new_atomic(3)) ]
+                    }),
+                    Imm(Item::new_atomic(4))
+                ]}),
+            Imm(Item::new_atomic(5))
+        ]})));
+    // mixing + and -: same precedence, but - don't mix and stack
+    // -( -( -( +(1, 2, 3), 4), 5), 6)
+    assert_eq!(parse("1+2+3-4-5-6"), Ok(Eval(Node{
+        core: Symbol("-".into()),
+        source: None,
+        args: vec![
+            Eval(Node{
+                core: Symbol("-".into()),
+                source: None,
+                args: vec![
+                    Eval(Node{
+                        core: Symbol("-".into()),
+                        source: None,
+                        args: vec![
+                            Eval(Node{
+                                core: Symbol("+".into()),
+                                source: None,
+                                args: vec![
+                                    Imm(Item::new_atomic(1)),
+                                    Imm(Item::new_atomic(2)),
+                                    Imm(Item::new_atomic(3))
+                                ]}),
+                            Imm(Item::new_atomic(4))
+                        ]}),
+                    Imm(Item::new_atomic(5))
+                ]}),
+            Imm(Item::new_atomic(6))
+        ]})));
+    // chaining takes precedence over everything
+    // +(1, a.b, 2)
+    assert_eq!(parse("1+a.b+2"), Ok(Eval(Node{
+        core: Symbol("+".into()),
+        source: None,
+        args: vec![
+            Imm(Item::new_atomic(1)),
+            Eval(Node{
+                core: Symbol("b".into()),
+                source: Some(Box::new(Eval(Node{
+                    core: Symbol("a".into()),
+                    source: None,
+                    args: vec![]
+                }))),
+                args: vec![]
+            }),
+            Imm(Item::new_atomic(2))
+        ]})));
+    // +(1, 2)
+    assert_eq!(parse("+1+2"), Ok(Eval(Node{
+        core: Symbol("+".into()),
+        source: None,
+        args: vec![
+            Imm(Item::new_atomic(1)),
+            Imm(Item::new_atomic(2))
+        ]})));
+    // -( -(1), 2)
+    assert_eq!(parse("-1-2"), Ok(Eval(Node{
+        core: Symbol("-".into()),
+        source: None,
+        args: vec![
+            Eval(Node{
+                core: Symbol("-".into()),
+                source: None,
+                args: vec![ Imm(Item::new_atomic(1)) ]
+            }),
+            Imm(Item::new_atomic(2))
+        ]})));
+    assert_eq!(parse("*1*2"), Err(ParseError::cmp_ref("cannot appear here")));
 }
