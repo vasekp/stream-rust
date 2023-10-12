@@ -160,7 +160,7 @@ impl Stream for Range {
         if self.step.is_zero() {
             Infinite
         } else {
-            Exact(Self::length_helper(&self.from, &self.to, &self.step))
+            Exact(self.iter().len_remain().unwrap())
         }
     }
 }
@@ -182,14 +182,6 @@ impl Range {
         Ok(Item::new_stream(Range{from, to, step}))
     }
 
-    fn length_helper(from: &Number, to: &Number, step: &Number) -> Number {
-        match step.to_i32() {
-            Some(1) => to - from + 1,
-            Some(-1) => from - to + 1,
-            Some(0) => unreachable!(),
-            _ => (to - from) / step + 1
-        }
-    }
 }
 
 impl Iterator for RangeIter {
@@ -214,12 +206,21 @@ impl SIterator for RangeIter {
         if self.step.is_zero() {
             return Ok(())
         }
-        let max = Range::length_helper(&self.value, &self.stop, &self.step);
-        if max >= *n {
+        let max = self.len_remain().unwrap();
+        if n <= &max {
             self.value += n * &self.step;
             Ok(())
         } else {
-            Err(n - max)
+            Err(n - &max)
+        }
+    }
+
+    fn len_remain(&self) -> Option<Number> {
+        match self.step.to_i32() {
+            Some(1) => Some(&self.stop - &self.value + 1),
+            Some(-1) => Some(&self.value - &self.stop + 1),
+            Some(0) => None,
+            _ => Some((&self.stop - &self.value) / &self.step + 1)
         }
     }
 }

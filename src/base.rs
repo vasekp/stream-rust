@@ -216,24 +216,29 @@ pub trait Stream: DynClone {
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the iterator. See [`Length`] for the possible return values. The default implementation
-    /// relies on [`Iterator::size_hint()`] to return one of `Exact`, `AtMost`, `Unknown` or
-    /// `LikelyInfinite`. The latter is produced if `size_hint` returned `(usize::MAX, None)`,
-    /// which is a customary indication of infiniteness in the standard library, but may have false
-    /// positives, like an iterator whose size can't fit into `usize`.
+    /// relies on [`SIterator::len_remain()`] and [`Iterator::size_hint()`] to return one of
+    /// `Exact`, `AtMost`, `Unknown` or `LikelyInfinite`. The latter is produced if `size_hint`
+    /// returned `(usize::MAX, None)`, which is a customary indication of infiniteness in the
+    /// standard library, but may have false positives, like an iterator whose size can't fit into
+    /// `usize`.
     ///
     /// The return value must be consistent with the actual behaviour of the stream.
     fn length(&self) -> Length {
+        use Length::*;
         let iter = self.iter();
+        if let Some(len) = iter.len_remain() {
+            return Exact(len);
+        }
         match iter.size_hint() {
-            (lo, Some(hi)) => if lo == hi { Length::Exact(lo.into()) } else { Length::AtMost(hi.into()) },
-            (usize::MAX, None) => Length::Infinite,
-            _ => Length::Unknown
+            (_, Some(hi)) => AtMost(hi.into()),
+            (usize::MAX, None) => LikelyInfinite,
+            _ => Unknown
         }
     }
 }
 
 
-/// The iterator trait returned by [`Stream::iter()`]. Every call to next returns either:
+/// The iterator trait returned by [`Stream::iter()`]. Every call to `next` returns either:
 /// - `Some(Ok(item))`: any [`Item`] ready for direct consumption,
 /// - `Some(Err(err))`: an error occurred at some point,
 /// - `None`: the stream ended.
@@ -242,6 +247,18 @@ pub trait Stream: DynClone {
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
 pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
+    /// Returns the number of items remaining in the iterator, if it can be deduced from its
+    /// current state. If it can't, or is known to be infinite, returns `None`.
+    ///
+    /// [`skip_n`] may use this value for optimization. It is also used by the default
+    /// implementation of [`Stream::length()`].
+    fn len_remain(&self) -> Option<Number> {
+        match self.size_hint() {
+            (lo, Some(hi)) if lo == hi => Some(lo.into()),
+            _ => None
+        }
+    }
+
     /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
     /// by `n` elements.
     ///
@@ -251,12 +268,18 @@ pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
     /// undefined behaviour.
     ///
     /// The default implementation calls `next()` an appropriate number of times, and thus is
-    /// reasonably usable only for small values of `n`.
+    /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
+    /// value given by [`len_remains()`].
     ///
     /// # Panics
     /// This function may panic if a negative value is passed in `n`.
     fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
         assert!(!n.is_negative());
+        if let Some(len) = self.len_remain() {
+            if n > &len {
+                return Err(n - len);
+            }
+        }
         let mut n = n.clone();
         let one = Number::one();
         while !n.is_zero() {
