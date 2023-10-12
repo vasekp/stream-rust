@@ -1,6 +1,7 @@
 use crate::base::*;
 use crate::session::Session;
-use num::One;
+use num::{One, Signed, Zero};
+use num::pow::pow;
 
 
 /// A `Stream` formed by direct enumeration of its `Item`s.
@@ -54,8 +55,70 @@ fn construct_part(session: &Session, node: &Node) -> Result<Item, BaseError> {
     Ok(item)
 }
 
+fn construct_plus(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    node.check_args(false, 1..)?;
+    let args = node.args.iter()
+        .map(|x| session.eval(x)?.into_num())
+        .collect::<Result<Vec<_>, _>>()?;
+    let ans = args.into_iter().reduce(|a, e| a + e).unwrap();
+    Ok(Item::new_atomic(ans))
+}
+
+fn construct_minus(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    node.check_args(false, 1..=2)?;
+    let args = node.args.iter()
+        .map(|x| session.eval(x)?.into_num())
+        .collect::<Result<Vec<_>, _>>()?;
+    let ans = match args.len() {
+        1 => -&args[0],
+        2 => &args[0] - &args[1],
+        _ => unreachable!()
+    };
+    Ok(Item::new_atomic(ans))
+}
+
+fn construct_times(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    node.check_args(false, 1..)?;
+    let args = node.args.iter()
+        .map(|x| session.eval(x)?.into_num())
+        .collect::<Result<Vec<_>, _>>()?;
+    let ans = args.into_iter().reduce(|a, e| a * e).unwrap();
+    Ok(Item::new_atomic(ans))
+}
+
+fn construct_div(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    node.check_args(false, 2..=2)?;
+    let args = node.args.iter()
+        .map(|x| session.eval(x)?.into_num())
+        .collect::<Result<Vec<_>, _>>()?;
+    if args[1].is_zero() {
+        return Err(BaseError::from("division by zero"));
+    }
+    let ans = &args[0] / &args[1];
+    Ok(Item::new_atomic(ans))
+}
+
+fn construct_pow(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    node.check_args(false, 2..=2)?;
+    let args = node.args.iter()
+        .map(|x| session.eval(x)?.into_num())
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut it = args.into_iter();
+    let x = it.next().unwrap();
+    let y = it.next().unwrap();
+    if y.is_negative() {
+        return Err(BaseError::from("negative exponent"));
+    }
+    let ans = pow(x, y.try_into().map_err(|_| BaseError::from("exponent too large"))?);
+    Ok(Item::new_atomic(ans))
+}
 
 pub(crate) fn init(session: &mut Session) {
     session.register_symbol("list", construct_list);
     session.register_symbol("part", construct_part);
+    session.register_symbol("+", construct_plus);
+    session.register_symbol("-", construct_minus);
+    session.register_symbol("*", construct_times);
+    session.register_symbol("/", construct_div);
+    session.register_symbol("^", construct_pow);
 }
