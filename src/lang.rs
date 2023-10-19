@@ -39,6 +39,57 @@ fn construct_list(session: &Session, node: &Node) -> Result<Item, BaseError> {
         .map(Item::new_stream)
 }
 
+#[derive(Clone)]
+pub struct LiteralString(Vec<crate::base::Char>);
+
+impl Stream for LiteralString {
+    fn iter(&self) -> Box<dyn SIterator> {
+        Box::new(self.0.clone().into_iter().map(|x| Ok(Item::new_char(x.clone()))))
+    }
+
+    fn describe(&self) -> String {
+        let mut ret = String::new();
+        ret.push('"');
+        for c in &self.0 {
+            ret += &format!("{c:#}");
+        }
+        ret.push('"');
+        ret
+    }
+
+    fn length(&self) -> Length {
+        Length::from(self.0.len())
+    }
+}
+
+impl From<String> for LiteralString {
+    fn from(s: String) -> Self {
+        LiteralString(s.chars().map(|c| crate::base::Char::from(c)).collect())
+    }
+}
+
+/*
+impl Stream for String {
+    fn iter(&self) -> Box<dyn SIterator> {
+        Box::new(chars.iter())
+    }
+
+    fn describe(&self) -> String {
+        let mut ret = String::new();
+        ret.push('"');
+        for c in self.iter().map(|item| item.unwrap().into_char().unwrap()) {
+            ret += &format!("{c:#}");
+        }
+        ret.push('"');
+        ret
+    }
+
+    fn length(&self) -> Length {
+        Length::UnknownFinite
+    }
+}
+*/
+
 fn construct_part(session: &Session, node: &Node) -> Result<Item, BaseError> {
     node.check_args(true, 1..)?;
     let mut item = session.eval(node.source.as_ref().unwrap())?;

@@ -60,6 +60,13 @@ impl Item {
         }
     }
 
+    pub fn into_char(self) -> Result<Char, BaseError> {
+        match self {
+            Char(c) => Ok(c),
+            _ => Err(BaseError::from(format!("expected char, found {:?}", &self)))
+        }
+    }
+
     pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
         match self {
             Stream(s) => Ok(&**s),
@@ -152,16 +159,18 @@ impl From<&str> for Char {
 
 impl Display for Char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        fn escape(c: char) -> String {
+        let alt = f.alternate();
+        let escape = |c| -> String {
             match c {
                 '\n' => "\\n".into(),
                 '\r' => "\\r".into(),
                 '\t' => "\\t".into(),
                 '\\' => "\\\\".into(),
-                '\'' => "\\'".into(),
+                '\'' => if alt { c.into() } else { "\\'".into() },
+                '"' => if alt { "\\\"".into() } else { c.into() },
                 _ => c.into()
             }
-        }
+        };
         match self {
             Char::Single(c) => write!(f, "{}", escape(*c))?,
             Char::Multi(s) => {

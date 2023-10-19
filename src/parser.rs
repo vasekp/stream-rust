@@ -3,6 +3,7 @@ use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
 use std::cell::RefCell;
 use crate::base::{BaseError, Item, Expr, Char};
+use crate::lang::LiteralString;
 use num::BigInt;
 
 
@@ -570,7 +571,8 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                 => cur = Some(Item::new_bool(tok.1.parse::<bool>().unwrap()).into()),
             (Term(TT::Literal(Char(tok))), None)
                 => cur = Some(Item::new_char(parse_char(tok.1)?).into()),
-            // TODO: string
+            (Term(TT::Literal(String(tok))), None)
+                => cur = Some(Item::new_stream(LiteralString::from(parse_string(tok.1)?)).into()),
             (Term(TT::List(vec)), None)
                 => cur = Some(Expr::new_node("list", None, vec)),
             // TODO: Special
