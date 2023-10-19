@@ -334,8 +334,8 @@ pub enum Core {
 
 impl Expr {
     /// Creates a new `Expr` of a value type.
-    pub fn new_imm(value: impl Into<Number>) -> Expr {
-        Expr::Imm(Item::new_number(value))
+    pub fn new_imm(item: Item) -> Expr {
+        Expr::Imm(item)
     }
 
     /// Creates a new `Expr` of a node with a symbolic head.
@@ -354,6 +354,12 @@ impl Expr {
             source: source.map(Box::new),
             args
         })
+    }
+}
+
+impl From<Item> for Expr {
+    fn from(item: Item) -> Expr {
+        Expr::new_imm(item)
     }
 }
 
