@@ -2,7 +2,7 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
 use std::cell::RefCell;
-use crate::base::{BaseError, Item, Expr};
+use crate::base::{BaseError, Item, Expr, Char};
 use num::BigInt;
 
 
@@ -86,6 +86,7 @@ fn char_class(c: char) -> CharClass {
 enum TokenClass {
     Number,
     BaseNum,
+    Bool,
     Ident,
     String,
     Char,
@@ -101,12 +102,8 @@ fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
     use TokenClass::*;
     const OPERS: &str = "+-*/%@^~&|<=>";
     let class = match slice.chars().next().unwrap() {
-        '0'..='9' => if slice.contains('_') {
-                BaseNum
-            } else {
-                Number
-            },
-        'a'..='z' | 'A'..='Z' | '_' => Ident,
+        '0'..='9' => if slice.contains('_') { BaseNum } else { Number },
+        'a'..='z' | 'A'..='Z' | '_' => if slice == "true" || slice == "false" { Bool } else { Ident },
         '"' => String,
         '\'' => Char,
         '.' | ':' => Chain,
@@ -268,7 +265,7 @@ fn test_tokenizer() {
     // tailing space ignored
     assert_eq!(tk.next(), None);
 
-    let mut it = Tokenizer::new("a.b0_1(3_012,#4)");
+    let mut it = Tokenizer::new("a.b0_1(3_012,#4,true)");
     assert_eq!(it.next(), Some(Ok(Token(Ident, "a"))));
     assert_eq!(it.next(), Some(Ok(Token(Chain, "."))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "b0_1"))));
@@ -277,6 +274,8 @@ fn test_tokenizer() {
     assert_eq!(it.next(), Some(Ok(Token(Comma, ","))));
     assert_eq!(it.next(), Some(Ok(Token(Special, "#"))));
     assert_eq!(it.next(), Some(Ok(Token(Number, "4"))));
+    assert_eq!(it.next(), Some(Ok(Token(Comma, ","))));
+    assert_eq!(it.next(), Some(Ok(Token(Bool, "true"))));
     assert_eq!(it.next(), Some(Ok(Token(Close, ")"))));
     assert_eq!(it.next(), None);
 
@@ -373,13 +372,13 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
         let last = expr.last_mut();
         match (t.0, last, t.1) {
             // Immediate values
-            (TC::Number | TC::BaseNum | TC::String | TC::Char, Some(Oper(_)) | None, _)
+            (TC::Number | TC::BaseNum | TC::Bool | TC::String | TC::Char, Some(Oper(_)) | None, _)
                 => expr.push(Term(match t {
                     Token(TC::Number, _) => TT::Literal(Literal::Number(t)),
                     Token(TC::BaseNum, _) => TT::Literal(Literal::BaseNum(t)),
+                    Token(TC::Bool, _) => TT::Literal(Literal::Bool(t)),
                     Token(TC::String, _) => TT::Literal(Literal::String(t)),
                     Token(TC::Char, _) => TT::Literal(Literal::Char(t)),
-                    Token(TC::Ident, "true" | "false") => TT::Literal(Literal::Bool(t)),
                     _ => unreachable!()
                 })),
             // Identifier: also can follow ., :
@@ -507,6 +506,43 @@ fn test_basenum() {
     assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse::<BigInt>().unwrap()));
 }
 
+fn parse_string(slice: &str) -> Result<String, ParseError<'_>> {
+    let mut ret = String::new();
+    // First and last characters are guaranteed to be ' or " and thus single-byte
+    let inner = &slice[1..(slice.len() - 1)];
+    let mut it = inner.char_indices().peekable();
+    while let Some((index, c)) = it.next() {
+        if c == '\\' {
+            let d = it.next().unwrap().1; // \ is guaranteed to be followed by at least 1 char
+            match d {
+                '\\' => ret.push(d),
+                'n' => ret.push('\n'),
+                'r' => ret.push('\r'),
+                't' => ret.push('\t'),
+                _ => {
+                    let end_index = match it.peek() {
+                        Some(&(pos, _)) => pos,
+                        None => inner.len()
+                    };
+                    return Err(ParseError::new("invalid escape sequence", &inner[index..end_index]));
+                }
+            }
+        } else {
+            ret.push(c);
+        }
+    }
+    Ok(ret)
+}
+
+fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
+    let content = parse_string(slice)?;
+    if content.is_empty() {
+        Err(ParseError::new("empty character", slice))
+    } else {
+        Ok(Char::from(content))
+    }
+}
+
 fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
     struct StackEntry {
         op: String,
@@ -528,7 +564,11 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                     .map_err(|_| ParseError::new("invalid number", tok.1))?).into()),
             (Term(TT::Literal(BaseNum(tok))), None)
                 => cur = Some(Item::new_number(parse_basenum(tok.1)?).into()),
-            // TODO: all other value types
+            (Term(TT::Literal(Bool(tok))), None)
+                => cur = Some(Item::new_bool(tok.1.parse::<bool>().unwrap()).into()),
+            (Term(TT::Literal(Char(tok))), None)
+                => cur = Some(Item::new_char(parse_char(tok.1)?).into()),
+            // TODO: string
             (Term(TT::List(vec)), None)
                 => cur = Some(Expr::new_node("list", None, vec)),
             // TODO: Special
@@ -680,6 +720,13 @@ fn test_parser() {
     assert_eq!(parse("([([(1)])])"), parse("[[1]]"));
     assert_eq!(parse("([1])[2]"), parse("[1][2]"));
     assert_eq!(parse("[1]([2])"), syntax_err);
+
+    assert_eq!(parse("''"), err("empty character"));
+    assert_eq!(parse("'\\n'"), Ok(Item::new_char('\n').into()));
+    assert_eq!(parse("'\\\\'"), Ok(Item::new_char('\\').into()));
+    assert_eq!(parse("'\\h'"), err("invalid escape sequence"));
+    assert_eq!(parse("true+'1'"), Ok(Expr::new_node("+", None, vec![
+        Item::new_bool(true).into(), Item::new_char('1').into()])));
 }
 
 #[test]

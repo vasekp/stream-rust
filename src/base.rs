@@ -14,6 +14,8 @@ pub type Number = num::BigInt;
 /// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
 pub enum Item {
     Number(Number),
+    Bool(bool),
+    Char(Char),
     Stream(Box<dyn Stream>)
 }
 
@@ -22,6 +24,14 @@ pub use Item::*;
 impl Item {
     pub fn new_number(value: impl Into<Number>) -> Item {
         Number(value.into())
+    }
+
+    pub fn new_bool(value: bool) -> Item {
+        Bool(value)
+    }
+
+    pub fn new_char(value: impl Into<Char>) -> Item {
+        Char(value.into())
     }
 
     pub fn new_stream(value: impl Stream + 'static) -> Item {
@@ -68,7 +78,9 @@ impl Item {
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Number(n) => write!(f, "{}", n),
+            Number(n) => write!(f, "{n}"),
+            Bool(b) => write!(f, "{b}"),
+            Char(c) => write!(f, "'{c}'"),
             Stream(s) => (*s).writeout(f)
         }
     }
@@ -77,7 +89,9 @@ impl Display for Item {
 impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Number(n) => write!(f, "number {}", n),
+            Number(n) => write!(f, "number {n}"),
+            Bool(b) => write!(f, "bool {b}"),
+            Char(c) => write!(f, "char '{c}'"),
             Stream(s) => write!(f, "stream {}", s.describe())
         }
     }
@@ -87,6 +101,8 @@ impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Number(x1), Number(x2)) => x1 == x2,
+            (Bool(x1), Bool(x2)) => x1 == x2,
+            (Char(x1), Char(x2)) => x1 == x2,
             _ => todo!()
         }
     }
@@ -96,9 +112,75 @@ impl Clone for Item {
     fn clone(&self) -> Item {
         match self {
             Number(x) => Number(x.clone()),
+            Bool(x) => Bool(*x),
+            Char(x) => Char(x.clone()),
             Stream(s) => Stream(dyn_clone::clone_box(&**s))
         }
     }
+}
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Char {
+    Single(char),
+    Multi(String)
+}
+
+impl From<char> for Char {
+    fn from(c: char) -> Char {
+        Char::Single(c)
+    }
+}
+
+impl From<String> for Char {
+    fn from(s: String) -> Char {
+        let mut it = s.chars();
+        if let (Some(c), None) = (it.next(), it.next()) {
+            Char::Single(c)
+        } else {
+            Char::Multi(s)
+        }
+    }
+}
+
+impl From<&str> for Char {
+    fn from(x: &str) -> Char {
+        Char::from(x.to_string())
+    }
+}
+
+impl Display for Char {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        fn escape(c: char) -> String {
+            match c {
+                '\n' => "\\n".into(),
+                '\r' => "\\r".into(),
+                '\t' => "\\t".into(),
+                '\\' => "\\\\".into(),
+                _ => c.into()
+            }
+        }
+        match self {
+            Char::Single(c) => write!(f, "{}", escape(*c))?,
+            Char::Multi(s) => {
+                for c in s.chars() {
+                    write!(f, "{}", escape(c))?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+#[test]
+fn test_char() {
+    assert_eq!(Char::from('a'), Char::Single('a'));
+    assert_eq!(Char::from("a"), Char::Single('a'));
+    assert_eq!(Char::from('❤'), Char::Single('❤')); // multi-byte
+    assert_eq!(Char::from("❤"), Char::Single('❤'));
+    assert_eq!(Char::from("é"), Char::Multi("é".into())); // combining mark
+    assert_eq!(Char::from("as"), Char::Multi("as".into()));
+    assert_eq!(Char::from('\n').to_string(), "\\n");
 }
 
 
