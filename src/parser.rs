@@ -165,35 +165,32 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Result<Token<'a>, ParseError<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some((_, ';')) = self.iter.peek() {
+        let (start, ch) = self.iter.next()?;
+        if ch == ';' {
             return None;
         }
-        if let Some((start, ch)) = self.iter.next() {
-            let class = char_class(ch);
-            use CharClass::*;
-            let res = match class {
-                Ident | Rel | Space => {
-                    self.skip_same(&class);
-                    Ok(())
-                },
-                Delim => self.skip_until(ch),
-                Other => Ok(()),
-                Comment => unreachable!()
-            };
-            if class == CharClass::Space {
-                return self.next();
-            }
-            let end = match self.iter.peek() {
-                Some(&(pos, _)) => pos,
-                None => self.input.len()
-            };
-            let slice = &self.input[start..end];
-            Some(res
-                .map_err(|base| ParseError::new(base, slice))
-                .and_then(|_| token_class(slice).map(|class| Token(class, slice)) ))
-        } else {
-            None
+        let class = char_class(ch);
+        use CharClass::*;
+        let res = match class {
+            Ident | Rel | Space => {
+                self.skip_same(&class);
+                Ok(())
+            },
+            Delim => self.skip_until(ch),
+            Other => Ok(()),
+            Comment => unreachable!()
+        };
+        if class == CharClass::Space {
+            return self.next();
         }
+        let end = match self.iter.peek() {
+            Some(&(pos, _)) => pos,
+            None => self.input.len()
+        };
+        let slice = &self.input[start..end];
+        Some(res
+            .map_err(|base| ParseError::new(base, slice))
+            .and_then(|_| token_class(slice).map(|class| Token(class, slice)) ))
     }
 }
 
@@ -440,15 +437,14 @@ fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Resu
             },
             // Closing bracket
             (TC::Close, _, _) => {
-                if let Some(open) = bracket {
-                    let close = closing(open);
-                    if t.1 == close {
-                        break;
-                    } else {
-                        return Err(ParseError::new(format!("wrong bracket: expected '{close}'"), t.1));
-                    }
-                } else {
+                let Some(open) = bracket else {
                     return Err(ParseError::new("unexpected closing bracket", t.1));
+                };
+                let close = closing(open);
+                if t.1 == close {
+                    break;
+                } else {
+                    return Err(ParseError::new(format!("wrong bracket: expected '{close}'"), t.1));
                 }
             },
             // Separator of multiple exprs.
