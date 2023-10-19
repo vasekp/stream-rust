@@ -19,42 +19,40 @@ pub enum Item {
     Stream(Box<dyn Stream>)
 }
 
-pub use Item::*;
-
 impl Item {
     pub fn new_number(value: impl Into<Number>) -> Item {
-        Number(value.into())
+        Item::Number(value.into())
     }
 
     pub fn new_bool(value: bool) -> Item {
-        Bool(value)
+        Item::Bool(value)
     }
 
     pub fn new_char(value: impl Into<Char>) -> Item {
-        Char(value.into())
+        Item::Char(value.into())
     }
 
     pub fn new_stream(value: impl Stream + 'static) -> Item {
-        Stream(Box::new(value))
+        Item::Stream(Box::new(value))
     }
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {
         match self {
-            Number(x) => Ok(x),
+            Item::Number(x) => Ok(x),
             _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn into_num(self) -> Result<Number, BaseError> {
         match self {
-            Number(x) => Ok(x),
+            Item::Number(x) => Ok(x),
             _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn into_num_within(self, range: impl RangeBounds<Number>) -> Result<Number, BaseError> {
         match self {
-            Number(x) if range.contains(&x) => Ok(x),
+            Item::Number(x) if range.contains(&x) => Ok(x),
             _ => Err(BaseError::from(format!("expected number ({}), found {:?}",
                 describe_range(&range), &self)))
         }
@@ -62,21 +60,21 @@ impl Item {
 
     pub fn into_char(self) -> Result<Char, BaseError> {
         match self {
-            Char(c) => Ok(c),
+            Item::Char(c) => Ok(c),
             _ => Err(BaseError::from(format!("expected char, found {:?}", &self)))
         }
     }
 
     pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
         match self {
-            Stream(s) => Ok(&**s),
+            Item::Stream(s) => Ok(&**s),
             _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
         }
     }
 
     pub fn into_stream(self) -> Result<Box<dyn Stream>, BaseError> {
         match self {
-            Stream(s) => Ok(s),
+            Item::Stream(s) => Ok(s),
             _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
         }
     }
@@ -84,6 +82,7 @@ impl Item {
 
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        use Item::*;
         match self {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
@@ -95,6 +94,7 @@ impl Display for Item {
 
 impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        use Item::*;
         match self {
             Number(n) => write!(f, "number {n}"),
             Bool(b) => write!(f, "bool {b}"),
@@ -106,6 +106,7 @@ impl Debug for Item {
 
 impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
+        use Item::*;
         match (self, other) {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
@@ -117,6 +118,7 @@ impl PartialEq for Item {
 
 impl Clone for Item {
     fn clone(&self) -> Item {
+        use Item::*;
         match self {
             Number(x) => Number(x.clone()),
             Bool(x) => Bool(*x),

@@ -40,7 +40,7 @@ fn construct_list(session: &Session, node: &Node) -> Result<Item, BaseError> {
 }
 
 #[derive(Clone)]
-pub struct LiteralString(Vec<crate::base::Char>);
+pub struct LiteralString(Vec<Char>);
 
 impl Stream for LiteralString {
     fn iter(&self) -> Box<dyn SIterator> {
@@ -64,7 +64,7 @@ impl Stream for LiteralString {
 
 impl From<String> for LiteralString {
     fn from(s: String) -> Self {
-        LiteralString(s.chars().map(|c| crate::base::Char::from(c)).collect())
+        LiteralString(s.chars().map(|c| Char::from(c)).collect())
     }
 }
 
