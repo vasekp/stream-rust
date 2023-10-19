@@ -11,47 +11,17 @@ use num::{Signed, One, Zero};
 pub type Number = num::BigInt;
 
 
-/// Encompasses all atomic values.
-#[derive(PartialEq, Clone)]
-pub enum Atom {
-    Number(Number)
-}
-
-impl<T> From<T> for Atom where T : Into<Number> {
-    fn from(value: T) -> Self {
-        Atom::Number(value.into())
-    }
-}
-
-impl Display for Atom {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{}", match self {
-            Atom::Number(n) => n.to_string()
-        })
-    }
-}
-
-impl Debug for Atom {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{}", match self {
-            Atom::Number(n) => "number ".to_string() + &n.to_string()
-        })
-    }
-}
-
-
-/// An `Item` is the result of evaluation. Either an [`Atom`], which is an atomic value,
-/// or a [`Stream`].
+/// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
 pub enum Item {
-    Atom(Atom),
+    Number(Number),
     Stream(Box<dyn Stream>)
 }
 
 pub use Item::*;
 
 impl Item {
-    pub fn new_atomic(value: impl Into<Atom>) -> Item {
-        Atom(value.into())
+    pub fn new_number(value: impl Into<Number>) -> Item {
+        Number(value.into())
     }
 
     pub fn new_stream(value: impl Stream + 'static) -> Item {
@@ -60,21 +30,21 @@ impl Item {
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {
         match self {
-            Atom(Atom::Number(x)) => Ok(x),
+            Number(x) => Ok(x),
             _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn into_num(self) -> Result<Number, BaseError> {
         match self {
-            Atom(Atom::Number(x)) => Ok(x),
+            Number(x) => Ok(x),
             _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
     pub fn into_num_within(self, range: impl RangeBounds<Number>) -> Result<Number, BaseError> {
         match self {
-            Atom(Atom::Number(x)) if range.contains(&x) => Ok(x),
+            Number(x) if range.contains(&x) => Ok(x),
             _ => Err(BaseError::from(format!("expected number ({}), found {:?}",
                 describe_range(&range), &self)))
         }
@@ -98,7 +68,7 @@ impl Item {
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Atom(a) => Display::fmt(&a, f),
+            Number(n) => write!(f, "{}", n),
             Stream(s) => (*s).writeout(f)
         }
     }
@@ -107,7 +77,7 @@ impl Display for Item {
 impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Atom(a) => Debug::fmt(&a, f),
+            Number(n) => write!(f, "number {}", n),
             Stream(s) => write!(f, "stream {}", s.describe())
         }
     }
@@ -116,7 +86,7 @@ impl Debug for Item {
 impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Atom(i1), Atom(i2)) => i1 == i2,
+            (Number(x1), Number(x2)) => x1 == x2,
             _ => todo!()
         }
     }
@@ -125,7 +95,7 @@ impl PartialEq for Item {
 impl Clone for Item {
     fn clone(&self) -> Item {
         match self {
-            Atom(a) => Atom(a.clone()),
+            Number(x) => Number(x.clone()),
             Stream(s) => Stream(dyn_clone::clone_box(&**s))
         }
     }
@@ -364,8 +334,8 @@ pub enum Core {
 
 impl Expr {
     /// Creates a new `Expr` of a value type.
-    pub fn new_imm(value: impl Into<Atom>) -> Expr {
-        Expr::Imm(Atom(value.into()))
+    pub fn new_imm(value: impl Into<Number>) -> Expr {
+        Expr::Imm(Item::new_number(value))
     }
 
     /// Creates a new `Expr` of a node with a symbolic head.

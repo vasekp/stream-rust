@@ -68,7 +68,7 @@ impl Iterator for SeqIter {
     type Item = Result<Item, BaseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let ret = Item::new_atomic(self.value.clone());
+        let ret = Item::new_number(self.value.clone());
         self.value += &self.step;
         Some(Ok(ret))
     }
@@ -191,7 +191,7 @@ impl Iterator for RangeIter {
         if self.step.is_zero()
             || (self.step.is_positive() && self.value <= self.stop)
             || (self.step.is_negative() && self.value >= self.stop) {
-                let ret = Item::new_atomic(self.value.clone());
+                let ret = Item::new_number(self.value.clone());
                 self.value += &self.step;
                 Some(Ok(ret))
         } else {
@@ -267,7 +267,7 @@ fn test_range_skip() {
     let sess = Session::new();
     let mut it = sess.eval(&parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&2.into()), Ok(()));
-    assert_eq!(it.next(), Some(Ok(Item::new_atomic(6))));
+    assert_eq!(it.next(), Some(Ok(Item::new_number(6))));
     let mut it = sess.eval(&parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&3.into()), Ok(()));
     assert_eq!(it.next(), None);
@@ -276,7 +276,7 @@ fn test_range_skip() {
 
     let mut it = sess.eval(&parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&3.into()), Ok(()));
-    assert_eq!(it.next(), Some(Ok(Item::new_atomic(8))));
+    assert_eq!(it.next(), Some(Ok(Item::new_number(8))));
     let mut it = sess.eval(&parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&4.into()), Ok(()));
     assert_eq!(it.next(), None);
@@ -285,7 +285,7 @@ fn test_range_skip() {
 
     let mut it = sess.eval(&parse("range(2, 8, 0)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&3.into()), Ok(()));
-    assert_eq!(it.next(), Some(Ok(Item::new_atomic(2))));
+    assert_eq!(it.next(), Some(Ok(Item::new_number(2))));
 }
 
 #[test]

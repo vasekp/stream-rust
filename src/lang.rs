@@ -61,7 +61,7 @@ fn construct_plus(session: &Session, node: &Node) -> Result<Item, BaseError> {
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     let ans = args.into_iter().reduce(|a, e| a + e).unwrap();
-    Ok(Item::new_atomic(ans))
+    Ok(Item::new_number(ans))
 }
 
 fn construct_minus(session: &Session, node: &Node) -> Result<Item, BaseError> {
@@ -74,7 +74,7 @@ fn construct_minus(session: &Session, node: &Node) -> Result<Item, BaseError> {
         2 => &args[0] - &args[1],
         _ => unreachable!()
     };
-    Ok(Item::new_atomic(ans))
+    Ok(Item::new_number(ans))
 }
 
 fn construct_times(session: &Session, node: &Node) -> Result<Item, BaseError> {
@@ -83,7 +83,7 @@ fn construct_times(session: &Session, node: &Node) -> Result<Item, BaseError> {
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     let ans = args.into_iter().reduce(|a, e| a * e).unwrap();
-    Ok(Item::new_atomic(ans))
+    Ok(Item::new_number(ans))
 }
 
 fn construct_div(session: &Session, node: &Node) -> Result<Item, BaseError> {
@@ -95,7 +95,7 @@ fn construct_div(session: &Session, node: &Node) -> Result<Item, BaseError> {
         return Err(BaseError::from("division by zero"));
     }
     let ans = &args[0] / &args[1];
-    Ok(Item::new_atomic(ans))
+    Ok(Item::new_number(ans))
 }
 
 fn construct_pow(session: &Session, node: &Node) -> Result<Item, BaseError> {
@@ -110,7 +110,7 @@ fn construct_pow(session: &Session, node: &Node) -> Result<Item, BaseError> {
         return Err(BaseError::from("negative exponent"));
     }
     let ans = pow(x, y.try_into().map_err(|_| BaseError::from("exponent too large"))?);
-    Ok(Item::new_atomic(ans))
+    Ok(Item::new_number(ans))
 }
 
 pub(crate) fn init(session: &mut Session) {
