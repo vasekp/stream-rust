@@ -120,6 +120,7 @@ impl Clone for Item {
 }
 
 
+/// A 'character' in Stream may represent a single code point or a multigraph (such as 'dz').
 #[derive(Debug, Clone, PartialEq)]
 pub enum Char {
     Single(char),
@@ -157,6 +158,7 @@ impl Display for Char {
                 '\r' => "\\r".into(),
                 '\t' => "\\t".into(),
                 '\\' => "\\\\".into(),
+                '\'' => "\\'".into(),
                 _ => c.into()
             }
         }

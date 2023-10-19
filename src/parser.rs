@@ -519,6 +519,8 @@ fn parse_string(slice: &str) -> Result<String, ParseError<'_>> {
                 'n' => ret.push('\n'),
                 'r' => ret.push('\r'),
                 't' => ret.push('\t'),
+                '\'' => ret.push('\''),
+                '\"' => ret.push('"'),
                 _ => {
                     let end_index = match it.peek() {
                         Some(&(pos, _)) => pos,
@@ -724,6 +726,9 @@ fn test_parser() {
     assert_eq!(parse("''"), err("empty character"));
     assert_eq!(parse("'\\n'"), Ok(Item::new_char('\n').into()));
     assert_eq!(parse("'\\\\'"), Ok(Item::new_char('\\').into()));
+    assert_eq!(parse("'\\''"), Ok(Item::new_char('\'').into()));
+    assert_eq!(parse("'\\\"'"), Ok(Item::new_char('"').into()));
+    assert_eq!(parse("'\"'"), Ok(Item::new_char('"').into()));
     assert_eq!(parse("'\\h'"), err("invalid escape sequence"));
     assert_eq!(parse("true+'1'"), Ok(Expr::new_node("+", None, vec![
         Item::new_bool(true).into(), Item::new_char('1').into()])));
