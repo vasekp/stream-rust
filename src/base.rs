@@ -250,7 +250,7 @@ pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. If it can't, or is known to be infinite, returns `None`.
     ///
-    /// [`skip_n`] may use this value for optimization. It is also used by the default
+    /// [`SIterator::skip_n`] may use this value for optimization. It is also used by the default
     /// implementation of [`Stream::length()`].
     fn len_remain(&self) -> Option<Number> {
         match self.size_hint() {
@@ -269,7 +269,7 @@ pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
     ///
     /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
-    /// value given by [`len_remains()`].
+    /// value given by [`SIterator::len_remain()`].
     ///
     /// # Panics
     /// This function may panic if a negative value is passed in `n`.
@@ -362,6 +362,30 @@ pub enum Core {
     Block(Box<Expr>)
 }
 
+impl Expr {
+    /// Creates a new `Expr` of a value type.
+    pub fn new_imm(value: impl Into<Atom>) -> Expr {
+        Expr::Imm(Atom(value.into()))
+    }
+
+    /// Creates a new `Expr` of a node with a symbolic head.
+    pub fn new_node(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{
+            core: Core::Symbol(symbol.into()),
+            source: source.map(Box::new),
+            args
+        })
+    }
+
+    /// Creates a new `Expr` of a node with a block head.
+    pub fn new_block(body: Expr, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{
+            core: Core::Block(Box::new(body)),
+            source: source.map(Box::new),
+            args
+        })
+    }
+}
 
 impl Node {
     pub(crate) fn check_args(&self, source: bool, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
