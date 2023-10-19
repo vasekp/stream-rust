@@ -33,8 +33,8 @@ impl Session {
     pub fn eval(&self, expr: &Expr) -> Result<Item, BaseError> {
         match expr {
             Expr::Imm(item) => Ok(item.clone()),
-            Expr::Eval(node) => match &node.core {
-                Core::Symbol(sym) => {
+            Expr::Eval(node) => match &node.head {
+                Head::Symbol(sym) => {
                     let func = self.find_symbol(sym)?;
                     func(self, node)
                 },

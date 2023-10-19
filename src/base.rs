@@ -312,22 +312,22 @@ pub enum Expr {
     Eval(Node)
 }
 
-/// A `Node` is a type of [`Expr`] representing a core function along with, optionally, its source
+/// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
 /// happens in [`Session::eval()`](crate::session::Session::eval).
 #[derive(Debug, PartialEq)]
 pub struct Node {
-    pub core: Core,
+    pub head: Head,
     pub source: Option<Box<Expr>>,
     pub args: Vec<Expr>
 }
 
-/// The core of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
+/// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
 #[derive(Debug, PartialEq)]
-pub enum Core {
+pub enum Head {
     Symbol(String),
     Block(Box<Expr>)
 }
@@ -341,7 +341,7 @@ impl Expr {
     /// Creates a new `Expr` of a node with a symbolic head.
     pub fn new_node(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{
-            core: Core::Symbol(symbol.into()),
+            head: Head::Symbol(symbol.into()),
             source: source.map(Box::new),
             args
         })
@@ -350,7 +350,7 @@ impl Expr {
     /// Creates a new `Expr` of a node with a block head.
     pub fn new_block(body: Expr, source: Option<Expr>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{
-            core: Core::Block(Box::new(body)),
+            head: Head::Block(Box::new(body)),
             source: source.map(Box::new),
             args
         })
