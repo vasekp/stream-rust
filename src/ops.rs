@@ -55,7 +55,7 @@ impl Seq {
     fn construct(session: &Session, node: &Node) -> Result<Item, BaseError> {
         node.check_args(false, 0..=2)?;
         let nums = node.args.iter()
-            .map(|x| session.eval(x).and_then(|y| Ok(y.into_num()?)))
+            .map(|x| session.eval(x).and_then(|y| y.into_num()))
             .collect::<Result<Vec<_>, _>>()?;
         let mut it = nums.into_iter();
         let from = it.next().unwrap_or(Number::one()).clone();
@@ -170,7 +170,7 @@ impl Range {
         node.check_args(false, 1..=3)?;
         let len = node.args.len();
         let nums = node.args.iter()
-            .map(|x| session.eval(x).and_then(|y| Ok(y.into_num()?)))
+            .map(|x| session.eval(x).and_then(|y| y.into_num()))
             .collect::<Result<Vec<_>, _>>()?;
         let mut it = nums.into_iter();
         let (from, to, step) = match len {

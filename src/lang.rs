@@ -64,7 +64,7 @@ impl Stream for LiteralString {
 
 impl From<String> for LiteralString {
     fn from(s: String) -> Self {
-        LiteralString(s.chars().map(|c| Char::from(c)).collect())
+        LiteralString(s.chars().map(Char::from).collect())
     }
 }
 
