@@ -35,11 +35,17 @@ impl Session {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => match &node.core {
                 Core::Symbol(sym) => {
-                    let func = self.find_symbol(&sym)?;
+                    let func = self.find_symbol(sym)?;
                     func(self, node)
                 },
                 _ => Err(BaseError::from("not implemented"))
             }
         }
+    }
+}
+
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
     }
 }

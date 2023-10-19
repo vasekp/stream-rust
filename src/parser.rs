@@ -544,7 +544,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
             (Part(vec), src)
                 => cur = Some(Expr::new_node("part", src, vec)),
             (Oper(Token(_, op)), Some(mut prev)) => {
-                let (prec, multi) = get_op(&op);
+                let (prec, multi) = get_op(op);
                 while let Some(entry) = stack.last_mut() {
                     if entry.prec > prec {
                         let mut entry = stack.pop().unwrap();
