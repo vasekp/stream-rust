@@ -47,6 +47,10 @@ impl Stream for LiteralString {
         Box::new(self.0.clone().into_iter().map(|x| Ok(Item::new_char(x.clone()))))
     }
 
+    fn is_string(&self) -> bool {
+        true
+    }
+
     fn describe(&self) -> String {
         let mut ret = String::new();
         ret.push('"');
@@ -67,28 +71,6 @@ impl From<String> for LiteralString {
         LiteralString(s.chars().map(Char::from).collect())
     }
 }
-
-/*
-impl Stream for String {
-    fn iter(&self) -> Box<dyn SIterator> {
-        Box::new(chars.iter())
-    }
-
-    fn describe(&self) -> String {
-        let mut ret = String::new();
-        ret.push('"');
-        for c in self.iter().map(|item| item.unwrap().into_char().unwrap()) {
-            ret += &format!("{c:#}");
-        }
-        ret.push('"');
-        ret
-    }
-
-    fn length(&self) -> Length {
-        Length::UnknownFinite
-    }
-}
-*/
 
 fn construct_part(session: &Session, node: &Node) -> Result<Item, BaseError> {
     node.check_args(true, 1..)?;

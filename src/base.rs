@@ -99,7 +99,7 @@ impl Debug for Item {
             Number(n) => write!(f, "number {n}"),
             Bool(b) => write!(f, "bool {b}"),
             Char(c) => write!(f, "char '{c}'"),
-            Stream(s) => write!(f, "stream {}", s.describe())
+            Stream(s) => write!(f, "{} {s}", if s.is_string() { "string" } else { "stream" })
         }
     }
 }
@@ -230,7 +230,21 @@ pub trait Stream: DynClone {
     /// ellipsis (the width must be at least 4 to accommodate the string `"[..."`); if no width is
     /// given, first three items are written out.  If an error happens during reading the stream,
     /// it is represented as `"<!>"`.
+    ///
+    /// If this is `Stream` represents a string, as expressed by its [`Stream::is_string()`]
+    /// method, the formatting follows that of a string, including character escapes. If no length
+    /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
+    /// a [`Char`] is treated as a reading error.
     fn writeout(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        if self.is_string() {
+            self.writeout_string(f)
+        } else {
+            self.writeout_stream(f)
+        }
+    }
+
+    #[doc(hidden)]
+    fn writeout_stream(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (prec, usize::MAX),
@@ -239,13 +253,14 @@ pub trait Stream: DynClone {
         if prec < 4 {
             return Err(::std::fmt::Error)
         }
-        let mut s = String::from('[');
+        let mut s = String::new();
         let mut i = 0;
+        s.push('[');
         'a: {
             while s.len() < prec && i < max {
                 match iter.next() {
                     None => {
-                        s += "]";
+                        s.push(']');
                         break 'a;
                     },
                     Some(Ok(item)) => {
@@ -272,6 +287,57 @@ pub trait Stream: DynClone {
         } else {
             write!(f, "{:.*}...", prec - 3, s)
         }
+    }
+
+    #[doc(hidden)]
+    fn writeout_string(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let mut iter = self.iter();
+        let (prec, max) = match f.precision() {
+            Some(prec) => (prec, usize::MAX),
+            None => (usize::MAX, 20)
+        };
+        if prec < 4 {
+            return Err(::std::fmt::Error)
+        }
+        let mut s = String::new();
+        let mut i = 0;
+        s.push('"');
+        'a: {
+            while s.len() < prec && i < max {
+                match iter.next() {
+                    None => {
+                        s.push('"');
+                        break 'a;
+                    },
+                    Some(Ok(Item::Char(c))) => {
+                        s += &format!("{c:#}");
+                    },
+                    _ => {
+                        s += "<!>";
+                        break 'a;
+                    }
+                };
+                i += 1;
+            }
+            s += match iter.next() {
+                None => "\"",
+                Some(_) => "..."
+            };
+        }
+        if s.len() < prec {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "{:.*}...", prec - 3, s)
+        }
+    }
+
+    /// An indication whether this stream should be treated as a string. The implementation should
+    /// only return `true` if it can be sure that the iterator will produce a stream of [`Char`]s.
+    /// If so, this affects the behaviour of [`Stream::writeout()`].
+    ///
+    /// The default implementation returns `false`.
+    fn is_string(&self) -> bool {
+        false
     }
 
     /// Describe the stream using the stream syntax. This should be parseable back to reconstruct a
