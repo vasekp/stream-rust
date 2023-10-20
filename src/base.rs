@@ -339,12 +339,12 @@ pub trait Stream: DynClone {
     fn is_string(&self) -> bool {
         false
     }
-
+/*
     /// Describe the stream using the stream syntax. This should be parseable back to reconstruct a
     /// copy, but it is not a strict requirement. The primary purpose of this function is for the
     /// implementation of the [`Debug`] trait.
     fn describe(&self) -> String;
-
+*/
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the iterator. See [`Length`] for the possible return values. The default implementation
     /// relies on [`SIterator::len_remain()`] and [`Iterator::size_hint()`] to return one of
@@ -365,6 +365,12 @@ pub trait Stream: DynClone {
             (usize::MAX, None) => LikelyInfinite,
             _ => Unknown
         }
+    }
+}
+
+impl Display for dyn Stream {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        self.writeout(f)
     }
 }
 

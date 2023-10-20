@@ -11,7 +11,7 @@ impl Stream for List {
     fn iter(&self) -> Box<dyn SIterator> {
         Box::new(self.clone().into_iter().map(|x| Ok(x.clone())))
     }
-
+/*
     fn describe(&self) -> String {
         let mut s = String::new();
         s.push('[');
@@ -25,7 +25,7 @@ impl Stream for List {
         s.push(']');
         s
     }
-
+*/
     fn length(&self) -> Length {
         Length::from(self.len())
     }
@@ -50,7 +50,7 @@ impl Stream for LiteralString {
     fn is_string(&self) -> bool {
         true
     }
-
+/*
     fn describe(&self) -> String {
         let mut ret = String::new();
         ret.push('"');
@@ -60,7 +60,7 @@ impl Stream for LiteralString {
         ret.push('"');
         ret
     }
-
+*/
     fn length(&self) -> Length {
         Length::from(self.0.len())
     }

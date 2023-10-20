@@ -42,10 +42,6 @@ impl Stream for Seq {
         Box::new(SeqIter{value: self.from.clone(), step: self.step.clone()})
     }
 
-    fn describe(&self) -> String {
-        format!("seq({}, {})", self.from, self.step)
-    }
-
     fn length(&self) -> Length {
         Length::Infinite
     }
@@ -145,10 +141,6 @@ struct RangeIter {
 impl Stream for Range {
     fn iter(&self) -> Box<dyn SIterator> {
         Box::new(RangeIter{value: self.from.clone(), stop: self.to.clone(), step: self.step.clone()})
-    }
-
-    fn describe(&self) -> String {
-        format!("range({}, {}, {})", self.from, self.to, self.step)
     }
 
     fn length(&self) -> Length {
