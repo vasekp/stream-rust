@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::base::*;
 use crate::{lang, ops};
 
-type Constructor = fn(&Session, &Node) -> Result<Item, BaseError>;
+type Constructor = fn(&Session, Node) -> Result<Item, BaseError>;
 
 /// A `Session` holds information necessary for evaluating symbolic expressions. This includes a
 /// register of defined symbols.
@@ -30,11 +30,11 @@ impl Session {
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn eval(&self, expr: &Expr) -> Result<Item, BaseError> {
+    pub fn eval(&self, expr: Expr) -> Result<Item, BaseError> {
         match expr {
-            Expr::Imm(item) => Ok(item.clone()),
-            Expr::Eval(node) => match &node.head {
-                Head::Symbol(sym) => {
+            Expr::Imm(item) => Ok(item),
+            Expr::Eval(node) => match node.head {
+                Head::Symbol(ref sym) => {
                     let func = self.find_symbol(sym)?;
                     func(self, node)
                 },

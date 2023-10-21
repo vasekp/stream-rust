@@ -31,9 +31,9 @@ impl Stream for List {
     }
 }
 
-fn construct_list(session: &Session, node: &Node) -> Result<Item, BaseError> {
+fn construct_list(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.check_args(false, 0..)?;
-    node.args.iter()
+    node.args.into_iter()
         .map(|x| session.eval(x))
         .collect::<Result<Vec<Item>, _>>()
         .map(Item::new_stream)
@@ -72,10 +72,10 @@ impl From<String> for LiteralString {
     }
 }
 
-fn construct_part(session: &Session, node: &Node) -> Result<Item, BaseError> {
+fn construct_part(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.check_args(true, 1..)?;
-    let mut item = session.eval(node.source.as_ref().unwrap())?;
-    let args = node.args.iter()
+    let mut item = session.eval(*node.source.unwrap())?;
+    let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num_within(Number::one()..))
         .collect::<Result<Vec<_>, _>>()?;
     for index in args {
@@ -88,18 +88,18 @@ fn construct_part(session: &Session, node: &Node) -> Result<Item, BaseError> {
     Ok(item)
 }
 
-fn construct_plus(session: &Session, node: &Node) -> Result<Item, BaseError> {
+fn construct_plus(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.check_args(false, 1..)?;
-    let args = node.args.iter()
+    let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     let ans = args.into_iter().reduce(|a, e| a + e).unwrap();
     Ok(Item::new_number(ans))
 }
 
-fn construct_minus(session: &Session, node: &Node) -> Result<Item, BaseError> {
+fn construct_minus(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.check_args(false, 1..=2)?;
-    let args = node.args.iter()
+    let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     let ans = match args.len() {
@@ -110,18 +110,18 @@ fn construct_minus(session: &Session, node: &Node) -> Result<Item, BaseError> {
     Ok(Item::new_number(ans))
 }
 
-fn construct_times(session: &Session, node: &Node) -> Result<Item, BaseError> {
+fn construct_times(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.check_args(false, 1..)?;
-    let args = node.args.iter()
+    let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     let ans = args.into_iter().reduce(|a, e| a * e).unwrap();
     Ok(Item::new_number(ans))
 }
 
-fn construct_div(session: &Session, node: &Node) -> Result<Item, BaseError> {
+fn construct_div(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.check_args(false, 2..=2)?;
-    let args = node.args.iter()
+    let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     if args[1].is_zero() {
@@ -131,9 +131,9 @@ fn construct_div(session: &Session, node: &Node) -> Result<Item, BaseError> {
     Ok(Item::new_number(ans))
 }
 
-fn construct_pow(session: &Session, node: &Node) -> Result<Item, BaseError> {
+fn construct_pow(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.check_args(false, 2..=2)?;
-    let args = node.args.iter()
+    let args = node.args.into_iter()
         .map(|x| session.eval(x)?.into_num())
         .collect::<Result<Vec<_>, _>>()?;
     let mut it = args.into_iter();

@@ -17,13 +17,13 @@ use crate::session::Session;
 /// use streamlang::session::Session;
 /// use streamlang::parser::parse;
 /// let sess = Session::new();
-/// let stream = sess.eval(&parse("seq").unwrap()).unwrap();
+/// let stream = sess.eval(parse("seq").unwrap()).unwrap();
 /// assert_eq!(stream.to_string(), "[1, 2, 3, ...");
-/// let stream = sess.eval(&parse("seq(3)").unwrap()).unwrap();
+/// let stream = sess.eval(parse("seq(3)").unwrap()).unwrap();
 /// assert_eq!(stream.to_string(), "[3, 4, 5, ...");
-/// let stream = sess.eval(&parse("seq(1, 3)").unwrap()).unwrap();
+/// let stream = sess.eval(parse("seq(1, 3)").unwrap()).unwrap();
 /// assert_eq!(stream.to_string(), "[1, 4, 7, ...");
-/// let stream = sess.eval(&parse("seq(3, 0)").unwrap()).unwrap();
+/// let stream = sess.eval(parse("seq(3, 0)").unwrap()).unwrap();
 /// assert_eq!(stream.to_string(), "[3, 3, 3, ...");
 /// ```
 #[derive(Clone)]
@@ -48,9 +48,9 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn construct(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    fn construct(session: &Session, node: Node) -> Result<Item, BaseError> {
         node.check_args(false, 0..=2)?;
-        let nums = node.args.iter()
+        let nums = node.args.into_iter()
             .map(|x| session.eval(x).and_then(|y| y.into_num()))
             .collect::<Result<Vec<_>, _>>()?;
         let mut it = nums.into_iter();
@@ -83,13 +83,13 @@ fn test_seq() {
     use crate::parser::parse;
     let sess = Session::new();
     // in addition to doc tests
-    let stream = sess.eval(&parse("seq(0)").unwrap()).unwrap();
+    let stream = sess.eval(parse("seq(0)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[0, 1, 2, ...");
-    let stream = sess.eval(&parse("seq(2, 3)").unwrap()).unwrap();
+    let stream = sess.eval(parse("seq(2, 3)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[2, 5, 8, ...");
-    let stream = sess.eval(&parse("seq(2, 0)").unwrap()).unwrap();
+    let stream = sess.eval(parse("seq(2, 0)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[2, 2, 2, ...");
-    let stream = sess.eval(&parse("seq(2, -3)").unwrap()).unwrap();
+    let stream = sess.eval(parse("seq(2, -3)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[2, -1, -4, ...");
 }
 
@@ -97,9 +97,9 @@ fn test_seq() {
 fn test_seq_skip() {
     use crate::parser::parse;
     let sess = Session::new();
-    let stream = sess.eval(&parse("seq(2, 3)[5]").unwrap()).unwrap();
+    let stream = sess.eval(parse("seq(2, 3)[5]").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "14");
-    let stream = sess.eval(&parse("seq(2, 0)[5]").unwrap()).unwrap();
+    let stream = sess.eval(parse("seq(2, 0)[5]").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "2");
 }
 
@@ -118,11 +118,11 @@ fn test_seq_skip() {
 /// use streamlang::session::Session;
 /// use streamlang::parser::parse;
 /// let sess = Session::new();
-/// let stream = sess.eval(&parse("range(3)").unwrap()).unwrap();
+/// let stream = sess.eval(parse("range(3)").unwrap()).unwrap();
 /// assert_eq!(stream.to_string(), "[1, 2, 3]");
-/// let stream = sess.eval(&parse("range(0, 2)").unwrap()).unwrap();
+/// let stream = sess.eval(parse("range(0, 2)").unwrap()).unwrap();
 /// assert_eq!(stream.to_string(), "[0, 1, 2]");
-/// let stream = sess.eval(&parse("range(3, 1, -1)").unwrap()).unwrap();
+/// let stream = sess.eval(parse("range(3, 1, -1)").unwrap()).unwrap();
 /// assert_eq!(stream.to_string(), "[3, 2, 1]");
 /// ```
 #[derive(Clone)]
@@ -158,10 +158,10 @@ impl Stream for Range {
 }
 
 impl Range {
-    fn construct(session: &Session, node: &Node) -> Result<Item, BaseError> {
+    fn construct(session: &Session, node: Node) -> Result<Item, BaseError> {
         node.check_args(false, 1..=3)?;
         let len = node.args.len();
-        let nums = node.args.iter()
+        let nums = node.args.into_iter()
             .map(|x| session.eval(x).and_then(|y| y.into_num()))
             .collect::<Result<Vec<_>, _>>()?;
         let mut it = nums.into_iter();
@@ -221,34 +221,34 @@ impl SIterator for RangeIter {
 fn test_range() {
     use crate::parser::parse;
     let sess = Session::new();
-    let stream = sess.eval(&parse("range(3)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(3)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[1, 2, 3]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(3));
-    let stream = sess.eval(&parse("range(0)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(0)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(0));
-    let stream = sess.eval(&parse("range(3, 3)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(3, 3)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[3]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
-    let stream = sess.eval(&parse("range(3, 5)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(3, 5)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[3, 4, 5]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(3));
-    let stream = sess.eval(&parse("range(5, 3)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(5, 3)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(0));
-    let stream = sess.eval(&parse("range(1, 10, 4)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(1, 10, 4)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[1, 5, 9]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(3));
-    let stream = sess.eval(&parse("range(1, 10, 10)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(1, 10, 10)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[1]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(1));
-    let stream = sess.eval(&parse("range(1, 10, 0)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(1, 10, 0)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[1, 1, 1, ...");
     assert_eq!(stream.as_stream().unwrap().length(), Length::Infinite);
-    let stream = sess.eval(&parse("range(1, 10, -1)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(1, 10, -1)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[]");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(0));
-    let stream = sess.eval(&parse("range(1, -10, -3)").unwrap()).unwrap();
+    let stream = sess.eval(parse("range(1, -10, -3)").unwrap()).unwrap();
     assert_eq!(stream.to_string(), "[1, -2, -5, ...");
     assert_eq!(stream.as_stream().unwrap().length(), Length::from(4));
 }
@@ -257,25 +257,25 @@ fn test_range() {
 fn test_range_skip() {
     use crate::parser::parse;
     let sess = Session::new();
-    let mut it = sess.eval(&parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
+    let mut it = sess.eval(parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&2.into()), Ok(()));
     assert_eq!(it.next(), Some(Ok(Item::new_number(6))));
-    let mut it = sess.eval(&parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
+    let mut it = sess.eval(parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&3.into()), Ok(()));
     assert_eq!(it.next(), None);
-    let mut it = sess.eval(&parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
+    let mut it = sess.eval(parse("range(2, 7, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&4.into()), Err(1.into()));
 
-    let mut it = sess.eval(&parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
+    let mut it = sess.eval(parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&3.into()), Ok(()));
     assert_eq!(it.next(), Some(Ok(Item::new_number(8))));
-    let mut it = sess.eval(&parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
+    let mut it = sess.eval(parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&4.into()), Ok(()));
     assert_eq!(it.next(), None);
-    let mut it = sess.eval(&parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
+    let mut it = sess.eval(parse("range(2, 8, 2)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&5.into()), Err(1.into()));
 
-    let mut it = sess.eval(&parse("range(2, 8, 0)").unwrap()).unwrap().into_stream().unwrap().iter();
+    let mut it = sess.eval(parse("range(2, 8, 0)").unwrap()).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(&3.into()), Ok(()));
     assert_eq!(it.next(), Some(Ok(Item::new_number(2))));
 }
@@ -284,19 +284,19 @@ fn test_range_skip() {
 fn range_test_neg_lengths() {
     use crate::parser::parse;
     let sess = Session::new();
-    let stream = sess.eval(&parse("range(10, 1, -2)").unwrap()).unwrap().into_stream().unwrap();
+    let stream = sess.eval(parse("range(10, 1, -2)").unwrap()).unwrap().into_stream().unwrap();
     assert_eq!(stream.length(), Length::from(5));
-    let stream = sess.eval(&parse("range(10, 1, -3)").unwrap()).unwrap().into_stream().unwrap();
+    let stream = sess.eval(parse("range(10, 1, -3)").unwrap()).unwrap().into_stream().unwrap();
     assert_eq!(stream.length(), Length::from(4));
-    let stream = sess.eval(&parse("range(10, 1, -4)").unwrap()).unwrap().into_stream().unwrap();
+    let stream = sess.eval(parse("range(10, 1, -4)").unwrap()).unwrap().into_stream().unwrap();
     assert_eq!(stream.length(), Length::from(3));
-    let stream = sess.eval(&parse("range(10, 1, -5)").unwrap()).unwrap().into_stream().unwrap();
+    let stream = sess.eval(parse("range(10, 1, -5)").unwrap()).unwrap().into_stream().unwrap();
     assert_eq!(stream.length(), Length::from(2));
-    let stream = sess.eval(&parse("range(10, 1, -9)").unwrap()).unwrap().into_stream().unwrap();
+    let stream = sess.eval(parse("range(10, 1, -9)").unwrap()).unwrap().into_stream().unwrap();
     assert_eq!(stream.length(), Length::from(2));
-    let stream = sess.eval(&parse("range(10, 1, -10)").unwrap()).unwrap().into_stream().unwrap();
+    let stream = sess.eval(parse("range(10, 1, -10)").unwrap()).unwrap().into_stream().unwrap();
     assert_eq!(stream.length(), Length::from(1));
-    let stream = sess.eval(&parse("range(10, 1, -11)").unwrap()).unwrap().into_stream().unwrap();
+    let stream = sess.eval(parse("range(10, 1, -11)").unwrap()).unwrap().into_stream().unwrap();
     assert_eq!(stream.length(), Length::from(1));
 }
 
