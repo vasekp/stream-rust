@@ -515,6 +515,7 @@ pub struct Node {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Head {
     Symbol(String),
+    Oper(String),
     Block(Box<Expr>)
 }
 
@@ -528,6 +529,15 @@ impl Expr {
     pub fn new_node(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{
             head: Head::Symbol(symbol.into()),
+            source: source.map(Box::new),
+            args
+        })
+    }
+
+    /// Creates a new `Expr` of a node with an operation head.
+    pub fn new_op(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{
+            head: Head::Oper(symbol.into()),
             source: source.map(Box::new),
             args
         })
@@ -602,7 +612,6 @@ impl Describe for Node {
     fn describe(&self) -> String {
         let mut ret = String::new();
         if let Some(source) = &self.source {
-            // TODO priority
             ret += &source.describe();
             ret.push('.');
         }
@@ -612,6 +621,19 @@ impl Describe for Node {
                 ret.push('{');
                 ret += &b.describe();
                 ret.push('}');
+            },
+            Head::Oper(o) => { // special, early return
+                ret.push('(');
+                let mut it = self.args.iter();
+                if self.args.len() > 1 {
+                    ret += &it.next().unwrap().describe();
+                }
+                for expr in it {
+                    ret += &o;
+                    ret += &expr.describe();
+                }
+                ret.push(')');
+                return ret;
             }
         };
         if self.args.len() > 0 {

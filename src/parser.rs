@@ -593,14 +593,14 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                     if entry.prec > prec {
                         let mut entry = stack.pop().unwrap();
                         entry.args.push(prev);
-                        prev = Expr::new_node(entry.op, None, entry.args);
+                        prev = Expr::new_op(entry.op, None, entry.args);
                     } else if entry.prec == prec && entry.op == op && multi {
                         entry.args.push(prev);
                         continue 'a;
                     } else if entry.prec == prec {
                         let mut entry = stack.pop().unwrap();
                         entry.args.push(prev);
-                        prev = Expr::new_node(entry.op, None, entry.args);
+                        prev = Expr::new_op(entry.op, None, entry.args);
                         break;
                     } else {
                         break;
@@ -616,7 +616,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
     let mut ret = cur.unwrap();
     while let Some(mut entry) = stack.pop() {
         entry.args.push(ret);
-        ret = Expr::new_node(entry.op, None, entry.args);
+        ret = Expr::new_op(entry.op, None, entry.args);
     }
     Ok(ret)
 }
@@ -732,7 +732,7 @@ fn test_parser() {
     assert_eq!(parse("'\\\"'"), Ok(Item::new_char('"').into()));
     assert_eq!(parse("'\"'"), Ok(Item::new_char('"').into()));
     assert_eq!(parse("'\\h'"), err("invalid escape sequence"));
-    assert_eq!(parse("true+'1'"), Ok(Expr::new_node("+", None, vec![
+    assert_eq!(parse("true+'1'"), Ok(Expr::new_op("+", None, vec![
         Item::new_bool(true).into(), Item::new_char('1').into()])));
 }
 
@@ -742,27 +742,27 @@ fn test_prec() {
 
     // base precedence tests
     // +(1, *(2, ^(3, 4)), 5)
-    assert_eq!(parse("1+2*3^4+5"), Ok(Expr::new_node("+", None, vec![
+    assert_eq!(parse("1+2*3^4+5"), Ok(Expr::new_op("+", None, vec![
         Item::new_number(1).into(),
-        Expr::new_node("*", None, vec![
+        Expr::new_op("*", None, vec![
             Item::new_number(2).into(),
-            Expr::new_node("^", None, vec![Item::new_number(3).into(), Item::new_number(4).into()])]),
+            Expr::new_op("^", None, vec![Item::new_number(3).into(), Item::new_number(4).into()])]),
         Item::new_number(5).into()
         ])));
     // +(1, *( ^(2, 3), 4), 5)
-    assert_eq!(parse("1+2^3*4+5"), Ok(Expr::new_node("+", None, vec![
+    assert_eq!(parse("1+2^3*4+5"), Ok(Expr::new_op("+", None, vec![
         Item::new_number(1).into(),
-        Expr::new_node("*", None, vec![
-            Expr::new_node("^", None, vec![Item::new_number(2).into(), Item::new_number(3).into()]),
+        Expr::new_op("*", None, vec![
+            Expr::new_op("^", None, vec![Item::new_number(2).into(), Item::new_number(3).into()]),
             Item::new_number(4).into()]),
         Item::new_number(5).into()
         ])));
     // mixing + and -: same precedence, but - don't mix and stack
     // -( -( -( +(1, 2, 3), 4), 5), 6)
-    assert_eq!(parse("1+2+3-4-5-6"), Ok(Expr::new_node("-", None, vec![
-        Expr::new_node("-", None, vec![
-            Expr::new_node("-", None, vec![
-                Expr::new_node("+", None, vec![
+    assert_eq!(parse("1+2+3-4-5-6"), Ok(Expr::new_op("-", None, vec![
+        Expr::new_op("-", None, vec![
+            Expr::new_op("-", None, vec![
+                Expr::new_op("+", None, vec![
                     Item::new_number(1).into(),
                     Item::new_number(2).into(),
                     Item::new_number(3).into()]),
@@ -771,17 +771,17 @@ fn test_prec() {
         Item::new_number(6).into()])));
     // chaining takes precedence over everything
     // +(1, a.b, 2)
-    assert_eq!(parse("1+a.b+2"), Ok(Expr::new_node("+", None, vec![
+    assert_eq!(parse("1+a.b+2"), Ok(Expr::new_op("+", None, vec![
         Item::new_number(1).into(),
         Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![]),
         Item::new_number(2).into()])));
     // +(1, 2)
-    assert_eq!(parse("+1+2"), Ok(Expr::new_node("+", None, vec![
+    assert_eq!(parse("+1+2"), Ok(Expr::new_op("+", None, vec![
         Item::new_number(1).into(),
         Item::new_number(2).into()])));
     // -( -(1), 2)
-    assert_eq!(parse("-1-2"), Ok(Expr::new_node("-", None, vec![
-        Expr::new_node("-", None, vec![Item::new_number(1).into()]),
+    assert_eq!(parse("-1-2"), Ok(Expr::new_op("-", None, vec![
+        Expr::new_op("-", None, vec![Item::new_number(1).into()]),
         Item::new_number(2).into()])));
     assert_eq!(parse("*1*2"), err("cannot appear here"));
 }

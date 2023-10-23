@@ -34,7 +34,7 @@ impl Session {
         match expr {
             Expr::Imm(item) => Ok(item),
             Expr::Eval(node) => match node.head {
-                Head::Symbol(ref sym) => {
+                Head::Symbol(ref sym) | Head::Oper(ref sym) => {
                     let func = self.find_symbol(sym)?;
                     func(self, node)
                 },
