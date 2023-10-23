@@ -2,32 +2,43 @@ use crate::base::*;
 use crate::session::Session;
 use num::{One, Signed, Zero};
 use num::pow::pow;
+use crate::base::Describe;
 
 
 /// A `Stream` formed by direct enumeration of its `Item`s.
-pub type List = Vec<Item>;
+#[derive(Clone)]
+pub struct List(Vec<Item>);
 
 impl Stream for List {
     fn iter(&self) -> Box<dyn SIterator> {
-        Box::new(self.clone().into_iter().map(|x| Ok(x.clone())))
+        Box::new(self.0.clone().into_iter().map(|x| Ok(x.clone())))
     }
-/*
-    fn describe(&self) -> String {
-        let mut s = String::new();
-        s.push('[');
-        let mut it = <[Item]>::iter(self);
-        if let Some(item) = it.next() {
-            s += &format!("{item}");
-            for item in it {
-                s += &format!(",{item}");
-            }
-        }
-        s.push(']');
-        s
-    }
-*/
+
     fn length(&self) -> Length {
-        Length::from(self.len())
+        Length::from(self.0.len())
+    }
+}
+
+impl Describe for List {
+    fn describe(&self) -> String {
+        let mut ret = String::new();
+        ret.push('[');
+        let mut it = self.0.iter();
+        if let Some(item) = it.next() {
+            ret += &item.describe();
+        }
+        for item in it {
+            ret += ", ";
+            ret += &item.describe();
+        }
+        ret.push(']');
+        ret
+    }
+}
+
+impl From<Vec<Item>> for List {
+    fn from(vec: Vec<Item>) -> List {
+        List(vec)
     }
 }
 
@@ -36,8 +47,9 @@ fn construct_list(session: &Session, node: Node) -> Result<Item, BaseError> {
     node.args.into_iter()
         .map(|x| session.eval(x))
         .collect::<Result<Vec<Item>, _>>()
-        .map(Item::new_stream)
+        .map(|vec| Item::new_stream(List::from(vec)))
 }
+
 
 #[derive(Clone)]
 pub struct LiteralString(Vec<Char>);
@@ -50,19 +62,21 @@ impl Stream for LiteralString {
     fn is_string(&self) -> bool {
         true
     }
-/*
+
+    fn length(&self) -> Length {
+        Length::from(self.0.len())
+    }
+}
+
+impl Describe for LiteralString {
     fn describe(&self) -> String {
         let mut ret = String::new();
         ret.push('"');
-        for c in &self.0 {
-            ret += &format!("{c:#}");
+        for ch in &self.0 {
+            ret += &format!("{ch}");
         }
         ret.push('"');
         ret
-    }
-*/
-    fn length(&self) -> Length {
-        Length::from(self.0.len())
     }
 }
 

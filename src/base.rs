@@ -3,12 +3,24 @@ use std::ops::RangeBounds;
 use dyn_clone::DynClone;
 use crate::utils::describe_range;
 use num::{Signed, One, Zero};
+use crate::session::Session;
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
 /// BigInt fallback in the future for better performance.
 pub type Number = num::BigInt;
+
+
+/// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into a input form.
+pub trait Describe {
+    /// Construct a string representation of `self`. This is meant for storing object across
+    /// sessions. The resulting `String` must be a syntactically valid input that reconstruct a
+    /// copy of the original object on [`parser::parse()`](crate::parser::parse()) and
+    /// [`Session::eval()`]. For this reason, all session-local data should be baked into the
+    /// expression.
+    fn describe(&self) -> String;
+}
 
 
 /// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
@@ -100,6 +112,18 @@ impl Debug for Item {
             Bool(b) => write!(f, "bool {b}"),
             Char(c) => write!(f, "char '{c}'"),
             Stream(s) => write!(f, "{} {s}", if s.is_string() { "string" } else { "stream" })
+        }
+    }
+}
+
+impl Describe for Item {
+    fn describe(&self) -> String {
+        use Item::*;
+        match self {
+            Number(n) => format!("{n}"),
+            Bool(b) => format!("{b}"),
+            Char(c) => format!("'{c}'"),
+            Stream(s) => s.describe()
         }
     }
 }
@@ -219,7 +243,7 @@ impl Display for BaseError {
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
-pub trait Stream: DynClone {
+pub trait Stream: DynClone + Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
     fn iter(&self) -> Box<dyn SIterator>;
@@ -339,12 +363,7 @@ pub trait Stream: DynClone {
     fn is_string(&self) -> bool {
         false
     }
-/*
-    /// Describe the stream using the stream syntax. This should be parseable back to reconstruct a
-    /// copy, but it is not a strict requirement. The primary purpose of this function is for the
-    /// implementation of the [`Debug`] trait.
-    fn describe(&self) -> String;
-*/
+
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the iterator. See [`Length`] for the possible return values. The default implementation
     /// relies on [`SIterator::len_remain()`] and [`Iterator::size_hint()`] to return one of
@@ -473,7 +492,7 @@ impl<T> From<T> for Length where T: Into<Number> {
 
 /// Any Stream language expression. This may be either a directly accessible [`Item`] (including
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Imm(Item),
     Eval(Node)
@@ -483,7 +502,7 @@ pub enum Expr {
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
 /// happens in [`Session::eval()`](crate::session::Session::eval).
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Node {
     pub head: Head,
     pub source: Option<Box<Expr>>,
@@ -493,7 +512,7 @@ pub struct Node {
 /// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Head {
     Symbol(String),
     Block(Box<Expr>)
@@ -522,11 +541,31 @@ impl Expr {
             args
         })
     }
+
+    /// Expecting `self` to be `Expr::Imm(item)`, extracts the `Item`.
+    ///
+    /// # Panics
+    /// Panics if `self` is `Expr::Eval(_)`.
+    pub fn value(&self) -> &Item {
+        match self {
+            Expr::Imm(item) => &item,
+            _ => panic!("Expr::value() called on unevaluated")
+        }
+    }
 }
 
 impl From<Item> for Expr {
     fn from(item: Item) -> Expr {
         Expr::new_imm(item)
+    }
+}
+
+impl Describe for Expr {
+    fn describe(&self) -> String {
+        match self {
+            Expr::Imm(item) => item.describe(),
+            Expr::Eval(node) => node.describe()
+        }
     }
 }
 
@@ -546,5 +585,45 @@ impl Node {
                 _ => format!("{} arguments required", describe_range(&range))
             }))
         }
+    }
+
+    pub(crate) fn eval_all(self, session: &Session) -> Result<Node, BaseError> {
+        let source = self.source.map(|x| session.eval(*x))
+            .transpose()?
+            .map(|x| Box::new(Expr::new_imm(x)));
+        let args = self.args.into_iter()
+            .map(|x| session.eval(x).map(|x| Expr::new_imm(x)))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Node{head: self.head, source, args})
+    }
+}
+
+impl Describe for Node {
+    fn describe(&self) -> String {
+        let mut ret = String::new();
+        if let Some(source) = &self.source {
+            // TODO priority
+            ret += &source.describe();
+            ret.push('.');
+        }
+        match &self.head {
+            Head::Symbol(s) => ret += &s,
+            Head::Block(b) => {
+                ret.push('{');
+                ret += &b.describe();
+                ret.push('}');
+            }
+        };
+        if self.args.len() > 0 {
+            let mut it = self.args.iter();
+            ret.push('(');
+            ret += &it.next().unwrap().describe();
+            for expr in it {
+                ret += ", ";
+                ret += &expr.describe();
+            }
+            ret.push(')');
+        }
+        ret
     }
 }

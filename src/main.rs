@@ -1,4 +1,5 @@
 use streamlang as stream;
+use stream::base::Describe;
 use std::io;
 
 fn main() {
@@ -15,8 +16,12 @@ fn main() {
         match stream::parse(input) {
             Ok(expr) => {
                 println!("{expr:?}");
+                println!("{}", expr.describe());
                 match session.eval(expr) {
-                    Ok(item) => println!("{item:.80}"),
+                    Ok(item) => {
+                        println!("{}", item.describe());
+                        println!("{item:.80}");
+                    },
                     Err(err) => println!("{err}")
                 }
             },
