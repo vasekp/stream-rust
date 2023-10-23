@@ -649,3 +649,34 @@ impl Describe for Node {
         ret
     }
 }
+
+#[test]
+fn test_describe() {
+    use crate::parser::parse;
+
+    // chaining, args, block
+    let orig = parse("a.b(c,d).{e}(f,g)").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+
+    // value types
+    let orig = parse("[1,true,'a\"b']").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+    // TODO: strings
+
+    // character escaping
+    let orig = parse("'a\\n\\r\\t\\'\\\"'").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+
+    // operators, precedence
+    let orig = parse("1+(-2-3-4^5*2)").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+
+    // lists, parts
+    let orig = parse("[1,2][3,4] + [[1,2]][[3,4]]").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+}
