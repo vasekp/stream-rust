@@ -101,6 +101,7 @@ enum TokenClass {
 
 fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
     use TokenClass::*;
+    // TODO: @ for chaining
     const OPERS: &str = "+-*/%@^~&|<=>";
     let class = match slice.chars().next().unwrap() {
         '0'..='9' => if slice.contains('_') { BaseNum } else { Number },
@@ -584,7 +585,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                 => cur = Some(*expr),
             (Chain(Token(_, ".")), prev)
                 => cur = prev,
-            // TODO: Chain(:)
+            // TODO: Chain(:), Chain(@)
             (Part(vec), src)
                 => cur = Some(Expr::new_node("part", src, vec)),
             (Oper(Token(_, op)), Some(mut prev)) => {
@@ -696,6 +697,7 @@ fn test_parser() {
     assert_eq!(parse("(1;2)"), err("missing close bracket: ')'"));
 
     assert_eq!(parse("{1}"), Ok(Expr::new_block(Item::new_number(1).into(), None, vec![])));
+    assert_eq!(parse("{}"), err("empty block"));
     assert_eq!(parse("1.{2}(3)"), Ok(Expr::new_block(Item::new_number(2).into(),
         Some(Item::new_number(1).into()), vec![Item::new_number(3).into()])));
     assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Expr::new_block(
