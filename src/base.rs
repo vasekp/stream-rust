@@ -12,7 +12,7 @@ use crate::session::Session;
 pub type Number = num::BigInt;
 
 
-/// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into a input form.
+/// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into an input form.
 pub trait Describe {
     /// Construct a string representation of `self`. This is meant for storing object across
     /// sessions. The resulting `String` must be a syntactically valid input that reconstruct a

@@ -687,6 +687,7 @@ fn test_parser() {
     assert_eq!(parse("a()"), parse("a"));
     assert_eq!(parse("a()(1)"), syntax_err);
     assert_eq!(parse("(a)(1)"), syntax_err);
+    assert_eq!(parse("a.(1)"), syntax_err);
     assert_eq!(parse("(a)"), parse("a"));
     assert_eq!(parse("((a))"), parse("a"));
     assert_eq!(parse("a((1))"), parse("a(1)"));
