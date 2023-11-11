@@ -554,41 +554,76 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
         args: Vec<Expr>
     }
 
+    enum ChainOp {
+        Dot,
+        Colon
+    }
+
+    enum TermOption {
+        Empty,
+        Bare(Expr),
+        Chained(Expr, ChainOp)
+    }
+
+    impl TermOption {
+        fn take(&mut self) -> TermOption {
+            let mut ret = Empty;
+            std::mem::swap(self, &mut ret);
+            ret
+        }
+
+        fn unwrap(self) -> Expr {
+            match self {
+                Bare(expr) => expr,
+                _ => panic!()
+            }
+        }
+    }
+
+    use ChainOp::*;
+    use TermOption::*;
+
     debug_assert!(!input.is_empty());
     let mut stack: Vec<StackEntry> = vec![];
-    let mut cur = None;
+    let mut cur = Empty;
     'a: for part in input {
         use ExprPart::*;
         use TTerm as TT;
         use Node::*;
         use Literal::*;
         match (part, cur.take()) {
-            (Term(TT::Literal(Number(tok))), None)
-                => cur = Some(Item::new_number(tok.1.parse::<BigInt>()
+            (Term(TT::Literal(Number(tok))), Empty)
+                => cur = Bare(Item::new_number(tok.1.parse::<BigInt>()
                     .map_err(|_| ParseError::new("invalid number", tok.1))?).into()),
-            (Term(TT::Literal(BaseNum(tok))), None)
-                => cur = Some(Item::new_number(parse_basenum(tok.1)?).into()),
-            (Term(TT::Literal(Bool(tok))), None)
-                => cur = Some(Item::new_bool(tok.1.parse::<bool>().unwrap()).into()),
-            (Term(TT::Literal(Char(tok))), None)
-                => cur = Some(Item::new_char(parse_char(tok.1)?).into()),
-            (Term(TT::Literal(String(tok))), None)
-                => cur = Some(Item::new_stream(LiteralString::from(parse_string(tok.1)?)).into()),
-            (Term(TT::List(vec)), None)
-                => cur = Some(Expr::new_node("list", None, vec)),
+            (Term(TT::Literal(BaseNum(tok))), Empty)
+                => cur = Bare(Item::new_number(parse_basenum(tok.1)?).into()),
+            (Term(TT::Literal(Bool(tok))), Empty)
+                => cur = Bare(Item::new_bool(tok.1.parse::<bool>().unwrap()).into()),
+            (Term(TT::Literal(Char(tok))), Empty)
+                => cur = Bare(Item::new_char(parse_char(tok.1)?).into()),
+            (Term(TT::Literal(String(tok))), Empty)
+                => cur = Bare(Item::new_stream(LiteralString::from(parse_string(tok.1)?)).into()),
+            (Term(TT::List(vec)), Empty)
+                => cur = Bare(Expr::new_node("list", None, vec)),
             // TODO: Special
-            (Term(TT::Node(Ident(tok), args)), src)
-                => cur = Some(Expr::new_node(tok.1, src, args.unwrap_or(vec![]))),
-            (Term(TT::Node(Block(body), args)), src)
-                => cur = Some(Expr::new_block(*body, src, args.unwrap_or(vec![]))),
-            (Term(TT::ParExpr(expr)), None)
-                => cur = Some(*expr),
-            (Chain(Token(_, ".")), prev)
-                => cur = prev,
-            // TODO: Chain(:), Chain(@)
-            (Part(vec), src)
-                => cur = Some(Expr::new_node("part", src, vec)),
-            (Oper(Token(_, op)), Some(mut prev)) => {
+            (Term(TT::Node(Ident(tok), args)), Empty)
+                => cur = Bare(Expr::new_node(tok.1, None, args.unwrap_or(vec![]))),
+            (Term(TT::Node(Block(body), args)), Empty)
+                => cur = Bare(Expr::new_block(*body, None, args.unwrap_or(vec![]))),
+            (Term(TT::Node(Ident(tok), args)), Chained(src, Dot))
+                => cur = Bare(Expr::new_node(tok.1, Some(src), args.unwrap_or(vec![]))),
+            (Term(TT::Node(Block(body), args)), Chained(src, Dot))
+                => cur = Bare(Expr::new_block(*body, Some(src), args.unwrap_or(vec![]))),
+            (Term(TT::ParExpr(expr)), Empty)
+                => cur = Bare(*expr),
+            (Chain(Token(_, ".")), Bare(prev))
+                => cur = Chained(prev, Dot),
+            (Chain(Token(_, ":")), Bare(prev))
+                => cur = Chained(prev, Colon),
+            // TODO: Chain(@)
+            (Part(vec), Bare(src))
+                => cur = Bare(Expr::new_node("part", Some(src), vec)),
+            (Oper(Token(_, op)), Bare(mut prev)) => {
                 let (prec, multi) = get_op(op);
                 while let Some(entry) = stack.last_mut() {
                     if entry.prec > prec {
@@ -609,7 +644,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                 }
                 stack.push(StackEntry{ op: op.into(), prec, args: vec![prev] });
             },
-            (Oper(Token(_, op)), None) if op == "+" || op == "-"
+            (Oper(Token(_, op)), Empty) if op == "+" || op == "-"
                 => stack.push(StackEntry{ op: op.into(), prec: get_op(op).0, args: vec![] }),
             _ => todo!()
         }
