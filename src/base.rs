@@ -562,6 +562,13 @@ impl Expr {
             _ => panic!("Expr::value() called on unevaluated")
         }
     }
+
+    pub fn into_node(self) -> Result<Node, BaseError> {
+        match self {
+            Expr::Eval(node) => Ok(node),
+            Expr::Imm(value) => Err(BaseError::from(format!("expected node, found {:?}", &value)))
+        }
+    }
 }
 
 impl From<Item> for Expr {

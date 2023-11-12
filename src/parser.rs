@@ -614,6 +614,10 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                 => cur = Bare(Expr::new_node(tok.1, Some(src), args.unwrap_or(vec![]))),
             (Term(TT::Node(Block(body), args)), Chained(src, Dot))
                 => cur = Bare(Expr::new_block(*body, Some(src), args.unwrap_or(vec![]))),
+            (Term(TT::Node(Ident(tok), args)), Chained(src, Colon))
+                => cur = Bare(Expr::new_node("map", Some(src), vec![Expr::new_node(tok.1, None, args.unwrap_or(vec![]))])),
+            (Term(TT::Node(Block(body), args)), Chained(src, Colon))
+                => cur = Bare(Expr::new_node("map", Some(src), vec![Expr::new_block(*body, None, args.unwrap_or(vec![]))])),
             (Term(TT::ParExpr(expr)), Empty)
                 => cur = Bare(*expr),
             (Chain(Token(_, ".")), Bare(prev))
