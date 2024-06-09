@@ -93,7 +93,8 @@ fn construct_part(session: &Session, node: Node) -> Result<Item, StreamError> {
         .with(|node| {
             let mut item = node.source.as_ref().unwrap().to_item()?;
             for arg in &node.args {
-                let index = arg.value().as_num_within(Number::one()..)?;
+                let index = arg.value().as_num()?;
+                index.check_within(Number::one()..)?;
                 let mut iter = item.into_stream()?.iter();
                 if iter.skip_n(&(index - 1)).is_err() {
                     return Err(StreamError::from("index past end of stream"));

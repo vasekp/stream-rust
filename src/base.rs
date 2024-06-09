@@ -11,6 +11,19 @@ use crate::session::Session;
 /// BigInt fallback in the future for better performance.
 pub type Number = num::BigInt;
 
+pub(crate) trait NumWithin : PartialOrd {
+    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError>;
+}
+
+impl NumWithin for Number {
+    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError> {
+        match range.contains(self) {
+            true => Ok(()),
+            false => Err(StreamError::from(format!("expected {}, found {}", describe_range(&range), &self)))
+        }
+    }
+}
+
 
 /// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into an input form.
 pub trait Describe {
@@ -52,14 +65,6 @@ impl Item {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(StreamError::from(format!("expected number, found {:?}", &self)))
-        }
-    }
-
-    pub fn as_num_within(&self, range: impl RangeBounds<Number>) -> Result<&Number, StreamError> {
-        match self {
-            Item::Number(x) if range.contains(&x) => Ok(x),
-            _ => Err(StreamError::from(format!("expected number ({}), found {:?}",
-                describe_range(&range), &self)))
         }
     }
 
