@@ -632,7 +632,7 @@ impl Node {
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         let args = self.args.into_iter()
-            .map(|x| session.eval(x).map(|x| Expr::new_imm(x)))
+            .map(|x| session.eval(x).map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Node{head: self.head, source, args})
     }
@@ -659,7 +659,7 @@ impl Describe for Node {
             ret.push('.');
         }
         match &self.head {
-            Head::Symbol(s) => ret += &s,
+            Head::Symbol(s) => ret += s,
             Head::Block(b) => {
                 ret.push('{');
                 ret += &b.describe();
@@ -672,14 +672,14 @@ impl Describe for Node {
                     ret += &it.next().unwrap().describe();
                 }
                 for expr in it {
-                    ret += &o;
+                    ret += o;
                     ret += &expr.describe();
                 }
                 ret.push(')');
                 return ret;
             }
         };
-        if self.args.len() > 0 {
+        if !self.args.is_empty() {
             let mut it = self.args.iter();
             ret.push('(');
             ret += &it.next().unwrap().describe();
