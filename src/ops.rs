@@ -29,7 +29,6 @@ use crate::base::Describe;
 /// ```
 #[derive(Clone)]
 pub struct Seq {
-    node: Node,
     from: Number,
     step: Number
 }
@@ -50,30 +49,32 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn construct(session: &Session, node: Node) -> Result<Item, BaseError> {
-        node.check_args(false, 0..=2)?;
-        let node = node.eval_all(session)?;
-        let nums = node.args.iter()
-            .map(|x| x.value().as_num())
-            .collect::<Result<Vec<_>, _>>()?;
-        let (from, step) = match nums.len() {
-            0 => (Number::one(), Number::one()),
-            1 => (nums[0].clone(), Number::one()),
-            2 => (nums[0].clone(), nums[1].clone()),
-            _ => unreachable!()
-        };
-        Ok(Item::new_stream(Seq{node, from, step}))
+    fn construct(session: &Session, node: Node) -> Result<Item, StreamError> {
+        node.check_args(false, 0..=2)?
+            .eval_all(session)?
+            .with(|node| {
+                let nums = node.args.iter()
+                    .map(|x| x.value().as_num())
+                    .collect::<Result<Vec<_>, _>>()?;
+                let (from, step) = match nums.len() {
+                    0 => (Number::one(), Number::one()),
+                    1 => (nums[0].clone(), Number::one()),
+                    2 => (nums[0].clone(), nums[1].clone()),
+                    _ => unreachable!()
+                };
+                Ok(Item::new_stream(Seq{from, step}))
+            })
     }
 }
 
 impl Describe for Seq {
     fn describe(&self) -> String {
-        self.node.describe()
+        format!("seq({}, {})", self.from, self.step)
     }
 }
 
 impl Iterator for SeqIter {
-    type Item = Result<Item, BaseError>;
+    type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ret = Item::new_number(self.value.clone());
@@ -139,7 +140,6 @@ fn test_seq_skip() {
 /// ```
 #[derive(Clone)]
 pub struct Range {
-    node: Node,
     from: Number,
     to: Number,
     step: Number
@@ -171,30 +171,32 @@ impl Stream for Range {
 }
 
 impl Range {
-    fn construct(session: &Session, node: Node) -> Result<Item, BaseError> {
-        node.check_args(false, 1..=3)?;
-        let node = node.eval_all(session)?;
-        let nums = node.args.iter()
-            .map(|x| x.value().as_num())
-            .collect::<Result<Vec<_>, _>>()?;
-        let (from, to, step) = match nums.len() {
-            1 => (Number::one(), nums[0].clone(), Number::one()),
-            2 => (nums[0].clone(), nums[1].clone(), Number::one()),
-            3 => (nums[0].clone(), nums[1].clone(), nums[2].clone()),
-            _ => unreachable!()
-        };
-        Ok(Item::new_stream(Range{node, from, to, step}))
+    fn construct(session: &Session, node: Node) -> Result<Item, StreamError> {
+        node.check_args(false, 1..=3)?
+            .eval_all(session)?
+            .with(|node| {
+                let nums = node.args.iter()
+                    .map(|x| x.value().as_num())
+                    .collect::<Result<Vec<_>, _>>()?;
+                let (from, to, step) = match nums.len() {
+                    1 => (Number::one(), nums[0].clone(), Number::one()),
+                    2 => (nums[0].clone(), nums[1].clone(), Number::one()),
+                    3 => (nums[0].clone(), nums[1].clone(), nums[2].clone()),
+                    _ => unreachable!()
+                };
+                Ok(Item::new_stream(Range{from, to, step}))
+            })
     }
 }
 
 impl Describe for Range {
     fn describe(&self) -> String {
-        self.node.describe()
+        format!("range({}, {}, {})", self.from, self.to, self.step)
     }
 }
 
 impl Iterator for RangeIter {
-    type Item = Result<Item, BaseError>;
+    type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.step.is_zero()

@@ -2,7 +2,7 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
 use std::cell::RefCell;
-use crate::base::{BaseError, Item, Expr, Char};
+use crate::base::{StreamError, Item, Expr, Char};
 use crate::lang::LiteralString;
 use num::BigInt;
 
@@ -11,17 +11,17 @@ use num::BigInt;
 /// within the input string. The lifetime is bound to the lifetime of the input string.
 #[derive(Debug)]
 pub struct ParseError<'a> {
-    base: BaseError,
+    base: StreamError,
     slice: &'a str
 }
 
 impl<'a> ParseError<'a> {
-    fn new<T>(text: T, slice: &'a str) -> ParseError<'a> where T: Into<BaseError> {
+    fn new<T>(text: T, slice: &'a str) -> ParseError<'a> where T: Into<StreamError> {
         ParseError{base: text.into(), slice}
     }
 
     #[cfg(test)]
-    fn cmp_ref<T>(text: T) -> ParseError<'a> where T: Into<BaseError> {
+    fn cmp_ref<T>(text: T) -> ParseError<'a> where T: Into<StreamError> {
         Self::new(text, Default::default())
     }
 
@@ -137,17 +137,17 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn skip_until(&mut self, delim: char) -> Result<(), BaseError> {
+    fn skip_until(&mut self, delim: char) -> Result<(), StreamError> {
         while let Some((_, ch)) = self.iter.next() {
             if ch == '\\' {
                 if self.iter.next().is_none() {
-                    return Err(BaseError::from("unterminated string"));
+                    return Err(StreamError::from("unterminated string"));
                 }
             } else if ch == delim {
                 return Ok(());
             }
         }
-        Err(BaseError::from("unterminated string"))
+        Err(StreamError::from("unterminated string"))
     }
 
     fn slice_from(&mut self, start: &'a str) -> &'a str {

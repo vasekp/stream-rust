@@ -48,46 +48,39 @@ impl Item {
         Item::Stream(Box::new(value))
     }
 
-    pub fn as_num(&self) -> Result<&Number, BaseError> {
+    pub fn as_num(&self) -> Result<&Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
+            _ => Err(StreamError::from(format!("expected number, found {:?}", &self)))
         }
     }
 
-    pub fn into_num(self) -> Result<Number, BaseError> {
-        match self {
-            Item::Number(x) => Ok(x),
-            _ => Err(BaseError::from(format!("expected number, found {:?}", &self)))
-        }
-    }
-
-    pub fn into_num_within(self, range: impl RangeBounds<Number>) -> Result<Number, BaseError> {
+    pub fn as_num_within(&self, range: impl RangeBounds<Number>) -> Result<&Number, StreamError> {
         match self {
             Item::Number(x) if range.contains(&x) => Ok(x),
-            _ => Err(BaseError::from(format!("expected number ({}), found {:?}",
+            _ => Err(StreamError::from(format!("expected number ({}), found {:?}",
                 describe_range(&range), &self)))
         }
     }
 
-    pub fn into_char(self) -> Result<Char, BaseError> {
+    pub fn as_char(&self) -> Result<&Char, StreamError> {
         match self {
             Item::Char(c) => Ok(c),
-            _ => Err(BaseError::from(format!("expected char, found {:?}", &self)))
+            _ => Err(StreamError::from(format!("expected char, found {:?}", &self)))
         }
     }
 
-    pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
+    pub fn as_stream(&self) -> Result<&dyn Stream, StreamError> {
         match self {
             Item::Stream(s) => Ok(&**s),
-            _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
+            _ => Err(StreamError::from(format!("expected stream, found {:?}", &self)))
         }
     }
 
-    pub fn into_stream(self) -> Result<Box<dyn Stream>, BaseError> {
+    pub fn into_stream(self) -> Result<Box<dyn Stream>, StreamError> {
         match self {
             Item::Stream(s) => Ok(s),
-            _ => Err(BaseError::from(format!("expected stream, found {:?}", &self)))
+            _ => Err(StreamError::from(format!("expected stream, found {:?}", &self)))
         }
     }
 }
@@ -120,6 +113,7 @@ impl Describe for Item {
     fn describe(&self) -> String {
         use Item::*;
         match self {
+            Number(n) if n.is_negative() => format!("({n})"),
             Number(n) => format!("{n}"),
             Bool(b) => format!("{b}"),
             Char(c) => format!("'{c}'"),
@@ -223,19 +217,38 @@ fn test_char() {
 
 /// The base error type for use for this library. Currently only holds a String description.
 #[derive(PartialEq, Debug)]
-pub struct BaseError(String);
+pub struct StreamError{
+    reason: String,
+    node: Option<Node>
+}
 
-impl std::error::Error for BaseError { }
+impl StreamError {
+    pub fn new<T>(text: T, node: Node) -> StreamError where T: Into<String> {
+        StreamError{reason: text.into(), node: Some(node)}
+    }
 
-impl<T> From<T> for BaseError where T: Into<String> {
-    fn from(text: T) -> BaseError {
-        BaseError(text.into())
+    pub(crate) fn with_node(mut self, node: Node) -> StreamError {
+        if self.node.is_none() {
+            self.node = Some(node);
+        }
+        self
     }
 }
 
-impl Display for BaseError {
+impl std::error::Error for StreamError { }
+
+impl<T> From<T> for StreamError where T: Into<String> {
+    fn from(text: T) -> StreamError {
+        StreamError{reason: text.into(), node: None}
+    }
+}
+
+impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(f, "{}", self.0)
+        match &self.node {
+            Some(node) => write!(f, "{}: {}", node.describe(), self.reason),
+            None => write!(f, "{}", self.reason)
+        }
     }
 }
 
@@ -402,7 +415,7 @@ impl Display for dyn Stream {
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
+pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. If it can't, or is known to be infinite, returns `None`.
     ///
@@ -450,7 +463,7 @@ pub trait SIterator: Iterator<Item = Result<Item, BaseError>> {
 
 impl<T, U, V> SIterator for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<Item, BaseError>
+      U: FnMut(V) -> Result<Item, StreamError>
 { }
 
 
@@ -563,10 +576,18 @@ impl Expr {
         }
     }
 
-    pub fn into_node(self) -> Result<Node, BaseError> {
+    /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
+    pub fn to_item(&self) -> Result<Item, StreamError> {
+        match self {
+            Expr::Imm(item) => Ok(item.clone()),
+            Expr::Eval(node) => Err(StreamError::from(format!("expected value, found {:?}", &node)))
+        }
+    }
+
+    pub fn into_node(self) -> Result<Node, StreamError> {
         match self {
             Expr::Eval(node) => Ok(node),
-            Expr::Imm(value) => Err(BaseError::from(format!("expected node, found {:?}", &value)))
+            Expr::Imm(value) => Err(StreamError::from(format!("expected node, found {:?}", &value)))
         }
     }
 }
@@ -587,24 +608,25 @@ impl Describe for Expr {
 }
 
 impl Node {
-    pub(crate) fn check_args(&self, source: bool, range: impl RangeBounds<usize>) -> Result<(), BaseError> {
+    pub(crate) fn check_args(self, source: bool, range: impl RangeBounds<usize>) -> Result<Node, StreamError> {
         use std::ops::Bound::*;
         match (&self.source, source) {
-            (Some(_), false) => return Err(BaseError::from("no source accepted")),
-            (None, true) => return Err(BaseError::from("source requested")),
+            (Some(_), false) => return Err(StreamError::new("no source accepted", self)),
+            (None, true) => return Err(StreamError::new("source requested", self)),
             _ => { }
         };
         if range.contains(&self.args.len()) {
-            Ok(())
+            Ok(self)
         } else {
-            Err(BaseError::from(match (range.start_bound(), range.end_bound()) {
-                (Included(0), Included(0)) => "no arguments allowed".to_string(),
-                _ => format!("{} arguments required", describe_range(&range))
-            }))
+            Err(StreamError::new(
+                    match (range.start_bound(), range.end_bound()) {
+                        (Included(0), Included(0)) => "no arguments allowed".to_string(),
+                        _ => format!("{} arguments required", describe_range(&range))
+                    }, self))
         }
     }
 
-    pub(crate) fn eval_all(self, session: &Session) -> Result<Node, BaseError> {
+    pub(crate) fn eval_all(self, session: &Session) -> Result<Node, StreamError> {
         let source = self.source.map(|x| session.eval(*x))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
@@ -612,6 +634,19 @@ impl Node {
             .map(|x| session.eval(x).map(|x| Expr::new_imm(x)))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Node{head: self.head, source, args})
+    }
+
+    pub(crate) fn eval_source(self, session: &Session) -> Result<Node, StreamError> {
+        let source = self.source.map(|x| session.eval(*x))
+            .transpose()?
+            .map(|x| Box::new(Expr::new_imm(x)));
+        Ok(Node{head: self.head, source, args: self.args})
+    }
+
+    pub(crate) fn with<T, F>(self, f: F) -> Result<T, StreamError>
+        where F: FnOnce(&Node) -> Result<T, StreamError>
+    {
+        f(&self).map_err(|e| e.with_node(self))
     }
 }
 
@@ -678,7 +713,7 @@ fn test_describe() {
     assert_eq!(orig, copy);
 
     // operators, precedence
-    let orig = parse("1+(-2-3-4^5*2)").unwrap();
+    let orig = parse("1+(-2-3-4^(-5)*2)").unwrap();
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
 

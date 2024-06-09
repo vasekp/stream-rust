@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::base::*;
 use crate::{lang, ops};
 
-type Constructor = fn(&Session, Node) -> Result<Item, BaseError>;
+type Constructor = fn(&Session, Node) -> Result<Item, StreamError>;
 
 /// A `Session` holds information necessary for evaluating symbolic expressions. This includes a
 /// register of defined symbols.
@@ -23,22 +23,22 @@ impl Session {
         self.register.insert(name, ctor);
     }
 
-    fn find_symbol(&self, name: &str) -> Result<Constructor, BaseError> {
+    fn find_symbol(&self, name: &str) -> Result<Constructor, StreamError> {
         self.register.get(name).copied()
-            .ok_or_else(|| BaseError::from(format!("symbol '{name}' not found")))
+            .ok_or_else(|| StreamError::from(format!("symbol '{name}' not found")))
     }
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn eval(&self, expr: Expr) -> Result<Item, BaseError> {
+    pub fn eval(&self, expr: Expr) -> Result<Item, StreamError> {
         match expr {
             Expr::Imm(item) => Ok(item),
             Expr::Eval(node) => match node.head {
-                Head::Symbol(ref sym) | Head::Oper(ref sym) => {
-                    let func = self.find_symbol(sym)?;
-                    func(self, node)
+                Head::Symbol(ref sym) | Head::Oper(ref sym) => match self.find_symbol(sym) {
+                    Ok(func) => func(self, node),
+                    Err(e) => Err(e.with_node(node))
                 },
-                _ => Err(BaseError::from("not implemented"))
+                _ => Err(StreamError::new("not implemented", node))
             }
         }
     }
