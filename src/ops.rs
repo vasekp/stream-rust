@@ -53,13 +53,12 @@ impl Seq {
         node.check_args(false, 0..=2)?
             .eval_all(session)?
             .with(|node| {
-                let nums = node.args.iter()
-                    .map(|x| x.value().as_num())
-                    .collect::<Result<Vec<_>, _>>()?;
+                let mut nums = node.args.iter()
+                    .map(|x| x.to_item()?.into_num());
                 let (from, step) = match nums.len() {
                     0 => (Number::one(), Number::one()),
-                    1 => (nums[0].clone(), Number::one()),
-                    2 => (nums[0].clone(), nums[1].clone()),
+                    1 => (nums.next().unwrap()?, Number::one()),
+                    2 => (nums.next().unwrap()?, nums.next().unwrap()?),
                     _ => unreachable!()
                 };
                 Ok(Item::new_stream(Seq{from, step}))
@@ -175,13 +174,12 @@ impl Range {
         node.check_args(false, 1..=3)?
             .eval_all(session)?
             .with(|node| {
-                let nums = node.args.iter()
-                    .map(|x| x.value().as_num())
-                    .collect::<Result<Vec<_>, _>>()?;
+                let mut nums = node.args.iter()
+                    .map(|x| x.to_item()?.into_num());
                 let (from, to, step) = match nums.len() {
-                    1 => (Number::one(), nums[0].clone(), Number::one()),
-                    2 => (nums[0].clone(), nums[1].clone(), Number::one()),
-                    3 => (nums[0].clone(), nums[1].clone(), nums[2].clone()),
+                    1 => (Number::one(), nums.next().unwrap()?, Number::one()),
+                    2 => (nums.next().unwrap()?, nums.next().unwrap()?, Number::one()),
+                    3 => (nums.next().unwrap()?, nums.next().unwrap()?, nums.next().unwrap()?),
                     _ => unreachable!()
                 };
                 Ok(Item::new_stream(Range{from, to, step}))

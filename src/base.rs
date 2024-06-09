@@ -68,6 +68,13 @@ impl Item {
         }
     }
 
+    pub fn into_num(self) -> Result<Number, StreamError> {
+        match self {
+            Item::Number(x) => Ok(x),
+            _ => Err(StreamError::from(format!("expected number, found {:?}", &self)))
+        }
+    }
+
     pub fn as_char(&self) -> Result<&Char, StreamError> {
         match self {
             Item::Char(c) => Ok(c),
@@ -568,17 +575,6 @@ impl Expr {
             source: source.map(Box::new),
             args
         })
-    }
-
-    /// Expecting `self` to be `Expr::Imm(item)`, extracts the `Item`.
-    ///
-    /// # Panics
-    /// Panics if `self` is `Expr::Eval(_)`.
-    pub fn value(&self) -> &Item {
-        match self {
-            Expr::Imm(item) => &item,
-            _ => panic!("Expr::value() called on unevaluated")
-        }
     }
 
     /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.

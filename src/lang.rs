@@ -93,7 +93,7 @@ fn construct_part(session: &Session, node: Node) -> Result<Item, StreamError> {
         .with(|node| {
             let mut item = node.source.as_ref().unwrap().to_item()?;
             for arg in &node.args {
-                let index = arg.value().as_num()?;
+                let index = arg.to_item()?.into_num()?;
                 index.check_within(Number::one()..)?;
                 let mut iter = item.into_stream()?.iter();
                 if iter.skip_n(&(index - 1)).is_err() {
@@ -187,7 +187,7 @@ fn construct_plus(session: &Session, node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
         .eval_all(session)?
         .with(|node| -> Result<_, StreamError> {
-            node.args.iter().try_fold(Number::zero(), |a, e| Ok(a + e.value().as_num()?))
+            node.args.iter().try_fold(Number::zero(), |a, e| Ok(a + e.to_item()?.into_num()?))
         });
     Ok(Item::new_number(ans?))
 }
@@ -198,8 +198,8 @@ fn construct_minus(session: &Session, node: Node) -> Result<Item, StreamError> {
         .with(|node| {
             let args = &node.args;
             Ok(match args.len() {
-                1 => -args[0].value().as_num()?,
-                2 => args[0].value().as_num()? - args[1].value().as_num()?,
+                1 => -args[0].to_item()?.into_num()?,
+                2 => args[0].to_item()?.into_num()? - args[1].to_item()?.into_num()?,
                 _ => unreachable!()
             })
         });
@@ -210,7 +210,7 @@ fn construct_times(session: &Session, node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
         .eval_all(session)?
         .with(|node| {
-            node.args.iter().try_fold(Number::one(), |a, e| Ok(a * e.value().as_num()?))
+            node.args.iter().try_fold(Number::one(), |a, e| Ok(a * e.to_item()?.into_num()?))
         });
     Ok(Item::new_number(ans?))
 }
@@ -219,11 +219,11 @@ fn construct_div(session: &Session, node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 2..=2)?
         .eval_all(session)?
         .with(|node| {
-            let nums = [node.args[0].value().as_num()?, node.args[1].value().as_num()?];
+            let nums = [node.args[0].to_item()?.into_num()?, node.args[1].to_item()?.into_num()?];
             if nums[1].is_zero() {
                 return Err(StreamError::from("division by zero"));
             }
-            Ok(nums[0] / nums[1])
+            Ok(&nums[0] / &nums[1])
         });
     Ok(Item::new_number(ans?))
 }
@@ -232,8 +232,8 @@ fn construct_pow(session: &Session, node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 2..=2)?
         .eval_all(session)?
         .with(|node| {
-            let x = node.args[0].value().as_num()?;
-            let y = node.args[1].value().as_num()?;
+            let x = node.args[0].to_item()?.into_num()?;
+            let y = node.args[1].to_item()?.into_num()?;
             if y.is_negative() {
                 return Err(StreamError::from("negative exponent"));
             }
