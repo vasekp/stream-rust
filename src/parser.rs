@@ -141,13 +141,13 @@ impl<'a> Tokenizer<'a> {
         while let Some((_, ch)) = self.iter.next() {
             if ch == '\\' {
                 if self.iter.next().is_none() {
-                    return Err(StreamError::from("unterminated string"));
+                    return Err("unterminated string".into());
                 }
             } else if ch == delim {
                 return Ok(());
             }
         }
-        Err(StreamError::from("unterminated string"))
+        Err("unterminated string".into())
     }
 
     fn slice_from(&mut self, start: &'a str) -> &'a str {

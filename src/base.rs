@@ -19,7 +19,7 @@ impl NumWithin for Number {
     fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError> {
         match range.contains(self) {
             true => Ok(()),
-            false => Err(StreamError::from(format!("expected {}, found {}", describe_range(&range), &self)))
+            false => Err(format!("expected {}, found {}", describe_range(&range), &self).into())
         }
     }
 }
@@ -64,35 +64,35 @@ impl Item {
     pub fn as_num(&self) -> Result<&Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(StreamError::from(format!("expected number, found {:?}", &self)))
+            _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
     pub fn into_num(self) -> Result<Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(StreamError::from(format!("expected number, found {:?}", &self)))
+            _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
     pub fn as_char(&self) -> Result<&Char, StreamError> {
         match self {
             Item::Char(c) => Ok(c),
-            _ => Err(StreamError::from(format!("expected char, found {:?}", &self)))
+            _ => Err(format!("expected char, found {:?}", &self).into())
         }
     }
 
     pub fn as_stream(&self) -> Result<&dyn Stream, StreamError> {
         match self {
             Item::Stream(s) => Ok(&**s),
-            _ => Err(StreamError::from(format!("expected stream, found {:?}", &self)))
+            _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
     pub fn into_stream(self) -> Result<Box<dyn Stream>, StreamError> {
         match self {
             Item::Stream(s) => Ok(s),
-            _ => Err(StreamError::from(format!("expected stream, found {:?}", &self)))
+            _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 }
@@ -581,14 +581,14 @@ impl Expr {
     pub fn to_item(&self) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
-            Expr::Eval(node) => Err(StreamError::from(format!("expected value, found {:?}", &node)))
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", &node).into())
         }
     }
 
     pub fn into_node(self) -> Result<Node, StreamError> {
         match self {
             Expr::Eval(node) => Ok(node),
-            Expr::Imm(value) => Err(StreamError::from(format!("expected node, found {:?}", &value)))
+            Expr::Imm(value) => Err(format!("expected node, found {:?}", &value).into())
         }
     }
 }
