@@ -242,7 +242,22 @@ fn construct_pow(session: &Session, node: Node) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans?))
 }
 
-// TODO: test operators
+#[test]
+fn test_opers() {
+    use crate::parser::parse;
+    let sess = Session::new();
+    assert_eq!(sess.eval(parse("1+(-2)").unwrap()).unwrap().to_string(), "-1");
+    assert_eq!(sess.eval(parse("(-1)-(-2)").unwrap()).unwrap().to_string(), "1");
+    assert_eq!(sess.eval(parse("2*(-4)").unwrap()).unwrap().to_string(), "-8");
+    assert_eq!(sess.eval(parse("11/2").unwrap()).unwrap().to_string(), "5");
+    assert_eq!(sess.eval(parse("(-11)/(-2)").unwrap()).unwrap().to_string(), "5");
+    assert_eq!(sess.eval(parse("1/2").unwrap()).unwrap().to_string(), "0");
+    assert!(sess.eval(parse("1/0").unwrap()).is_err());
+    assert_eq!(sess.eval(parse("10^30").unwrap()).unwrap().to_string(), "1000000000000000000000000000000");
+    assert_eq!(sess.eval(parse("0^0").unwrap()).unwrap().to_string(), "1");
+    assert_eq!(sess.eval(parse("0^1").unwrap()).unwrap().to_string(), "0");
+    assert!(sess.eval(parse("1^(-1)").unwrap()).is_err());
+}
 
 pub(crate) fn init(session: &mut Session) {
     session.register_symbol("list", construct_list);
