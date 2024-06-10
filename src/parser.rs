@@ -2,7 +2,7 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
 use std::cell::RefCell;
-use crate::base::{StreamError, Item, Expr, Char};
+use crate::base::{Item, Expr, Char};
 use crate::lang::LiteralString;
 use num::BigInt;
 
@@ -11,17 +11,17 @@ use num::BigInt;
 /// within the input string. The lifetime is bound to the lifetime of the input string.
 #[derive(Debug)]
 pub struct ParseError<'a> {
-    base: StreamError<'static>,
+    reason: String,
     slice: &'a str
 }
 
 impl<'a> ParseError<'a> {
-    fn new<T>(text: T, slice: &'a str) -> ParseError<'a> where T: Into<StreamError<'static>> {
-        ParseError{base: text.into(), slice}
+    fn new(text: impl Into<String>, slice: &'a str) -> ParseError<'a> {
+        ParseError{reason: text.into(), slice}
     }
 
     #[cfg(test)]
-    fn cmp_ref<T>(text: T) -> ParseError<'a> where T: Into<StreamError<'static>> {
+    fn cmp_ref(text: impl Into<String>) -> ParseError<'a> {
         Self::new(text, Default::default())
     }
 
@@ -39,19 +39,13 @@ impl<'a> ParseError<'a> {
 
 impl<'a> Display for ParseError<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        Display::fmt(&self.base, f)
+        Display::fmt(&self.reason, f)
     }
 }
 
-/*impl<'a> std::error::Error for ParseError<'a> {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        Some(&self.base)
-    }
-}*/
-
 impl<'a> PartialEq for ParseError<'a> {
     fn eq(&self, other: &ParseError<'a>) -> bool {
-        self.base == other.base
+        self.reason == other.reason
     }
 }
 
@@ -137,17 +131,17 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn skip_until(&mut self, delim: char) -> Result<(), StreamError<'static>> {
+    fn skip_until(&mut self, delim: char) -> Result<(), &'static str> {
         while let Some((_, ch)) = self.iter.next() {
             if ch == '\\' {
                 if self.iter.next().is_none() {
-                    return Err("unterminated string".into());
+                    return Err("unterminated string");
                 }
             } else if ch == delim {
                 return Ok(());
             }
         }
-        Err("unterminated string".into())
+        Err("unterminated string")
     }
 
     fn slice_from(&mut self, start: &'a str) -> &'a str {
@@ -188,7 +182,7 @@ impl<'a> Iterator for Tokenizer<'a> {
         };
         let slice = &self.input[start..end];
         Some(res
-            .map_err(|base| ParseError::new(base, slice))
+            .map_err(|reason| ParseError::new(reason, slice))
             .and_then(|_| token_class(slice).map(|class| Token(class, slice)) ))
     }
 }
@@ -298,29 +292,29 @@ fn test_tokenizer() {
 }
 
 
-type PreExpr<'a> = Vec<ExprPart<'a>>;
+type PreExpr<'a, 'b> = Vec<ExprPart<'a, 'b>>;
 
 #[derive(Debug)]
-enum ExprPart<'a> {
+enum ExprPart<'a, 'b> {
     Oper(Token<'a>),
     Chain(Token<'a>),
-    Term(TTerm<'a>),
-    Part(Vec<Expr<'static>>)
+    Term(TTerm<'a, 'b>),
+    Part(Vec<Expr<'b>>)
 }
 
 #[derive(Debug)]
-enum TTerm<'a> {
-    Node(Node<'a>, Option<Vec<Expr<'static>>>),
-    ParExpr(Box<Expr<'static>>),
+enum TTerm<'a, 'b> {
+    Node(Node<'a, 'b>, Option<Vec<Expr<'b>>>),
+    ParExpr(Box<Expr<'b>>),
     Literal(Literal<'a>),
-    List(Vec<Expr<'static>>),
+    List(Vec<Expr<'b>>),
     Special(Token<'a>, Option<Token<'a>>)
 }
 
 #[derive(Debug)]
-enum Node<'a> {
+enum Node<'a, 'b> {
     Ident(Token<'a>),
-    Block(Box<Expr<'static>>)
+    Block(Box<Expr<'b>>)
 }
 
 #[derive(Debug)]
@@ -341,9 +335,9 @@ fn closing(bracket: &str) -> &'static str {
     }
 }
 
-fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'static>>, ParseError<'a>> {
+fn parse_main<'a, 'b>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'b>>, ParseError<'a>> {
     // This may parse several expressions separated by commas.
-    let mut exprs: Vec<Expr<'static>> = vec![];
+    let mut exprs: Vec<Expr<'b>> = vec![];
     // Each expression is a string of terms separated by operators OR chaining.
     let mut expr: PreExpr = vec![];
     let mut last_comma: Option<Token<'a>> = None;
@@ -547,11 +541,11 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     }
 }
 
-fn into_expr(input: PreExpr<'_>) -> Result<Expr<'static>, ParseError<'_>> {
-    struct StackEntry {
+fn into_expr<'a, 'b>(input: PreExpr<'a, 'b>) -> Result<Expr<'b>, ParseError<'a>> {
+    struct StackEntry<'b> {
         op: String,
         prec: u32,
-        args: Vec<Expr<'static>>
+        args: Vec<Expr<'b>>
     }
 
     enum ChainOp {
@@ -559,20 +553,20 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr<'static>, ParseError<'_>> {
         Colon
     }
 
-    enum TermOption {
+    enum TermOption<'b> {
         Empty,
-        Bare(Expr<'static>),
-        Chained(Expr<'static>, ChainOp)
+        Bare(Expr<'b>),
+        Chained(Expr<'b>, ChainOp)
     }
 
-    impl TermOption {
-        fn take(&mut self) -> TermOption {
+    impl<'b> TermOption<'b> {
+        fn take(&mut self) -> TermOption<'b> {
             let mut ret = Empty;
             std::mem::swap(self, &mut ret);
             ret
         }
 
-        fn unwrap(self) -> Expr<'static> {
+        fn unwrap(self) -> Expr<'b> {
             match self {
                 Bare(expr) => expr,
                 _ => panic!()
@@ -584,7 +578,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr<'static>, ParseError<'_>> {
     use TermOption::*;
 
     debug_assert!(!input.is_empty());
-    let mut stack: Vec<StackEntry> = vec![];
+    let mut stack: Vec<StackEntry<'b>> = vec![];
     let mut cur = Empty;
     'a: for part in input {
         use ExprPart::*;
@@ -684,7 +678,7 @@ fn get_op(op: &str) -> (u32, bool) {
 ///         Some(Expr::new_node("a", None, vec![])),
 ///         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
 /// ```
-pub fn parse<'a>(input: &'a str) -> Result<Expr<'static>, ParseError<'a>> {
+pub fn parse<'a, 'b>(input: &'a str) -> Result<Expr<'b>, ParseError<'a>> {
     let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
     match (it.next(), it.next()) {
         (Some(expr), None) => Ok(expr),

@@ -53,8 +53,8 @@ fn construct_list<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, 
 #[derive(Clone)]
 pub struct LiteralString(Vec<Char>);
 
-impl Stream<'static> for LiteralString {
-    fn iter(&self) -> Box<dyn SIterator<'static>> {
+impl<'a> Stream<'a> for LiteralString {
+    fn iter(&self) -> Box<dyn SIterator<'a>> {
         Box::new(self.0.clone().into_iter().map(|x| Ok(Item::new_char(x.clone()))))
     }
 
