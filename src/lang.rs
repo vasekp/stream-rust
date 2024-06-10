@@ -72,7 +72,7 @@ impl Describe for LiteralString {
         let mut ret = String::new();
         ret.push('"');
         for ch in &self.0 {
-            ret += &format!("{ch}");
+            ret += &format!("{ch:#}");
         }
         ret.push('"');
         ret
