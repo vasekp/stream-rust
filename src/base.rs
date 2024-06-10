@@ -630,7 +630,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    pub(crate) fn eval_all(self, session: &Session<'a>) -> Result<Node<'a>, StreamError<'a>> {
+    pub(crate) fn eval_all(self, session: &'a Session) -> Result<Node<'a>, StreamError<'a>> {
         let source = self.source.map(|x| session.eval(*x))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
@@ -640,7 +640,7 @@ impl<'a> Node<'a> {
         Ok(Node{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, session: &Session<'a>) -> Result<Node<'a>, StreamError<'a>> {
+    pub(crate) fn eval_source(self, session: &'a Session) -> Result<Node<'a>, StreamError<'a>> {
         let source = self.source.map(|x| session.eval(*x))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));

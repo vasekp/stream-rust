@@ -54,7 +54,7 @@ impl<'a> Stream<'a> for Seq {
 }
 
 impl Seq {
-    fn construct<'a>(session: &Session<'a>, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+    fn construct<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
         node.check_args(false, 0..=2)?
             .eval_all(session)?
             .with(|node| {
@@ -181,7 +181,7 @@ impl<'a> Stream<'a> for Range {
 }
 
 impl Range {
-    fn construct<'a>(session: &Session<'a>, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+    fn construct<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
         node.check_args(false, 1..=3)?
             .eval_all(session)?
             .with(|node| {
@@ -329,7 +329,7 @@ fn range_test_neg_lengths() {
 }
 
 
-pub(crate) fn init<'a>(session: &mut Session<'a>) {
+pub(crate) fn init(session: &mut Session) {
     session.register_symbol("seq", Seq::construct);
     session.register_symbol("range", Range::construct);
 }
