@@ -11,17 +11,17 @@ use num::BigInt;
 /// within the input string. The lifetime is bound to the lifetime of the input string.
 #[derive(Debug)]
 pub struct ParseError<'a> {
-    base: StreamError,
+    base: StreamError<'static>,
     slice: &'a str
 }
 
 impl<'a> ParseError<'a> {
-    fn new<T>(text: T, slice: &'a str) -> ParseError<'a> where T: Into<StreamError> {
+    fn new<T>(text: T, slice: &'a str) -> ParseError<'a> where T: Into<StreamError<'static>> {
         ParseError{base: text.into(), slice}
     }
 
     #[cfg(test)]
-    fn cmp_ref<T>(text: T) -> ParseError<'a> where T: Into<StreamError> {
+    fn cmp_ref<T>(text: T) -> ParseError<'a> where T: Into<StreamError<'static>> {
         Self::new(text, Default::default())
     }
 
@@ -43,11 +43,11 @@ impl<'a> Display for ParseError<'a> {
     }
 }
 
-impl<'a> std::error::Error for ParseError<'a> {
+/*impl<'a> std::error::Error for ParseError<'a> {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.base)
     }
-}
+}*/
 
 impl<'a> PartialEq for ParseError<'a> {
     fn eq(&self, other: &ParseError<'a>) -> bool {
@@ -137,7 +137,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn skip_until(&mut self, delim: char) -> Result<(), StreamError> {
+    fn skip_until(&mut self, delim: char) -> Result<(), StreamError<'static>> {
         while let Some((_, ch)) = self.iter.next() {
             if ch == '\\' {
                 if self.iter.next().is_none() {
@@ -305,22 +305,22 @@ enum ExprPart<'a> {
     Oper(Token<'a>),
     Chain(Token<'a>),
     Term(TTerm<'a>),
-    Part(Vec<Expr>)
+    Part(Vec<Expr<'static>>)
 }
 
 #[derive(Debug)]
 enum TTerm<'a> {
-    Node(Node<'a>, Option<Vec<Expr>>),
-    ParExpr(Box<Expr>),
+    Node(Node<'a>, Option<Vec<Expr<'static>>>),
+    ParExpr(Box<Expr<'static>>),
     Literal(Literal<'a>),
-    List(Vec<Expr>),
+    List(Vec<Expr<'static>>),
     Special(Token<'a>, Option<Token<'a>>)
 }
 
 #[derive(Debug)]
 enum Node<'a> {
     Ident(Token<'a>),
-    Block(Box<Expr>)
+    Block(Box<Expr<'static>>)
 }
 
 #[derive(Debug)]
@@ -341,9 +341,9 @@ fn closing(bracket: &str) -> &'static str {
     }
 }
 
-fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr>, ParseError<'a>> {
+fn parse_main<'a>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'static>>, ParseError<'a>> {
     // This may parse several expressions separated by commas.
-    let mut exprs: Vec<Expr> = vec![];
+    let mut exprs: Vec<Expr<'static>> = vec![];
     // Each expression is a string of terms separated by operators OR chaining.
     let mut expr: PreExpr = vec![];
     let mut last_comma: Option<Token<'a>> = None;
@@ -547,11 +547,11 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     }
 }
 
-fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
+fn into_expr(input: PreExpr<'_>) -> Result<Expr<'static>, ParseError<'_>> {
     struct StackEntry {
         op: String,
         prec: u32,
-        args: Vec<Expr>
+        args: Vec<Expr<'static>>
     }
 
     enum ChainOp {
@@ -561,8 +561,8 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
 
     enum TermOption {
         Empty,
-        Bare(Expr),
-        Chained(Expr, ChainOp)
+        Bare(Expr<'static>),
+        Chained(Expr<'static>, ChainOp)
     }
 
     impl TermOption {
@@ -572,7 +572,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
             ret
         }
 
-        fn unwrap(self) -> Expr {
+        fn unwrap(self) -> Expr<'static> {
             match self {
                 Bare(expr) => expr,
                 _ => panic!()
@@ -684,7 +684,7 @@ fn get_op(op: &str) -> (u32, bool) {
 ///         Some(Expr::new_node("a", None, vec![])),
 ///         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
 /// ```
-pub fn parse(input: &str) -> Result<Expr, ParseError> {
+pub fn parse<'a>(input: &'a str) -> Result<Expr<'static>, ParseError<'a>> {
     let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
     match (it.next(), it.next()) {
         (Some(expr), None) => Ok(expr),
