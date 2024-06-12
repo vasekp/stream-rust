@@ -33,14 +33,14 @@ pub struct Seq {
     step: Number
 }
 
-struct SeqIter<'a> {
+struct SeqIter<'sess> {
     value: Number,
     step: Number,
-    phantom: PhantomData<&'a Number>
+    phantom: PhantomData<&'sess Number>
 }
 
-impl<'a> Stream<'a> for Seq {
-    fn iter(&self) -> Box<dyn SIterator<'a> + 'a> {
+impl<'sess> Stream<'sess> for Seq {
+    fn iter(&self) -> Box<dyn SIterator<'sess> + 'sess> {
         Box::new(SeqIter{
             value: self.from.clone(),
             step: self.step.clone(),
@@ -54,7 +54,7 @@ impl<'a> Stream<'a> for Seq {
 }
 
 impl Seq {
-    fn construct<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+    fn construct<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
         node.check_args(false, 0..=2)?
             .eval_all(session)?
             .with(|node| {
@@ -77,8 +77,8 @@ impl Describe for Seq {
     }
 }
 
-impl<'a> Iterator for SeqIter<'a> {
-    type Item = Result<Item<'a>, StreamError<'a>>;
+impl<'sess> Iterator for SeqIter<'sess> {
+    type Item = Result<Item<'sess>, StreamError<'sess>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ret = Item::new_number(self.value.clone());
@@ -87,7 +87,7 @@ impl<'a> Iterator for SeqIter<'a> {
     }
 }
 
-impl<'a> SIterator<'a> for SeqIter<'a> {
+impl<'sess> SIterator<'sess> for SeqIter<'sess> {
     fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
         debug_assert!(!n.is_negative());
         self.value += n * &self.step;
@@ -149,15 +149,15 @@ pub struct Range {
     step: Number
 }
 
-struct RangeIter<'a> {
+struct RangeIter<'sess> {
     value: Number,
     step: Number,
     stop: Number,
-    phantom: PhantomData<&'a Number>
+    phantom: PhantomData<&'sess Number>
 }
 
-impl<'a> Stream<'a> for Range {
-    fn iter(&self) -> Box<dyn SIterator<'a> + 'a> {
+impl<'sess> Stream<'sess> for Range {
+    fn iter(&self) -> Box<dyn SIterator<'sess> + 'sess> {
         Box::new(RangeIter{
             value: self.from.clone(),
             stop: self.to.clone(),
@@ -181,7 +181,7 @@ impl<'a> Stream<'a> for Range {
 }
 
 impl Range {
-    fn construct<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+    fn construct<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
         node.check_args(false, 1..=3)?
             .eval_all(session)?
             .with(|node| {
@@ -204,8 +204,8 @@ impl Describe for Range {
     }
 }
 
-impl<'a> Iterator for RangeIter<'a> {
-    type Item = Result<Item<'a>, StreamError<'a>>;
+impl<'sess> Iterator for RangeIter<'sess> {
+    type Item = Result<Item<'sess>, StreamError<'sess>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.step.is_zero()
@@ -220,7 +220,7 @@ impl<'a> Iterator for RangeIter<'a> {
     }
 }
 
-impl<'a> SIterator<'a> for RangeIter<'a> {
+impl<'sess> SIterator<'sess> for RangeIter<'sess> {
     fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
         debug_assert!(!n.is_negative());
         if self.step.is_zero() {

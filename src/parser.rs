@@ -10,18 +10,18 @@ use num::BigInt;
 /// The error type returned by [`parse`]. Contains the description of the error and its location
 /// within the input string. The lifetime is bound to the lifetime of the input string.
 #[derive(Debug)]
-pub struct ParseError<'a> {
+pub struct ParseError<'str> {
     reason: String,
-    slice: &'a str
+    slice: &'str str
 }
 
-impl<'a> ParseError<'a> {
-    fn new(text: impl Into<String>, slice: &'a str) -> ParseError<'a> {
+impl<'str> ParseError<'str> {
+    fn new(text: impl Into<String>, slice: &'str str) -> ParseError<'str> {
         ParseError{reason: text.into(), slice}
     }
 
     #[cfg(test)]
-    fn cmp_ref(text: impl Into<String>) -> ParseError<'a> {
+    fn cmp_ref(text: impl Into<String>) -> ParseError<'str> {
         Self::new(text, Default::default())
     }
 
@@ -29,7 +29,7 @@ impl<'a> ParseError<'a> {
     /// full. The part causing the error is highlighted using ANSI color sequences.
     ///
     /// For the actual description of the error, use the `Display` trait.
-    pub fn display(&self, input: &'a str) {
+    pub fn display(&self, input: &'str str) {
         let start = unsafe { self.slice.as_ptr().offset_from(input.as_ptr()) } as usize;
         let length = self.slice.len();
         //println!("\x1b[8m{}\x1b[0m{}", &input[0..start], &input[start..(start + length)]);
@@ -37,22 +37,22 @@ impl<'a> ParseError<'a> {
     }
 }
 
-impl<'a> Display for ParseError<'a> {
+impl<'str> Display for ParseError<'str> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         Display::fmt(&self.reason, f)
     }
 }
 
-impl<'a> PartialEq for ParseError<'a> {
-    fn eq(&self, other: &ParseError<'a>) -> bool {
+impl<'str> PartialEq for ParseError<'str> {
+    fn eq(&self, other: &ParseError<'str>) -> bool {
         self.reason == other.reason
     }
 }
 
 
-struct Tokenizer<'a> {
-    input: &'a str,
-    iter: Peekable<CharIndices<'a>>,
+struct Tokenizer<'str> {
+    input: &'str str,
+    iter: Peekable<CharIndices<'str>>,
 }
 
 #[derive(PartialEq)]
@@ -114,10 +114,10 @@ fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
 }
 
 #[derive(PartialEq, Debug)]
-struct Token<'a>(TokenClass, &'a str);
+struct Token<'str>(TokenClass, &'str str);
 
-impl<'a> Tokenizer<'a> {
-    pub fn new(input: &'a str) -> Tokenizer<'a> {
+impl<'str> Tokenizer<'str> {
+    pub fn new(input: &'str str) -> Tokenizer<'str> {
         Tokenizer{input, iter: input.char_indices().peekable()}
     }
 
@@ -144,7 +144,7 @@ impl<'a> Tokenizer<'a> {
         Err("unterminated string")
     }
 
-    fn slice_from(&mut self, start: &'a str) -> &'a str {
+    fn slice_from(&mut self, start: &'str str) -> &'str str {
         let start_index = unsafe { start.as_ptr().offset_from(self.input.as_ptr()) } as usize;
         let end_index = match self.iter.peek() {
             Some(&(pos, _)) => pos,
@@ -154,8 +154,8 @@ impl<'a> Tokenizer<'a> {
     }
 }
 
-impl<'a> Iterator for Tokenizer<'a> {
-    type Item = Result<Token<'a>, ParseError<'a>>;
+impl<'str> Iterator for Tokenizer<'str> {
+    type Item = Result<Token<'str>, ParseError<'str>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (start, ch) = self.iter.next()?;
@@ -292,38 +292,38 @@ fn test_tokenizer() {
 }
 
 
-type PreExpr<'a, 'b> = Vec<ExprPart<'a, 'b>>;
+type PreExpr<'str, 'sess> = Vec<ExprPart<'str, 'sess>>;
 
 #[derive(Debug)]
-enum ExprPart<'a, 'b> {
-    Oper(Token<'a>),
-    Chain(Token<'a>),
-    Term(TTerm<'a, 'b>),
-    Part(Vec<Expr<'b>>)
+enum ExprPart<'str, 'sess> {
+    Oper(Token<'str>),
+    Chain(Token<'str>),
+    Term(TTerm<'str, 'sess>),
+    Part(Vec<Expr<'sess>>)
 }
 
 #[derive(Debug)]
-enum TTerm<'a, 'b> {
-    Node(Node<'a, 'b>, Option<Vec<Expr<'b>>>),
-    ParExpr(Box<Expr<'b>>),
-    Literal(Literal<'a>),
-    List(Vec<Expr<'b>>),
-    Special(Token<'a>, Option<Token<'a>>)
+enum TTerm<'str, 'sess> {
+    Node(Node<'str, 'sess>, Option<Vec<Expr<'sess>>>),
+    ParExpr(Box<Expr<'sess>>),
+    Literal(Literal<'str>),
+    List(Vec<Expr<'sess>>),
+    Special(Token<'str>, Option<Token<'str>>)
 }
 
 #[derive(Debug)]
-enum Node<'a, 'b> {
-    Ident(Token<'a>),
-    Block(Box<Expr<'b>>)
+enum Node<'str, 'sess> {
+    Ident(Token<'str>),
+    Block(Box<Expr<'sess>>)
 }
 
 #[derive(Debug)]
-enum Literal<'a> {
-    Number(Token<'a>),
-    BaseNum(Token<'a>),
-    Bool(Token<'a>),
-    Char(Token<'a>),
-    String(Token<'a>)
+enum Literal<'str> {
+    Number(Token<'str>),
+    BaseNum(Token<'str>),
+    Bool(Token<'str>),
+    Char(Token<'str>),
+    String(Token<'str>)
 }
 
 fn closing(bracket: &str) -> &'static str {
@@ -335,12 +335,12 @@ fn closing(bracket: &str) -> &'static str {
     }
 }
 
-fn parse_main<'a, 'b>(tk: &RefCell<Tokenizer<'a>>, bracket: Option<&'a str>) -> Result<Vec<Expr<'b>>, ParseError<'a>> {
+fn parse_main<'str, 'sess>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -> Result<Vec<Expr<'sess>>, ParseError<'str>> {
     // This may parse several expressions separated by commas.
-    let mut exprs: Vec<Expr<'b>> = vec![];
+    let mut exprs: Vec<Expr<'sess>> = vec![];
     // Each expression is a string of terms separated by operators OR chaining.
     let mut expr: PreExpr = vec![];
-    let mut last_comma: Option<Token<'a>> = None;
+    let mut last_comma: Option<Token<'str>> = None;
     use ExprPart::*;
     use TTerm as TT;
     use TokenClass as TC;
@@ -541,11 +541,11 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     }
 }
 
-fn into_expr<'a, 'b>(input: PreExpr<'a, 'b>) -> Result<Expr<'b>, ParseError<'a>> {
-    struct StackEntry<'b> {
+fn into_expr<'str, 'sess>(input: PreExpr<'str, 'sess>) -> Result<Expr<'sess>, ParseError<'str>> {
+    struct StackEntry<'sess> {
         op: String,
         prec: u32,
-        args: Vec<Expr<'b>>
+        args: Vec<Expr<'sess>>
     }
 
     enum ChainOp {
@@ -553,20 +553,20 @@ fn into_expr<'a, 'b>(input: PreExpr<'a, 'b>) -> Result<Expr<'b>, ParseError<'a>>
         Colon
     }
 
-    enum TermOption<'b> {
+    enum TermOption<'sess> {
         Empty,
-        Bare(Expr<'b>),
-        Chained(Expr<'b>, ChainOp)
+        Bare(Expr<'sess>),
+        Chained(Expr<'sess>, ChainOp)
     }
 
-    impl<'b> TermOption<'b> {
-        fn take(&mut self) -> TermOption<'b> {
+    impl<'sess> TermOption<'sess> {
+        fn take(&mut self) -> TermOption<'sess> {
             let mut ret = Empty;
             std::mem::swap(self, &mut ret);
             ret
         }
 
-        fn unwrap(self) -> Expr<'b> {
+        fn unwrap(self) -> Expr<'sess> {
             match self {
                 Bare(expr) => expr,
                 _ => panic!()
@@ -578,7 +578,7 @@ fn into_expr<'a, 'b>(input: PreExpr<'a, 'b>) -> Result<Expr<'b>, ParseError<'a>>
     use TermOption::*;
 
     debug_assert!(!input.is_empty());
-    let mut stack: Vec<StackEntry<'b>> = vec![];
+    let mut stack: Vec<StackEntry<'sess>> = vec![];
     let mut cur = Empty;
     'a: for part in input {
         use ExprPart::*;
@@ -678,7 +678,7 @@ fn get_op(op: &str) -> (u32, bool) {
 ///         Some(Expr::new_node("a", None, vec![])),
 ///         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
 /// ```
-pub fn parse<'a, 'b>(input: &'a str) -> Result<Expr<'b>, ParseError<'a>> {
+pub fn parse<'str, 'sess>(input: &'str str) -> Result<Expr<'sess>, ParseError<'str>> {
     let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
     match (it.next(), it.next()) {
         (Some(expr), None) => Ok(expr),

@@ -6,10 +6,10 @@ use crate::base::Describe;
 
 /// A `Stream` formed by direct enumeration of its `Item`s.
 #[derive(Clone)]
-pub struct List<'a>(Vec<Item<'a>>);
+pub struct List<'sess>(Vec<Item<'sess>>);
 
-impl<'a> Stream<'a> for List<'a> {
-    fn iter(&self) -> Box<dyn SIterator<'a> + 'a> {
+impl<'sess> Stream<'sess> for List<'sess> {
+    fn iter(&self) -> Box<dyn SIterator<'sess> + 'sess> {
         Box::new(self.0.clone().into_iter().map(|x| Ok(x.clone())))
     }
 
@@ -18,7 +18,7 @@ impl<'a> Stream<'a> for List<'a> {
     }
 }
 
-impl<'a> Describe for List<'a> {
+impl<'sess> Describe for List<'sess> {
     fn describe(&self) -> String {
         let mut ret = String::new();
         ret.push('[');
@@ -35,13 +35,13 @@ impl<'a> Describe for List<'a> {
     }
 }
 
-impl<'a> From<Vec<Item<'a>>> for List<'a> {
-    fn from(vec: Vec<Item<'a>>) -> List<'a> {
+impl<'sess> From<Vec<Item<'sess>>> for List<'sess> {
+    fn from(vec: Vec<Item<'sess>>) -> List<'sess> {
         List(vec)
     }
 }
 
-fn construct_list<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+fn construct_list<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
     let node = node.check_args(false, 0..)?;
     node.args.into_iter()
         .map(|x| session.eval(x))
@@ -53,8 +53,8 @@ fn construct_list<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, 
 #[derive(Clone)]
 pub struct LiteralString(Vec<Char>);
 
-impl<'a> Stream<'a> for LiteralString {
-    fn iter(&self) -> Box<dyn SIterator<'a>> {
+impl<'sess> Stream<'sess> for LiteralString {
+    fn iter(&self) -> Box<dyn SIterator<'sess>> {
         Box::new(self.0.clone().into_iter().map(|x| Ok(Item::new_char(x.clone()))))
     }
 
@@ -87,7 +87,7 @@ impl From<String> for LiteralString {
 
 
 
-fn construct_part<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+fn construct_part<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
     node.check_args(true, 1..)?
         .eval_all(session)?
         .with(|node| {
@@ -108,20 +108,20 @@ fn construct_part<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, 
         })
 }
 
-struct Map<'a> {
-    source: Box<dyn Stream<'a> + 'a>,
-    body: Node<'a>,
-    session: &'a Session
+struct Map<'sess> {
+    source: Box<dyn Stream<'sess> + 'sess>,
+    body: Node<'sess>,
+    session: &'sess Session
 }
 
-struct MapIter<'a> {
-    source: Box<dyn SIterator<'a> + 'a>,
-    body: Node<'a>,
-    session: &'a Session
+struct MapIter<'sess> {
+    source: Box<dyn SIterator<'sess> + 'sess>,
+    body: Node<'sess>,
+    session: &'sess Session
 }
 
-impl<'a> Map<'a> {
-    fn construct(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+impl<'sess> Map<'sess> {
+    fn construct(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
         let mut node = node.check_args(true, 1..=1)?
             .eval_source(session)?;
         let source = node.source.unwrap().to_item()?.into_stream()?;
@@ -133,7 +133,7 @@ impl<'a> Map<'a> {
     }
 }
 
-impl<'a> Describe for Map<'a> {
+impl<'sess> Describe for Map<'sess> {
     fn describe(&self) -> String {
         let mut ret = self.source.describe();
         ret.push(':');
@@ -142,8 +142,8 @@ impl<'a> Describe for Map<'a> {
     }
 }
 
-impl<'a> Stream<'a> for Map<'a> {
-    fn iter(&self) -> Box<dyn SIterator<'a> + 'a> {
+impl<'sess> Stream<'sess> for Map<'sess> {
+    fn iter(&self) -> Box<dyn SIterator<'sess> + 'sess> {
         Box::new(MapIter{source: self.source.iter(), body: self.body.clone(), session: self.session})
     }
 
@@ -152,14 +152,14 @@ impl<'a> Stream<'a> for Map<'a> {
     }
 }
 
-impl<'a> Clone for Map<'a> {
-    fn clone(&self) -> Map<'a> {
+impl<'sess> Clone for Map<'sess> {
+    fn clone(&self) -> Map<'sess> {
         Map{source: dyn_clone::clone_box(&*self.source), body: self.body.clone(), session: self.session}
     }
 }
 
-impl<'a> Iterator for MapIter<'a> {
-    type Item = Result<Item<'a>, StreamError<'a>>;
+impl<'sess> Iterator for MapIter<'sess> {
+    type Item = Result<Item<'sess>, StreamError<'sess>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let source = self.source.next()?;
@@ -177,22 +177,22 @@ impl<'a> Iterator for MapIter<'a> {
     }
 }
 
-impl<'a> SIterator<'a> for MapIter<'a> {
+impl<'sess> SIterator<'sess> for MapIter<'sess> {
     fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
         self.source.skip_n(n)
     }
 }
 
-fn construct_plus<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+fn construct_plus<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
     let ans = node.check_args(false, 1..)?
         .eval_all(session)?
-        .with(|node| -> Result<_, StreamError<'a>> {
+        .with(|node| -> Result<_, StreamError<'sess>> {
             node.args.iter().try_fold(Number::zero(), |a, e| Ok(a + e.to_item()?.into_num()?))
         });
     Ok(Item::new_number(ans?))
 }
 
-fn construct_minus<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+fn construct_minus<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
     let ans = node.check_args(false, 1..=2)?
         .eval_all(session)?
         .with(|node| {
@@ -206,7 +206,7 @@ fn construct_minus<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>,
     Ok(Item::new_number(ans?))
 }
 
-fn construct_times<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+fn construct_times<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
     let ans = node.check_args(false, 1..)?
         .eval_all(session)?
         .with(|node| {
@@ -215,7 +215,7 @@ fn construct_times<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>,
     Ok(Item::new_number(ans?))
 }
 
-fn construct_div<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+fn construct_div<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
     let ans = node.check_args(false, 2..=2)?
         .eval_all(session)?
         .with(|node| {
@@ -228,7 +228,7 @@ fn construct_div<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, S
     Ok(Item::new_number(ans?))
 }
 
-fn construct_pow<'a>(session: &'a Session, node: Node<'a>) -> Result<Item<'a>, StreamError<'a>> {
+fn construct_pow<'sess>(session: &'sess Session, node: Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
     let ans = node.check_args(false, 2..=2)?
         .eval_all(session)?
         .with(|node| {

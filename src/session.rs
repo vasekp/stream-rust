@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::base::*;
 use crate::{lang, ops};
 
-type Constructor = for<'a> fn(&'a Session, Node<'a>) -> Result<Item<'a>, StreamError<'a>>;
+type Constructor = for<'sess> fn(&'sess Session, Node<'sess>) -> Result<Item<'sess>, StreamError<'sess>>;
 
 /// A `Session` holds information necessary for evaluating symbolic expressions. This includes a
 /// register of defined symbols.
@@ -23,14 +23,14 @@ impl Session {
         self.register.insert(name, ctor);
     }
 
-    fn find_symbol<'a>(&self, name: &str) -> Result<Constructor, StreamError<'a>> {
+    fn find_symbol<'sess>(&self, name: &str) -> Result<Constructor, StreamError<'sess>> {
         self.register.get(name).copied()
             .ok_or_else(|| StreamError::from(format!("symbol '{name}' not found")))
     }
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn eval<'a>(&'a self, expr: Expr<'a>) -> Result<Item<'a>, StreamError<'a>> {
+    pub fn eval<'sess>(&'sess self, expr: Expr<'sess>) -> Result<Item<'sess>, StreamError<'sess>> {
         match expr {
             Expr::Imm(item) => Ok(item),
             Expr::Eval(node) => match node.head {
