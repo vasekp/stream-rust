@@ -12,11 +12,11 @@ use crate::session::Session;
 pub type Number = num::BigInt;
 
 pub(crate) trait NumWithin : PartialOrd {
-    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError>;
+    fn check_within<'sess>(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError<'sess>>;
 }
 
 impl NumWithin for Number {
-    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError> {
+    fn check_within<'sess>(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError<'sess>> {
         match range.contains(self) {
             true => Ok(()),
             false => Err(format!("expected {}, found {}", describe_range(&range), &self).into())
@@ -37,59 +37,59 @@ pub trait Describe {
 
 
 /// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
-pub enum Item {
+pub enum Item<'sess> {
     Number(Number),
     Bool(bool),
     Char(Char),
-    Stream(Box<dyn Stream>)
+    Stream(Box<dyn Stream<'sess> + 'sess>)
 }
 
-impl Item {
-    pub fn new_number(value: impl Into<Number>) -> Item {
+impl<'sess> Item<'sess> {
+    pub fn new_number(value: impl Into<Number>) -> Item<'sess> {
         Item::Number(value.into())
     }
 
-    pub fn new_bool(value: bool) -> Item {
+    pub fn new_bool(value: bool) -> Item<'sess> {
         Item::Bool(value)
     }
 
-    pub fn new_char(value: impl Into<Char>) -> Item {
+    pub fn new_char(value: impl Into<Char>) -> Item<'sess> {
         Item::Char(value.into())
     }
 
-    pub fn new_stream(value: impl Stream + 'static) -> Item {
+    pub fn new_stream(value: impl Stream<'sess> + 'sess) -> Item<'sess> {
         Item::Stream(Box::new(value))
     }
 
-    pub fn as_num(&self) -> Result<&Number, StreamError> {
+    pub fn as_num(&self) -> Result<&Number, StreamError<'sess>> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
-    pub fn into_num(self) -> Result<Number, StreamError> {
+    pub fn into_num(self) -> Result<Number, StreamError<'sess>> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
-    pub fn as_char(&self) -> Result<&Char, StreamError> {
+    pub fn as_char(&self) -> Result<&Char, StreamError<'sess>> {
         match self {
             Item::Char(c) => Ok(c),
             _ => Err(format!("expected char, found {:?}", &self).into())
         }
     }
 
-    pub fn as_stream(&self) -> Result<&dyn Stream, StreamError> {
+    pub fn as_stream(&self) -> Result<&dyn Stream<'sess>, StreamError<'sess>> {
         match self {
             Item::Stream(s) => Ok(&**s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
-    pub fn into_stream(self) -> Result<Box<dyn Stream>, StreamError> {
+    pub fn into_stream(self) -> Result<Box<dyn Stream<'sess> + 'sess>, StreamError<'sess>> {
         match self {
             Item::Stream(s) => Ok(s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
@@ -97,7 +97,7 @@ impl Item {
     }
 }
 
-impl Display for Item {
+impl<'sess> Display for Item<'sess> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         use Item::*;
         match self {
@@ -109,19 +109,22 @@ impl Display for Item {
     }
 }
 
-impl Debug for Item {
+impl<'sess> Debug for Item<'sess> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         use Item::*;
         match self {
             Number(n) => write!(f, "number {n}"),
             Bool(b) => write!(f, "bool {b}"),
             Char(c) => write!(f, "char '{c}'"),
-            Stream(s) => write!(f, "{} {s}", if s.is_string() { "string" } else { "stream" })
+            Stream(s) => {
+                write!(f, "{} ", if s.is_string() { "string" } else { "stream" })
+                    .and_then(|_| (*s).writeout(f))
+            }
         }
     }
 }
 
-impl Describe for Item {
+impl<'sess> Describe for Item<'sess> {
     fn describe(&self) -> String {
         use Item::*;
         match self {
@@ -134,7 +137,7 @@ impl Describe for Item {
     }
 }
 
-impl PartialEq for Item {
+impl<'sess> PartialEq for Item<'sess> {
     fn eq(&self, other: &Self) -> bool {
         use Item::*;
         match (self, other) {
@@ -146,8 +149,8 @@ impl PartialEq for Item {
     }
 }
 
-impl Clone for Item {
-    fn clone(&self) -> Item {
+impl<'sess> Clone for Item<'sess> {
+    fn clone(&self) -> Item<'sess> {
         use Item::*;
         match self {
             Number(x) => Number(x.clone()),
@@ -229,17 +232,17 @@ fn test_char() {
 
 /// The base error type for use for this library. Currently only holds a String description.
 #[derive(PartialEq, Debug)]
-pub struct StreamError{
+pub struct StreamError<'sess> {
     reason: String,
-    node: Option<Node>
+    node: Option<Node<'sess>>
 }
 
-impl StreamError {
-    pub fn new<T>(text: T, node: Node) -> StreamError where T: Into<String> {
+impl<'sess> StreamError<'sess> {
+    pub fn new<T>(text: T, node: Node<'sess>) -> StreamError<'sess> where T: Into<String> {
         StreamError{reason: text.into(), node: Some(node)}
     }
 
-    pub(crate) fn with_node(mut self, node: Node) -> StreamError {
+    pub(crate) fn with_node(mut self, node: Node<'sess>) -> StreamError<'sess> {
         if self.node.is_none() {
             self.node = Some(node);
         }
@@ -247,15 +250,15 @@ impl StreamError {
     }
 }
 
-impl std::error::Error for StreamError { }
+impl<'sess> std::error::Error for StreamError<'sess> { }
 
-impl<T> From<T> for StreamError where T: Into<String> {
-    fn from(text: T) -> StreamError {
+impl<'sess, T> From<T> for StreamError<'sess> where T: Into<String> {
+    fn from(text: T) -> StreamError<'sess> {
         StreamError{reason: text.into(), node: None}
     }
 }
 
-impl Display for StreamError {
+impl<'sess> Display for StreamError<'sess> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         match &self.node {
             Some(node) => write!(f, "{}: {}", node.describe(), self.reason),
@@ -268,10 +271,10 @@ impl Display for StreamError {
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
-pub trait Stream: DynClone + Describe {
+pub trait Stream<'sess>: DynClone + Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
-    fn iter(&self) -> Box<dyn SIterator>;
+    fn iter(&self) -> Box<dyn SIterator<'sess> + 'sess>;
 
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
@@ -412,7 +415,7 @@ pub trait Stream: DynClone + Describe {
     }
 }
 
-impl Display for dyn Stream {
+impl<'sess> Display for dyn Stream<'sess> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         self.writeout(f)
     }
@@ -427,7 +430,7 @@ impl Display for dyn Stream {
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
+pub trait SIterator<'sess>: Iterator<Item = Result<Item<'sess>, StreamError<'sess>>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. If it can't, or is known to be infinite, returns `None`.
     ///
@@ -473,9 +476,9 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     }
 }
 
-impl<T, U, V> SIterator for std::iter::Map<T, U>
+impl<'sess, T, U, V> SIterator<'sess> for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<Item, StreamError>
+      U: FnMut(V) -> Result<Item<'sess>, StreamError<'sess>>
 { }
 
 
@@ -518,9 +521,9 @@ impl<T> From<T> for Length where T: Into<Number> {
 /// Any Stream language expression. This may be either a directly accessible [`Item`] (including
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expr {
-    Imm(Item),
-    Eval(Node)
+pub enum Expr<'sess> {
+    Imm(Item<'sess>),
+    Eval(Node<'sess>)
 }
 
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
@@ -528,30 +531,30 @@ pub enum Expr {
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
 /// happens in [`Session::eval()`](crate::session::Session::eval).
 #[derive(Debug, PartialEq, Clone)]
-pub struct Node {
-    pub head: Head,
-    pub source: Option<Box<Expr>>,
-    pub args: Vec<Expr>
+pub struct Node<'sess> {
+    pub head: Head<'sess>,
+    pub source: Option<Box<Expr<'sess>>>,
+    pub args: Vec<Expr<'sess>>
 }
 
 /// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Head {
+pub enum Head<'sess> {
     Symbol(String),
     Oper(String),
-    Block(Box<Expr>)
+    Block(Box<Expr<'sess>>)
 }
 
-impl Expr {
+impl<'sess> Expr<'sess> {
     /// Creates a new `Expr` of a value type.
-    pub fn new_imm(item: Item) -> Expr {
+    pub fn new_imm(item: Item<'sess>) -> Expr<'sess> {
         Expr::Imm(item)
     }
 
     /// Creates a new `Expr` of a node with a symbolic head.
-    pub fn new_node(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+    pub fn new_node(symbol: impl Into<String>, source: Option<Expr<'sess>>, args: Vec<Expr<'sess>>) -> Expr<'sess> {
         Expr::Eval(Node{
             head: Head::Symbol(symbol.into()),
             source: source.map(Box::new),
@@ -560,7 +563,7 @@ impl Expr {
     }
 
     /// Creates a new `Expr` of a node with an operation head.
-    pub fn new_op(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+    pub fn new_op(symbol: impl Into<String>, source: Option<Expr<'sess>>, args: Vec<Expr<'sess>>) -> Expr<'sess> {
         Expr::Eval(Node{
             head: Head::Oper(symbol.into()),
             source: source.map(Box::new),
@@ -569,7 +572,7 @@ impl Expr {
     }
 
     /// Creates a new `Expr` of a node with a block head.
-    pub fn new_block(body: Expr, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+    pub fn new_block(body: Expr<'sess>, source: Option<Expr<'sess>>, args: Vec<Expr<'sess>>) -> Expr<'sess> {
         Expr::Eval(Node{
             head: Head::Block(Box::new(body)),
             source: source.map(Box::new),
@@ -578,14 +581,14 @@ impl Expr {
     }
 
     /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
-    pub fn to_item(&self) -> Result<Item, StreamError> {
+    pub fn to_item(&self) -> Result<Item<'sess>, StreamError<'sess>> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => Err(format!("expected value, found {:?}", &node).into())
         }
     }
 
-    pub fn into_node(self) -> Result<Node, StreamError> {
+    pub fn into_node(self) -> Result<Node<'sess>, StreamError<'sess>> {
         match self {
             Expr::Eval(node) => Ok(node),
             Expr::Imm(value) => Err(format!("expected node, found {:?}", &value).into())
@@ -593,13 +596,13 @@ impl Expr {
     }
 }
 
-impl From<Item> for Expr {
-    fn from(item: Item) -> Expr {
+impl<'sess> From<Item<'sess>> for Expr<'sess> {
+    fn from(item: Item<'sess>) -> Expr<'sess> {
         Expr::new_imm(item)
     }
 }
 
-impl Describe for Expr {
+impl<'sess> Describe for Expr<'sess> {
     fn describe(&self) -> String {
         match self {
             Expr::Imm(item) => item.describe(),
@@ -608,8 +611,8 @@ impl Describe for Expr {
     }
 }
 
-impl Node {
-    pub(crate) fn check_args(self, source: bool, range: impl RangeBounds<usize>) -> Result<Node, StreamError> {
+impl<'sess> Node<'sess> {
+    pub(crate) fn check_args(self, source: bool, range: impl RangeBounds<usize>) -> Result<Node<'sess>, StreamError<'sess>> {
         use std::ops::Bound::*;
         match (&self.source, source) {
             (Some(_), false) => return Err(StreamError::new("no source accepted", self)),
@@ -627,7 +630,7 @@ impl Node {
         }
     }
 
-    pub(crate) fn eval_all(self, session: &Session) -> Result<Node, StreamError> {
+    pub(crate) fn eval_all(self, session: &'sess Session) -> Result<Node<'sess>, StreamError<'sess>> {
         let source = self.source.map(|x| session.eval(*x))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
@@ -637,21 +640,21 @@ impl Node {
         Ok(Node{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, session: &Session) -> Result<Node, StreamError> {
+    pub(crate) fn eval_source(self, session: &'sess Session) -> Result<Node<'sess>, StreamError<'sess>> {
         let source = self.source.map(|x| session.eval(*x))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         Ok(Node{head: self.head, source, args: self.args})
     }
 
-    pub(crate) fn with<T, F>(self, f: F) -> Result<T, StreamError>
-        where F: FnOnce(&Node) -> Result<T, StreamError>
+    pub(crate) fn with<T, F>(self, f: F) -> Result<T, StreamError<'sess>>
+        where F: FnOnce(&Node<'sess>) -> Result<T, StreamError<'sess>>
     {
         f(&self).map_err(|e| e.with_node(self))
     }
 }
 
-impl Describe for Node {
+impl<'sess> Describe for Node<'sess> {
     fn describe(&self) -> String {
         let mut ret = String::new();
         if let Some(source) = &self.source {
