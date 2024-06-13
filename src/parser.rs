@@ -38,7 +38,7 @@ impl<'str> ParseError<'str> {
 }
 
 impl<'str> Display for ParseError<'str> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self.reason, f)
     }
 }

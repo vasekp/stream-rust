@@ -100,7 +100,7 @@ impl<'sess> Item<'sess> {
     pub fn format(&self, max_len: usize) -> (String, Option<StreamError<'sess>>) {
         struct Stateful<'item, 'sess> {
             item: &'item Item<'sess>,
-            cell: Cell<Option<StreamError<'sess>>>
+            cell: ErrorCell<'sess>
         }
 
         impl<'item, 'sess> Display for Stateful<'item, 'sess> {
@@ -114,7 +114,7 @@ impl<'sess> Item<'sess> {
         (result, s.cell.take())
     }
 
-    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: Option<&Cell<Option<StreamError<'sess>>>>)
+    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
         -> std::fmt::Result
     {
         use Item::*;
@@ -139,13 +139,13 @@ impl<'sess> Item<'sess> {
 }
 
 impl<'sess> Display for Item<'sess> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.format_int(f, None)
     }
 }
 
 impl<'sess> Debug for Item<'sess> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.type_str())?;
         self.format_int(f, None)
     }
@@ -220,7 +220,7 @@ impl From<&str> for Char {
 }
 
 impl Display for Char {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let alt = f.alternate();
         let escape = |c| -> String {
             match c {
@@ -289,13 +289,15 @@ impl<'sess, T> From<T> for StreamError<'sess> where T: Into<String> {
 }
 
 impl<'sess> Display for StreamError<'sess> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.node {
             Some(node) => write!(f, "{}: {}", node.describe(), self.reason),
             None => write!(f, "{}", self.reason)
         }
     }
 }
+
+type ErrorCell<'sess> = Cell<Option<StreamError<'sess>>>;
 
 
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
@@ -317,19 +319,19 @@ pub trait Stream<'sess>: DynClone + Describe {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    fn writeout(&self, f: &mut Formatter<'_>, err: Option<&Cell<Option<StreamError<'sess>>>>)
-        -> Result<(), std::fmt::Error>
+    fn writeout(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
+        -> std::fmt::Result
     {
         if self.is_string() {
-            self.writeout_string(f, err)
+            self.writeout_string(f, error)
         } else {
-            self.writeout_stream(f, err)
+            self.writeout_stream(f, error)
         }
     }
 
     #[doc(hidden)]
-    fn writeout_stream(&self, f: &mut Formatter<'_>, error: Option<&Cell<Option<StreamError<'sess>>>>)
-        -> Result<(), std::fmt::Error>
+    fn writeout_stream(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
+        -> std::fmt::Result
     {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
@@ -337,7 +339,7 @@ pub trait Stream<'sess>: DynClone + Describe {
             None => (usize::MAX, 3)
         };
         if prec < 4 {
-            return Err(::std::fmt::Error)
+            return Err(std::fmt::Error)
         }
         let mut s = String::new();
         let mut i = 0;
@@ -382,8 +384,8 @@ pub trait Stream<'sess>: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: Option<&Cell<Option<StreamError<'sess>>>>)
-        -> Result<(), std::fmt::Error>
+    fn writeout_string(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
+        -> std::fmt::Result
     {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
@@ -391,7 +393,7 @@ pub trait Stream<'sess>: DynClone + Describe {
             None => (usize::MAX, 20)
         };
         if prec < 4 {
-            return Err(::std::fmt::Error)
+            return Err(std::fmt::Error)
         }
         let mut s = String::new();
         let mut i = 0;
@@ -459,7 +461,7 @@ pub trait Stream<'sess>: DynClone + Describe {
 }
 
 impl<'sess> Display for dyn Stream<'sess> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.writeout(f, None)
     }
 }
