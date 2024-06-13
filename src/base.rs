@@ -4,6 +4,7 @@ use dyn_clone::DynClone;
 use crate::utils::describe_range;
 use num::{Signed, One, Zero};
 use crate::session::Session;
+use std::cell::Cell;
 
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -95,32 +96,58 @@ impl<'sess> Item<'sess> {
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
-}
 
-impl<'sess> Display for Item<'sess> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    pub fn format(&self, max_len: usize) -> (String, Option<StreamError<'sess>>) {
+        struct Stateful<'item, 'sess> {
+            item: &'item Item<'sess>,
+            cell: Cell<Option<StreamError<'sess>>>
+        }
+
+        impl<'item, 'sess> Display for Stateful<'item, 'sess> {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                self.item.format_int(f, Some(&self.cell))
+            }
+        }
+
+        let s = Stateful{item: self, cell: Default::default()};
+        let result = format!("{:.*}", max_len, s);
+        (result, s.cell.take())
+    }
+
+    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: Option<&Cell<Option<StreamError<'sess>>>>)
+        -> std::fmt::Result
+    {
         use Item::*;
         match self {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
             Char(c) => write!(f, "'{c}'"),
-            Stream(s) => (*s).writeout(f)
+            Stream(s) => (*s).writeout(f, error)
         }
+    }
+
+    pub(crate) fn type_str(&self) -> &'static str {
+        use Item::*;
+        match self {
+            Number(_) => "number",
+            Bool(_) => "bool",
+            Char(_) => "char",
+            Stream(s) if s.is_string() => "string",
+            Stream(_) => "stream"
+        }
+    }
+}
+
+impl<'sess> Display for Item<'sess> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        self.format_int(f, None)
     }
 }
 
 impl<'sess> Debug for Item<'sess> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        use Item::*;
-        match self {
-            Number(n) => write!(f, "number {n}"),
-            Bool(b) => write!(f, "bool {b}"),
-            Char(c) => write!(f, "char '{c}'"),
-            Stream(s) => {
-                write!(f, "{} ", if s.is_string() { "string" } else { "stream" })
-                    .and_then(|_| (*s).writeout(f))
-            }
-        }
+        write!(f, "{} ", self.type_str())?;
+        self.format_int(f, None)
     }
 }
 
@@ -290,16 +317,20 @@ pub trait Stream<'sess>: DynClone + Describe {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    fn writeout(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn writeout(&self, f: &mut Formatter<'_>, err: Option<&Cell<Option<StreamError<'sess>>>>)
+        -> Result<(), std::fmt::Error>
+    {
         if self.is_string() {
-            self.writeout_string(f)
+            self.writeout_string(f, err)
         } else {
-            self.writeout_stream(f)
+            self.writeout_stream(f, err)
         }
     }
 
     #[doc(hidden)]
-    fn writeout_stream(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn writeout_stream(&self, f: &mut Formatter<'_>, error: Option<&Cell<Option<StreamError<'sess>>>>)
+        -> Result<(), std::fmt::Error>
+    {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (prec, usize::MAX),
@@ -323,10 +354,16 @@ pub trait Stream<'sess>: DynClone + Describe {
                         if i > 0 {
                             s += ", ";
                         }
-                        s += &format!("{:.*}", prec - plen, item);
+                        let (string, err) = item.format(prec - plen);
+                        s += &string;
+                        if err.is_some() {
+                            error.map(|cell| cell.set(err));
+                            break 'a;
+                        }
                     },
-                    Some(Err(_err)) => {
+                    Some(Err(err)) => {
                         s += "<!>";
+                        error.map(|cell| cell.set(Some(err)));
                         break 'a;
                     }
                 };
@@ -345,7 +382,9 @@ pub trait Stream<'sess>: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_string(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn writeout_string(&self, f: &mut Formatter<'_>, error: Option<&Cell<Option<StreamError<'sess>>>>)
+        -> Result<(), std::fmt::Error>
+    {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (prec, usize::MAX),
@@ -359,16 +398,17 @@ pub trait Stream<'sess>: DynClone + Describe {
         s.push('"');
         'a: {
             while s.len() < prec && i < max {
-                match iter.next() {
+                match iter.next().map(|res| res.and_then(|it| Ok(it.as_char()?.to_owned()))) {
                     None => {
                         s.push('"');
                         break 'a;
                     },
-                    Some(Ok(Item::Char(c))) => {
+                    Some(Ok(c)) => {
                         s += &format!("{c:#}");
                     },
-                    _ => {
+                    Some(Err(err)) => {
                         s += "<!>";
+                        error.map(|cell| cell.set(Some(err)));
                         break 'a;
                     }
                 };
@@ -420,7 +460,7 @@ pub trait Stream<'sess>: DynClone + Describe {
 
 impl<'sess> Display for dyn Stream<'sess> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        self.writeout(f)
+        self.writeout(f, None)
     }
 }
 

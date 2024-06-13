@@ -20,7 +20,11 @@ fn main() {
                 match session.eval(expr) {
                     Ok(item) => {
                         println!("Item Describe: {}", item.describe());
-                        println!("Item Display: {item:.80}");
+                        let (s, err) = item.format(80);
+                        println!("Item Format: {s}");
+                        if err.is_some() {
+                            println!("Err: {}", err.unwrap());
+                        }
                     },
                     Err(err) => println!("{err}")
                 }
