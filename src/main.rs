@@ -15,12 +15,12 @@ fn main() {
         let input = buffer.trim();
         match stream::parse(input) {
             Ok(expr) => {
-                println!("{expr:?}");
-                println!("{}", expr.describe());
+                println!("Expr Debug: {expr:?}");
+                println!("Expr Describe: {}", expr.describe());
                 match session.eval(expr) {
                     Ok(item) => {
-                        println!("{}", item.describe());
-                        println!("{item:.80}");
+                        println!("Item Describe: {}", item.describe());
+                        println!("Item Display: {item:.80}");
                     },
                     Err(err) => println!("{err}")
                 }

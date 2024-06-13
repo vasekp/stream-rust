@@ -230,7 +230,10 @@ fn test_char() {
 }
 
 
-/// The base error type for use for this library. Currently only holds a String description.
+/// The runtime error type with an optional indication of the [`Node`] whose construction or
+/// evaluation caused it.
+///
+/// Even though `node` is optional, the intended use is that every function supplies it.
 #[derive(PartialEq, Debug)]
 pub struct StreamError<'sess> {
     reason: String,
