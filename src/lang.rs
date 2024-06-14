@@ -1,5 +1,4 @@
 use crate::base::*;
-use crate::session::Session;
 use num::{One, Signed, Zero};
 use crate::base::Describe;
 
@@ -41,10 +40,10 @@ impl From<Vec<Item>> for List {
     }
 }
 
-fn construct_list(session: &Session, node: Node) -> Result<Item, StreamError> {
+fn construct_list(node: Node) -> Result<Item, StreamError> {
     let node = node.check_args(false, 0..)?;
     node.args.into_iter()
-        .map(|x| session.eval(x))
+        .map(Expr::eval)
         .collect::<Result<Vec<Item>, _>>()
         .map(|vec| Item::new_stream(List::from(vec)))
 }
@@ -87,9 +86,9 @@ impl From<String> for LiteralString {
 
 
 
-fn construct_part(session: &Session, node: Node) -> Result<Item, StreamError> {
+fn construct_part(node: Node) -> Result<Item, StreamError> {
     node.check_args(true, 1..)?
-        .eval_all(session)?
+        .eval_all()?
         .with(|node| {
             let mut item = node.source.as_ref().unwrap().to_item()?;
             for arg in &node.args {
@@ -181,18 +180,18 @@ impl SIterator for MapIter {
     }
 }*/
 
-fn construct_plus(session: &Session, node: Node) -> Result<Item, StreamError> {
+fn construct_plus(node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
-        .eval_all(session)?
+        .eval_all()?
         .with(|node| -> Result<_, StreamError> {
             node.args.iter().try_fold(Number::zero(), |a, e| Ok(a + e.to_item()?.into_num()?))
         });
     Ok(Item::new_number(ans?))
 }
 
-fn construct_minus(session: &Session, node: Node) -> Result<Item, StreamError> {
+fn construct_minus(node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..=2)?
-        .eval_all(session)?
+        .eval_all()?
         .with(|node| {
             let args = &node.args;
             Ok(match args.len() {
@@ -204,18 +203,18 @@ fn construct_minus(session: &Session, node: Node) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans?))
 }
 
-fn construct_times(session: &Session, node: Node) -> Result<Item, StreamError> {
+fn construct_times(node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
-        .eval_all(session)?
+        .eval_all()?
         .with(|node| {
             node.args.iter().try_fold(Number::one(), |a, e| Ok(a * e.to_item()?.into_num()?))
         });
     Ok(Item::new_number(ans?))
 }
 
-fn construct_div(session: &Session, node: Node) -> Result<Item, StreamError> {
+fn construct_div(node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 2..=2)?
-        .eval_all(session)?
+        .eval_all()?
         .with(|node| {
             let nums = [node.args[0].to_item()?.into_num()?, node.args[1].to_item()?.into_num()?];
             if nums[1].is_zero() {
@@ -226,9 +225,9 @@ fn construct_div(session: &Session, node: Node) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans?))
 }
 
-fn construct_pow(session: &Session, node: Node) -> Result<Item, StreamError> {
+fn construct_pow(node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 2..=2)?
-        .eval_all(session)?
+        .eval_all()?
         .with(|node| {
             let x = node.args[0].to_item()?.into_num()?;
             let y = node.args[1].to_item()?.into_num()?;
@@ -243,18 +242,17 @@ fn construct_pow(session: &Session, node: Node) -> Result<Item, StreamError> {
 #[test]
 fn test_opers() {
     use crate::parser::parse;
-    let sess = Session::new();
-    assert_eq!(sess.eval(parse("1+(-2)").unwrap()).unwrap().to_string(), "-1");
-    assert_eq!(sess.eval(parse("(-1)-(-2)").unwrap()).unwrap().to_string(), "1");
-    assert_eq!(sess.eval(parse("2*(-4)").unwrap()).unwrap().to_string(), "-8");
-    assert_eq!(sess.eval(parse("11/2").unwrap()).unwrap().to_string(), "5");
-    assert_eq!(sess.eval(parse("(-11)/(-2)").unwrap()).unwrap().to_string(), "5");
-    assert_eq!(sess.eval(parse("1/2").unwrap()).unwrap().to_string(), "0");
-    assert!(sess.eval(parse("1/0").unwrap()).is_err());
-    assert_eq!(sess.eval(parse("10^30").unwrap()).unwrap().to_string(), "1000000000000000000000000000000");
-    assert_eq!(sess.eval(parse("0^0").unwrap()).unwrap().to_string(), "1");
-    assert_eq!(sess.eval(parse("0^1").unwrap()).unwrap().to_string(), "0");
-    assert!(sess.eval(parse("1^(-1)").unwrap()).is_err());
+    assert_eq!(parse("1+(-2)").unwrap().eval().unwrap().to_string(), "-1");
+    assert_eq!(parse("(-1)-(-2)").unwrap().eval().unwrap().to_string(), "1");
+    assert_eq!(parse("2*(-4)").unwrap().eval().unwrap().to_string(), "-8");
+    assert_eq!(parse("11/2").unwrap().eval().unwrap().to_string(), "5");
+    assert_eq!(parse("(-11)/(-2)").unwrap().eval().unwrap().to_string(), "5");
+    assert_eq!(parse("1/2").unwrap().eval().unwrap().to_string(), "0");
+    assert!(parse("1/0").unwrap().eval().is_err());
+    assert_eq!(parse("10^30").unwrap().eval().unwrap().to_string(), "1000000000000000000000000000000");
+    assert_eq!(parse("0^0").unwrap().eval().unwrap().to_string(), "1");
+    assert_eq!(parse("0^1").unwrap().eval().unwrap().to_string(), "0");
+    assert!(parse("1^(-1)").unwrap().eval().is_err());
 }
 
 

@@ -1,5 +1,4 @@
 use crate::base::*;
-use crate::keywords::find_keyword;
 
 /// A `Session` holds information necessary for evaluating symbolic expressions. This includes a
 /// register of defined symbols.
@@ -14,16 +13,10 @@ impl Session {
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn eval(&self, expr: Expr) -> Result<Item, StreamError> {
+    pub fn process(&self, expr: Expr) -> Result<Item, StreamError> {
         match expr {
             Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => match node.head {
-                Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
-                    Ok(func) => func(self, node),
-                    Err(e) => Err(e.with_node(node))
-                },
-                _ => Err(StreamError::new("not implemented", node))
-            }
+            Expr::Eval(node) => node.eval()
         }
     }
 }

@@ -17,7 +17,7 @@ fn main() {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");
                 println!("Expr Describe: {}", expr.describe());
-                match session.eval(expr) {
+                match session.process(expr) {
                     Ok(item) => {
                         println!("Item Describe: {}", item.describe());
                         let (s, err) = item.format(80);

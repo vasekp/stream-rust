@@ -3,9 +3,8 @@ use std::ops::RangeBounds;
 use dyn_clone::DynClone;
 use crate::utils::describe_range;
 use num::{Signed, One, Zero};
-use crate::session::Session;
+use crate::keywords::find_keyword;
 use std::cell::Cell;
-
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
@@ -639,6 +638,13 @@ impl Expr {
             Expr::Imm(value) => Err(format!("expected node, found {:?}", &value).into())
         }
     }
+
+    pub fn eval(self) -> Result<Item, StreamError> {
+        match self {
+            Expr::Imm(item) => Ok(item),
+            Expr::Eval(node) => node.eval()
+        }
+    }
 }
 
 impl From<Item> for Expr {
@@ -675,18 +681,28 @@ impl Node {
         }
     }
 
-    pub(crate) fn eval_all(self, session: &Session) -> Result<Node, StreamError> {
-        let source = self.source.map(|x| session.eval(*x))
+    pub fn eval(self) -> Result<Item, StreamError> {
+        match &self.head {
+            Head::Symbol(sym) | Head::Oper(sym) => match find_keyword(sym) {
+                Ok(func) => func(self),
+                Err(e) => Err(e.with_node(self))
+            },
+            _ => Err(StreamError::new("not implemented", self))
+        }
+    }
+
+    pub(crate) fn eval_all(self) -> Result<Node, StreamError> {
+        let source = self.source.map(|x| (*x).eval())
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         let args = self.args.into_iter()
-            .map(|x| session.eval(x).map(Expr::new_imm))
+            .map(|x| x.eval().map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Node{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, session: &Session) -> Result<Node, StreamError> {
-        let source = self.source.map(|x| session.eval(*x))
+    pub(crate) fn eval_source(self) -> Result<Node, StreamError> {
+        let source = self.source.map(|x| (*x).eval())
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         Ok(Node{head: self.head, source, args: self.args})

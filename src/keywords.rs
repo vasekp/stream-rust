@@ -1,7 +1,7 @@
 use crate::base::*;
 use std::collections::HashMap;
 
-type Constructor = fn(&crate::session::Session, Node) -> Result<Item, StreamError>;
+type Constructor = fn(Node) -> Result<Item, StreamError>;
 
 pub(crate) type Keywords = HashMap<&'static str, Constructor>;
 
