@@ -4,28 +4,37 @@ use crate::{lang, ops};
 
 type Constructor = fn(&Session, Node) -> Result<Item, StreamError>;
 
+pub(crate) type Keywords = HashMap<&'static str, Constructor>;
+
+static mut KEYWORDS: Option<Keywords> = None;
+
+pub(crate) fn find_keyword(name: &str) -> Result<Constructor, StreamError> {
+    let keywords = unsafe {
+        if KEYWORDS.is_none() {
+            let mut keywords = Default::default();
+            lang::init(&mut keywords);
+            ops::init(&mut keywords);
+            KEYWORDS = Some(keywords);
+        }
+        KEYWORDS.as_ref().unwrap()
+    };
+    keywords.get(name).copied()
+        .ok_or_else(|| StreamError::from(format!("symbol '{name}' not found")))
+}
+
 /// A `Session` holds information necessary for evaluating symbolic expressions. This includes a
 /// register of defined symbols.
 pub struct Session {
-    register: HashMap<&'static str, Constructor>
 }
 
 impl Session {
     /// Create a new `Session` and initialize the predefined symbols register.
     pub fn new() -> Session {
-        let mut s = Session{ register: Default::default() };
-        lang::init(&mut s);
-        ops::init(&mut s);
-        s
-    }
-
-    pub(crate) fn register_symbol(&mut self, name: &'static str, ctor: Constructor) {
-        self.register.insert(name, ctor);
+        Session { }
     }
 
     fn find_symbol(&self, name: &str) -> Result<Constructor, StreamError> {
-        self.register.get(name).copied()
-            .ok_or_else(|| StreamError::from(format!("symbol '{name}' not found")))
+        find_keyword(name)
     }
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially

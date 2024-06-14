@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::session::Session;
+use crate::session::{Session, Keywords};
 use num::{One, Signed, Zero};
 use crate::base::Describe;
 
@@ -108,7 +108,7 @@ fn construct_part(session: &Session, node: Node) -> Result<Item, StreamError> {
         })
 }
 
-struct Map {
+/*struct Map {
     source: Box<dyn Stream>,
     body: Node
 }
@@ -179,7 +179,7 @@ impl SIterator for MapIter {
     fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
         self.source.skip_n(n)
     }
-}
+}*/
 
 fn construct_plus(session: &Session, node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
@@ -257,13 +257,14 @@ fn test_opers() {
     assert!(sess.eval(parse("1^(-1)").unwrap()).is_err());
 }
 
-pub(crate) fn init(session: &mut Session) {
-    session.register_symbol("list", construct_list);
-    session.register_symbol("part", construct_part);
-    session.register_symbol("map", |sess, node| Map::construct(sess, node));
-    session.register_symbol("+", construct_plus);
-    session.register_symbol("-", construct_minus);
-    session.register_symbol("*", construct_times);
-    session.register_symbol("/", construct_div);
-    session.register_symbol("^", construct_pow);
+
+pub(crate) fn init(keywords: &mut Keywords) {
+    keywords.insert("list", construct_list);
+    keywords.insert("part", construct_part);
+    //keywords.insert("map", |sess, node| Map::construct(sess, node));
+    keywords.insert("+", construct_plus);
+    keywords.insert("-", construct_minus);
+    keywords.insert("*", construct_times);
+    keywords.insert("/", construct_div);
+    keywords.insert("^", construct_pow);
 }
