@@ -3,9 +3,8 @@ use std::ops::RangeBounds;
 use dyn_clone::DynClone;
 use crate::utils::describe_range;
 use num::{Signed, One, Zero};
-use crate::session::Session;
+use crate::keywords::find_keyword;
 use std::cell::Cell;
-
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
@@ -13,11 +12,11 @@ use std::cell::Cell;
 pub type Number = num::BigInt;
 
 pub(crate) trait NumWithin : PartialOrd {
-    fn check_within<'sess>(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError<'sess>>;
+    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError>;
 }
 
 impl NumWithin for Number {
-    fn check_within<'sess>(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError<'sess>> {
+    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError> {
         match range.contains(self) {
             true => Ok(()),
             false => Err(format!("expected {}, found {}", describe_range(&range), &self).into())
@@ -31,79 +30,78 @@ pub trait Describe {
     /// Construct a string representation of `self`. This is meant for storing object across
     /// sessions. The resulting `String` must be a syntactically valid input that reconstruct a
     /// copy of the original object on [`parser::parse()`](crate::parser::parse()) and
-    /// [`Session::eval()`]. For this reason, all session-local data should be baked into the
-    /// expression.
+    /// [`Expr::eval()`].
     fn describe(&self) -> String;
 }
 
 
 /// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
-pub enum Item<'sess> {
+pub enum Item {
     Number(Number),
     Bool(bool),
     Char(Char),
-    Stream(Box<dyn Stream<'sess> + 'sess>)
+    Stream(Box<dyn Stream>)
 }
 
-impl<'sess> Item<'sess> {
-    pub fn new_number(value: impl Into<Number>) -> Item<'sess> {
+impl Item {
+    pub fn new_number(value: impl Into<Number>) -> Item {
         Item::Number(value.into())
     }
 
-    pub fn new_bool(value: bool) -> Item<'sess> {
+    pub fn new_bool(value: bool) -> Item {
         Item::Bool(value)
     }
 
-    pub fn new_char(value: impl Into<Char>) -> Item<'sess> {
+    pub fn new_char(value: impl Into<Char>) -> Item {
         Item::Char(value.into())
     }
 
-    pub fn new_stream(value: impl Stream<'sess> + 'sess) -> Item<'sess> {
+    pub fn new_stream(value: impl Stream + 'static) -> Item {
         Item::Stream(Box::new(value))
     }
 
-    pub fn as_num(&self) -> Result<&Number, StreamError<'sess>> {
+    pub fn as_num(&self) -> Result<&Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
-    pub fn into_num(self) -> Result<Number, StreamError<'sess>> {
+    pub fn into_num(self) -> Result<Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
-    pub fn as_char(&self) -> Result<&Char, StreamError<'sess>> {
+    pub fn as_char(&self) -> Result<&Char, StreamError> {
         match self {
             Item::Char(c) => Ok(c),
             _ => Err(format!("expected char, found {:?}", &self).into())
         }
     }
 
-    pub fn as_stream(&self) -> Result<&dyn Stream<'sess>, StreamError<'sess>> {
+    pub fn as_stream(&self) -> Result<&dyn Stream, StreamError> {
         match self {
             Item::Stream(s) => Ok(&**s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
-    pub fn into_stream(self) -> Result<Box<dyn Stream<'sess> + 'sess>, StreamError<'sess>> {
+    pub fn into_stream(self) -> Result<Box<dyn Stream>, StreamError> {
         match self {
             Item::Stream(s) => Ok(s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
-    pub fn format(&self, max_len: usize) -> (String, Option<StreamError<'sess>>) {
-        struct Stateful<'item, 'sess> {
-            item: &'item Item<'sess>,
-            cell: ErrorCell<'sess>
+    pub fn format(&self, max_len: usize) -> (String, Option<StreamError>) {
+        struct Stateful<'item> {
+            item: &'item Item,
+            cell: ErrorCell
         }
 
-        impl<'item, 'sess> Display for Stateful<'item, 'sess> {
+        impl<'item> Display for Stateful<'item> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 self.item.format_int(f, Some(&self.cell))
             }
@@ -114,7 +112,7 @@ impl<'sess> Item<'sess> {
         (result, s.cell.take())
     }
 
-    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
+    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
         -> std::fmt::Result
     {
         use Item::*;
@@ -138,20 +136,20 @@ impl<'sess> Item<'sess> {
     }
 }
 
-impl<'sess> Display for Item<'sess> {
+impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.format_int(f, None)
     }
 }
 
-impl<'sess> Debug for Item<'sess> {
+impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.type_str())?;
         self.format_int(f, None)
     }
 }
 
-impl<'sess> Describe for Item<'sess> {
+impl Describe for Item {
     fn describe(&self) -> String {
         use Item::*;
         match self {
@@ -164,7 +162,7 @@ impl<'sess> Describe for Item<'sess> {
     }
 }
 
-impl<'sess> PartialEq for Item<'sess> {
+impl PartialEq for Item {
     fn eq(&self, other: &Self) -> bool {
         use Item::*;
         match (self, other) {
@@ -176,8 +174,8 @@ impl<'sess> PartialEq for Item<'sess> {
     }
 }
 
-impl<'sess> Clone for Item<'sess> {
-    fn clone(&self) -> Item<'sess> {
+impl Clone for Item {
+    fn clone(&self) -> Item {
         use Item::*;
         match self {
             Number(x) => Number(x.clone()),
@@ -262,17 +260,17 @@ fn test_char() {
 ///
 /// Even though `node` is optional, the intended use is that every function supplies it.
 #[derive(PartialEq, Debug)]
-pub struct StreamError<'sess> {
+pub struct StreamError {
     reason: String,
-    node: Option<Node<'sess>>
+    node: Option<Node>
 }
 
-impl<'sess> StreamError<'sess> {
-    pub fn new<T>(text: T, node: Node<'sess>) -> StreamError<'sess> where T: Into<String> {
+impl StreamError {
+    pub fn new<T>(text: T, node: Node) -> StreamError where T: Into<String> {
         StreamError{reason: text.into(), node: Some(node)}
     }
 
-    pub(crate) fn with_node(mut self, node: Node<'sess>) -> StreamError<'sess> {
+    pub(crate) fn with_node(mut self, node: Node) -> StreamError {
         if self.node.is_none() {
             self.node = Some(node);
         }
@@ -280,15 +278,15 @@ impl<'sess> StreamError<'sess> {
     }
 }
 
-impl<'sess> std::error::Error for StreamError<'sess> { }
+impl std::error::Error for StreamError { }
 
-impl<'sess, T> From<T> for StreamError<'sess> where T: Into<String> {
-    fn from(text: T) -> StreamError<'sess> {
+impl<T> From<T> for StreamError where T: Into<String> {
+    fn from(text: T) -> StreamError {
         StreamError{reason: text.into(), node: None}
     }
 }
 
-impl<'sess> Display for StreamError<'sess> {
+impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.node {
             Some(node) => write!(f, "{}: {}", node.describe(), self.reason),
@@ -297,16 +295,16 @@ impl<'sess> Display for StreamError<'sess> {
     }
 }
 
-type ErrorCell<'sess> = Cell<Option<StreamError<'sess>>>;
+type ErrorCell = Cell<Option<StreamError>>;
 
 
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
-pub trait Stream<'sess>: DynClone + Describe {
+pub trait Stream: DynClone + Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
-    fn iter(&self) -> Box<dyn SIterator<'sess> + 'sess>;
+    fn iter(&self) -> Box<dyn SIterator>;
 
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
@@ -319,7 +317,7 @@ pub trait Stream<'sess>: DynClone + Describe {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    fn writeout(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
+    fn writeout(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
         -> std::fmt::Result
     {
         if self.is_string() {
@@ -330,7 +328,7 @@ pub trait Stream<'sess>: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_stream(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
+    fn writeout_stream(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -384,7 +382,7 @@ pub trait Stream<'sess>: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell<'sess>>)
+    fn writeout_string(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -460,7 +458,7 @@ pub trait Stream<'sess>: DynClone + Describe {
     }
 }
 
-impl<'sess> Display for dyn Stream<'sess> {
+impl Display for dyn Stream {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.writeout(f, None)
     }
@@ -475,7 +473,7 @@ impl<'sess> Display for dyn Stream<'sess> {
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator<'sess>: Iterator<Item = Result<Item<'sess>, StreamError<'sess>>> {
+pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. If it can't, or is known to be infinite, returns `None`.
     ///
@@ -521,9 +519,9 @@ pub trait SIterator<'sess>: Iterator<Item = Result<Item<'sess>, StreamError<'ses
     }
 }
 
-impl<'sess, T, U, V> SIterator<'sess> for std::iter::Map<T, U>
+impl<T, U, V> SIterator for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<Item<'sess>, StreamError<'sess>>
+      U: FnMut(V) -> Result<Item, StreamError>
 { }
 
 
@@ -566,40 +564,40 @@ impl<T> From<T> for Length where T: Into<Number> {
 /// Any Stream language expression. This may be either a directly accessible [`Item`] (including
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expr<'sess> {
-    Imm(Item<'sess>),
-    Eval(Node<'sess>)
+pub enum Expr {
+    Imm(Item),
+    Eval(Node)
 }
 
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
-/// happens in [`Session::eval()`](crate::session::Session::eval).
+/// happens in [`Expr::eval()`].
 #[derive(Debug, PartialEq, Clone)]
-pub struct Node<'sess> {
-    pub head: Head<'sess>,
-    pub source: Option<Box<Expr<'sess>>>,
-    pub args: Vec<Expr<'sess>>
+pub struct Node {
+    pub head: Head,
+    pub source: Option<Box<Expr>>,
+    pub args: Vec<Expr>
 }
 
 /// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
 #[derive(Debug, PartialEq, Clone)]
-pub enum Head<'sess> {
+pub enum Head {
     Symbol(String),
     Oper(String),
-    Block(Box<Expr<'sess>>)
+    Block(Box<Expr>)
 }
 
-impl<'sess> Expr<'sess> {
+impl Expr {
     /// Creates a new `Expr` of a value type.
-    pub fn new_imm(item: Item<'sess>) -> Expr<'sess> {
+    pub fn new_imm(item: Item) -> Expr {
         Expr::Imm(item)
     }
 
     /// Creates a new `Expr` of a node with a symbolic head.
-    pub fn new_node(symbol: impl Into<String>, source: Option<Expr<'sess>>, args: Vec<Expr<'sess>>) -> Expr<'sess> {
+    pub fn new_node(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{
             head: Head::Symbol(symbol.into()),
             source: source.map(Box::new),
@@ -608,7 +606,7 @@ impl<'sess> Expr<'sess> {
     }
 
     /// Creates a new `Expr` of a node with an operation head.
-    pub fn new_op(symbol: impl Into<String>, source: Option<Expr<'sess>>, args: Vec<Expr<'sess>>) -> Expr<'sess> {
+    pub fn new_op(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{
             head: Head::Oper(symbol.into()),
             source: source.map(Box::new),
@@ -617,7 +615,7 @@ impl<'sess> Expr<'sess> {
     }
 
     /// Creates a new `Expr` of a node with a block head.
-    pub fn new_block(body: Expr<'sess>, source: Option<Expr<'sess>>, args: Vec<Expr<'sess>>) -> Expr<'sess> {
+    pub fn new_block(body: Expr, source: Option<Expr>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{
             head: Head::Block(Box::new(body)),
             source: source.map(Box::new),
@@ -626,28 +624,37 @@ impl<'sess> Expr<'sess> {
     }
 
     /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
-    pub fn to_item(&self) -> Result<Item<'sess>, StreamError<'sess>> {
+    pub fn to_item(&self) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => Err(format!("expected value, found {:?}", &node).into())
         }
     }
 
-    pub fn into_node(self) -> Result<Node<'sess>, StreamError<'sess>> {
+    pub fn into_node(self) -> Result<Node, StreamError> {
         match self {
             Expr::Eval(node) => Ok(node),
             Expr::Imm(value) => Err(format!("expected node, found {:?}", &value).into())
         }
     }
+
+    /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
+    /// `Node::eval()`.
+    pub fn eval(self) -> Result<Item, StreamError> {
+        match self {
+            Expr::Imm(item) => Ok(item),
+            Expr::Eval(node) => node.eval()
+        }
+    }
 }
 
-impl<'sess> From<Item<'sess>> for Expr<'sess> {
-    fn from(item: Item<'sess>) -> Expr<'sess> {
+impl From<Item> for Expr {
+    fn from(item: Item) -> Expr {
         Expr::new_imm(item)
     }
 }
 
-impl<'sess> Describe for Expr<'sess> {
+impl Describe for Expr {
     fn describe(&self) -> String {
         match self {
             Expr::Imm(item) => item.describe(),
@@ -656,8 +663,8 @@ impl<'sess> Describe for Expr<'sess> {
     }
 }
 
-impl<'sess> Node<'sess> {
-    pub(crate) fn check_args(self, source: bool, range: impl RangeBounds<usize>) -> Result<Node<'sess>, StreamError<'sess>> {
+impl Node {
+    pub(crate) fn check_args(self, source: bool, range: impl RangeBounds<usize>) -> Result<Node, StreamError> {
         use std::ops::Bound::*;
         match (&self.source, source) {
             (Some(_), false) => return Err(StreamError::new("no source accepted", self)),
@@ -675,31 +682,48 @@ impl<'sess> Node<'sess> {
         }
     }
 
-    pub(crate) fn eval_all(self, session: &'sess Session) -> Result<Node<'sess>, StreamError<'sess>> {
-        let source = self.source.map(|x| session.eval(*x))
+    /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
+    /// describes an atomic constant or a stream.
+    ///
+    /// The evaluation is done by finding the head of the node in a global keyword table.
+    /// Locally defined symbols aren't handled here.
+    // Note to self: for assignments, this will happen in Session::process. For `with`, this will
+    // happen in Expr::apply(Context).
+    pub fn eval(self) -> Result<Item, StreamError> {
+        match &self.head {
+            Head::Symbol(sym) | Head::Oper(sym) => match find_keyword(sym) {
+                Ok(func) => func(self),
+                Err(e) => Err(e.with_node(self))
+            },
+            _ => Err(StreamError::new("not implemented", self))
+        }
+    }
+
+    pub(crate) fn eval_all(self) -> Result<Node, StreamError> {
+        let source = self.source.map(|x| (*x).eval())
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         let args = self.args.into_iter()
-            .map(|x| session.eval(x).map(Expr::new_imm))
+            .map(|x| x.eval().map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Node{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, session: &'sess Session) -> Result<Node<'sess>, StreamError<'sess>> {
-        let source = self.source.map(|x| session.eval(*x))
+    pub(crate) fn eval_source(self) -> Result<Node, StreamError> {
+        let source = self.source.map(|x| (*x).eval())
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         Ok(Node{head: self.head, source, args: self.args})
     }
 
-    pub(crate) fn with<T, F>(self, f: F) -> Result<T, StreamError<'sess>>
-        where F: FnOnce(&Node<'sess>) -> Result<T, StreamError<'sess>>
+    pub(crate) fn with<T, F>(self, f: F) -> Result<T, StreamError>
+        where F: FnOnce(&Node) -> Result<T, StreamError>
     {
         f(&self).map_err(|e| e.with_node(self))
     }
 }
 
-impl<'sess> Describe for Node<'sess> {
+impl Describe for Node {
     fn describe(&self) -> String {
         let mut ret = String::new();
         if let Some(source) = &self.source {

@@ -3,7 +3,6 @@ use stream::base::Describe;
 use std::io;
 
 fn main() {
-    let session = stream::Session::new();
     println!("ready >");
 
     let mut buffer = String::new();
@@ -17,7 +16,7 @@ fn main() {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");
                 println!("Expr Describe: {}", expr.describe());
-                match session.eval(expr) {
+                match expr.eval() {
                     Ok(item) => {
                         println!("Item Describe: {}", item.describe());
                         let (s, err) = item.format(80);
