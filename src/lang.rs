@@ -180,6 +180,15 @@ impl SIterator for MapIter {
     }
 }
 
+#[test]
+fn test_map() {
+    use crate::parser::parse;
+    assert_eq!(parse("[1,2,3]:{#*10}").unwrap().eval().unwrap().to_string(), "[10, 20, 30]");
+    assert_eq!(parse("seq:{#^2}").unwrap().eval().unwrap().to_string(), "[1, 4, 9, ...");
+    assert_eq!(parse("seq:{#1}").unwrap().eval().unwrap().to_string(), "[<!>");
+}
+
+
 fn construct_plus(node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
         .eval_all()?
