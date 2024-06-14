@@ -666,11 +666,12 @@ fn into_expr<'str>(input: PreExpr<'str>) -> Result<Expr, ParseError<'str>> {
 
 fn get_op(op: &str) -> (u32, bool) {
     match op {
-        "+" => (1, true),
-        "-" => (1, false),
-        "*" => (2, true),
-        "/" => (2, false),
-        "^" => (3, false),
+        "~" => (1, true),
+        "+" => (2, true),
+        "-" => (2, false),
+        "*" => (3, true),
+        "/" => (3, false),
+        "^" => (4, false),
         _ => todo!()
     }
 }

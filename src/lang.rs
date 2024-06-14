@@ -265,6 +265,88 @@ fn test_opers() {
 }
 
 
+#[derive(Clone)]
+struct Join {
+    node: Node
+}
+
+impl Join {
+    fn construct(node: Node) -> Result<Item, StreamError> {
+        let ((), node) = node.check_args(false, 1..)?
+            .eval_all()?
+            .with_keep(|node| {
+                let mut string = None;
+                for arg in &node.args {
+                    let stream = arg.as_item()?.as_stream()?;
+                    match string {
+                        None => string = Some(stream.is_string()),
+                        Some(string) => {
+                            if stream.is_string() != string {
+                                return Err("mixed streams and strings".into());
+                            }
+                        }
+                    }
+                }
+                Ok(())
+            })?;
+        Ok(Item::new_stream(Join{node}))
+    }
+}
+
+impl Describe for Join {
+    fn describe(&self) -> String {
+        self.node.describe()
+    }
+}
+
+impl Stream for Join {
+    fn iter(&self) -> Box<dyn SIterator> {
+        let mut iter = self.node.args.clone().into_iter();
+        let first = iter.next().unwrap()
+            .as_item().unwrap()
+            .as_stream().unwrap()
+            .iter();
+        Box::new(JoinIter{sources: iter, cur: first})
+    }
+
+    fn is_string(&self) -> bool {
+        self.node.args[0]
+            .as_item().unwrap()
+            .as_stream().unwrap()
+            .is_string()
+    }
+
+    // TODO length
+}
+
+struct JoinIter {
+    sources: std::vec::IntoIter<Expr>,
+    cur: Box<dyn SIterator>
+}
+
+impl Iterator for JoinIter {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let next = (*self.cur).next();
+            if next.is_some() {
+                return next;
+            } else {
+                self.cur = self.sources.next()?
+                    .as_item().unwrap()
+                    .as_stream().unwrap()
+                    .iter();
+            }
+        }
+    }
+}
+
+impl SIterator for JoinIter {
+    // TODO skip_n
+}
+
+
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("list", construct_list);
     keywords.insert("part", construct_part);
@@ -274,4 +356,5 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("*", construct_times);
     keywords.insert("/", construct_div);
     keywords.insert("^", construct_pow);
+    keywords.insert("~", Join::construct);
 }

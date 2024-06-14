@@ -624,6 +624,14 @@ impl Expr {
         })
     }
 
+    /// For an `Expr::Imm(value)`, returns a reference to `value`.
+    pub fn as_item(&self) -> Result<&Item, StreamError> {
+        match self {
+            Expr::Imm(ref item) => Ok(item),
+            _ => Err(format!("expected value, found {:?}", self).into()),
+        }
+    }
+
     /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
     pub fn to_item(&self) -> Result<Item, StreamError> {
         match self {
