@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::session::{Session, Keywords};
+use crate::session::Session;
 use num::{One, Signed, Zero};
 use crate::base::Describe;
 
@@ -258,7 +258,7 @@ fn test_opers() {
 }
 
 
-pub(crate) fn init(keywords: &mut Keywords) {
+pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("list", construct_list);
     keywords.insert("part", construct_part);
     //keywords.insert("map", |sess, node| Map::construct(sess, node));

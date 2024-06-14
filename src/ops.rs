@@ -1,6 +1,6 @@
 use crate::base::*;
 use num::{Zero, One, ToPrimitive, Signed};
-use crate::session::{Session, Keywords};
+use crate::session::Session;
 use crate::base::Describe;
 
 /// An infinite stream returning consecutive numbers, `seq`.
@@ -324,7 +324,7 @@ fn range_test_neg_lengths() {
 }
 
 
-pub(crate) fn init(keywords: &mut Keywords) {
+pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::construct);
     keywords.insert("range", Range::construct);
 }
