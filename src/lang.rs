@@ -107,7 +107,7 @@ fn construct_part(node: Node) -> Result<Item, StreamError> {
         })
 }
 
-/*struct Map {
+struct Map {
     source: Box<dyn Stream>,
     body: Node
 }
@@ -118,15 +118,15 @@ struct MapIter {
 }
 
 impl Map {
-    fn construct(session: &Session, node: Node) -> Result<Item, StreamError> {
+    fn construct(node: Node) -> Result<Item, StreamError> {
         let mut node = node.check_args(true, 1..=1)?
-            .eval_source(session)?;
+            .eval_source()?;
         let source = node.source.unwrap().to_item()?.into_stream()?;
         let body = node.args.pop().unwrap().into_node()?;
         if body.source.is_some() {
             return Err("body already has source".into());
         }
-        Ok(Item::new_stream(Map{source, body, session}))
+        Ok(Item::new_stream(Map{source, body}))
     }
 }
 
@@ -141,7 +141,7 @@ impl Describe for Map {
 
 impl Stream for Map {
     fn iter(&self) -> Box<dyn SIterator> {
-        Box::new(MapIter{source: self.source.iter(), body: self.body.clone(), session: self.session})
+        Box::new(MapIter{source: self.source.iter(), body: self.body.clone()})
     }
 
     fn length(&self) -> Length {
@@ -151,7 +151,7 @@ impl Stream for Map {
 
 impl Clone for Map {
     fn clone(&self) -> Map {
-        Map{source: dyn_clone::clone_box(&*self.source), body: self.body.clone(), session: self.session}
+        Map{source: dyn_clone::clone_box(&*self.source), body: self.body.clone()}
     }
 }
 
@@ -170,7 +170,7 @@ impl Iterator for MapIter {
             args: self.body.args.clone()
         });
         println!("-> {}", expr.describe());
-        Some(self.session.eval(expr))
+        Some(expr.eval())
     }
 }
 
@@ -178,7 +178,7 @@ impl SIterator for MapIter {
     fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
         self.source.skip_n(n)
     }
-}*/
+}
 
 fn construct_plus(node: Node) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
@@ -259,7 +259,7 @@ fn test_opers() {
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("list", construct_list);
     keywords.insert("part", construct_part);
-    //keywords.insert("map", |sess, node| Map::construct(sess, node));
+    keywords.insert("map", Map::construct);
     keywords.insert("+", construct_plus);
     keywords.insert("-", construct_minus);
     keywords.insert("*", construct_times);
