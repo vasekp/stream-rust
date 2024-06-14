@@ -566,7 +566,8 @@ impl<T> From<T> for Length where T: Into<Number> {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Imm(Item),
-    Eval(Node)
+    Eval(Node),
+    Repl(char, Option<usize>)
 }
 
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
@@ -627,14 +628,14 @@ impl Expr {
     pub fn to_item(&self) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", &node).into())
+            _ => Err(format!("expected value, found {:?}", self).into()),
         }
     }
 
     pub fn into_node(self) -> Result<Node, StreamError> {
         match self {
             Expr::Eval(node) => Ok(node),
-            Expr::Imm(value) => Err(format!("expected node, found {:?}", &value).into())
+            _ => Err(format!("expected node, found {:?}", self).into()),
         }
     }
 
@@ -643,7 +644,8 @@ impl Expr {
     pub fn eval(self) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => node.eval()
+            Expr::Eval(node) => node.eval(),
+            Expr::Repl(_, _) => Err(format!("{}: out of context", self.describe()).into())
         }
     }
 }
@@ -658,7 +660,9 @@ impl Describe for Expr {
     fn describe(&self) -> String {
         match self {
             Expr::Imm(item) => item.describe(),
-            Expr::Eval(node) => node.describe()
+            Expr::Eval(node) => node.describe(),
+            Expr::Repl(chr, None) => chr.to_string(),
+            Expr::Repl(chr, Some(num)) => format!("{chr}{num}")
         }
     }
 }
@@ -695,7 +699,7 @@ impl Node {
                 Ok(func) => func(self),
                 Err(e) => Err(e.with_node(self))
             },
-            _ => Err(StreamError::new("not implemented", self))
+            _ => todo!()
         }
     }
 

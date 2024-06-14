@@ -451,7 +451,7 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
                 last_comma = Some(t);
             },
             // Special characters #, $
-            (TC::Special, Some(Oper(_) | Chain(_)) | None, _)
+            (TC::Special, Some(Oper(_)) | None, _)
                 => expr.push(Term(TT::Special(t, None))),
             _ => return Err(ParseError::new("cannot appear here", t.1))
         }
@@ -599,7 +599,16 @@ fn into_expr<'str>(input: PreExpr<'str>) -> Result<Expr, ParseError<'str>> {
                 => cur = Bare(Item::new_stream(LiteralString::from(parse_string(tok.1)?)).into()),
             (Term(TT::List(vec)), Empty)
                 => cur = Bare(Expr::new_node("list", None, vec)),
-            // TODO: Special
+            (Term(TT::Special(tok, None)), Empty)
+                => cur = Bare(Expr::Repl(tok.1.as_bytes()[0].into(), None)),
+            (Term(TT::Special(tok, Some(ix_tok))), Empty) => {
+                let ix = ix_tok.1.parse::<usize>()
+                    .map_err(|_| ParseError::new("index too large", ix_tok.1))?;
+                if ix == 0 {
+                    return Err(ParseError::new("index can't be zero", ix_tok.1));
+                }
+                cur = Bare(Expr::Repl(tok.1.as_bytes()[0].into(), Some(ix)));
+            },
             (Term(TT::Node(Ident(tok), args)), Empty)
                 => cur = Bare(Expr::new_node(tok.1, None, args.unwrap_or(vec![]))),
             (Term(TT::Node(Block(body), args)), Empty)
@@ -770,6 +779,20 @@ fn test_parser() {
     assert_eq!(parse("'\\h'"), err("invalid escape sequence"));
     assert_eq!(parse("true+'1'"), Ok(Expr::new_op("+", None, vec![
         Item::new_bool(true).into(), Item::new_char('1').into()])));
+
+    assert_eq!(parse("#"), Ok(Expr::Repl('#', None)));
+    assert_eq!(parse("#1"), Ok(Expr::Repl('#', Some(1))));
+    assert_eq!(parse("#0"), err("index can't be zero"));
+    assert_eq!(parse("#18446744073709551616"), err("index too large"));
+    assert_eq!(parse("##"), syntax_err);
+    assert_eq!(parse("#a"), syntax_err);
+    assert_eq!(parse("#$"), syntax_err);
+    assert_eq!(parse("#(1)"), syntax_err);
+    assert_eq!(parse("#+$"), Ok(Expr::new_op("+", None, vec![
+        Expr::Repl('#', None), Expr::Repl('$', None)])));
+    assert_eq!(parse("1.#"), syntax_err);
+    assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_block(Expr::Repl('#', None),
+        Some(Item::new_number(1).into()), vec![Item::new_number(2).into()])));
 }
 
 #[test]
