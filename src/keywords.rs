@@ -1,22 +1,19 @@
 use crate::base::*;
 use std::collections::HashMap;
+use once_cell::sync::Lazy;
 
 type Constructor = fn(Node) -> Result<Item, StreamError>;
 
 pub(crate) type Keywords = HashMap<&'static str, Constructor>;
 
-static mut KEYWORDS: Option<Keywords> = None;
+static KEYWORDS: Lazy<Keywords> = Lazy::new(|| {
+    let mut keywords = Default::default();
+    crate::lang::init(&mut keywords);
+    crate::ops::init(&mut keywords);
+    keywords
+});
 
 pub(crate) fn find_keyword(name: &str) -> Result<Constructor, StreamError> {
-    let keywords = unsafe {
-        if KEYWORDS.is_none() {
-            let mut keywords = Default::default();
-            crate::lang::init(&mut keywords);
-            crate::ops::init(&mut keywords);
-            KEYWORDS = Some(keywords);
-        }
-        KEYWORDS.as_ref().unwrap()
-    };
-    keywords.get(name).copied()
+    KEYWORDS.get(name).copied()
         .ok_or_else(|| StreamError::from(format!("symbol '{name}' not found")))
 }
