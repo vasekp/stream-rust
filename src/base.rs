@@ -30,8 +30,7 @@ pub trait Describe {
     /// Construct a string representation of `self`. This is meant for storing object across
     /// sessions. The resulting `String` must be a syntactically valid input that reconstruct a
     /// copy of the original object on [`parser::parse()`](crate::parser::parse()) and
-    /// [`Session::eval()`]. For this reason, all session-local data should be baked into the
-    /// expression.
+    /// [`Expr::eval()`].
     fn describe(&self) -> String;
 }
 
@@ -573,7 +572,7 @@ pub enum Expr {
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
-/// happens in [`Session::eval()`](crate::session::Session::eval).
+/// happens in [`Expr::eval()`].
 #[derive(Debug, PartialEq, Clone)]
 pub struct Node {
     pub head: Head,
@@ -639,6 +638,8 @@ impl Expr {
         }
     }
 
+    /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
+    /// `Node::eval()`.
     pub fn eval(self) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
@@ -681,6 +682,13 @@ impl Node {
         }
     }
 
+    /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
+    /// describes an atomic constant or a stream.
+    ///
+    /// The evaluation is done by finding the head of the node in a global keyword table.
+    /// Locally defined symbols aren't handled here.
+    // Note to self: for assignments, this will happen in Session::process. For `with`, this will
+    // happen in Expr::apply(Context).
     pub fn eval(self) -> Result<Item, StreamError> {
         match &self.head {
             Head::Symbol(sym) | Head::Oper(sym) => match find_keyword(sym) {
