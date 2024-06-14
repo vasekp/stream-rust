@@ -639,6 +639,20 @@ impl Expr {
         }
     }
 
+    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
+        match self {
+            Expr::Imm(_) => Ok(self),
+            Expr::Eval(node) => Ok(Expr::Eval(node.apply(source, args)?)),
+            Expr::Repl('#', None) => source.as_ref()
+                .ok_or("#: no source provided".into())
+                .map(|boxed| (**boxed).clone()),
+            Expr::Repl('#', Some(ix)) => args.get(ix - 1)
+                .ok_or(format!("{}: no such input", self.describe()).into())
+                .cloned(),
+            _ => Err(format!("{}: out of context", self.describe()).into())
+        }
+    }
+
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
     /// `Node::eval()`.
     pub fn eval(self) -> Result<Item, StreamError> {
@@ -694,12 +708,12 @@ impl Node {
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
     pub fn eval(self) -> Result<Item, StreamError> {
-        match &self.head {
-            Head::Symbol(sym) | Head::Oper(sym) => match find_keyword(sym) {
+        match self.head {
+            Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
                 Ok(func) => func(self),
                 Err(e) => Err(e.with_node(self))
             },
-            _ => todo!()
+            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval()
         }
     }
 
@@ -725,6 +739,31 @@ impl Node {
     {
         f(&self).map_err(|e| e.with_node(self))
     }
+
+    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
+        Ok(Node {
+            head: self.head,
+            source: match self.source {
+                None => None,
+                Some(boxed) => Some(Box::new((*boxed).apply(source, args)?))
+            },
+            args: self.args.into_iter()
+                .map(|expr| expr.apply(source, args))
+                .collect::<Result<Vec<_>, _>>()?
+        })
+    }
+}
+
+#[test]
+fn test_block() {
+    use crate::parser::parse;
+    assert_eq!(parse("{#1}(3,4)").unwrap().eval().unwrap().to_string(), "3");
+    assert_eq!(parse("{#2}(3,4)").unwrap().eval().unwrap().to_string(), "4");
+    assert!(parse("{#3}(3,4)").unwrap().eval().is_err());
+    assert!(parse("#1").unwrap().eval().is_err());
+    assert_eq!(parse("1.{2}(3)").unwrap().eval().unwrap().to_string(), "2");
+    assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval().unwrap().to_string(), "6");
+    assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval().unwrap().to_string(), "4");
 }
 
 impl Describe for Node {
