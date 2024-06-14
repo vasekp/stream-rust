@@ -740,6 +740,15 @@ impl Node {
         f(&self).map_err(|e| e.with_node(self))
     }
 
+    pub(crate) fn with_keep<T, F>(self, f: F) -> Result<(T, Node), StreamError>
+        where F: FnOnce(&Node) -> Result<T, StreamError>
+    {
+        match f(&self) {
+            Ok(ret) => Ok((ret, self)),
+            Err(err) => Err(err.with_node(self))
+        }
+    }
+
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {
             head: self.head,

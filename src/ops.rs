@@ -26,7 +26,8 @@ use crate::base::Describe;
 #[derive(Clone)]
 pub struct Seq {
     from: Number,
-    step: Number
+    step: Number,
+    node: Node
 }
 
 struct SeqIter {
@@ -49,9 +50,9 @@ impl Stream for Seq {
 
 impl Seq {
     fn construct(node: Node) -> Result<Item, StreamError> {
-        node.check_args(false, 0..=2)?
+        let ((from, step), node) = node.check_args(false, 0..=2)?
             .eval_all()?
-            .with(|node| {
+            .with_keep(|node| {
                 let mut nums = node.args.iter()
                     .map(|x| x.to_item()?.into_num());
                 let (from, step) = match nums.len() {
@@ -60,14 +61,15 @@ impl Seq {
                     2 => (nums.next().unwrap()?, nums.next().unwrap()?),
                     _ => unreachable!()
                 };
-                Ok(Item::new_stream(Seq{from, step}))
-            })
+                Ok((from, step))
+            })?;
+        Ok(Item::new_stream(Seq{from, step, node}))
     }
 }
 
 impl Describe for Seq {
     fn describe(&self) -> String {
-        format!("seq({}, {})", self.from, self.step)
+        self.node.describe()
     }
 }
 
@@ -136,7 +138,8 @@ fn test_seq_skip() {
 pub struct Range {
     from: Number,
     to: Number,
-    step: Number
+    step: Number,
+    node: Node
 }
 
 struct RangeIter {
@@ -170,9 +173,9 @@ impl Stream for Range {
 
 impl Range {
     fn construct(node: Node) -> Result<Item, StreamError> {
-        node.check_args(false, 1..=3)?
+        let ((from, to, step), node) = node.check_args(false, 1..=3)?
             .eval_all()?
-            .with(|node| {
+            .with_keep(|node| {
                 let mut nums = node.args.iter()
                     .map(|x| x.to_item()?.into_num());
                 let (from, to, step) = match nums.len() {
@@ -181,14 +184,15 @@ impl Range {
                     3 => (nums.next().unwrap()?, nums.next().unwrap()?, nums.next().unwrap()?),
                     _ => unreachable!()
                 };
-                Ok(Item::new_stream(Range{from, to, step}))
-            })
+                Ok((from, to, step))
+            })?;
+        Ok(Item::new_stream(Range{from, to, step, node}))
     }
 }
 
 impl Describe for Range {
     fn describe(&self) -> String {
-        format!("range({}, {}, {})", self.from, self.to, self.step)
+        self.node.describe()
     }
 }
 
