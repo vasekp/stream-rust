@@ -292,29 +292,29 @@ fn test_tokenizer() {
 }
 
 
-type PreExpr<'str, 'sess> = Vec<ExprPart<'str, 'sess>>;
+type PreExpr<'str> = Vec<ExprPart<'str>>;
 
 #[derive(Debug)]
-enum ExprPart<'str, 'sess> {
+enum ExprPart<'str> {
     Oper(Token<'str>),
     Chain(Token<'str>),
-    Term(TTerm<'str, 'sess>),
-    Part(Vec<Expr<'sess>>)
+    Term(TTerm<'str>),
+    Part(Vec<Expr>)
 }
 
 #[derive(Debug)]
-enum TTerm<'str, 'sess> {
-    Node(Node<'str, 'sess>, Option<Vec<Expr<'sess>>>),
-    ParExpr(Box<Expr<'sess>>),
+enum TTerm<'str> {
+    Node(Node<'str>, Option<Vec<Expr>>),
+    ParExpr(Box<Expr>),
     Literal(Literal<'str>),
-    List(Vec<Expr<'sess>>),
+    List(Vec<Expr>),
     Special(Token<'str>, Option<Token<'str>>)
 }
 
 #[derive(Debug)]
-enum Node<'str, 'sess> {
+enum Node<'str> {
     Ident(Token<'str>),
-    Block(Box<Expr<'sess>>)
+    Block(Box<Expr>)
 }
 
 #[derive(Debug)]
@@ -335,9 +335,9 @@ fn closing(bracket: &str) -> &'static str {
     }
 }
 
-fn parse_main<'str, 'sess>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -> Result<Vec<Expr<'sess>>, ParseError<'str>> {
+fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -> Result<Vec<Expr>, ParseError<'str>> {
     // This may parse several expressions separated by commas.
-    let mut exprs: Vec<Expr<'sess>> = vec![];
+    let mut exprs: Vec<Expr> = vec![];
     // Each expression is a string of terms separated by operators OR chaining.
     let mut expr: PreExpr = vec![];
     let mut last_comma: Option<Token<'str>> = None;
@@ -541,11 +541,11 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     }
 }
 
-fn into_expr<'str, 'sess>(input: PreExpr<'str, 'sess>) -> Result<Expr<'sess>, ParseError<'str>> {
-    struct StackEntry<'sess> {
+fn into_expr<'str>(input: PreExpr<'str>) -> Result<Expr, ParseError<'str>> {
+    struct StackEntry {
         op: String,
         prec: u32,
-        args: Vec<Expr<'sess>>
+        args: Vec<Expr>
     }
 
     enum ChainOp {
@@ -553,20 +553,20 @@ fn into_expr<'str, 'sess>(input: PreExpr<'str, 'sess>) -> Result<Expr<'sess>, Pa
         Colon
     }
 
-    enum TermOption<'sess> {
+    enum TermOption {
         Empty,
-        Bare(Expr<'sess>),
-        Chained(Expr<'sess>, ChainOp)
+        Bare(Expr),
+        Chained(Expr, ChainOp)
     }
 
-    impl<'sess> TermOption<'sess> {
-        fn take(&mut self) -> TermOption<'sess> {
+    impl TermOption {
+        fn take(&mut self) -> TermOption {
             let mut ret = Empty;
             std::mem::swap(self, &mut ret);
             ret
         }
 
-        fn unwrap(self) -> Expr<'sess> {
+        fn unwrap(self) -> Expr {
             match self {
                 Bare(expr) => expr,
                 _ => panic!()
@@ -578,7 +578,7 @@ fn into_expr<'str, 'sess>(input: PreExpr<'str, 'sess>) -> Result<Expr<'sess>, Pa
     use TermOption::*;
 
     debug_assert!(!input.is_empty());
-    let mut stack: Vec<StackEntry<'sess>> = vec![];
+    let mut stack: Vec<StackEntry> = vec![];
     let mut cur = Empty;
     'a: for part in input {
         use ExprPart::*;
@@ -678,7 +678,7 @@ fn get_op(op: &str) -> (u32, bool) {
 ///         Some(Expr::new_node("a", None, vec![])),
 ///         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
 /// ```
-pub fn parse<'str, 'sess>(input: &'str str) -> Result<Expr<'sess>, ParseError<'str>> {
+pub fn parse<'str>(input: &'str str) -> Result<Expr, ParseError<'str>> {
     let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
     match (it.next(), it.next()) {
         (Some(expr), None) => Ok(expr),
