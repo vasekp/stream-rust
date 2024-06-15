@@ -318,7 +318,31 @@ fn range_test_neg_lengths() {
 }
 
 
+fn construct_len(node: Node) -> Result<Item, StreamError> {
+    let (length, node) = node.check_args(true, 0..=0)?
+        .eval_all()?
+        .with_keep(|node| {
+            Ok(node.source.as_ref().unwrap()
+                .as_item().unwrap()
+                .as_stream()?
+                .length())
+        })?;
+    use Length::*;
+    match length {
+        Exact(len) => Ok(Item::new_number(len)),
+        AtMost(_) | UnknownFinite | Unknown => {
+            let len = node.source.unwrap()
+                .as_item().unwrap()
+                .as_stream().unwrap()
+                .iter().count();
+            Ok(Item::new_number(len))
+        },
+        _ => Err(StreamError::new("infinite or likely infinite stream", node))
+    }
+}
+
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::construct);
     keywords.insert("range", Range::construct);
+    keywords.insert("len", construct_len);
 }
