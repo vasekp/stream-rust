@@ -500,14 +500,13 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     ///
     /// # Panics
     /// This function may panic if a negative value is passed in `n`.
-    fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
+    fn skip_n(&mut self, mut n: Number) -> Result<(), Number> {
         assert!(!n.is_negative());
         if let Some(len) = self.len_remain() {
-            if n > &len {
+            if n > len {
                 return Err(n - len);
             }
         }
-        let mut n = n.clone();
         let one = Number::one();
         while !n.is_zero() {
             if self.next().is_none() {

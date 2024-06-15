@@ -95,7 +95,7 @@ fn construct_part(node: Node) -> Result<Item, StreamError> {
                 let index = arg.to_item()?.into_num()?;
                 index.check_within(Number::one()..)?;
                 let mut iter = item.into_stream()?.iter();
-                if iter.skip_n(&(index - 1)).is_err() {
+                if iter.skip_n(index - 1).is_err() {
                     return Err("index past end of stream".into());
                 }
                 item = match iter.next() {
@@ -175,7 +175,7 @@ impl Iterator for MapIter {
 }
 
 impl SIterator for MapIter {
-    fn skip_n(&mut self, n: &Number) -> Result<(), Number> {
+    fn skip_n(&mut self, n: Number) -> Result<(), Number> {
         self.source.skip_n(n)
     }
 }
