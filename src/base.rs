@@ -478,7 +478,8 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// current state. If it can't, or is known to be infinite, returns `None`.
     ///
     /// [`SIterator::skip_n`] may use this value for optimization. It is also used by the default
-    /// implementation of [`Stream::length()`].
+    /// implementation of [`Stream::length()`]. If you override both methods then you don't need
+    /// to override this one, unless you want to use it for similar purposes.
     fn len_remain(&self) -> Option<Number> {
         match self.size_hint() {
             (lo, Some(hi)) if lo == hi => Some(lo.into()),
@@ -556,6 +557,22 @@ impl Length {
 impl<T> From<T> for Length where T: Into<Number> {
     fn from(value: T) -> Self {
         Length::Exact(value.into())
+    }
+}
+
+impl std::ops::Add for Length {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        use Length::*;
+        match (self, rhs) {
+            (_, Infinite) | (Infinite, _) => Infinite,
+            (_, LikelyInfinite) | (LikelyInfinite, _) => LikelyInfinite,
+            (_, Unknown) | (Unknown, _) => Unknown,
+            (_, UnknownFinite) | (UnknownFinite, _) => UnknownFinite,
+            (Exact(a), Exact(b)) => Exact(a + b),
+            (Exact(a) | AtMost(a), Exact(b) | AtMost(b)) => AtMost(a + b)
+        }
     }
 }
 

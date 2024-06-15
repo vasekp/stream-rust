@@ -291,6 +291,7 @@ impl Join {
             })?;
         Ok(Item::new_stream(Join{node}))
     }
+    // TODO: string+char, stream+item, item+item etc.
 }
 
 impl Describe for Join {
@@ -316,7 +317,11 @@ impl Stream for Join {
             .is_string()
     }
 
-    // TODO length
+    fn length(&self) -> Length {
+        self.node.args.iter()
+            .map(|expr| expr.as_item().unwrap().as_stream().unwrap().length())
+            .reduce(|acc, e| acc + e).unwrap()
+    }
 }
 
 struct JoinIter {
@@ -343,7 +348,40 @@ impl Iterator for JoinIter {
 }
 
 impl SIterator for JoinIter {
-    // TODO skip_n
+    fn skip_n(&mut self, mut n: Number) -> Result<(), Number> {
+        assert!(!n.is_negative());
+        loop {
+            let Err(m) = self.cur.skip_n(n)
+                else { return Ok(()); };
+            n = m;
+            let Some(next) = self.sources.next()
+                else { return Err(n); };
+            self.cur = next.as_item().unwrap()
+                .as_stream().unwrap()
+                .iter();
+        }
+    }
+}
+
+#[test]
+fn test_join() {
+    use crate::parser::parse;
+
+    assert_eq!(parse("[10]~seq").unwrap().eval().unwrap().to_string(), "[10, 1, 2, ...");
+    assert_eq!(parse("range(2)~seq").unwrap().eval().unwrap().to_string(), "[1, 2, 1, ...");
+    assert_eq!(parse("range(10^10).{#~#~#}.len").unwrap().eval().unwrap().to_string(), "30000000000");
+    assert!(parse("([5]~seq).len").unwrap().eval().is_err());
+    assert_eq!(parse("(range(10^10)~seq)[10^11]").unwrap().eval().unwrap().to_string(), "90000000000");
+
+    assert_eq!(parse("\"ab\"~\"cd\"").unwrap().eval().unwrap().to_string(), "\"abcd\"");
+    assert_eq!(parse("(\"ab\"~\"cd\").len").unwrap().eval().unwrap().to_string(), "4");
+
+    assert_eq!(parse("[1]~[2]").unwrap().eval().unwrap().to_string(), "[1, 2]");
+    assert_eq!(parse("[1]~[[2]]").unwrap().eval().unwrap().to_string(), "[1, [2]]");
+    assert!(parse("[1]~2").unwrap().eval().is_err());
+    assert!(parse("[1]~\"a\"").unwrap().eval().is_err());
+    assert!(parse("\"a\"~[1]").unwrap().eval().is_err());
+    assert!(parse("\"a\"~[\"b\"]").unwrap().eval().is_err());
 }
 
 
