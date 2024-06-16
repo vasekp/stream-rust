@@ -103,7 +103,7 @@ impl Item {
 
         impl<'item> Display for Stateful<'item> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-                self.item.format_int(f, Some(&self.cell))
+                self.item.format_int(f, &self.cell)
             }
         }
 
@@ -112,7 +112,7 @@ impl Item {
         (result, s.cell.take())
     }
 
-    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
+    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: &ErrorCell)
         -> std::fmt::Result
     {
         use Item::*;
@@ -138,14 +138,14 @@ impl Item {
 
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.format_int(f, None)
+        self.format_int(f, &Default::default())
     }
 }
 
 impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.type_str())?;
-        self.format_int(f, None)
+        self.format_int(f, &Default::default())
     }
 }
 
@@ -317,7 +317,7 @@ pub trait Stream: DynClone + Describe {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    fn writeout(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
+    fn writeout(&self, f: &mut Formatter<'_>, error: &ErrorCell)
         -> std::fmt::Result
     {
         if self.is_string() {
@@ -328,7 +328,7 @@ pub trait Stream: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_stream(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
+    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &ErrorCell)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -357,13 +357,13 @@ pub trait Stream: DynClone + Describe {
                         let (string, err) = item.format(prec - plen);
                         s += &string;
                         if err.is_some() {
-                            error.map(|cell| cell.set(err));
+                            error.set(err);
                             break 'a;
                         }
                     },
                     Some(Err(err)) => {
                         s += "<!>";
-                        error.map(|cell| cell.set(Some(err)));
+                        error.set(Some(err));
                         break 'a;
                     }
                 };
@@ -382,7 +382,7 @@ pub trait Stream: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: Option<&ErrorCell>)
+    fn writeout_string(&self, f: &mut Formatter<'_>, error: &ErrorCell)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -408,7 +408,7 @@ pub trait Stream: DynClone + Describe {
                     },
                     Some(Err(err)) => {
                         s += "<!>";
-                        error.map(|cell| cell.set(Some(err)));
+                        error.set(Some(err));
                         break 'a;
                     }
                 };
@@ -460,7 +460,7 @@ pub trait Stream: DynClone + Describe {
 
 impl Display for dyn Stream {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.writeout(f, None)
+        self.writeout(f, &Default::default())
     }
 }
 
