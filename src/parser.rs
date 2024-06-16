@@ -541,7 +541,7 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     }
 }
 
-fn into_expr<'str>(input: PreExpr<'str>) -> Result<Expr, ParseError<'str>> {
+fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
     struct StackEntry {
         op: String,
         prec: u32,
@@ -688,7 +688,7 @@ fn get_op(op: &str) -> (u32, bool) {
 ///         Some(Expr::new_node("a", None, vec![])),
 ///         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
 /// ```
-pub fn parse<'str>(input: &'str str) -> Result<Expr, ParseError<'str>> {
+pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
     let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
     match (it.next(), it.next()) {
         (Some(expr), None) => Ok(expr),
