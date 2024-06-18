@@ -163,13 +163,11 @@ impl Iterator for MapIter {
         let Ok(source) = source else {
             return Some(source)
         };
-        println!("<- {}", source);
         let expr = Expr::Eval(Node{
             source: Some(Box::new(Expr::new_imm(source))),
             head: self.body.head.clone(),
             args: self.body.args.clone()
         });
-        println!("-> {}", expr.describe());
         Some(expr.eval())
     }
 }
@@ -186,6 +184,7 @@ fn test_map() {
     assert_eq!(parse("[1,2,3]:{#*10}").unwrap().eval().unwrap().to_string(), "[10, 20, 30]");
     assert_eq!(parse("seq:{#^2}").unwrap().eval().unwrap().to_string(), "[1, 4, 9, ...");
     assert_eq!(parse("seq:{#1}").unwrap().eval().unwrap().to_string(), "[<!>");
+    assert_eq!(parse("seq:{range(#)}").unwrap().eval().unwrap().to_string(), "[[1], [1, 2], [1, 2, 3], ...");
 }
 
 
