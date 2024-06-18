@@ -7,6 +7,7 @@ fn main() {
 
     let mut buffer = String::new();
     let stdin = io::stdin();
+    let env = Default::default();
     while let Ok(len) = stdin.read_line(&mut buffer) {
         if len == 0 {
             break;
@@ -16,7 +17,7 @@ fn main() {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");
                 println!("Expr Describe: {}", expr.describe());
-                match expr.eval() {
+                match expr.eval(&env) {
                     Ok(item) => {
                         println!("Item Describe: {}", item.describe());
                         let (s, err) = item.format(80);

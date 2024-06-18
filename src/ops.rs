@@ -14,10 +14,11 @@ use crate::base::Describe;
 /// # Examples
 /// ```
 /// use streamlang::parser::parse;
-/// assert_eq!(parse("seq").unwrap().eval().unwrap().to_string(), "[1, 2, 3, ...");
-/// assert_eq!(parse("seq(3)").unwrap().eval().unwrap().to_string(), "[3, 4, 5, ...");
-/// assert_eq!(parse("seq(1, 3)").unwrap().eval().unwrap().to_string(), "[1, 4, 7, ...");
-/// assert_eq!(parse("seq(3, 0)").unwrap().eval().unwrap().to_string(), "[3, 3, 3, ...");
+/// let env = Default::default();
+/// assert_eq!(parse("seq").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3, ...");
+/// assert_eq!(parse("seq(3)").unwrap().eval(&env).unwrap().to_string(), "[3, 4, 5, ...");
+/// assert_eq!(parse("seq(1, 3)").unwrap().eval(&env).unwrap().to_string(), "[1, 4, 7, ...");
+/// assert_eq!(parse("seq(3, 0)").unwrap().eval(&env).unwrap().to_string(), "[3, 3, 3, ...");
 /// ```
 #[derive(Clone)]
 pub struct Seq {
@@ -45,9 +46,9 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn construct(node: Node) -> Result<Item, StreamError> {
+    fn construct(node: Node, env: &Env) -> Result<Item, StreamError> {
         let ((from, step), node) = node.check_args(false, 0..=2)?
-            .eval_all()?
+            .eval_all(env)?
             .with_keep(|node| {
                 let mut nums = node.args.iter()
                     .map(|x| x.to_item()?.into_num());
@@ -90,14 +91,16 @@ impl SIterator for SeqIter {
 #[test]
 fn test_seq() {
     use crate::parser::parse;
-    // in addition to doc tests
-    assert_eq!(parse("seq(0)").unwrap().eval().unwrap().to_string(), "[0, 1, 2, ...");
-    assert_eq!(parse("seq(2, 3)").unwrap().eval().unwrap().to_string(), "[2, 5, 8, ...");
-    assert_eq!(parse("seq(2, 0)").unwrap().eval().unwrap().to_string(), "[2, 2, 2, ...");
-    assert_eq!(parse("seq(2, -3)").unwrap().eval().unwrap().to_string(), "[2, -1, -4, ...");
+    let env = Default::default();
 
-    assert_eq!(parse("seq(2, 3)[10^10]").unwrap().eval().unwrap().to_string(), "29999999999");
-    assert_eq!(parse("seq(2, 0)[10^10]").unwrap().eval().unwrap().to_string(), "2");
+    // in addition to doc tests
+    assert_eq!(parse("seq(0)").unwrap().eval(&env).unwrap().to_string(), "[0, 1, 2, ...");
+    assert_eq!(parse("seq(2, 3)").unwrap().eval(&env).unwrap().to_string(), "[2, 5, 8, ...");
+    assert_eq!(parse("seq(2, 0)").unwrap().eval(&env).unwrap().to_string(), "[2, 2, 2, ...");
+    assert_eq!(parse("seq(2, -3)").unwrap().eval(&env).unwrap().to_string(), "[2, -1, -4, ...");
+
+    assert_eq!(parse("seq(2, 3)[10^10]").unwrap().eval(&env).unwrap().to_string(), "29999999999");
+    assert_eq!(parse("seq(2, 0)[10^10]").unwrap().eval(&env).unwrap().to_string(), "2");
 }
 
 
@@ -113,9 +116,10 @@ fn test_seq() {
 /// # Examples
 /// ```
 /// use streamlang::parser::parse;
-/// assert_eq!(parse("range(3)").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-/// assert_eq!(parse("range(0, 2)").unwrap().eval().unwrap().to_string(), "[0, 1, 2]");
-/// assert_eq!(parse("range(3, 1, -1)").unwrap().eval().unwrap().to_string(), "[3, 2, 1]");
+/// let env = Default::default();
+/// assert_eq!(parse("range(3)").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
+/// assert_eq!(parse("range(0, 2)").unwrap().eval(&env).unwrap().to_string(), "[0, 1, 2]");
+/// assert_eq!(parse("range(3, 1, -1)").unwrap().eval(&env).unwrap().to_string(), "[3, 2, 1]");
 /// ```
 #[derive(Clone)]
 pub struct Range {
@@ -155,9 +159,9 @@ impl Stream for Range {
 }
 
 impl Range {
-    fn construct(node: Node) -> Result<Item, StreamError> {
+    fn construct(node: Node, env: &Env) -> Result<Item, StreamError> {
         let ((from, to, step), node) = node.check_args(false, 1..=3)?
-            .eval_all()?
+            .eval_all(env)?
             .with_keep(|node| {
                 let mut nums = node.args.iter()
                     .map(|x| x.to_item()?.into_num());
@@ -223,48 +227,50 @@ impl SIterator for RangeIter {
 #[test]
 fn test_range() {
     use crate::parser::parse;
-    assert_eq!(parse("range(3)").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-    assert_eq!(parse("range(0)").unwrap().eval().unwrap().to_string(), "[]");
-    assert_eq!(parse("range(3, 3)").unwrap().eval().unwrap().to_string(), "[3]");
-    assert_eq!(parse("range(3, 5)").unwrap().eval().unwrap().to_string(), "[3, 4, 5]");
-    assert_eq!(parse("range(5, 3)").unwrap().eval().unwrap().to_string(), "[]");
-    assert_eq!(parse("range(1, 10, 4)").unwrap().eval().unwrap().to_string(), "[1, 5, 9]");
-    assert_eq!(parse("range(1, 10, 10)").unwrap().eval().unwrap().to_string(), "[1]");
-    assert_eq!(parse("range(1, 10, 0)").unwrap().eval().unwrap().to_string(), "[1, 1, 1, ...");
-    assert_eq!(parse("range(1, 10, -1)").unwrap().eval().unwrap().to_string(), "[]");
-    assert_eq!(parse("range(1, -10, -3)").unwrap().eval().unwrap().to_string(), "[1, -2, -5, ...");
+    let env = Default::default();
+    assert_eq!(parse("range(3)").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
+    assert_eq!(parse("range(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("range(3, 3)").unwrap().eval(&env).unwrap().to_string(), "[3]");
+    assert_eq!(parse("range(3, 5)").unwrap().eval(&env).unwrap().to_string(), "[3, 4, 5]");
+    assert_eq!(parse("range(5, 3)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("range(1, 10, 4)").unwrap().eval(&env).unwrap().to_string(), "[1, 5, 9]");
+    assert_eq!(parse("range(1, 10, 10)").unwrap().eval(&env).unwrap().to_string(), "[1]");
+    assert_eq!(parse("range(1, 10, 0)").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1, ...");
+    assert_eq!(parse("range(1, 10, -1)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("range(1, -10, -3)").unwrap().eval(&env).unwrap().to_string(), "[1, -2, -5, ...");
 }
 
 #[test]
 fn test_range_skip() {
     use crate::parser::parse;
-    let mut it = parse("range(2, 7, 2)").unwrap().eval().unwrap().into_stream().unwrap().iter();
+    let env = Default::default();
+    let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(2.into()), Ok(()));
     assert_eq!(it.next(), Some(Ok(Item::new_number(6))));
-    let mut it = parse("range(2, 7, 2)").unwrap().eval().unwrap().into_stream().unwrap().iter();
+    let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(3.into()), Ok(()));
     assert_eq!(it.next(), None);
-    let mut it = parse("range(2, 7, 2)").unwrap().eval().unwrap().into_stream().unwrap().iter();
+    let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(4.into()), Err(1.into()));
 
-    let mut it = parse("range(2, 8, 2)").unwrap().eval().unwrap().into_stream().unwrap().iter();
+    let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(3.into()), Ok(()));
     assert_eq!(it.next(), Some(Ok(Item::new_number(8))));
-    let mut it = parse("range(2, 8, 2)").unwrap().eval().unwrap().into_stream().unwrap().iter();
+    let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(4.into()), Ok(()));
     assert_eq!(it.next(), None);
-    let mut it = parse("range(2, 8, 2)").unwrap().eval().unwrap().into_stream().unwrap().iter();
+    let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(5.into()), Err(1.into()));
 
-    let mut it = parse("range(2, 8, 0)").unwrap().eval().unwrap().into_stream().unwrap().iter();
+    let mut it = parse("range(2, 8, 0)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
     assert_eq!(it.skip_n(3.into()), Ok(()));
     assert_eq!(it.next(), Some(Ok(Item::new_number(2))));
 }
 
 
-fn construct_len(node: Node) -> Result<Item, StreamError> {
+fn construct_len(node: Node, env: &Env) -> Result<Item, StreamError> {
     let (length, node) = node.check_args(true, 0..=0)?
-        .eval_all()?
+        .eval_all(env)?
         .with_keep(|node| {
             Ok(node.source.as_ref().unwrap()
                 .as_item().unwrap()
@@ -288,27 +294,28 @@ fn construct_len(node: Node) -> Result<Item, StreamError> {
 #[test]
 fn test_range_length() {
     use crate::parser::parse;
+    let env = Default::default();
 
-    assert_eq!(parse("range(3).len").unwrap().eval().unwrap().to_string(), "3");
-    assert_eq!(parse("range(0).len").unwrap().eval().unwrap().to_string(), "0");
-    assert_eq!(parse("range(3, 3).len").unwrap().eval().unwrap().to_string(), "1");
-    assert_eq!(parse("range(3, 5).len").unwrap().eval().unwrap().to_string(), "3");
-    assert_eq!(parse("range(5, 3).len").unwrap().eval().unwrap().to_string(), "0");
-    assert_eq!(parse("range(1, 10, 4).len").unwrap().eval().unwrap().to_string(), "3");
-    assert_eq!(parse("range(1, 10, 10).len").unwrap().eval().unwrap().to_string(), "1");
-    assert!(parse("range(1, 10, 0).len").unwrap().eval().is_err());
-    assert_eq!(parse("range(1, 10, -1).len").unwrap().eval().unwrap().to_string(), "0");
-    assert_eq!(parse("range(1, -10, -3).len").unwrap().eval().unwrap().to_string(), "4");
+    assert_eq!(parse("range(3).len").unwrap().eval(&env).unwrap().to_string(), "3");
+    assert_eq!(parse("range(0).len").unwrap().eval(&env).unwrap().to_string(), "0");
+    assert_eq!(parse("range(3, 3).len").unwrap().eval(&env).unwrap().to_string(), "1");
+    assert_eq!(parse("range(3, 5).len").unwrap().eval(&env).unwrap().to_string(), "3");
+    assert_eq!(parse("range(5, 3).len").unwrap().eval(&env).unwrap().to_string(), "0");
+    assert_eq!(parse("range(1, 10, 4).len").unwrap().eval(&env).unwrap().to_string(), "3");
+    assert_eq!(parse("range(1, 10, 10).len").unwrap().eval(&env).unwrap().to_string(), "1");
+    assert!(parse("range(1, 10, 0).len").unwrap().eval(&env).is_err());
+    assert_eq!(parse("range(1, 10, -1).len").unwrap().eval(&env).unwrap().to_string(), "0");
+    assert_eq!(parse("range(1, -10, -3).len").unwrap().eval(&env).unwrap().to_string(), "4");
 
-    assert_eq!(parse("range(10, 1, -2).len").unwrap().eval().unwrap().to_string(), "5");
-    assert_eq!(parse("range(10, 1, -3).len").unwrap().eval().unwrap().to_string(), "4");
-    assert_eq!(parse("range(10, 1, -4).len").unwrap().eval().unwrap().to_string(), "3");
-    assert_eq!(parse("range(10, 1, -5).len").unwrap().eval().unwrap().to_string(), "2");
-    assert_eq!(parse("range(10, 1, -9).len").unwrap().eval().unwrap().to_string(), "2");
-    assert_eq!(parse("range(10, 1, -10).len").unwrap().eval().unwrap().to_string(), "1");
-    assert_eq!(parse("range(10, 1, -11).len").unwrap().eval().unwrap().to_string(), "1");
+    assert_eq!(parse("range(10, 1, -2).len").unwrap().eval(&env).unwrap().to_string(), "5");
+    assert_eq!(parse("range(10, 1, -3).len").unwrap().eval(&env).unwrap().to_string(), "4");
+    assert_eq!(parse("range(10, 1, -4).len").unwrap().eval(&env).unwrap().to_string(), "3");
+    assert_eq!(parse("range(10, 1, -5).len").unwrap().eval(&env).unwrap().to_string(), "2");
+    assert_eq!(parse("range(10, 1, -9).len").unwrap().eval(&env).unwrap().to_string(), "2");
+    assert_eq!(parse("range(10, 1, -10).len").unwrap().eval(&env).unwrap().to_string(), "1");
+    assert_eq!(parse("range(10, 1, -11).len").unwrap().eval(&env).unwrap().to_string(), "1");
 
-    assert_eq!(parse("range(10^9, 10^10, 2).len").unwrap().eval().unwrap().to_string(), "4500000001");
+    assert_eq!(parse("range(10^9, 10^10, 2).len").unwrap().eval(&env).unwrap().to_string(), "4500000001");
 }
 
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
