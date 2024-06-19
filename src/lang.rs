@@ -137,7 +137,7 @@ impl Describe for Map {
         let mut ret = self.source.describe();
         ret.push(':');
         ret += &self.body.describe();
-        ret
+        self.env.wrap_describe(ret)
     }
 }
 

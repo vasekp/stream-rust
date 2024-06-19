@@ -600,6 +600,21 @@ pub struct Node {
 #[derive(Default, Clone)]
 pub struct Env { }
 
+impl Env {
+    fn is_trivial(&self) -> bool { true }
+
+    pub(crate) fn wrap_describe(&self, expr: impl Into<String> + std::fmt::Display) -> String {
+        match self.is_trivial() {
+            true => expr.into(),
+            false => format!("env({}, {})", self.describe(), expr)
+        }
+    }
+}
+
+impl Describe for Env {
+    fn describe(&self) -> String { todo!() }
+}
+
 /// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
