@@ -5,6 +5,7 @@ use crate::utils::describe_range;
 use num::{Signed, One, Zero};
 use crate::keywords::find_keyword;
 use std::cell::Cell;
+pub use crate::alphabet::*;
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
@@ -68,10 +69,11 @@ impl Item {
     }
 
     pub fn into_num(self) -> Result<Number, StreamError> {
-        match self {
-            Item::Number(x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
-        }
+        self.as_num().map(ToOwned::to_owned)
+    }
+
+    pub fn check_num(&self) -> Result<(), StreamError> {
+        self.as_num().map(|_| ())
     }
 
     pub fn as_char(&self) -> Result<&Char, StreamError> {
@@ -184,74 +186,6 @@ impl Clone for Item {
             Stream(s) => Stream(dyn_clone::clone_box(&**s))
         }
     }
-}
-
-
-/// A 'character' in Stream may represent a single code point or a multigraph (such as 'dz').
-#[derive(Debug, Clone, PartialEq)]
-pub enum Char {
-    Single(char),
-    Multi(String)
-}
-
-impl From<char> for Char {
-    fn from(c: char) -> Char {
-        Char::Single(c)
-    }
-}
-
-impl From<String> for Char {
-    fn from(s: String) -> Char {
-        let mut it = s.chars();
-        if let (Some(c), None) = (it.next(), it.next()) {
-            Char::Single(c)
-        } else {
-            Char::Multi(s)
-        }
-    }
-}
-
-impl From<&str> for Char {
-    fn from(x: &str) -> Char {
-        Char::from(x.to_string())
-    }
-}
-
-impl Display for Char {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let alt = f.alternate();
-        let escape = |c| -> String {
-            match c {
-                '\n' => "\\n".into(),
-                '\r' => "\\r".into(),
-                '\t' => "\\t".into(),
-                '\\' => "\\\\".into(),
-                '\'' => if alt { c.into() } else { "\\'".into() },
-                '"' => if alt { "\\\"".into() } else { c.into() },
-                _ => c.into()
-            }
-        };
-        match self {
-            Char::Single(c) => write!(f, "{}", escape(*c))?,
-            Char::Multi(s) => {
-                for c in s.chars() {
-                    write!(f, "{}", escape(c))?;
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-#[test]
-fn test_char() {
-    assert_eq!(Char::from('a'), Char::Single('a'));
-    assert_eq!(Char::from("a"), Char::Single('a'));
-    assert_eq!(Char::from('❤'), Char::Single('❤')); // multi-byte
-    assert_eq!(Char::from("❤"), Char::Single('❤'));
-    assert_eq!(Char::from("é"), Char::Multi("é".into())); // combining mark
-    assert_eq!(Char::from("as"), Char::Multi("as".into()));
-    assert_eq!(Char::from('\n').to_string(), "\\n");
 }
 
 
@@ -589,6 +523,26 @@ pub struct Node {
     pub args: Vec<Expr>
 }
 
+#[derive(Default, Clone)]
+pub struct Env { }
+
+impl Env {
+    fn is_trivial(&self) -> bool { true }
+
+    pub(crate) fn wrap_describe(&self, expr: impl Into<String> + std::fmt::Display) -> String {
+        match self.is_trivial() {
+            true => expr.into(),
+            false => format!("env({}, {})", self.describe(), expr)
+        }
+    }
+
+    pub fn alphabet(&self) -> &Alphabet { &Alphabet::Std26 }
+}
+
+impl Describe for Env {
+    fn describe(&self) -> String { todo!() }
+}
+
 /// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
@@ -682,10 +636,10 @@ impl Expr {
 
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
     /// `Node::eval()`.
-    pub fn eval(self) -> Result<Item, StreamError> {
+    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => node.eval()
+            Expr::Eval(node) => node.eval(env)
         }
     }
 }
@@ -731,29 +685,29 @@ impl Node {
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
-    pub fn eval(self) -> Result<Item, StreamError> {
+    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
         match self.head {
             Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
-                Ok(func) => func(self),
+                Ok(func) => func(self, env),
                 Err(e) => Err(e.with_node(self))
             },
-            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(),
+            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(env),
             Head::Repl(_, _) => Err(StreamError::new("out of context", self))
         }
     }
 
-    pub(crate) fn eval_all(self) -> Result<Node, StreamError> {
-        let source = self.source.map(|x| (*x).eval())
+    pub(crate) fn eval_all(self, env: &Env) -> Result<Node, StreamError> {
+        let source = self.source.map(|x| (*x).eval(env))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         let args = self.args.into_iter()
-            .map(|x| x.eval().map(Expr::new_imm))
+            .map(|x| x.eval(env).map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Node{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self) -> Result<Node, StreamError> {
-        let source = self.source.map(|x| (*x).eval())
+    pub(crate) fn eval_source(self, env: &Env) -> Result<Node, StreamError> {
+        let source = self.source.map(|x| (*x).eval(env))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         Ok(Node{head: self.head, source, args: self.args})
@@ -791,13 +745,14 @@ impl Node {
 #[test]
 fn test_block() {
     use crate::parser::parse;
-    assert_eq!(parse("{#1}(3,4)").unwrap().eval().unwrap().to_string(), "3");
-    assert_eq!(parse("{#2}(3,4)").unwrap().eval().unwrap().to_string(), "4");
-    assert!(parse("{#3}(3,4)").unwrap().eval().is_err());
-    assert!(parse("#1").unwrap().eval().is_err());
-    assert_eq!(parse("1.{2}(3)").unwrap().eval().unwrap().to_string(), "2");
-    assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval().unwrap().to_string(), "6");
-    assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval().unwrap().to_string(), "4");
+    let env = Default::default();
+    assert_eq!(parse("{#1}(3,4)").unwrap().eval(&env).unwrap().to_string(), "3");
+    assert_eq!(parse("{#2}(3,4)").unwrap().eval(&env).unwrap().to_string(), "4");
+    assert!(parse("{#3}(3,4)").unwrap().eval(&env).is_err());
+    assert!(parse("#1").unwrap().eval(&env).is_err());
+    assert_eq!(parse("1.{2}(3)").unwrap().eval(&env).unwrap().to_string(), "2");
+    assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval(&env).unwrap().to_string(), "6");
+    assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval(&env).unwrap().to_string(), "4");
 }
 
 impl Describe for Node {
