@@ -1,5 +1,6 @@
 use crate::base::*;
 use std::fmt::{Display, Formatter, Debug};
+use num::traits::Euclid;
 
 /// A 'character' in Stream may represent a single code point or a multigraph (such as 'dz').
 #[derive(Debug, Clone, PartialEq)]
@@ -9,7 +10,7 @@ pub enum Char {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-enum Case {
+pub enum Case {
     /// All lowercase.
     Lower,
     /// Contains some uppercase.
@@ -99,7 +100,9 @@ pub enum Alphabet {
 }
 
 impl Alphabet {
-    fn ord_case(&self, chr: &Char) -> Result<(isize, Case), StreamError> {
+    /// Returns the order of `chr` in the alphabet. Counts between 1 and the size.
+    /// The information about the case of the character is preserved using `Case`.
+    pub fn ord_case(&self, chr: &Char) -> Result<(isize, Case), StreamError> {
         match self {
             Alphabet::Std26 => {
                 let Char::Single(ch) = chr else {
@@ -115,10 +118,12 @@ impl Alphabet {
         }
     }
 
-    fn chr_case(&self, ord: isize, case: Case) -> Char {
+    /// Returns the `ord`-th character in the alphabet in the given `Case`. Wraps around.
+    pub fn chr_case(&self, ord: &Number, case: Case) -> Char {
         match self {
             Alphabet::Std26 => {
-                let c = char::from(b'a' + (ord + 25).rem_euclid(26) as u8);
+                let ord: u8 = ord.rem_euclid(&Number::from(26)).try_into().unwrap();
+                let c = char::from(b'a' + (ord + 25u8) % 26u8);
                 Char::from(match case {
                     Case::Lower => c,
                     Case::Upper => c.to_ascii_uppercase()
@@ -130,10 +135,11 @@ impl Alphabet {
 
     /// The 'char + char' operation. Wraps around within the alphabet. Preserves the case of the 
     /// left-hand side operand.
+    #[cfg(test)]
     pub fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, StreamError> {
         let (index1, case) = self.ord_case(lhs)?;
         let (index2, _) = self.ord_case(rhs)?;
-        Ok(self.chr_case(index1 + index2, case))
+        Ok(self.chr_case(&Number::from(index1 + index2), case))
     }
 }
 
@@ -146,12 +152,12 @@ fn test_std26() {
     assert!(abc.ord_case(&Char::from('á')).is_err());
     assert!(abc.ord_case(&Char::Multi("ch".into())).is_err());
 
-    assert_eq!(abc.chr_case(1, Case::Lower), Char::from('a'));
-    assert_eq!(abc.chr_case(0, Case::Lower), Char::from('z'));
-    assert_eq!(abc.chr_case(26, Case::Upper), Char::from('Z'));
-    assert_eq!(abc.chr_case(100, Case::Lower), Char::from('v'));
-    assert_eq!(abc.chr_case(-1, Case::Lower), Char::from('y'));
-    assert_eq!(abc.chr_case(-100, Case::Lower), Char::from('d'));
+    assert_eq!(abc.chr_case(&Number::from(1), Case::Lower), Char::from('a'));
+    assert_eq!(abc.chr_case(&Number::from(0), Case::Lower), Char::from('z'));
+    assert_eq!(abc.chr_case(&Number::from(26), Case::Upper), Char::from('Z'));
+    assert_eq!(abc.chr_case(&Number::from(100), Case::Lower), Char::from('v'));
+    assert_eq!(abc.chr_case(&Number::from(-1), Case::Lower), Char::from('y'));
+    assert_eq!(abc.chr_case(&Number::from(-100), Case::Lower), Char::from('d'));
 
     assert_eq!(abc.c_plus_c(&Char::from('C'), &Char::from('e')), Ok(Char::from('H')));
     assert_eq!(abc.c_plus_c(&Char::from('x'), &Char::from('Y')), Ok(Char::from('w')));

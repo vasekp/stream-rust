@@ -126,13 +126,17 @@ pub struct Range {
     from: Number,
     to: Number,
     step: Number,
-    node: Node
+    chars: Option<Case>,
+    node: Node,
+    env: Env
 }
 
 struct RangeIter {
     value: Number,
     step: Number,
-    stop: Number
+    stop: Number,
+    chars: Option<Case>,
+    env: Env
 }
 
 impl Stream for Range {
@@ -140,7 +144,9 @@ impl Stream for Range {
         Box::new(RangeIter{
             value: self.from.clone(),
             stop: self.to.clone(),
-            step: self.step.clone()
+            step: self.step.clone(),
+            chars: self.chars,
+            env: self.env.clone()
         })
     }
 
@@ -160,26 +166,43 @@ impl Stream for Range {
 
 impl Range {
     fn construct(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let ((from, to, step), node) = node.check_args(false, 1..=3)?
+        let ((from, to, step, case), node) = node.check_args(false, 1..=3)?
             .eval_all(env)?
             .with_keep(|node| {
-                let mut nums = node.args.iter()
-                    .map(|x| x.to_item()?.into_num());
-                let (from, to, step) = match nums.len() {
-                    1 => (Number::one(), nums.next().unwrap()?, Number::one()),
-                    2 => (nums.next().unwrap()?, nums.next().unwrap()?, Number::one()),
-                    3 => (nums.next().unwrap()?, nums.next().unwrap()?, nums.next().unwrap()?),
+                let mut iter = node.args.iter()
+                    .map(|x| x.to_item());
+                match iter.len() {
+                    1 => Ok((Number::one(), iter.next().unwrap()?.into_num()?, Number::one(), None)),
+                    2 | 3 => {
+                        let i1 = iter.next().unwrap()?;
+                        let i2 = iter.next().unwrap()?;
+                        let step = match iter.next() {
+                            Some(res) => res?.into_num()?,
+                            None => Number::one()
+                        };
+                        match (&i1, &i2) {
+                            (Item::Number(from), Item::Number(to)) =>
+                                Ok((from.clone(), to.to_owned(), step, None)),
+                            (Item::Char(from), Item::Char(to)) => {
+                                let abc = env.alphabet();
+                                let (from_ix, case) = abc.ord_case(from)?;
+                                let (to_ix, _) = abc.ord_case(to)?;
+                                Ok((from_ix.into(), to_ix.into(), step, Some(case)))
+                            },
+                            _ => Err(format!("expected numeric or char bounds, found {:?}, {:?}",
+                                    i1, i2).into())
+                        }
+                    }
                     _ => unreachable!()
-                };
-                Ok((from, to, step))
+                }
             })?;
-        Ok(Item::new_stream(Range{from, to, step, node}))
+        Ok(Item::new_stream(Range{from, to, step, chars: case, node, env: env.clone()}))
     }
 }
 
 impl Describe for Range {
     fn describe(&self) -> String {
-        self.node.describe()
+        self.env.wrap_describe(self.node.describe())
     }
 }
 
@@ -190,7 +213,10 @@ impl Iterator for RangeIter {
         if self.step.is_zero()
             || (self.step.is_positive() && self.value <= self.stop)
             || (self.step.is_negative() && self.value >= self.stop) {
-                let ret = Item::new_number(self.value.clone());
+                let ret = match self.chars {
+                    None => Item::new_number(self.value.clone()),
+                    Some(case) => Item::new_char(self.env.alphabet().chr_case(&self.value, case))
+                };
                 self.value += &self.step;
                 Some(Ok(ret))
         } else {
@@ -238,6 +264,16 @@ fn test_range() {
     assert_eq!(parse("range(1, 10, 0)").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1, ...");
     assert_eq!(parse("range(1, 10, -1)").unwrap().eval(&env).unwrap().to_string(), "[]");
     assert_eq!(parse("range(1, -10, -3)").unwrap().eval(&env).unwrap().to_string(), "[1, -2, -5, ...");
+
+    assert_eq!(parse("range('a', 'C')").unwrap().eval(&env).unwrap().to_string(), "['a', 'b', 'c']");
+    assert_eq!(parse("range('D', 'f')").unwrap().eval(&env).unwrap().to_string(), "['D', 'E', 'F']");
+    assert_eq!(parse("range('a', 'h', 3)").unwrap().eval(&env).unwrap().to_string(), "['a', 'd', 'g']");
+    assert_eq!(parse("range('a', 'z', -1)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("range('a', 'z', 0)").unwrap().eval(&env).unwrap().to_string(), "['a', 'a', 'a', ...");
+    assert!(parse("range('a')").unwrap().eval(&env).is_err());
+    assert!(parse("range('a', 1)").unwrap().eval(&env).is_err());
+    assert!(parse("range(1, 'a')").unwrap().eval(&env).is_err());
+    assert!(parse("range('a', 'h', 'c')").unwrap().eval(&env).is_err());
 }
 
 #[test]

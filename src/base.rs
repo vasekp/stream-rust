@@ -5,7 +5,7 @@ use crate::utils::describe_range;
 use num::{Signed, One, Zero};
 use crate::keywords::find_keyword;
 use std::cell::Cell;
-pub use crate::alphabet::Char;
+pub use crate::alphabet::*;
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
@@ -69,10 +69,11 @@ impl Item {
     }
 
     pub fn into_num(self) -> Result<Number, StreamError> {
-        match self {
-            Item::Number(x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
-        }
+        self.as_num().map(ToOwned::to_owned)
+    }
+
+    pub fn check_num(&self) -> Result<(), StreamError> {
+        self.as_num().map(|_| ())
     }
 
     pub fn as_char(&self) -> Result<&Char, StreamError> {
@@ -542,6 +543,8 @@ impl Env {
             false => format!("env({}, {})", self.describe(), expr)
         }
     }
+
+    pub fn alphabet(&self) -> &Alphabet { &Alphabet::Std26 }
 }
 
 impl Describe for Env {
