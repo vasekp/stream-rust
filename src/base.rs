@@ -438,10 +438,7 @@ pub trait Stream: DynClone + Describe {
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the iterator. See [`Length`] for the possible return values. The default implementation
     /// relies on [`SIterator::len_remain()`] and [`Iterator::size_hint()`] to return one of
-    /// `Exact`, `AtMost`, `Unknown` or `LikelyInfinite`. The latter is produced if `size_hint`
-    /// returned `(usize::MAX, None)`, which is a customary indication of infiniteness in the
-    /// standard library, but may have false positives, like an iterator whose size can't fit into
-    /// `usize`.
+    /// `Exact`, `AtMost`, or `Unknown`.
     ///
     /// The return value must be consistent with the actual behaviour of the stream.
     fn length(&self) -> Length {
@@ -452,7 +449,6 @@ pub trait Stream: DynClone + Describe {
         }
         match iter.size_hint() {
             (_, Some(hi)) => AtMost(hi.into()),
-            (usize::MAX, None) => LikelyInfinite,
             _ => Unknown
         }
     }
@@ -534,8 +530,6 @@ pub enum Length {
     AtMost(Number),
     /// The stream is known to be infinite.
     Infinite,
-    /// A special value for when a standard [`Iterator::size_hint()`] returns `(usize::MAX, None)`.
-    LikelyInfinite,
     /// The length is not known but promises to be finite.
     UnknownFinite,
     /// Nothing can be inferred about the length.
@@ -567,7 +561,6 @@ impl std::ops::Add for Length {
         use Length::*;
         match (self, rhs) {
             (_, Infinite) | (Infinite, _) => Infinite,
-            (_, LikelyInfinite) | (LikelyInfinite, _) => LikelyInfinite,
             (_, Unknown) | (Unknown, _) => Unknown,
             (_, UnknownFinite) | (UnknownFinite, _) => UnknownFinite,
             (Exact(a), Exact(b)) => Exact(a + b),

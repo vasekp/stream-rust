@@ -281,7 +281,7 @@ fn construct_len(node: Node) -> Result<Item, StreamError> {
                 .iter().count();
             Ok(Item::new_number(len))
         },
-        _ => Err(StreamError::new("infinite or likely infinite stream", node))
+        _ => Err(StreamError::new("stream is infinite", node))
     }
 }
 
