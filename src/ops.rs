@@ -46,7 +46,7 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn construct(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let ((from, step), node) = node.check_args(false, 0..=2)?
             .eval_all(env)?
             .with_keep(|node| {
@@ -165,7 +165,7 @@ impl Stream for Range {
 }
 
 impl Range {
-    fn construct(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let ((from, to, step, case), node) = node.check_args(false, 1..=3)?
             .eval_all(env)?
             .with_keep(|node| {
@@ -304,7 +304,7 @@ fn test_range_skip() {
 }
 
 
-fn construct_len(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
     let (length, node) = node.check_args(true, 0..=0)?
         .eval_all(env)?
         .with_keep(|node| {
@@ -355,7 +355,7 @@ fn test_range_length() {
 }
 
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("seq", Seq::construct);
-    keywords.insert("range", Range::construct);
-    keywords.insert("len", construct_len);
+    keywords.insert("seq", Seq::eval);
+    keywords.insert("range", Range::eval);
+    keywords.insert("len", eval_len);
 }

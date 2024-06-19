@@ -7,6 +7,16 @@ use crate::base::Describe;
 #[derive(Clone)]
 pub struct List(Vec<Item>);
 
+impl List {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+        let node = node.check_args(false, 0..)?;
+        node.args.into_iter()
+            .map(|expr| expr.eval(env))
+            .collect::<Result<Vec<Item>, _>>()
+            .map(|vec| Item::new_stream(List::from(vec)))
+    }
+}
+
 impl Stream for List {
     fn iter(&self) -> Box<dyn SIterator> {
         Box::new(self.0.clone().into_iter().map(|x| Ok(x.clone())))
@@ -38,14 +48,6 @@ impl From<Vec<Item>> for List {
     fn from(vec: Vec<Item>) -> List {
         List(vec)
     }
-}
-
-fn construct_list(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.check_args(false, 0..)?;
-    node.args.into_iter()
-        .map(|expr| expr.eval(env))
-        .collect::<Result<Vec<Item>, _>>()
-        .map(|vec| Item::new_stream(List::from(vec)))
 }
 
 
@@ -86,7 +88,7 @@ impl From<String> for LiteralString {
 
 
 
-fn construct_part(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
     node.check_args(true, 1..)?
         .eval_all(env)?
         .with(|node| {
@@ -120,7 +122,7 @@ struct MapIter {
 }
 
 impl Map {
-    fn construct(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let mut node = node.check_args(true, 1..=1)?
             .eval_source(env)?;
         let source = node.source.unwrap().to_item()?.into_stream()?;
@@ -191,7 +193,7 @@ fn test_map() {
 }
 
 
-fn construct_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
         .eval_all(env)?
         .with(|node| -> Result<_, StreamError> {
@@ -200,7 +202,7 @@ fn construct_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans?))
 }
 
-fn construct_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..=2)?
         .eval_all(env)?
         .with(|node| {
@@ -214,7 +216,7 @@ fn construct_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans?))
 }
 
-fn construct_times(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_times(node: Node, env: &Env) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 1..)?
         .eval_all(env)?
         .with(|node| {
@@ -223,7 +225,7 @@ fn construct_times(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans?))
 }
 
-fn construct_div(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_div(node: Node, env: &Env) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 2..=2)?
         .eval_all(env)?
         .with(|node| {
@@ -236,7 +238,7 @@ fn construct_div(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans?))
 }
 
-fn construct_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
     let ans = node.check_args(false, 2..=2)?
         .eval_all(env)?
         .with(|node| {
@@ -274,7 +276,7 @@ struct Join {
 }
 
 impl Join {
-    fn construct(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let ((), node) = node.check_args(false, 1..)?
             .eval_all(env)?
             .with_keep(|node| {
@@ -390,13 +392,13 @@ fn test_join() {
 
 
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("list", construct_list);
-    keywords.insert("part", construct_part);
-    keywords.insert("map", Map::construct);
-    keywords.insert("+", construct_plus);
-    keywords.insert("-", construct_minus);
-    keywords.insert("*", construct_times);
-    keywords.insert("/", construct_div);
-    keywords.insert("^", construct_pow);
-    keywords.insert("~", Join::construct);
+    keywords.insert("list", List::eval);
+    keywords.insert("part", eval_part);
+    keywords.insert("map", Map::eval);
+    keywords.insert("+", eval_plus);
+    keywords.insert("-", eval_minus);
+    keywords.insert("*", eval_times);
+    keywords.insert("/", eval_div);
+    keywords.insert("^", eval_pow);
+    keywords.insert("~", Join::eval);
 }
