@@ -582,8 +582,7 @@ impl std::ops::Add for Length {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Imm(Item),
-    Eval(Node),
-    Repl(char, Option<usize>)
+    Eval(Node)
 }
 
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
@@ -604,7 +603,8 @@ pub struct Node {
 pub enum Head {
     Symbol(String),
     Oper(String),
-    Block(Box<Expr>)
+    Block(Box<Expr>),
+    Repl(char, Option<usize>)
 }
 
 impl Expr {
@@ -628,6 +628,15 @@ impl Expr {
             head: Head::Oper(symbol.into()),
             source: source.map(Box::new),
             args
+        })
+    }
+
+    /// Creates a new `Expr` of a node with an operation head.
+    pub fn new_repl(chr: char, ix: Option<usize>) -> Expr {
+        Expr::Eval(Node{
+            head: Head::Repl(chr, ix),
+            source: None,
+            args: vec![]
         })
     }
 
@@ -666,14 +675,15 @@ impl Expr {
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
         match self {
             Expr::Imm(_) => Ok(self),
-            Expr::Eval(node) => Ok(Expr::Eval(node.apply(source, args)?)),
-            Expr::Repl('#', None) => source.as_ref()
-                .ok_or("#: no source provided".into())
-                .map(|boxed| (**boxed).clone()),
-            Expr::Repl('#', Some(ix)) => args.get(ix - 1)
-                .ok_or(format!("{}: no such input", self.describe()).into())
-                .cloned(),
-            _ => Err(format!("{}: out of context", self.describe()).into())
+            Expr::Eval(node) => match node.head {
+                Head::Repl('#', None) => source.as_ref()
+                        .ok_or(StreamError::new("no source provided", node))
+                        .map(|boxed| (**boxed).clone()),
+                Head::Repl('#', Some(ix)) => args.get(ix - 1)
+                    .ok_or(StreamError::new("no such input", node))
+                    .cloned(),
+                _ => Ok(Expr::Eval(node.apply(source, args)?))
+            }
         }
     }
 
@@ -682,8 +692,7 @@ impl Expr {
     pub fn eval(self) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => node.eval(),
-            Expr::Repl(_, _) => Err(format!("{}: out of context", self.describe()).into())
+            Expr::Eval(node) => node.eval()
         }
     }
 }
@@ -698,9 +707,7 @@ impl Describe for Expr {
     fn describe(&self) -> String {
         match self {
             Expr::Imm(item) => item.describe(),
-            Expr::Eval(node) => node.describe(),
-            Expr::Repl(chr, None) => chr.to_string(),
-            Expr::Repl(chr, Some(num)) => format!("{chr}{num}")
+            Expr::Eval(node) => node.describe()
         }
     }
 }
@@ -737,7 +744,8 @@ impl Node {
                 Ok(func) => func(self),
                 Err(e) => Err(e.with_node(self))
             },
-            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval()
+            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(),
+            Head::Repl(_, _) => Err(StreamError::new("out of context", self))
         }
     }
 
@@ -825,6 +833,12 @@ impl Describe for Node {
                 }
                 ret.push(')');
                 return ret;
+            },
+            Head::Repl(chr, opt) => {
+                ret.push(*chr);
+                if let Some(num) = opt {
+                    ret += &format!("{num}");
+                }
             }
         };
         if !self.args.is_empty() {
