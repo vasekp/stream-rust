@@ -817,13 +817,15 @@ impl Describe for Node {
             },
             Head::Oper(o) => { // special, early return
                 ret.push('(');
-                let mut it = self.args.iter();
-                if self.args.len() > 1 {
-                    ret += &it.next().unwrap().describe();
+                let mut it = self.args.iter().map(Describe::describe);
+                if self.args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
+                    if let Some(s) = it.next() {
+                        ret += &s;
+                    }
                 }
-                for expr in it {
+                for s in it {
                     ret += o;
-                    ret += &expr.describe();
+                    ret += &s;
                 }
                 ret.push(')');
                 return ret;
@@ -836,12 +838,14 @@ impl Describe for Node {
             }
         };
         if !self.args.is_empty() {
-            let mut it = self.args.iter();
             ret.push('(');
-            ret += &it.next().unwrap().describe();
-            for expr in it {
-                ret += ", ";
-                ret += &expr.describe();
+            let mut it = self.args.iter().map(Describe::describe);
+            if let Some(s) = it.next() {
+                ret += &s;
+                for s in it {
+                    ret += ", ";
+                    ret += &s
+                }
             }
             ret.push(')');
         }
