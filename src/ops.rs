@@ -47,16 +47,15 @@ impl Stream for Seq {
 
 impl Seq {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let ((from, step), node) = node.check_args(false, 0..=2)?
+        let ((from, step), node) = node
             .eval_all(env)?
             .with_keep(|node| {
-                let mut nums = node.args.iter()
-                    .map(|x| x.to_item()?.into_num());
-                let (from, step) = match nums.len() {
+                node.check_no_source()?;
+                let (from, step) = match node.args.len() {
                     0 => (Number::one(), Number::one()),
-                    1 => (nums.next().unwrap()?, Number::one()),
-                    2 => (nums.next().unwrap()?, nums.next().unwrap()?),
-                    _ => unreachable!()
+                    1 => (node.args[0].as_item()?.to_num()?, Number::one()),
+                    2 => (node.args[0].as_item()?.to_num()?, node.args[1].as_item()?.to_num()?),
+                    _ => return Err("0 to 2 arguments required".into())
                 };
                 Ok((from, step))
             })?;
@@ -94,6 +93,7 @@ fn test_seq() {
     let env = Default::default();
 
     // in addition to doc tests
+    assert!(parse("1.seq").unwrap().eval(&env).is_err());
     assert_eq!(parse("seq(0)").unwrap().eval(&env).unwrap().to_string(), "[0, 1, 2, ...");
     assert_eq!(parse("seq(2, 3)").unwrap().eval(&env).unwrap().to_string(), "[2, 5, 8, ...");
     assert_eq!(parse("seq(2, 0)").unwrap().eval(&env).unwrap().to_string(), "[2, 2, 2, ...");
@@ -166,21 +166,18 @@ impl Stream for Range {
 
 impl Range {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let ((from, to, step, case), node) = node.check_args(false, 1..=3)?
+        let ((from, to, step, case), node) = node
             .eval_all(env)?
             .with_keep(|node| {
-                let mut iter = node.args.iter()
-                    .map(|x| x.to_item());
-                match iter.len() {
-                    1 => Ok((Number::one(), iter.next().unwrap()?.into_num()?, Number::one(), None)),
-                    2 | 3 => {
-                        let i1 = iter.next().unwrap()?;
-                        let i2 = iter.next().unwrap()?;
-                        let step = match iter.next() {
-                            Some(res) => res?.into_num()?,
-                            None => Number::one()
-                        };
-                        match (&i1, &i2) {
+                node.check_no_source()?;
+                let args = &node.args;
+                match args.len() {
+                    1 => Ok((Number::one(), args[0].as_item()?.to_num()?, Number::one(), None)),
+                    len @ (2 | 3) => {
+                        let from = args[0].as_item()?;
+                        let to = args[1].as_item()?;
+                        let step = if len == 3 { args[2].as_item()?.to_num()? } else { Number::one() };
+                        match (from, to) {
                             (Item::Number(from), Item::Number(to)) =>
                                 Ok((from.clone(), to.to_owned(), step, None)),
                             (Item::Char(from), Item::Char(to)) => {
@@ -190,10 +187,10 @@ impl Range {
                                 Ok((from_ix.into(), to_ix.into(), step, Some(case)))
                             },
                             _ => Err(format!("expected numeric or char bounds, found {:?}, {:?}",
-                                    i1, i2).into())
+                                    from, to).into())
                         }
                     }
-                    _ => unreachable!()
+                    _ => Err("between 1 and 3 arguments expected".into())
                 }
             })?;
         Ok(Item::new_stream(Range{from, to, step, chars: case, node, env: env.clone()}))
@@ -305,22 +302,17 @@ fn test_range_skip() {
 
 
 fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let (length, node) = node.check_args(true, 0..=0)?
+    let (length, node) = node
         .eval_all(env)?
         .with_keep(|node| {
-            Ok(node.source.as_ref().unwrap()
-                .as_item().unwrap()
-                .as_stream()?
-                .length())
+            if !node.args.is_empty() { return Err("no arguments allowed".into()) }
+            Ok(node.source_checked()?.as_item()?.as_stream()?.length())
         })?;
     use Length::*;
     match length {
         Exact(len) => Ok(Item::new_number(len)),
         AtMost(_) | UnknownFinite | Unknown => {
-            let len = node.source.unwrap()
-                .as_item().unwrap()
-                .as_stream().unwrap()
-                .iter().count();
+            let len = node.source_checked()?.as_item()?.as_stream()?.iter().count();
             Ok(Item::new_number(len))
         },
         _ => Err(StreamError::new("stream is infinite", node))

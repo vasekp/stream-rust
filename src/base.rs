@@ -68,12 +68,19 @@ impl Item {
         }
     }
 
-    pub fn into_num(self) -> Result<Number, StreamError> {
+    pub fn to_num(&self) -> Result<Number, StreamError> {
         self.as_num().map(ToOwned::to_owned)
     }
 
     pub fn check_num(&self) -> Result<(), StreamError> {
         self.as_num().map(|_| ())
+    }
+
+    pub fn into_num(self) -> Result<Number, StreamError> {
+        match self {
+            Item::Number(x) => Ok(x),
+            _ => Err(format!("expected number, found {:?}", &self).into())
+        }
     }
 
     pub fn as_char(&self) -> Result<&Char, StreamError> {
@@ -612,9 +619,9 @@ impl Expr {
         }
     }
 
-    pub fn into_node(self) -> Result<Node, StreamError> {
+    pub fn to_node(&self) -> Result<Node, StreamError> {
         match self {
-            Expr::Eval(node) => Ok(node),
+            Expr::Eval(node) => Ok(node.to_owned()),
             _ => Err(format!("expected node, found {:?}", self).into()),
         }
     }
@@ -660,21 +667,17 @@ impl Describe for Expr {
 }
 
 impl Node {
-    pub(crate) fn check_args(self, source: bool, range: impl RangeBounds<usize>) -> Result<Node, StreamError> {
-        use std::ops::Bound::*;
-        match (&self.source, source) {
-            (Some(_), false) => return Err(StreamError::new("no source accepted", self)),
-            (None, true) => return Err(StreamError::new("source requested", self)),
-            _ => { }
-        };
-        if range.contains(&self.args.len()) {
-            Ok(self)
-        } else {
-            Err(StreamError::new(
-                    match (range.start_bound(), range.end_bound()) {
-                        (Included(0), Included(0)) => "no arguments allowed".to_string(),
-                        _ => format!("{} arguments required", describe_range(&range))
-                    }, self))
+    pub(crate) fn check_no_source(&self) -> Result<(), StreamError> {
+        match &self.source {
+            Some(_) => Err("no source accepted".into()),
+            None => Ok(())
+        }
+    }
+
+    pub(crate) fn source_checked(&self) -> Result<&Expr, StreamError> {
+        match &self.source {
+            Some(source) => Ok(source),
+            None => Err("source required".into()),
         }
     }
 
@@ -741,6 +744,7 @@ impl Node {
         })
     }
 }
+
 
 #[test]
 fn test_block() {
