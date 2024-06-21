@@ -13,11 +13,11 @@ pub use crate::alphabet::*;
 pub type Number = num::BigInt;
 
 pub(crate) trait NumWithin : PartialOrd {
-    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError>;
+    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), BaseError>;
 }
 
 impl NumWithin for Number {
-    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), StreamError> {
+    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), BaseError> {
         match range.contains(self) {
             true => Ok(()),
             false => Err(format!("expected {}, found {}", describe_range(&range), &self).into())
@@ -61,53 +61,53 @@ impl Item {
         Item::Stream(Box::new(value))
     }
 
-    pub fn as_num(&self) -> Result<&Number, StreamError> {
+    pub fn as_num(&self) -> Result<&Number, BaseError> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
-    pub fn to_num(&self) -> Result<Number, StreamError> {
+    pub fn to_num(&self) -> Result<Number, BaseError> {
         self.as_num().map(ToOwned::to_owned)
     }
 
-    pub fn check_num(&self) -> Result<(), StreamError> {
+    pub fn check_num(&self) -> Result<(), BaseError> {
         self.as_num().map(|_| ())
     }
 
-    pub fn into_num(self) -> Result<Number, StreamError> {
+    pub fn into_num(self) -> Result<Number, BaseError> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(format!("expected number, found {:?}", &self).into())
         }
     }
 
-    pub fn as_char(&self) -> Result<&Char, StreamError> {
+    pub fn as_char(&self) -> Result<&Char, BaseError> {
         match self {
             Item::Char(c) => Ok(c),
             _ => Err(format!("expected char, found {:?}", &self).into())
         }
     }
 
-    pub fn as_stream(&self) -> Result<&dyn Stream, StreamError> {
+    pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
         match self {
             Item::Stream(s) => Ok(&**s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
-    pub fn into_stream(self) -> Result<Box<dyn Stream>, StreamError> {
+    pub fn into_stream(self) -> Result<Box<dyn Stream>, BaseError> {
         match self {
             Item::Stream(s) => Ok(s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
-    pub fn format(&self, max_len: usize) -> (String, Option<StreamError>) {
+    pub fn format(&self, max_len: usize) -> (String, FormatError) {
         struct Stateful<'item> {
             item: &'item Item,
-            cell: ErrorCell
+            cell: Cell<FormatError>
         }
 
         impl<'item> Display for Stateful<'item> {
@@ -121,7 +121,7 @@ impl Item {
         (result, s.cell.take())
     }
 
-    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: &ErrorCell)
+    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
         -> std::fmt::Result
     {
         use Item::*;
@@ -202,41 +202,74 @@ impl Clone for Item {
 /// Even though `node` is optional, the intended use is that every function supplies it.
 #[derive(PartialEq, Debug)]
 pub struct StreamError {
-    reason: String,
-    node: Option<Node>
+    reason: BaseError,
+    node: Node
 }
 
 impl StreamError {
-    pub fn new<T>(text: T, node: Node) -> StreamError where T: Into<String> {
-        StreamError{reason: text.into(), node: Some(node)}
-    }
-
-    pub(crate) fn with_node(mut self, node: Node) -> StreamError {
-        if self.node.is_none() {
-            self.node = Some(node);
-        }
-        self
+    pub fn new<T>(reason: T, node: Node) -> StreamError where T: Into<BaseError> {
+        StreamError{reason: reason.into(), node}
     }
 }
 
 impl std::error::Error for StreamError { }
 
-impl<T> From<T> for StreamError where T: Into<String> {
-    fn from(text: T) -> StreamError {
-        StreamError{reason: text.into(), node: None}
+impl Display for StreamError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.node.describe(), self.reason)
     }
 }
 
-impl Display for StreamError {
+#[derive(Debug, PartialEq)]
+pub struct BaseError(String);
+
+impl<T> From<T> for BaseError where T: Into<String> {
+    fn from(string: T) -> BaseError {
+        BaseError(string.into())
+    }
+}
+
+impl Display for BaseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &self.node {
-            Some(node) => write!(f, "{}: {}", node.describe(), self.reason),
-            None => write!(f, "{}", self.reason)
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Default, PartialEq)]
+pub enum FormatError {
+    #[default]
+    None,
+    StreamError(StreamError),
+    BaseError(BaseError)
+}
+
+impl FormatError {
+    pub fn is_some(&self) -> bool {
+        self != &FormatError::None
+    }
+}
+
+impl From<StreamError> for FormatError {
+    fn from(err: StreamError) -> FormatError {
+        FormatError::StreamError(err)
+    }
+}
+
+impl From<BaseError> for FormatError {
+    fn from(err: BaseError) -> FormatError {
+        FormatError::BaseError(err)
+    }
+}
+
+impl Display for FormatError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FormatError::None => write!(f, "no error"),
+            FormatError::BaseError(err) => write!(f, "{err}"),
+            FormatError::StreamError(err) => write!(f, "{err}"),
         }
     }
 }
-
-type ErrorCell = Cell<Option<StreamError>>;
 
 
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
@@ -258,7 +291,7 @@ pub trait Stream: DynClone + Describe {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    fn writeout(&self, f: &mut Formatter<'_>, error: &ErrorCell)
+    fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
         -> std::fmt::Result
     {
         if self.is_string() {
@@ -269,7 +302,7 @@ pub trait Stream: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &ErrorCell)
+    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -304,7 +337,7 @@ pub trait Stream: DynClone + Describe {
                     },
                     Some(Err(err)) => {
                         s += "<!>";
-                        error.set(Some(err));
+                        error.set(err.into());
                         break 'a;
                     }
                 };
@@ -323,7 +356,7 @@ pub trait Stream: DynClone + Describe {
     }
 
     #[doc(hidden)]
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: &ErrorCell)
+    fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -339,20 +372,26 @@ pub trait Stream: DynClone + Describe {
         s.push('"');
         'a: {
             while s.len() < prec && i < max {
-                match iter.next().map(|res| res.and_then(|it| Ok(it.as_char()?.to_owned()))) {
-                    None => {
-                        s.push('"');
-                        break 'a;
-                    },
-                    Some(Ok(c)) => {
-                        s += &format!("{c:#}");
-                    },
-                    Some(Err(err)) => {
-                        s += "<!>";
-                        error.set(Some(err));
-                        break 'a;
+                if let Some(next) = iter.next() {
+                    match next {
+                        Ok(item) => match item.as_char() {
+                            Ok(ch) => s += &format!("{ch:#}"),
+                            Err(err) => {
+                                s += "<!>";
+                                error.set(err.into());
+                                break 'a;
+                            }
+                        },
+                        Err(err) => {
+                            s += "<!>";
+                            error.set(err.into());
+                            break 'a;
+                        }
                     }
-                };
+                } else {
+                    s.push('"');
+                    break 'a;
+                }
                 i += 1;
             }
             s += match iter.next() {
@@ -604,7 +643,7 @@ impl Expr {
     }
 
     /// For an `Expr::Imm(value)`, returns a reference to `value`.
-    pub fn as_item(&self) -> Result<&Item, StreamError> {
+    pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {
             Expr::Imm(ref item) => Ok(item),
             _ => Err(format!("expected value, found {:?}", self).into()),
@@ -612,14 +651,14 @@ impl Expr {
     }
 
     /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
-    pub fn to_item(&self) -> Result<Item, StreamError> {
+    pub fn to_item(&self) -> Result<Item, BaseError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
             _ => Err(format!("expected value, found {:?}", self).into()),
         }
     }
 
-    pub fn to_node(&self) -> Result<Node, StreamError> {
+    pub fn to_node(&self) -> Result<Node, BaseError> {
         match self {
             Expr::Eval(node) => Ok(node.to_owned()),
             _ => Err(format!("expected node, found {:?}", self).into()),
@@ -667,21 +706,21 @@ impl Describe for Expr {
 }
 
 impl Node {
-    pub(crate) fn check_no_source(&self) -> Result<(), StreamError> {
+    pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
         match &self.source {
             Some(_) => Err("no source accepted".into()),
             None => Ok(())
         }
     }
 
-    pub(crate) fn source_checked(&self) -> Result<&Expr, StreamError> {
+    pub(crate) fn source_checked(&self) -> Result<&Expr, BaseError> {
         match &self.source {
             Some(source) => Ok(source),
             None => Err("source required".into()),
         }
     }
 
-    pub(crate) fn check_args_nonempty(&self) -> Result<(), StreamError> {
+    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
         if self.args.is_empty() {
             Err("at least 1 argument required".into())
         } else {
@@ -700,7 +739,7 @@ impl Node {
         match self.head {
             Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
                 Ok(func) => func(self, env),
-                Err(e) => Err(e.with_node(self))
+                Err(e) => Err(StreamError::new(e, self))
             },
             Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(env),
             Head::Repl(_, _) => Err(StreamError::new("out of context", self))
@@ -741,9 +780,9 @@ impl Node {
 #[macro_export]
 macro_rules! try_with {
     ($node:ident, $expr:expr) => {
-        match (|| -> Result<_, StreamError> { $expr })() {
+        match (|| -> Result<_, BaseError> { $expr })() {
             Ok(result) => result,
-            Err(err) => return Err(err.with_node($node))
+            Err(err) => return Err(StreamError::new(err, $node))
         }
     }
 }

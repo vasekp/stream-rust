@@ -309,7 +309,7 @@ fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
     match length {
         Exact(len) => Ok(Item::new_number(len)),
         AtMost(_) | UnknownFinite | Unknown => {
-            let len = node.source_checked()?.as_item()?.as_stream()?.iter().count();
+            let len = try_with!(node, node.source_checked()?.as_item()?.as_stream()).iter().count();
             Ok(Item::new_number(len))
         },
         _ => Err(StreamError::new("stream is infinite", node))

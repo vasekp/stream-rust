@@ -13,10 +13,10 @@ impl List {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
-        node.args.into_iter()
+        let vec = try_with!(node, node.args.iter()
             .map(|expr| expr.to_item())
-            .collect::<Result<Vec<Item>, _>>()
-            .map(|vec| Item::new_stream(List::from(vec)))
+            .collect::<Result<Vec<_>, _>>());
+        Ok(Item::new_stream(List::from(vec)))
     }
 }
 
@@ -249,7 +249,7 @@ fn eval_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
     let x = try_with!(node, node.args[0].to_item()?.into_num());
     let y = try_with!(node, node.args[1].to_item()?.into_num());
     if y.is_negative() {
-        return Err("negative exponent".into());
+        return Err(StreamError::new("negative exponent", node));
     }
     let ans = x.pow(y.try_into().map_err(|_| StreamError::new("exponent too large", node))?);
     Ok(Item::new_number(ans))
@@ -290,7 +290,7 @@ impl Join {
                 None => string = Some(stream.is_string()),
                 Some(string) => {
                     if stream.is_string() != string {
-                        return Err("mixed streams and strings".into());
+                        return Err(StreamError::new("mixed streams and strings", node));
                     }
                 }
             }

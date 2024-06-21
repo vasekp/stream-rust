@@ -13,7 +13,7 @@ static KEYWORDS: Lazy<Keywords> = Lazy::new(|| {
     keywords
 });
 
-pub(crate) fn find_keyword(name: &str) -> Result<Constructor, StreamError> {
+pub(crate) fn find_keyword(name: &str) -> Result<Constructor, BaseError> {
     KEYWORDS.get(name).copied()
-        .ok_or_else(|| StreamError::from(format!("symbol '{name}' not found")))
+        .ok_or_else(|| format!("symbol '{name}' not found").into())
 }

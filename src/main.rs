@@ -23,7 +23,7 @@ fn main() {
                         let (s, err) = item.format(80);
                         println!("Item Format: {s}");
                         if err.is_some() {
-                            println!("Err: {}", err.unwrap());
+                            println!("Err: {}", err);
                         }
                     },
                     Err(err) => println!("{err}")

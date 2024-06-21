@@ -102,7 +102,7 @@ pub enum Alphabet {
 impl Alphabet {
     /// Returns the order of `chr` in the alphabet. Counts between 1 and the size.
     /// The information about the case of the character is preserved using `Case`.
-    pub fn ord_case(&self, chr: &Char) -> Result<(isize, Case), StreamError> {
+    pub fn ord_case(&self, chr: &Char) -> Result<(isize, Case), BaseError> {
         match self {
             Alphabet::Std26 => {
                 let Char::Single(ch) = chr else {
@@ -136,7 +136,7 @@ impl Alphabet {
     /// The 'char + char' operation. Wraps around within the alphabet. Preserves the case of the 
     /// left-hand side operand.
     #[cfg(test)]
-    pub fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, StreamError> {
+    pub fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, BaseError> {
         let (index1, case) = self.ord_case(lhs)?;
         let (index2, _) = self.ord_case(rhs)?;
         Ok(self.chr_case(&Number::from(index1 + index2), case))
