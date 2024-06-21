@@ -196,10 +196,7 @@ impl Clone for Item {
 }
 
 
-/// The runtime error type with an optional indication of the [`Node`] whose construction or
-/// evaluation caused it.
-///
-/// Even though `node` is optional, the intended use is that every function supplies it.
+/// The runtime error type with an indication of the [`Node`] whose evaluation caused it.
 #[derive(PartialEq, Debug)]
 pub struct StreamError {
     reason: BaseError,
@@ -220,6 +217,8 @@ impl Display for StreamError {
     }
 }
 
+/// The base error returned by helper functions. In most situations this is intended to be
+/// turned into [`StreamError`] by supplementing a [`Node`].
 #[derive(Debug, PartialEq)]
 pub struct BaseError(String);
 
@@ -235,6 +234,12 @@ impl Display for BaseError {
     }
 }
 
+/// A special error type which can hold both [`StreamError`] or [`BaseError`], i.e., has an
+/// optional [`Node`] attached.
+///
+/// The situation where a [`Node`] is not available can happen in [`Stream::writeout`] for strings
+/// when an [`Item`] fails to be a [`Item::Char`]. For that reason this error type is returned by
+/// [`Item::format`].
 #[derive(Default, PartialEq)]
 pub enum FormatError {
     #[default]
