@@ -782,7 +782,6 @@ impl Node {
     }
 }
 
-#[macro_export]
 macro_rules! try_with {
     ($node:ident, $expr:expr) => {
         match (|| -> Result<_, BaseError> { $expr })() {
@@ -791,6 +790,8 @@ macro_rules! try_with {
         }
     }
 }
+
+pub(crate) use try_with;
 
 
 #[test]

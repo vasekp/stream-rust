@@ -1,6 +1,5 @@
 #![allow(clippy::redundant_closure_call)]
 use crate::base::*;
-use crate::try_with;
 use num::{Zero, One, ToPrimitive, Signed};
 use crate::base::Describe;
 
