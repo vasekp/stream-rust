@@ -1,4 +1,6 @@
+#![allow(clippy::redundant_closure_call)]
 use crate::base::*;
+use crate::try_with;
 use num::{Zero, One, ToPrimitive, Signed};
 use crate::base::Describe;
 
@@ -47,18 +49,15 @@ impl Stream for Seq {
 
 impl Seq {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let ((from, step), node) = node
-            .eval_all(env)?
-            .with_keep(|node| {
-                node.check_no_source()?;
-                let (from, step) = match node.args.len() {
-                    0 => (Number::one(), Number::one()),
-                    1 => (node.args[0].as_item()?.to_num()?, Number::one()),
-                    2 => (node.args[0].as_item()?.to_num()?, node.args[1].as_item()?.to_num()?),
-                    _ => return Err("0 to 2 arguments required".into())
-                };
-                Ok((from, step))
-            })?;
+        let node = node.eval_all(env)?;
+        try_with!(node, node.check_no_source());
+        let (from, step) = match node.args.len() {
+            0 => (Number::one(), Number::one()),
+            1 => (try_with!(node, node.args[0].as_item()?.to_num()), Number::one()),
+            2 => (try_with!(node, node.args[0].as_item()?.to_num()),
+                  try_with!(node, node.args[1].as_item()?.to_num())),
+            _ => return Err(StreamError::new("0 to 2 arguments required", node))
+        };
         Ok(Item::new_stream(Seq{from, step, node}))
     }
 }
@@ -166,33 +165,32 @@ impl Stream for Range {
 
 impl Range {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let ((from, to, step, case), node) = node
-            .eval_all(env)?
-            .with_keep(|node| {
-                node.check_no_source()?;
-                let args = &node.args;
-                match args.len() {
-                    1 => Ok((Number::one(), args[0].as_item()?.to_num()?, Number::one(), None)),
-                    len @ (2 | 3) => {
-                        let from = args[0].as_item()?;
-                        let to = args[1].as_item()?;
-                        let step = if len == 3 { args[2].as_item()?.to_num()? } else { Number::one() };
-                        match (from, to) {
-                            (Item::Number(from), Item::Number(to)) =>
-                                Ok((from.clone(), to.to_owned(), step, None)),
-                            (Item::Char(from), Item::Char(to)) => {
-                                let abc = env.alphabet();
-                                let (from_ix, case) = abc.ord_case(from)?;
-                                let (to_ix, _) = abc.ord_case(to)?;
-                                Ok((from_ix.into(), to_ix.into(), step, Some(case)))
-                            },
-                            _ => Err(format!("expected numeric or char bounds, found {:?}, {:?}",
-                                    from, to).into())
-                        }
+        let node = node.eval_all(env)?;
+        try_with!(node, node.check_no_source());
+        let (from, to, step, case) = try_with!(node, {
+            let args = &node.args;
+            match args.len() {
+                1 => Ok((Number::one(), args[0].as_item()?.to_num()?, Number::one(), None)),
+                len @ (2 | 3) => {
+                    let from = args[0].as_item()?;
+                    let to = args[1].as_item()?;
+                    let step = if len == 3 { args[2].as_item()?.to_num()? } else { Number::one() };
+                    match (from, to) {
+                        (Item::Number(from), Item::Number(to)) =>
+                            Ok((from.clone(), to.to_owned(), step, None)),
+                        (Item::Char(from), Item::Char(to)) => {
+                            let abc = env.alphabet();
+                            let (from_ix, case) = abc.ord_case(from)?;
+                            let (to_ix, _) = abc.ord_case(to)?;
+                            Ok((from_ix.into(), to_ix.into(), step, Some(case)))
+                        },
+                        _ => Err(format!("expected numeric or char bounds, found {:?}, {:?}",
+                                from, to).into())
                     }
-                    _ => Err("between 1 and 3 arguments expected".into())
                 }
-            })?;
+                _ => Err("between 1 and 3 arguments expected".into())
+            }
+        });
         Ok(Item::new_stream(Range{from, to, step, chars: case, node, env: env.clone()}))
     }
 }
@@ -302,12 +300,11 @@ fn test_range_skip() {
 
 
 fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let (length, node) = node
-        .eval_all(env)?
-        .with_keep(|node| {
-            if !node.args.is_empty() { return Err("no arguments allowed".into()) }
-            Ok(node.source_checked()?.as_item()?.as_stream()?.length())
-        })?;
+    let node = node.eval_all(env)?;
+    if !node.args.is_empty() {
+        return Err(StreamError::new("no arguments allowed", node));
+    }
+    let length = try_with!(node, node.source_checked()?.as_item()?.as_stream()).length();
     use Length::*;
     match length {
         Exact(len) => Ok(Item::new_number(len)),

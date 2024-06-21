@@ -1,4 +1,6 @@
+#![allow(clippy::redundant_closure_call)]
 use crate::base::*;
+use crate::try_with;
 use num::{One, Signed, Zero};
 use crate::base::Describe;
 
@@ -9,9 +11,10 @@ pub struct List(Vec<Item>);
 
 impl List {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let (_, node) = node.with_keep(|node| node.check_no_source())?;
+        let node = node.eval_all(env)?;
+        try_with!(node, node.check_no_source());
         node.args.into_iter()
-            .map(|expr| expr.eval(env))
+            .map(|expr| expr.to_item())
             .collect::<Result<Vec<Item>, _>>()
             .map(|vec| Item::new_stream(List::from(vec)))
     }
@@ -87,26 +90,25 @@ impl From<String> for LiteralString {
 }
 
 
-
 fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
-    node.eval_all(env)?
-        .with(|node| {
-            let mut item = node.source_checked()?.to_item()?;
-            if node.args.is_empty() { return Err("at least 1 argument required".into()); }
-            for arg in &node.args {
-                let index = arg.to_item()?.into_num()?;
-                index.check_within(Number::one()..)?;
-                let mut iter = item.into_stream()?.iter();
-                if iter.skip_n(index - 1).is_err() {
-                    return Err("index past end of stream".into());
-                }
-                item = match iter.next() {
-                    Some(value) => value?,
-                    None => return Err("index past end of stream".into())
-                };
-            }
-            Ok(item)
-        })
+    let node = node.eval_all(env)?;
+    let mut item = try_with!(node, node.source_checked()?.to_item());
+    if node.args.is_empty() {
+        return Err(StreamError::new("at least 1 argument required", node));
+    }
+    for arg in &node.args {
+        let index = try_with!(node, arg.to_item()?.into_num());
+        try_with!(node, index.check_within(Number::one()..));
+        let mut iter = try_with!(node, item.into_stream()).iter();
+        if iter.skip_n(index - 1).is_err() {
+            return Err(StreamError::new("index past end of stream", node));
+        }
+        item = match iter.next() {
+            Some(value) => value?,
+            None => return Err(StreamError::new("index past end of stream", node))
+        };
+    }
+    Ok(item)
 }
 
 struct Map {
@@ -124,17 +126,14 @@ struct MapIter {
 impl Map {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_source(env)?;
-        let source = node.source_checked()?.to_item()?.into_stream()?;
-        let body = node.with(|node| {
-            let body = match node.args.len() {
-                1 => node.args[0].to_node(),
-                _ => Err("exactly 1 argument required".into())
-            }?;
-            match &body.source {
-                None => Ok(body),
-                Some(_) => Err("body already has source".into())
-            }
-        })?;
+        let source = try_with!(node, node.source_checked()?.to_item()?.into_stream());
+        let body = match node.args.len() {
+            1 => try_with!(node, node.args[0].to_node()),
+            _ => return Err(StreamError::new("exactly 1 argument required", node))
+        };
+        if body.source.is_some() {
+            return Err(StreamError::new("body already has source", node));
+        }
         Ok(Item::new_stream(Map{source, body, env: env.clone()}))
     }
 }
@@ -199,67 +198,61 @@ fn test_map() {
 
 
 fn eval_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let ans = node.eval_all(env)?
-        .with(|node| {
-            node.check_no_source()?;
-            if node.args.is_empty() { return Err("at least 1 argument required".into()); }
-            node.args.iter().try_fold(Number::zero(), |a, e| Ok(a + e.to_item()?.into_num()?))
-        });
-    Ok(Item::new_number(ans?))
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source());
+    try_with!(node, node.check_args_nonempty());
+    let ans = try_with!(node, node.args.iter().try_fold(Number::zero(),
+        |a, e| Ok(a + e.to_item()?.into_num()?)));
+    Ok(Item::new_number(ans))
 }
 
 fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let ans = node.eval_all(env)?
-        .with(|node| {
-            node.check_no_source()?;
-            let args = &node.args;
-            match args.len() {
-                1 => Ok(-args[0].to_item()?.into_num()?),
-                2 => Ok(args[0].to_item()?.into_num()? - args[1].to_item()?.into_num()?),
-                _ => Err("1 or 2 arguments required".into())
-            }
-        });
-    Ok(Item::new_number(ans?))
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source());
+    let args = &node.args;
+    let ans = match args.len() {
+        1 => -try_with!(node, args[0].to_item()?.into_num()),
+        2 => try_with!(node, Ok(args[0].to_item()?.into_num()? - args[1].to_item()?.into_num()?)),
+        _ => return Err(StreamError::new("1 or 2 arguments required", node))
+    };
+    Ok(Item::new_number(ans))
 }
 
 fn eval_times(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let ans = node.eval_all(env)?
-        .with(|node| {
-            node.check_no_source()?;
-            if node.args.is_empty() { return Err("at least 1 argument required".into()); }
-            node.args.iter().try_fold(Number::one(), |a, e| Ok(a * e.to_item()?.into_num()?))
-        });
-    Ok(Item::new_number(ans?))
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source());
+    try_with!(node, node.check_args_nonempty());
+    let ans = try_with!(node, node.args.iter().try_fold(Number::one(), |a, e| Ok(a * e.to_item()?.into_num()?)));
+    Ok(Item::new_number(ans))
 }
 
 fn eval_div(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let ans = node.eval_all(env)?
-        .with(|node| {
-            node.check_no_source()?;
-            if node.args.len() != 2 { return Err("exactly 2 argument required".into()); }
-            let x = node.args[0].to_item()?.into_num()?;
-            let y = node.args[1].to_item()?.into_num()?;
-            if y.is_zero() {
-                return Err("division by zero".into());
-            }
-            Ok(&x / &y)
-        });
-    Ok(Item::new_number(ans?))
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source());
+    if node.args.len() != 2 {
+        return Err(StreamError::new("exactly 2 argument required", node));
+    }
+    let x = try_with!(node, node.args[0].to_item()?.into_num());
+    let y = try_with!(node, node.args[1].to_item()?.into_num());
+    if y.is_zero() {
+        return Err(StreamError::new("division by zero", node));
+    }
+    Ok(Item::new_number(&x / &y))
 }
 
 fn eval_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let ans = node.eval_all(env)?
-        .with(|node| {
-            node.check_no_source()?;
-            if node.args.len() != 2 { return Err("exactly 2 argument required".into()); }
-            let x = node.args[0].to_item()?.into_num()?;
-            let y = node.args[1].to_item()?.into_num()?;
-            if y.is_negative() {
-                return Err("negative exponent".into());
-            }
-            Ok(x.pow(y.try_into().map_err(|_| StreamError::from("exponent too large"))?))
-        });
-    Ok(Item::new_number(ans?))
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source());
+    if node.args.len() != 2 {
+        return Err(StreamError::new("exactly 2 argument required", node));
+    }
+    let x = try_with!(node, node.args[0].to_item()?.into_num());
+    let y = try_with!(node, node.args[1].to_item()?.into_num());
+    if y.is_negative() {
+        return Err("negative exponent".into());
+    }
+    let ans = x.pow(y.try_into().map_err(|_| StreamError::new("exponent too large", node))?);
+    Ok(Item::new_number(ans))
 }
 
 #[test]
@@ -287,24 +280,21 @@ struct Join {
 
 impl Join {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let ((), node) = node.eval_all(env)?
-            .with_keep(|node| {
-                node.check_no_source()?;
-                if node.args.is_empty() { return Err("at least 1 argument required".into()); }
-                let mut string = None;
-                for arg in &node.args {
-                    let stream = arg.as_item()?.as_stream()?;
-                    match string {
-                        None => string = Some(stream.is_string()),
-                        Some(string) => {
-                            if stream.is_string() != string {
-                                return Err("mixed streams and strings".into());
-                            }
-                        }
+        let node = node.eval_all(env)?;
+        try_with!(node, node.check_no_source());
+        try_with!(node, node.check_args_nonempty());
+        let mut string = None;
+        for arg in &node.args {
+            let stream = try_with!(node, arg.as_item()?.as_stream());
+            match string {
+                None => string = Some(stream.is_string()),
+                Some(string) => {
+                    if stream.is_string() != string {
+                        return Err("mixed streams and strings".into());
                     }
                 }
-                Ok(())
-            })?;
+            }
+        }
         Ok(Item::new_stream(Join{node}))
     }
     // TODO: string+char, stream+item, item+item etc.

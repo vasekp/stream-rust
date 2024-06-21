@@ -681,6 +681,14 @@ impl Node {
         }
     }
 
+    pub(crate) fn check_args_nonempty(&self) -> Result<(), StreamError> {
+        if self.args.is_empty() {
+            Err("at least 1 argument required".into())
+        } else {
+            Ok(())
+        }
+    }
+
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
     ///
@@ -716,21 +724,6 @@ impl Node {
         Ok(Node{head: self.head, source, args: self.args})
     }
 
-    pub(crate) fn with<T, F>(self, f: F) -> Result<T, StreamError>
-        where F: FnOnce(&Node) -> Result<T, StreamError>
-    {
-        f(&self).map_err(|e| e.with_node(self))
-    }
-
-    pub(crate) fn with_keep<T, F>(self, f: F) -> Result<(T, Node), StreamError>
-        where F: FnOnce(&Node) -> Result<T, StreamError>
-    {
-        match f(&self) {
-            Ok(ret) => Ok((ret, self)),
-            Err(err) => Err(err.with_node(self))
-        }
-    }
-
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {
             head: self.head,
@@ -742,6 +735,16 @@ impl Node {
                 .map(|expr| expr.apply(source, args))
                 .collect::<Result<Vec<_>, _>>()?
         })
+    }
+}
+
+#[macro_export]
+macro_rules! try_with {
+    ($node:ident, $expr:expr) => {
+        match (|| -> Result<_, StreamError> { $expr })() {
+            Ok(result) => result,
+            Err(err) => return Err(err.with_node($node))
+        }
     }
 }
 
