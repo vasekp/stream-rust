@@ -34,7 +34,7 @@ struct SeqIter {
 }
 
 impl Stream for Seq {
-    fn iter(&self) -> Box<dyn SIterator> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(SeqIter{
             value: self.from.clone(),
             step: self.step.clone()
@@ -138,7 +138,7 @@ struct RangeIter {
 }
 
 impl Stream for Range {
-    fn iter(&self) -> Box<dyn SIterator> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(RangeIter{
             value: self.from.clone(),
             stop: self.to.clone(),

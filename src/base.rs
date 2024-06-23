@@ -283,7 +283,8 @@ impl Display for FormatError {
 pub trait Stream: DynClone + Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
-    fn iter(&self) -> Box<dyn SIterator>;
+    #[must_use]
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
 
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a

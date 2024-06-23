@@ -20,7 +20,7 @@ impl List {
 }
 
 impl Stream for List {
-    fn iter(&self) -> Box<dyn SIterator> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(self.0.clone().into_iter().map(|x| Ok(x.clone())))
     }
 
@@ -57,7 +57,7 @@ impl From<Vec<Item>> for List {
 pub struct LiteralString(Vec<Char>);
 
 impl Stream for LiteralString {
-    fn iter(&self) -> Box<dyn SIterator> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(self.0.clone().into_iter().map(|x| Ok(Item::new_char(x.clone()))))
     }
 
@@ -98,7 +98,8 @@ fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
     for arg in &node.args {
         let index = try_with!(node, arg.to_item()?.into_num());
         try_with!(node, index.check_within(Number::one()..));
-        let mut iter = try_with!(node, item.into_stream()).iter();
+        let stm = try_with!(node, item.into_stream());
+        let mut iter = stm.iter();
         if iter.skip_n(index - 1)?.is_some() {
             return Err(StreamError::new("index past end of stream", node));
         }
@@ -116,8 +117,8 @@ struct Map {
     env: Env
 }
 
-struct MapIter {
-    source: Box<dyn SIterator>,
+struct MapIter<'node> {
+    source: Box<dyn SIterator + 'node>,
     body: Node,
     env: Env
 }
@@ -147,7 +148,7 @@ impl Describe for Map {
 }
 
 impl Stream for Map {
-    fn iter(&self) -> Box<dyn SIterator> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(MapIter{source: self.source.iter(), body: self.body.clone(), env: self.env.clone()})
     }
 
@@ -162,7 +163,7 @@ impl Clone for Map {
     }
 }
 
-impl Iterator for MapIter {
+impl Iterator for MapIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -179,7 +180,7 @@ impl Iterator for MapIter {
     }
 }
 
-impl SIterator for MapIter {
+impl SIterator for MapIter<'_> {
     fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
         self.source.skip_n(n)
     }
@@ -306,13 +307,12 @@ impl Describe for Join {
 }
 
 impl Stream for Join {
-    fn iter(&self) -> Box<dyn SIterator> {
-        let mut iter = self.node.args.clone().into_iter();
-        let first = iter.next().unwrap()
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        let first = self.node.args[0]
             .as_item().unwrap()
             .as_stream().unwrap()
             .iter();
-        Box::new(JoinIter{sources: iter, cur: first})
+        Box::new(JoinIter{node: &self.node, index: 0, cur: first})
     }
 
     fn is_string(&self) -> bool {
@@ -329,12 +329,13 @@ impl Stream for Join {
     }
 }
 
-struct JoinIter {
-    sources: std::vec::IntoIter<Expr>,
-    cur: Box<dyn SIterator>
+struct JoinIter<'node> {
+    node: &'node Node,
+    index: usize,
+    cur: Box<dyn SIterator + 'node>
 }
 
-impl Iterator for JoinIter {
+impl Iterator for JoinIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -343,7 +344,8 @@ impl Iterator for JoinIter {
             if next.is_some() {
                 return next;
             } else {
-                self.cur = self.sources.next()?
+                self.index += 1;
+                self.cur = self.node.args.get(self.index)?
                     .as_item().unwrap()
                     .as_stream().unwrap()
                     .iter();
@@ -352,14 +354,15 @@ impl Iterator for JoinIter {
     }
 }
 
-impl SIterator for JoinIter {
+impl SIterator for JoinIter<'_> {
     fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
         loop {
             let Some(m) = self.cur.skip_n(n)?
                 else { return Ok(None); };
             n = m;
-            let Some(next) = self.sources.next()
+            self.index += 1;
+            let Some(next) = self.node.args.get(self.index)
                 else { return Ok(Some(n)); };
             self.cur = next.as_item().unwrap()
                 .as_stream().unwrap()
