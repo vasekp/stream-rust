@@ -28,16 +28,16 @@ pub struct Seq {
     node: Node
 }
 
-struct SeqIter {
+struct SeqIter<'node> {
     value: Number,
-    step: Number
+    step: &'node Number
 }
 
 impl Stream for Seq {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(SeqIter{
             value: self.from.clone(),
-            step: self.step.clone()
+            step: &self.step
         })
     }
 
@@ -67,20 +67,20 @@ impl Describe for Seq {
     }
 }
 
-impl Iterator for SeqIter {
+impl Iterator for SeqIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ret = Item::new_number(self.value.clone());
-        self.value += &self.step;
+        self.value += self.step;
         Some(Ok(ret))
     }
 }
 
-impl SIterator for SeqIter {
+impl SIterator for SeqIter<'_> {
     fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
-        self.value += n * &self.step;
+        self.value += n * self.step;
         Ok(None)
     }
 }
@@ -129,22 +129,16 @@ pub struct Range {
     env: Env
 }
 
-struct RangeIter {
-    value: Number,
-    step: Number,
-    stop: Number,
-    chars: Option<Case>,
-    env: Env
+struct RangeIter<'node> {
+    parent: &'node Range,
+    value: Number
 }
 
 impl Stream for Range {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(RangeIter{
-            value: self.from.clone(),
-            stop: self.to.clone(),
-            step: self.step.clone(),
-            chars: self.chars,
-            env: self.env.clone()
+            parent: self,
+            value: self.from.clone()
         })
     }
 
@@ -175,7 +169,7 @@ impl Range {
                     let step = if len == 3 { args[2].as_item()?.to_num()? } else { Number::one() };
                     match (from, to) {
                         (Item::Number(from), Item::Number(to)) =>
-                            Ok((from.clone(), to.to_owned(), step, None)),
+                            Ok((from.to_owned(), to.to_owned(), step, None)),
                         (Item::Char(from), Item::Char(to)) => {
                             let abc = env.alphabet();
                             let (from_ix, case) = abc.ord_case(from)?;
@@ -208,18 +202,18 @@ impl Describe for Range {
     }
 }
 
-impl Iterator for RangeIter {
+impl Iterator for RangeIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.step.is_zero()
-            || (self.step.is_positive() && self.value <= self.stop)
-            || (self.step.is_negative() && self.value >= self.stop) {
-                let ret = match self.chars {
+        if self.parent.step.is_zero()
+            || (self.parent.step.is_positive() && self.value <= self.parent.to)
+            || (self.parent.step.is_negative() && self.value >= self.parent.to) {
+                let ret = match self.parent.chars {
                     None => Item::new_number(self.value.clone()),
-                    Some(case) => Item::new_char(self.env.alphabet().chr_case(&self.value, case))
+                    Some(case) => Item::new_char(self.parent.env.alphabet().chr_case(&self.value, case))
                 };
-                self.value += &self.step;
+                self.value += &self.parent.step;
                 Some(Ok(ret))
         } else {
             None
@@ -227,13 +221,13 @@ impl Iterator for RangeIter {
     }
 }
 
-impl SIterator for RangeIter {
+impl SIterator for RangeIter<'_> {
     fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
-        let Some(max) = Range::len_helper(&self.value, &self.stop, &self.step)
+        let Some(max) = Range::len_helper(&self.value, &self.parent.to, &self.parent.step)
             else { return Ok(None); };
         if n <= max {
-            self.value += n * &self.step;
+            self.value += n * &self.parent.step;
             Ok(None)
         } else {
             Ok(Some(n - &max))

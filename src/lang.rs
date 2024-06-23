@@ -21,7 +21,7 @@ impl List {
 
 impl Stream for List {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(self.0.clone().into_iter().map(|x| Ok(x.clone())))
+        Box::new(self.0.iter().map(|x| Ok(x.clone())))
     }
 
     fn length(&self) -> Length {
@@ -33,13 +33,13 @@ impl Describe for List {
     fn describe(&self) -> String {
         let mut ret = String::new();
         ret.push('[');
-        let mut it = self.0.iter();
-        if let Some(item) = it.next() {
-            ret += &item.describe();
+        let mut it = self.0.iter().map(Describe::describe);
+        if let Some(s) = it.next() {
+            ret += &s;
         }
-        for item in it {
+        for s in it {
             ret += ", ";
-            ret += &item.describe();
+            ret += &s;
         }
         ret.push(']');
         ret
@@ -58,7 +58,7 @@ pub struct LiteralString(Vec<Char>);
 
 impl Stream for LiteralString {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(self.0.clone().into_iter().map(|x| Ok(Item::new_char(x.clone()))))
+        Box::new(self.0.iter().map(|x| Ok(Item::new_char(x.clone()))))
     }
 
     fn is_string(&self) -> bool {
@@ -118,9 +118,8 @@ struct Map {
 }
 
 struct MapIter<'node> {
-    source: Box<dyn SIterator + 'node>,
-    body: Node,
-    env: Env
+    parent: &'node Map,
+    source: Box<dyn SIterator + 'node>
 }
 
 impl Map {
@@ -149,7 +148,7 @@ impl Describe for Map {
 
 impl Stream for Map {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(MapIter{source: self.source.iter(), body: self.body.clone(), env: self.env.clone()})
+        Box::new(MapIter{parent: self, source: self.source.iter()})
     }
 
     fn length(&self) -> Length {
@@ -173,10 +172,10 @@ impl Iterator for MapIter<'_> {
         };
         let expr = Expr::Eval(Node{
             source: Some(Box::new(Expr::new_imm(source))),
-            head: self.body.head.clone(),
-            args: self.body.args.clone()
+            head: self.parent.body.head.clone(),
+            args: self.parent.body.args.clone()
         });
-        Some(expr.eval(&self.env))
+        Some(expr.eval(&self.parent.env))
     }
 }
 
@@ -278,6 +277,13 @@ struct Join {
     node: Node
 }
 
+struct JoinIter<'node> {
+    node: &'node Node,
+    index: usize,
+    cur: Box<dyn SIterator + 'node>
+}
+
+
 impl Join {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
@@ -327,12 +333,6 @@ impl Stream for Join {
             .map(|expr| expr.as_item().unwrap().as_stream().unwrap().length())
             .reduce(|acc, e| acc + e).unwrap()
     }
-}
-
-struct JoinIter<'node> {
-    node: &'node Node,
-    index: usize,
-    cur: Box<dyn SIterator + 'node>
 }
 
 impl Iterator for JoinIter<'_> {
