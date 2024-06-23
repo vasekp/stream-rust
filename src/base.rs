@@ -471,10 +471,10 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
     /// by `n` elements.
     ///
-    /// The return value is `Ok(())` if `n` elements were skipped. If the iterator finishes early,
-    /// the result is `Err(k)`, where `k` is the number of remaining elements. This is important to
-    /// know when multiple iterators are chained. Calling `next()` after this condition is
-    /// undefined behaviour.
+    /// The return value is `Ok(None)` if `n` elements were skipped. If the iterator finishes
+    /// early, the result is `Ok(Some(k))`, where `k` is the number of remaining elements. This is
+    /// important to know when multiple iterators are chained. Calling `next()` after this
+    /// condition, or after an `Err` is returned, is undefined behaviour.
     ///
     /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
@@ -482,21 +482,23 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     ///
     /// # Panics
     /// This function may panic if a negative value is passed in `n`.
-    fn skip_n(&mut self, mut n: Number) -> Result<(), Number> {
+    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
         if let Some(len) = self.len_remain() {
             if n > len {
-                return Err(n - len);
+                return Ok(Some(n - len));
             }
         }
         let one = Number::one();
         while !n.is_zero() {
-            if self.next().is_none() {
-                return Err(n)
+            match self.next() {
+                Some(Ok(_)) => (),
+                Some(Err(err)) => return Err(err),
+                None => return Ok(Some(n))
             }
             n -= &one;
         }
-        Ok(())
+        Ok(None)
     }
 }
 

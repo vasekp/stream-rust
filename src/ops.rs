@@ -78,10 +78,10 @@ impl Iterator for SeqIter {
 }
 
 impl SIterator for SeqIter {
-    fn skip_n(&mut self, n: Number) -> Result<(), Number> {
+    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
         self.value += n * &self.step;
-        Ok(())
+        Ok(None)
     }
 }
 
@@ -228,15 +228,15 @@ impl Iterator for RangeIter {
 }
 
 impl SIterator for RangeIter {
-    fn skip_n(&mut self, n: Number) -> Result<(), Number> {
+    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
         let Some(max) = Range::len_helper(&self.value, &self.stop, &self.step)
-            else { return Ok(()); };
+            else { return Ok(None); };
         if n <= max {
             self.value += n * &self.step;
-            Ok(())
+            Ok(None)
         } else {
-            Err(n - &max)
+            Ok(Some(n - &max))
         }
     }
 }
@@ -272,25 +272,25 @@ fn test_range_skip() {
     use crate::parser::parse;
     let env = Default::default();
     let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(2.into()), Ok(()));
+    assert_eq!(it.skip_n(2.into()), Ok(None));
     assert_eq!(it.next(), Some(Ok(Item::new_number(6))));
     let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(3.into()), Ok(()));
+    assert_eq!(it.skip_n(3.into()), Ok(None));
     assert_eq!(it.next(), None);
     let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(4.into()), Err(1.into()));
+    assert_eq!(it.skip_n(4.into()), Ok(Some(1.into())));
 
     let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(3.into()), Ok(()));
+    assert_eq!(it.skip_n(3.into()), Ok(None));
     assert_eq!(it.next(), Some(Ok(Item::new_number(8))));
     let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(4.into()), Ok(()));
+    assert_eq!(it.skip_n(4.into()), Ok(None));
     assert_eq!(it.next(), None);
     let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(5.into()), Err(1.into()));
+    assert_eq!(it.skip_n(5.into()), Ok(Some(1.into())));
 
     let mut it = parse("range(2, 8, 0)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(3.into()), Ok(()));
+    assert_eq!(it.skip_n(3.into()), Ok(None));
     assert_eq!(it.next(), Some(Ok(Item::new_number(2))));
 }
 

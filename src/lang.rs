@@ -99,7 +99,7 @@ fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
         let index = try_with!(node, arg.to_item()?.into_num());
         try_with!(node, index.check_within(Number::one()..));
         let mut iter = try_with!(node, item.into_stream()).iter();
-        if iter.skip_n(index - 1).is_err() {
+        if iter.skip_n(index - 1)?.is_some() {
             return Err(StreamError::new("index past end of stream", node));
         }
         item = match iter.next() {
@@ -180,7 +180,7 @@ impl Iterator for MapIter {
 }
 
 impl SIterator for MapIter {
-    fn skip_n(&mut self, n: Number) -> Result<(), Number> {
+    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
         self.source.skip_n(n)
     }
 }
@@ -353,14 +353,14 @@ impl Iterator for JoinIter {
 }
 
 impl SIterator for JoinIter {
-    fn skip_n(&mut self, mut n: Number) -> Result<(), Number> {
+    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
         loop {
-            let Err(m) = self.cur.skip_n(n)
-                else { return Ok(()); };
+            let Some(m) = self.cur.skip_n(n)?
+                else { return Ok(None); };
             n = m;
             let Some(next) = self.sources.next()
-                else { return Err(n); };
+                else { return Ok(Some(n)); };
             self.cur = next.as_item().unwrap()
                 .as_stream().unwrap()
                 .iter();
