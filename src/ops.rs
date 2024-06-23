@@ -271,27 +271,14 @@ fn test_range() {
 fn test_range_skip() {
     use crate::parser::parse;
     let env = Default::default();
-    let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(2.into()), Ok(None));
-    assert_eq!(it.next(), Some(Ok(Item::new_number(6))));
-    let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(3.into()), Ok(None));
-    assert_eq!(it.next(), None);
-    let mut it = parse("range(2, 7, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(4.into()), Ok(Some(1.into())));
-
-    let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(3.into()), Ok(None));
-    assert_eq!(it.next(), Some(Ok(Item::new_number(8))));
-    let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(4.into()), Ok(None));
-    assert_eq!(it.next(), None);
-    let mut it = parse("range(2, 8, 2)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(5.into()), Ok(Some(1.into())));
-
-    let mut it = parse("range(2, 8, 0)").unwrap().eval(&env).unwrap().into_stream().unwrap().iter();
-    assert_eq!(it.skip_n(3.into()), Ok(None));
-    assert_eq!(it.next(), Some(Ok(Item::new_number(2))));
+    assert_eq!(parse("(range(2, 7, 2)~seq(100))[3]").unwrap().eval(&env).unwrap().to_string(), "6");
+    assert_eq!(parse("(range(2, 7, 2)~seq(100))[4]").unwrap().eval(&env).unwrap().to_string(), "100");
+    assert_eq!(parse("(range(2, 7, 2)~seq(100))[5]").unwrap().eval(&env).unwrap().to_string(), "101");
+    assert_eq!(parse("(range(2, 8, 2)~seq(100))[3]").unwrap().eval(&env).unwrap().to_string(), "6");
+    assert_eq!(parse("(range(2, 8, 2)~seq(100))[4]").unwrap().eval(&env).unwrap().to_string(), "8");
+    assert_eq!(parse("(range(2, 8, 2)~seq(100))[5]").unwrap().eval(&env).unwrap().to_string(), "100");
+    assert_eq!(parse("(range(2, 8, 2)~seq(100))[6]").unwrap().eval(&env).unwrap().to_string(), "101");
+    assert_eq!(parse("(range(2, 8, 0)~seq(100))[6]").unwrap().eval(&env).unwrap().to_string(), "2");
 }
 
 
