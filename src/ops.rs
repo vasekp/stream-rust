@@ -24,8 +24,7 @@ use crate::base::Describe;
 #[derive(Clone)]
 pub struct Seq {
     from: Number,
-    step: Number,
-    node: Node
+    step: Number
 }
 
 struct SeqIter<'node> {
@@ -48,22 +47,23 @@ impl Stream for Seq {
 
 impl Seq {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
+        let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
-        let (from, step) = match node.args.len() {
-            0 => (Number::one(), Number::one()),
-            1 => (try_with!(node, node.args[0].as_item()?.to_num()), Number::one()),
-            2 => (try_with!(node, node.args[0].as_item()?.to_num()),
-                  try_with!(node, node.args[1].as_item()?.to_num())),
-            _ => return Err(StreamError::new("0 to 2 arguments required", node))
-        };
-        Ok(Item::new_stream(Seq{from, step, node}))
+        let (from, step) = try_with!(node, match node.args[..] {
+            [] => Ok((Number::one(), Number::one())),
+            [Expr::Imm(Item::Number(ref mut from))]
+                => Ok((std::mem::take(from), Number::one())),
+            [Expr::Imm(Item::Number(ref mut from)), Expr::Imm(Item::Number(ref mut step))]
+                => Ok((std::mem::take(from), std::mem::take(step))),
+            _ => Err("expected one of: seq(), seq(number), seq(number, number)".into())
+        });
+        Ok(Item::new_stream(Seq{from, step}))
     }
 }
 
 impl Describe for Seq {
     fn describe(&self) -> String {
-        self.node.describe()
+        format!("seq({}, {})", self.from, self.step)
     }
 }
 
@@ -125,7 +125,6 @@ pub struct Range {
     to: Number,
     step: Number,
     chars: Option<Case>,
-    node: Node,
     env: Env
 }
 
@@ -157,33 +156,32 @@ impl Stream for Range {
 
 impl Range {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
+        let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
-        let (from, to, step, case) = try_with!(node, {
-            let args = &node.args;
-            match args.len() {
-                1 => Ok((Number::one(), args[0].as_item()?.to_num()?, Number::one(), None)),
-                len @ (2 | 3) => {
-                    let from = args[0].as_item()?;
-                    let to = args[1].as_item()?;
-                    let step = if len == 3 { args[2].as_item()?.to_num()? } else { Number::one() };
-                    match (from, to) {
-                        (Item::Number(from), Item::Number(to)) =>
-                            Ok((from.to_owned(), to.to_owned(), step, None)),
-                        (Item::Char(from), Item::Char(to)) => {
-                            let abc = env.alphabet();
-                            let (from_ix, case) = abc.ord_case(from)?;
-                            let (to_ix, _) = abc.ord_case(to)?;
-                            Ok((from_ix.into(), to_ix.into(), step, Some(case)))
-                        },
-                        _ => Err(format!("expected numeric or char bounds, found {:?}, {:?}",
-                                from, to).into())
-                    }
-                }
-                _ => Err("between 1 and 3 arguments expected".into())
-            }
+        let (from, to, step, case) = try_with!(node, match node.args[..] {
+            [Expr::Imm(Item::Number(ref mut to))]
+                => Ok((Number::one(), std::mem::take(to), Number::one(), None)),
+            [Expr::Imm(Item::Number(ref mut from)), Expr::Imm(Item::Number(ref mut to))]
+                => Ok((std::mem::take(from), std::mem::take(to), Number::one(), None)),
+            [Expr::Imm(Item::Number(ref mut from)), Expr::Imm(Item::Number(ref mut to)), Expr::Imm(Item::Number(ref mut step))]
+                => Ok((std::mem::take(from), std::mem::take(to), std::mem::take(step), None)),
+            [Expr::Imm(Item::Char(ref from)), Expr::Imm(Item::Char(ref to))]
+                => {
+                    let abc = env.alphabet();
+                    let (from_ix, case) = abc.ord_case(from)?;
+                    let (to_ix, _) = abc.ord_case(to)?;
+                    Ok((from_ix.into(), to_ix.into(), Number::one(), Some(case)))
+                },
+            [Expr::Imm(Item::Char(ref from)), Expr::Imm(Item::Char(ref to)), Expr::Imm(Item::Number(ref mut step))]
+                => {
+                    let abc = env.alphabet();
+                    let (from_ix, case) = abc.ord_case(from)?;
+                    let (to_ix, _) = abc.ord_case(to)?;
+                    Ok((from_ix.into(), to_ix.into(), std::mem::take(step), Some(case)))
+                },
+            _ => Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
         });
-        Ok(Item::new_stream(Range{from, to, step, chars: case, node, env: env.clone()}))
+        Ok(Item::new_stream(Range{from, to, step, chars: case, env: env.clone()}))
     }
 
     fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<Number> {
@@ -198,7 +196,14 @@ impl Range {
 
 impl Describe for Range {
     fn describe(&self) -> String {
-        self.env.wrap_describe(self.node.describe())
+        match self.chars {
+            None => format!("range({}, {}, {})", self.from, self.to, self.step),
+            Some(case) => {
+                let abc = self.env.alphabet();
+                let base = format!("range({}, {}, {})", abc.chr_case(&self.from, case), abc.chr_case(&self.to, case), self.step);
+                self.env.wrap_describe(base)
+            }
+        }
     }
 }
 

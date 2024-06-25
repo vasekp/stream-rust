@@ -12,9 +12,9 @@ impl List {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
-        let vec = try_with!(node, node.args.iter()
-            .map(|expr| expr.to_item())
-            .collect::<Result<Vec<_>, _>>());
+        let vec = node.args.into_iter()
+            .map(|expr| expr.into_item().unwrap())
+            .collect::<Vec<_>>();
         Ok(Item::new_stream(List::from(vec)))
     }
 }
@@ -96,7 +96,7 @@ fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
         return Err(StreamError::new("at least 1 argument required", node));
     }
     for arg in &node.args {
-        let index = try_with!(node, arg.to_item()?.into_num());
+        let index = try_with!(node, arg.as_item()?.as_num());
         try_with!(node, index.check_within(Number::one()..));
         let stm = try_with!(node, item.into_stream());
         let mut iter = stm.iter();
@@ -201,7 +201,7 @@ fn eval_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source());
     try_with!(node, node.check_args_nonempty());
     let ans = try_with!(node, node.args.iter().try_fold(Number::zero(),
-        |a, e| Ok(a + e.to_item()?.into_num()?)));
+        |a, e| Ok(a + e.as_item()?.as_num()?)));
     Ok(Item::new_number(ans))
 }
 
@@ -210,8 +210,8 @@ fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source());
     let args = &node.args;
     let ans = match args.len() {
-        1 => -try_with!(node, args[0].to_item()?.into_num()),
-        2 => try_with!(node, Ok(args[0].to_item()?.into_num()? - args[1].to_item()?.into_num()?)),
+        1 => -try_with!(node, args[0].as_item()?.as_num()),
+        2 => try_with!(node, Ok(args[0].as_item()?.as_num()? - args[1].as_item()?.as_num()?)),
         _ => return Err(StreamError::new("1 or 2 arguments required", node))
     };
     Ok(Item::new_number(ans))
@@ -221,7 +221,8 @@ fn eval_times(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     try_with!(node, node.check_args_nonempty());
-    let ans = try_with!(node, node.args.iter().try_fold(Number::one(), |a, e| Ok(a * e.to_item()?.into_num()?)));
+    let ans = try_with!(node, node.args.iter().try_fold(Number::one(),
+        |a, e| Ok(a * e.as_item()?.as_num()?)));
     Ok(Item::new_number(ans))
 }
 
@@ -231,27 +232,30 @@ fn eval_div(node: Node, env: &Env) -> Result<Item, StreamError> {
     if node.args.len() != 2 {
         return Err(StreamError::new("exactly 2 argument required", node));
     }
-    let x = try_with!(node, node.args[0].to_item()?.into_num());
-    let y = try_with!(node, node.args[1].to_item()?.into_num());
+    let x = try_with!(node, node.args[0].as_item()?.as_num());
+    let y = try_with!(node, node.args[1].as_item()?.as_num());
     if y.is_zero() {
         return Err(StreamError::new("division by zero", node));
     }
-    Ok(Item::new_number(&x / &y))
+    Ok(Item::new_number(x / y))
 }
 
 fn eval_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
+    use num::ToPrimitive;
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     if node.args.len() != 2 {
         return Err(StreamError::new("exactly 2 argument required", node));
     }
-    let x = try_with!(node, node.args[0].to_item()?.into_num());
-    let y = try_with!(node, node.args[1].to_item()?.into_num());
+    let x = try_with!(node, node.args[0].as_item()?.as_num());
+    let y = try_with!(node, node.args[1].as_item()?.as_num());
     if y.is_negative() {
         return Err(StreamError::new("negative exponent", node));
     }
-    let ans = x.pow(y.try_into().map_err(|_| StreamError::new("exponent too large", node))?);
-    Ok(Item::new_number(ans))
+    let Some(exp) = y.to_u32() else {
+        return Err(StreamError::new("exponent too large", node));
+    };
+    Ok(Item::new_number(x.pow(exp)))
 }
 
 #[test]

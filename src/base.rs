@@ -68,20 +68,27 @@ impl Item {
         }
     }
 
-    pub fn to_num(&self) -> Result<Number, BaseError> {
-        self.as_num().map(ToOwned::to_owned)
+    pub fn as_num_mut(&mut self) -> Result<&mut Number, BaseError> {
+        match self {
+            Item::Number(ref mut x) => Ok(x),
+            _ => Err(format!("expected number, found {:?}", &self).into())
+        }
     }
+
+    /*pub fn to_num(&self) -> Result<Number, BaseError> {
+        self.as_num().map(ToOwned::to_owned)
+    }*/
 
     pub fn check_num(&self) -> Result<(), BaseError> {
         self.as_num().map(|_| ())
     }
 
-    pub fn into_num(self) -> Result<Number, BaseError> {
+    /*pub fn into_num(self) -> Result<Number, BaseError> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(format!("expected number, found {:?}", &self).into())
         }
-    }
+    }*/
 
     pub fn as_char(&self) -> Result<&Char, BaseError> {
         match self {
@@ -658,10 +665,24 @@ impl Expr {
         }
     }
 
+    pub fn as_item_mut(&mut self) -> Result<&mut Item, BaseError> {
+        match self {
+            Expr::Imm(ref mut item) => Ok(item),
+            _ => Err(format!("expected value, found {:?}", self).into()),
+        }
+    }
+
     /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
     pub fn to_item(&self) -> Result<Item, BaseError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
+            _ => Err(format!("expected value, found {:?}", self).into()),
+        }
+    }
+
+    pub fn into_item(self) -> Result<Item, BaseError> {
+        match self {
+            Expr::Imm(item) => Ok(item),
             _ => Err(format!("expected value, found {:?}", self).into()),
         }
     }
