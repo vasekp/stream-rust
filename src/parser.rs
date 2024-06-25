@@ -368,13 +368,13 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
         let last = expr.last_mut();
         match (t.0, last, t.1) {
             // Immediate values
-            (TC::Number | TC::BaseNum | TC::Bool | TC::String | TC::Char, Some(Oper(_)) | None, _)
-                => expr.push(Term(match t {
-                    Token(TC::Number, _) => TT::Literal(Literal::Number(t)),
-                    Token(TC::BaseNum, _) => TT::Literal(Literal::BaseNum(t)),
-                    Token(TC::Bool, _) => TT::Literal(Literal::Bool(t)),
-                    Token(TC::String, _) => TT::Literal(Literal::String(t)),
-                    Token(TC::Char, _) => TT::Literal(Literal::Char(t)),
+            (cls @ (TC::Number | TC::BaseNum | TC::Bool | TC::String | TC::Char), Some(Oper(_)) | None, _)
+                => expr.push(Term(match cls {
+                    TC::Number => TT::Literal(Literal::Number(t)),
+                    TC::BaseNum => TT::Literal(Literal::BaseNum(t)),
+                    TC::Bool => TT::Literal(Literal::Bool(t)),
+                    TC::String => TT::Literal(Literal::String(t)),
+                    TC::Char => TT::Literal(Literal::Char(t)),
                     _ => unreachable!()
                 })),
             // Identifier: also can follow ., :
@@ -430,6 +430,15 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
                     _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
                 }
             },
+            // Special characters #, $
+            (TC::Special, Some(Oper(_)) | None, _)
+                => expr.push(Term(TT::Special(t, None))),
+            // Separator of multiple exprs.
+            // Checking whether >1 makes sense is caller's responsibility!
+            (TC::Comma, Some(Term(_) | Part(_)), _) => {
+                exprs.push(into_expr(std::mem::take(&mut expr))?);
+                last_comma = Some(t);
+            },
             // Closing bracket
             (TC::Close, _, _) => {
                 let Some(open) = bracket else {
@@ -442,17 +451,6 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
                     return Err(ParseError::new(format!("wrong bracket: expected '{close}'"), t.1));
                 }
             },
-            // Separator of multiple exprs.
-            // Checking whether >1 makes sense is caller's responsibility!
-            (TC::Comma, Some(Term(_) | Part(_)), _) => {
-                let mut new = vec![];
-                std::mem::swap(&mut expr, &mut new);
-                exprs.push(into_expr(new)?);
-                last_comma = Some(t);
-            },
-            // Special characters #, $
-            (TC::Special, Some(Oper(_)) | None, _)
-                => expr.push(Term(TT::Special(t, None))),
             _ => return Err(ParseError::new("cannot appear here", t.1))
         }
     }
@@ -553,7 +551,9 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
         Colon
     }
 
+    #[derive(Default)]
     enum TermOption {
+        #[default]
         Empty,
         Bare(Expr),
         Chained(Expr, ChainOp)
@@ -561,9 +561,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
 
     impl TermOption {
         fn take(&mut self) -> TermOption {
-            let mut ret = Empty;
-            std::mem::swap(self, &mut ret);
-            ret
+            std::mem::take(self)
         }
 
         fn unwrap(self) -> Expr {
@@ -584,19 +582,9 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
         use ExprPart::*;
         use TTerm as TT;
         use Node::*;
-        use Literal::*;
         match (part, cur.take()) {
-            (Term(TT::Literal(Number(tok))), Empty)
-                => cur = Bare(Item::new_number(tok.1.parse::<BigInt>()
-                    .map_err(|_| ParseError::new("invalid number", tok.1))?).into()),
-            (Term(TT::Literal(BaseNum(tok))), Empty)
-                => cur = Bare(Item::new_number(parse_basenum(tok.1)?).into()),
-            (Term(TT::Literal(Bool(tok))), Empty)
-                => cur = Bare(Item::new_bool(tok.1.parse::<bool>().unwrap()).into()),
-            (Term(TT::Literal(Char(tok))), Empty)
-                => cur = Bare(Item::new_char(parse_char(tok.1)?).into()),
-            (Term(TT::Literal(String(tok))), Empty)
-                => cur = Bare(Item::new_stream(LiteralString::from(parse_string(tok.1)?)).into()),
+            (Term(TT::Literal(lit)), Empty)
+                => cur = Bare(lit.to_item()?.into()),
             (Term(TT::List(vec)), Empty)
                 => cur = Bare(Expr::new_node("list", None, vec)),
             (Term(TT::Special(tok, None)), Empty)
@@ -651,7 +639,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                 }
                 stack.push(StackEntry{ op: op.into(), prec, args: vec![prev] });
             },
-            (Oper(Token(_, op)), Empty) if op == "+" || op == "-"
+            (Oper(Token(_, op @ ("+" | "-"))), Empty)
                 => stack.push(StackEntry{ op: op.into(), prec: get_op(op).0, args: vec![] }),
             _ => todo!()
         }
@@ -675,6 +663,20 @@ fn get_op(op: &str) -> (u32, bool) {
         _ => todo!()
     }
 }
+
+impl<'str> Literal<'str> {
+    fn to_item(&self) -> Result<Item, ParseError<'str>> {
+        Ok(match self {
+            Literal::Number(tok) => Item::new_number(tok.1.parse::<BigInt>()
+                .map_err(|_| ParseError::new("invalid number", tok.1))?),
+            Literal::BaseNum(tok) => Item::new_number(parse_basenum(tok.1)?),
+            Literal::Bool(tok) => Item::new_bool(tok.1.parse::<bool>().unwrap()),
+            Literal::Char(tok) => Item::new_char(parse_char(tok.1)?),
+            Literal::String(tok) => Item::new_stream(LiteralString::from(parse_string(tok.1)?))
+        })
+    }
+}
+
 
 
 /// Parse a textual input into an [`Expr`].
