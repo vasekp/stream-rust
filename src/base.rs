@@ -805,6 +805,58 @@ impl Node {
                 .collect::<Result<Vec<_>, _>>()?
         })
     }
+
+    pub(crate) fn describe_helper<T>(head: &Head, source: Option<&T>, args: &[T]) -> String
+        where T: Describe
+    {
+        let mut ret = String::new();
+        if let Some(source) = source {
+            ret += &source.describe();
+            ret.push('.');
+        }
+        match head {
+            Head::Symbol(s) => ret += s,
+            Head::Block(b) => {
+                ret.push('{');
+                ret += &b.describe();
+                ret.push('}');
+            },
+            Head::Oper(o) => { // special, early return
+                ret.push('(');
+                let mut it = args.iter().map(Describe::describe);
+                if args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
+                    if let Some(s) = it.next() {
+                        ret += &s;
+                    }
+                }
+                for s in it {
+                    ret += o;
+                    ret += &s;
+                }
+                ret.push(')');
+                return ret;
+            },
+            Head::Repl(chr, opt) => {
+                ret.push(*chr);
+                if let Some(num) = opt {
+                    ret += &format!("{num}");
+                }
+            }
+        };
+        if !args.is_empty() {
+            ret.push('(');
+            let mut it = args.iter().map(Describe::describe);
+            if let Some(s) = it.next() {
+                ret += &s;
+                for s in it {
+                    ret += ", ";
+                    ret += &s
+                }
+            }
+            ret.push(')');
+        }
+        ret
+    }
 }
 
 macro_rules! try_with {
@@ -834,53 +886,7 @@ fn test_block() {
 
 impl Describe for Node {
     fn describe(&self) -> String {
-        let mut ret = String::new();
-        if let Some(source) = &self.source {
-            ret += &source.describe();
-            ret.push('.');
-        }
-        match &self.head {
-            Head::Symbol(s) => ret += s,
-            Head::Block(b) => {
-                ret.push('{');
-                ret += &b.describe();
-                ret.push('}');
-            },
-            Head::Oper(o) => { // special, early return
-                ret.push('(');
-                let mut it = self.args.iter().map(Describe::describe);
-                if self.args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
-                    if let Some(s) = it.next() {
-                        ret += &s;
-                    }
-                }
-                for s in it {
-                    ret += o;
-                    ret += &s;
-                }
-                ret.push(')');
-                return ret;
-            },
-            Head::Repl(chr, opt) => {
-                ret.push(*chr);
-                if let Some(num) = opt {
-                    ret += &format!("{num}");
-                }
-            }
-        };
-        if !self.args.is_empty() {
-            ret.push('(');
-            let mut it = self.args.iter().map(Describe::describe);
-            if let Some(s) = it.next() {
-                ret += &s;
-                for s in it {
-                    ret += ", ";
-                    ret += &s
-                }
-            }
-            ret.push(')');
-        }
-        ret
+        Node::describe_helper(&self.head, self.source.as_deref(), &self.args)
     }
 }
 
@@ -961,52 +967,6 @@ impl From<ENode> for Node {
 
 impl Describe for ENode {
     fn describe(&self) -> String {
-        let mut ret = String::new();
-        if let Some(source) = &self.source {
-            ret += &source.describe();
-            ret.push('.');
-        }
-        match &self.head {
-            Head::Symbol(s) => ret += s,
-            Head::Block(b) => {
-                ret.push('{');
-                ret += &b.describe();
-                ret.push('}');
-            },
-            Head::Oper(o) => { // special, early return
-                ret.push('(');
-                let mut it = self.args.iter().map(Describe::describe);
-                if self.args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
-                    if let Some(s) = it.next() {
-                        ret += &s;
-                    }
-                }
-                for s in it {
-                    ret += o;
-                    ret += &s;
-                }
-                ret.push(')');
-                return ret;
-            },
-            Head::Repl(chr, opt) => {
-                ret.push(*chr);
-                if let Some(num) = opt {
-                    ret += &format!("{num}");
-                }
-            }
-        };
-        if !self.args.is_empty() {
-            ret.push('(');
-            let mut it = self.args.iter().map(Describe::describe);
-            if let Some(s) = it.next() {
-                ret += &s;
-                for s in it {
-                    ret += ", ";
-                    ret += &s
-                }
-            }
-            ret.push(')');
-        }
-        ret
+        Node::describe_helper(&self.head, self.source.as_ref(), &self.args)
     }
 }
