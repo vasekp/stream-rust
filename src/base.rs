@@ -735,12 +735,12 @@ impl Describe for Expr {
 }
 
 impl Node {
-    pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
+    /*pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
         match &self.source {
             Some(_) => Err("no source accepted".into()),
             None => Ok(())
         }
-    }
+    }*/
 
     pub(crate) fn source_checked(&self) -> Result<&Expr, BaseError> {
         match &self.source {
@@ -749,13 +749,13 @@ impl Node {
         }
     }
 
-    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
+    /*pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
         if self.args.is_empty() {
             Err("at least 1 argument required".into())
         } else {
             Ok(())
         }
-    }
+    }*/
 
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
@@ -775,14 +775,15 @@ impl Node {
         }
     }
 
-    pub(crate) fn eval_all(self, env: &Env) -> Result<Node, StreamError> {
-        let source = self.source.map(|x| (*x).eval(env))
-            .transpose()?
-            .map(|x| Box::new(Expr::new_imm(x)));
+    pub(crate) fn eval_all(self, env: &Env) -> Result<ENode, StreamError> {
+        let source = match self.source {
+            Some(source) => Some((*source).eval(env)?),
+            None => None
+        };
         let args = self.args.into_iter()
-            .map(|x| x.eval(env).map(Expr::new_imm))
+            .map(|x| x.eval(env))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Node{head: self.head, source, args})
+        Ok(ENode{head: self.head, source, args})
     }
 
     pub(crate) fn eval_source(self, env: &Env) -> Result<Node, StreamError> {
@@ -810,7 +811,7 @@ macro_rules! try_with {
     ($node:ident, $expr:expr) => {
         match (|| -> Result<_, BaseError> { $expr })() {
             Ok(result) => result,
-            Err(err) => return Err(StreamError::new(err, $node))
+            Err(err) => return Err(StreamError::new(err, $node.into()))
         }
     }
 }
@@ -912,4 +913,100 @@ fn test_describe() {
     let orig = parse("[1,2][3,4] + [[1,2]][[3,4]]").unwrap();
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
+}
+
+
+/// A variant of `Node` in which all the arguments and source are type-guaranteed to be evaluated.
+/// This is achieved by using `Item` instead of `Expr`, avoiding the possibility of `Expr::Eval`.
+#[derive(Debug, PartialEq, Clone)]
+pub struct ENode {
+    pub head: Head,
+    pub source: Option<Item>,
+    pub args: Vec<Item>
+}
+
+impl ENode {
+    pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
+        match &self.source {
+            Some(_) => Err("no source accepted".into()),
+            None => Ok(())
+        }
+    }
+
+    pub(crate) fn source_checked(&self) -> Result<&Item, BaseError> {
+        match &self.source {
+            Some(source) => Ok(source),
+            None => Err("source required".into()),
+        }
+    }
+
+    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
+        if self.args.is_empty() {
+            Err("at least 1 argument required".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl From<ENode> for Node {
+    fn from(enode: ENode) -> Node {
+        Node {
+            head: enode.head,
+            source: enode.source.map(|item| Box::new(Expr::new_imm(item))),
+            args: enode.args.into_iter().map(Expr::new_imm).collect()
+        }
+    }
+}
+
+impl Describe for ENode {
+    fn describe(&self) -> String {
+        let mut ret = String::new();
+        if let Some(source) = &self.source {
+            ret += &source.describe();
+            ret.push('.');
+        }
+        match &self.head {
+            Head::Symbol(s) => ret += s,
+            Head::Block(b) => {
+                ret.push('{');
+                ret += &b.describe();
+                ret.push('}');
+            },
+            Head::Oper(o) => { // special, early return
+                ret.push('(');
+                let mut it = self.args.iter().map(Describe::describe);
+                if self.args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
+                    if let Some(s) = it.next() {
+                        ret += &s;
+                    }
+                }
+                for s in it {
+                    ret += o;
+                    ret += &s;
+                }
+                ret.push(')');
+                return ret;
+            },
+            Head::Repl(chr, opt) => {
+                ret.push(*chr);
+                if let Some(num) = opt {
+                    ret += &format!("{num}");
+                }
+            }
+        };
+        if !self.args.is_empty() {
+            ret.push('(');
+            let mut it = self.args.iter().map(Describe::describe);
+            if let Some(s) = it.next() {
+                ret += &s;
+                for s in it {
+                    ret += ", ";
+                    ret += &s
+                }
+            }
+            ret.push(')');
+        }
+        ret
+    }
 }

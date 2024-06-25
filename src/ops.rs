@@ -51,9 +51,9 @@ impl Seq {
         try_with!(node, node.check_no_source());
         let (from, step) = try_with!(node, match node.args[..] {
             [] => Ok((Number::one(), Number::one())),
-            [Expr::Imm(Item::Number(ref mut from))]
+            [Item::Number(ref mut from)]
                 => Ok((std::mem::take(from), Number::one())),
-            [Expr::Imm(Item::Number(ref mut from)), Expr::Imm(Item::Number(ref mut step))]
+            [Item::Number(ref mut from), Item::Number(ref mut step)]
                 => Ok((std::mem::take(from), std::mem::take(step))),
             _ => Err("expected one of: seq(), seq(number), seq(number, number)".into())
         });
@@ -159,20 +159,20 @@ impl Range {
         let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         let (from, to, step, case) = try_with!(node, match node.args[..] {
-            [Expr::Imm(Item::Number(ref mut to))]
+            [Item::Number(ref mut to)]
                 => Ok((Number::one(), std::mem::take(to), Number::one(), None)),
-            [Expr::Imm(Item::Number(ref mut from)), Expr::Imm(Item::Number(ref mut to))]
+            [Item::Number(ref mut from), Item::Number(ref mut to)]
                 => Ok((std::mem::take(from), std::mem::take(to), Number::one(), None)),
-            [Expr::Imm(Item::Number(ref mut from)), Expr::Imm(Item::Number(ref mut to)), Expr::Imm(Item::Number(ref mut step))]
+            [Item::Number(ref mut from), Item::Number(ref mut to), Item::Number(ref mut step)]
                 => Ok((std::mem::take(from), std::mem::take(to), std::mem::take(step), None)),
-            [Expr::Imm(Item::Char(ref from)), Expr::Imm(Item::Char(ref to))]
+            [Item::Char(ref from), Item::Char(ref to)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
                     let (to_ix, _) = abc.ord_case(to)?;
                     Ok((from_ix.into(), to_ix.into(), Number::one(), Some(case)))
                 },
-            [Expr::Imm(Item::Char(ref from)), Expr::Imm(Item::Char(ref to)), Expr::Imm(Item::Number(ref mut step))]
+            [Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
@@ -284,17 +284,17 @@ fn test_range_skip() {
 fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     if !node.args.is_empty() {
-        return Err(StreamError::new("no arguments allowed", node));
+        return Err(StreamError::new("no arguments allowed", node.into()));
     }
-    let length = try_with!(node, node.source_checked()?.as_item()?.as_stream()).length();
+    let length = try_with!(node, node.source_checked()?.as_stream()).length();
     use Length::*;
     match length {
         Exact(len) => Ok(Item::new_number(len)),
         AtMost(_) | UnknownFinite | Unknown => {
-            let len = try_with!(node, node.source_checked()?.as_item()?.as_stream()).iter().count();
+            let len = try_with!(node, node.source_checked()?.as_stream()).iter().count();
             Ok(Item::new_number(len))
         },
-        _ => Err(StreamError::new("stream is infinite", node))
+        _ => Err(StreamError::new("stream is infinite", node.into()))
     }
 }
 

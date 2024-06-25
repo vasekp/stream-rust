@@ -12,10 +12,7 @@ impl List {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
-        let vec = node.args.into_iter()
-            .map(|expr| expr.into_item().unwrap())
-            .collect::<Vec<_>>();
-        Ok(Item::new_stream(List::from(vec)))
+        Ok(Item::new_stream(List::from(node.args)))
     }
 }
 
@@ -91,21 +88,21 @@ impl From<String> for LiteralString {
 
 fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    let mut item = try_with!(node, node.source_checked()?.to_item());
+    let mut item = try_with!(node, node.source_checked()).to_owned();
     if node.args.is_empty() {
-        return Err(StreamError::new("at least 1 argument required", node));
+        return Err(StreamError::new("at least 1 argument required", node.into()));
     }
     for arg in &node.args {
-        let index = try_with!(node, arg.as_item()?.as_num());
+        let index = try_with!(node, arg.as_num());
         try_with!(node, index.check_within(Number::one()..));
         let stm = try_with!(node, item.into_stream());
         let mut iter = stm.iter();
         if iter.skip_n(index - 1)?.is_some() {
-            return Err(StreamError::new("index past end of stream", node));
+            return Err(StreamError::new("index past end of stream", node.into()));
         }
         item = match iter.next() {
             Some(value) => value?,
-            None => return Err(StreamError::new("index past end of stream", node))
+            None => return Err(StreamError::new("index past end of stream", node.into()))
         };
     }
     Ok(item)
@@ -201,7 +198,7 @@ fn eval_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source());
     try_with!(node, node.check_args_nonempty());
     let ans = try_with!(node, node.args.iter().try_fold(Number::zero(),
-        |a, e| Ok(a + e.as_item()?.as_num()?)));
+        |a, e| Ok(a + e.as_num()?)));
     Ok(Item::new_number(ans))
 }
 
@@ -210,9 +207,9 @@ fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source());
     let args = &node.args;
     let ans = match args.len() {
-        1 => -try_with!(node, args[0].as_item()?.as_num()),
-        2 => try_with!(node, Ok(args[0].as_item()?.as_num()? - args[1].as_item()?.as_num()?)),
-        _ => return Err(StreamError::new("1 or 2 arguments required", node))
+        1 => -try_with!(node, args[0].as_num()),
+        2 => try_with!(node, Ok(args[0].as_num()? - args[1].as_num()?)),
+        _ => return Err(StreamError::new("1 or 2 arguments required", node.into()))
     };
     Ok(Item::new_number(ans))
 }
@@ -222,7 +219,7 @@ fn eval_times(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source());
     try_with!(node, node.check_args_nonempty());
     let ans = try_with!(node, node.args.iter().try_fold(Number::one(),
-        |a, e| Ok(a * e.as_item()?.as_num()?)));
+        |a, e| Ok(a * e.as_num()?)));
     Ok(Item::new_number(ans))
 }
 
@@ -230,12 +227,12 @@ fn eval_div(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     if node.args.len() != 2 {
-        return Err(StreamError::new("exactly 2 argument required", node));
+        return Err(StreamError::new("exactly 2 argument required", node.into()));
     }
-    let x = try_with!(node, node.args[0].as_item()?.as_num());
-    let y = try_with!(node, node.args[1].as_item()?.as_num());
+    let x = try_with!(node, node.args[0].as_num());
+    let y = try_with!(node, node.args[1].as_num());
     if y.is_zero() {
-        return Err(StreamError::new("division by zero", node));
+        return Err(StreamError::new("division by zero", node.into()));
     }
     Ok(Item::new_number(x / y))
 }
@@ -245,15 +242,15 @@ fn eval_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     if node.args.len() != 2 {
-        return Err(StreamError::new("exactly 2 argument required", node));
+        return Err(StreamError::new("exactly 2 argument required", node.into()));
     }
-    let x = try_with!(node, node.args[0].as_item()?.as_num());
-    let y = try_with!(node, node.args[1].as_item()?.as_num());
+    let x = try_with!(node, node.args[0].as_num());
+    let y = try_with!(node, node.args[1].as_num());
     if y.is_negative() {
-        return Err(StreamError::new("negative exponent", node));
+        return Err(StreamError::new("negative exponent", node.into()));
     }
     let Some(exp) = y.to_u32() else {
-        return Err(StreamError::new("exponent too large", node));
+        return Err(StreamError::new("exponent too large", node.into()));
     };
     Ok(Item::new_number(x.pow(exp)))
 }
@@ -278,11 +275,11 @@ fn test_opers() {
 
 #[derive(Clone)]
 struct Join {
-    node: Node
+    node: ENode
 }
 
 struct JoinIter<'node> {
-    node: &'node Node,
+    node: &'node ENode,
     index: usize,
     cur: Box<dyn SIterator + 'node>
 }
@@ -295,12 +292,12 @@ impl Join {
         try_with!(node, node.check_args_nonempty());
         let mut string = None;
         for arg in &node.args {
-            let stream = try_with!(node, arg.as_item()?.as_stream());
+            let stream = try_with!(node, arg.as_stream());
             match string {
                 None => string = Some(stream.is_string()),
                 Some(string) => {
                     if stream.is_string() != string {
-                        return Err(StreamError::new("mixed streams and strings", node));
+                        return Err(StreamError::new("mixed streams and strings", node.into()));
                     }
                 }
             }
@@ -319,7 +316,6 @@ impl Describe for Join {
 impl Stream for Join {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let first = self.node.args[0]
-            .as_item().unwrap()
             .as_stream().unwrap()
             .iter();
         Box::new(JoinIter{node: &self.node, index: 0, cur: first})
@@ -327,14 +323,13 @@ impl Stream for Join {
 
     fn is_string(&self) -> bool {
         self.node.args[0]
-            .as_item().unwrap()
             .as_stream().unwrap()
             .is_string()
     }
 
     fn length(&self) -> Length {
         self.node.args.iter()
-            .map(|expr| expr.as_item().unwrap().as_stream().unwrap().length())
+            .map(|expr| expr.as_stream().unwrap().length())
             .reduce(|acc, e| acc + e).unwrap()
     }
 }
@@ -350,7 +345,6 @@ impl Iterator for JoinIter<'_> {
             } else {
                 self.index += 1;
                 self.cur = self.node.args.get(self.index)?
-                    .as_item().unwrap()
                     .as_stream().unwrap()
                     .iter();
             }
@@ -368,9 +362,7 @@ impl SIterator for JoinIter<'_> {
             self.index += 1;
             let Some(next) = self.node.args.get(self.index)
                 else { return Ok(Some(n)); };
-            self.cur = next.as_item().unwrap()
-                .as_stream().unwrap()
-                .iter();
+            self.cur = next.as_stream().unwrap().iter();
         }
     }
 }
