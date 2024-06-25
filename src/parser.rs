@@ -95,14 +95,13 @@ enum TokenClass {
 
 fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
     use TokenClass::*;
-    // TODO: @ for chaining
-    const OPERS: &str = "+-*/%@^~&|<=>";
+    const OPERS: &str = "+-*/%^~&|<=>";
     let class = match slice.chars().next().unwrap() {
         '0'..='9' => if slice.contains('_') { BaseNum } else { Number },
         'a'..='z' | 'A'..='Z' | '_' => if slice == "true" || slice == "false" { Bool } else { Ident },
         '"' => String,
         '\'' => Char,
-        '.' | ':' => Chain,
+        '.' | ':' | '@' => Chain,
         c if OPERS.contains(c) => Oper,
         '(' | '[' | '{' => Open,
         ')' | ']' | '}' => Close,
@@ -261,7 +260,7 @@ fn test_tokenizer() {
     // tailing space ignored
     assert_eq!(tk.next(), None);
 
-    let mut it = Tokenizer::new("a.b0_1(3_012,#4,true)");
+    let mut it = Tokenizer::new("a.b0_1(3_012,#4,true@q)");
     assert_eq!(it.next(), Some(Ok(Token(Ident, "a"))));
     assert_eq!(it.next(), Some(Ok(Token(Chain, "."))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "b0_1"))));
@@ -272,6 +271,8 @@ fn test_tokenizer() {
     assert_eq!(it.next(), Some(Ok(Token(Number, "4"))));
     assert_eq!(it.next(), Some(Ok(Token(Comma, ","))));
     assert_eq!(it.next(), Some(Ok(Token(Bool, "true"))));
+    assert_eq!(it.next(), Some(Ok(Token(Chain, "@"))));
+    assert_eq!(it.next(), Some(Ok(Token(Ident, "q"))));
     assert_eq!(it.next(), Some(Ok(Token(Close, ")"))));
     assert_eq!(it.next(), None);
 
@@ -377,7 +378,7 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
                     TC::Char => TT::Literal(Literal::Char(t)),
                     _ => unreachable!()
                 })),
-            // Identifier: also can follow ., :
+            // Identifier: also can follow ., :, @
             (TC::Ident, Some(Oper(_) | Chain(_)) | None, _)
                 => expr.push(Term(TT::Node(Node::Ident(t), None))),
             // Special use of numbers: # -> #1, $ -> $1
@@ -389,11 +390,13 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
             // Special case: unary minus, plus can appear at start of expression
             (TC::Oper, None, "-" | "+")
                 => expr.push(Oper(t)),
-            // Chaining (., :)
-            (TC::Chain, Some(Term(_) | Part(_)), _)
+            // Chaining (., :, @)
+            (TC::Chain, Some(Term(_) | Part(_)), "." | ":")
+                => expr.push(Chain(t)),
+            (TC::Chain, Some(Term(TT::Node(_, None))), "@")
                 => expr.push(Chain(t)),
             // Parenthesized expression
-            (TC::Open, Some(Oper(_)) | None, "(") => {
+            (TC::Open, Some(Oper(_) | Chain(Token(_, "@"))) | None, "(") => {
                 let vec = parse_main(tk, Some(t.1))?;
                 match vec.len() {
                     1 => {
@@ -431,7 +434,7 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
                 }
             },
             // Special characters #, $
-            (TC::Special, Some(Oper(_)) | None, _)
+            (TC::Special, Some(Oper(_) | Chain(Token(_, "@"))) | None, _)
                 => expr.push(Term(TT::Special(t, None))),
             // Separator of multiple exprs.
             // Checking whether >1 makes sense is caller's responsibility!
@@ -546,79 +549,87 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
         args: Vec<Expr>
     }
 
+    #[derive(Debug)]
     enum ChainOp {
         Dot,
         Colon
     }
 
-    #[derive(Default)]
-    enum TermOption {
-        #[default]
-        Empty,
-        Bare(Expr),
+    #[derive(Debug)]
+    enum TermState {
+        Base(Vec<Expr>),
+        AfterTerm(Vec<Expr>),
         Chained(Expr, ChainOp)
     }
 
-    impl TermOption {
-        fn take(&mut self) -> TermOption {
-            std::mem::take(self)
-        }
-
-        fn unwrap(self) -> Expr {
-            match self {
-                Bare(expr) => expr,
-                _ => panic!()
-            }
+    impl Default for TermState {
+        fn default() -> TermState {
+            TermState::Base(vec![])
         }
     }
 
     use ChainOp::*;
-    use TermOption::*;
+    use TermState::*;
+
+    fn collapse_at_chain(mut chain: Vec<Expr>) -> Expr {
+        debug_assert!(!chain.is_empty());
+        let mut ret = chain.pop().unwrap();
+        while let Some(expr) = chain.pop() {
+            ret = Expr::new_node("args", Some(expr), vec![ret]);
+        }
+        ret
+    }
 
     debug_assert!(!input.is_empty());
     let mut stack: Vec<StackEntry> = vec![];
-    let mut cur = Empty;
+    let mut cur: TermState = Default::default();
     'a: for part in input {
         use ExprPart::*;
         use TTerm as TT;
         use Node::*;
-        match (part, cur.take()) {
-            (Term(TT::Literal(lit)), Empty)
-                => cur = Bare(lit.to_item()?.into()),
-            (Term(TT::List(vec)), Empty)
-                => cur = Bare(Expr::new_node("list", None, vec)),
-            (Term(TT::Special(tok, None)), Empty)
-                => cur = Bare(Expr::new_repl(tok.1.as_bytes()[0].into(), None)),
-            (Term(TT::Special(tok, Some(ix_tok))), Empty) => {
+        match (std::mem::take(&mut cur), part) {
+            (Base(mut chain), Term(TT::Literal(lit)))
+                => cur = AfterTerm({ chain.push(lit.to_item()?.into()); chain }),
+            (Base(mut chain), Term(TT::List(vec)))
+                => cur = AfterTerm({ chain.push(Expr::new_node("list", None, vec)); chain }),
+            (Base(mut chain), Term(TT::Special(tok, None)))
+                => cur = AfterTerm({ chain.push(Expr::new_repl(tok.1.as_bytes()[0].into(), None)); chain }),
+            (Base(mut chain), Term(TT::Special(tok, Some(ix_tok)))) => {
                 let ix = ix_tok.1.parse::<usize>()
                     .map_err(|_| ParseError::new("index too large", ix_tok.1))?;
                 if ix == 0 {
                     return Err(ParseError::new("index can't be zero", ix_tok.1));
                 }
-                cur = Bare(Expr::new_repl(tok.1.as_bytes()[0].into(), Some(ix)));
+                chain.push(Expr::new_repl(tok.1.as_bytes()[0].into(), Some(ix)));
+                cur = AfterTerm(chain);
             },
-            (Term(TT::Node(Ident(tok), args)), Empty)
-                => cur = Bare(Expr::new_node(tok.1, None, args.unwrap_or(vec![]))),
-            (Term(TT::Node(Block(body), args)), Empty)
-                => cur = Bare(Expr::new_block(*body, None, args.unwrap_or(vec![]))),
-            (Term(TT::Node(Ident(tok), args)), Chained(src, Dot))
-                => cur = Bare(Expr::new_node(tok.1, Some(src), args.unwrap_or(vec![]))),
-            (Term(TT::Node(Block(body), args)), Chained(src, Dot))
-                => cur = Bare(Expr::new_block(*body, Some(src), args.unwrap_or(vec![]))),
-            (Term(TT::Node(Ident(tok), args)), Chained(src, Colon))
-                => cur = Bare(Expr::new_node("map", Some(src), vec![Expr::new_node(tok.1, None, args.unwrap_or(vec![]))])),
-            (Term(TT::Node(Block(body), args)), Chained(src, Colon))
-                => cur = Bare(Expr::new_node("map", Some(src), vec![Expr::new_block(*body, None, args.unwrap_or(vec![]))])),
-            (Term(TT::ParExpr(expr)), Empty)
-                => cur = Bare(*expr),
-            (Chain(Token(_, ".")), Bare(prev))
-                => cur = Chained(prev, Dot),
-            (Chain(Token(_, ":")), Bare(prev))
-                => cur = Chained(prev, Colon),
-            // TODO: Chain(@)
-            (Part(vec), Bare(src))
-                => cur = Bare(Expr::new_node("part", Some(src), vec)),
-            (Oper(Token(_, op)), Bare(mut prev)) => {
+            (Base(mut chain), Term(TT::Node(Ident(tok), args)))
+                => cur = AfterTerm({ chain.push(Expr::new_node(tok.1, None, args.unwrap_or(vec![]))); chain }),
+            (Base(mut chain), Term(TT::Node(Block(body), args)))
+                => cur = AfterTerm({ chain.push(Expr::new_block(*body, None, args.unwrap_or(vec![]))); chain }),
+            (Base(mut chain), Term(TT::ParExpr(expr)))
+                => cur = AfterTerm({ chain.push(*expr); chain }),
+            (AfterTerm(mut chain), Part(vec)) => {
+                let last = chain.pop().unwrap();
+                chain.push(Expr::new_node("part", Some(last), vec));
+                cur = AfterTerm(chain);
+            },
+            (AfterTerm(chain), Chain(Token(_, ".")))
+                => cur = Chained(collapse_at_chain(chain), Dot),
+            (AfterTerm(chain), Chain(Token(_, ":")))
+                => cur = Chained(collapse_at_chain(chain), Colon),
+            (AfterTerm(chain), Chain(Token(_, "@")))
+                => cur = Base(chain),
+            (Chained(src, Dot), Term(TT::Node(Ident(tok), args)))
+                => cur = AfterTerm(vec![Expr::new_node(tok.1, Some(src), args.unwrap_or(vec![]))]),
+            (Chained(src, Dot), Term(TT::Node(Block(body), args)))
+                => cur = AfterTerm(vec![Expr::new_block(*body, Some(src), args.unwrap_or(vec![]))]),
+            (Chained(src, Colon), Term(TT::Node(Ident(tok), args)))
+                => cur = AfterTerm(vec![Expr::new_node("map", Some(src), vec![Expr::new_node(tok.1, None, args.unwrap_or(vec![]))])]),
+            (Chained(src, Colon), Term(TT::Node(Block(body), args)))
+                => cur = AfterTerm(vec![Expr::new_node("map", Some(src), vec![Expr::new_block(*body, None, args.unwrap_or(vec![]))])]),
+            (AfterTerm(chain), Oper(Token(_, op))) => {
+                let mut prev = collapse_at_chain(chain);
                 let (prec, multi) = get_op(op);
                 while let Some(entry) = stack.last_mut() {
                     if entry.prec > prec {
@@ -639,12 +650,13 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
                 }
                 stack.push(StackEntry{ op: op.into(), prec, args: vec![prev] });
             },
-            (Oper(Token(_, op @ ("+" | "-"))), Empty)
+            (Base(chain), Oper(Token(_, op @ ("+" | "-")))) if chain.is_empty()
                 => stack.push(StackEntry{ op: op.into(), prec: get_op(op).0, args: vec![] }),
-            _ => todo!()
+            (cur, part) => panic!("Unexpected parser state (into_expr): cur = {cur:?}, part = {part:?}")
         }
     }
-    let mut ret = cur.unwrap();
+    let AfterTerm(chain) = cur else { panic!("Final state of into_expr differs from AfterTerm: {cur:?}"); };
+    let mut ret = collapse_at_chain(chain);
     while let Some(mut entry) = stack.pop() {
         entry.args.push(ret);
         ret = Expr::new_op(entry.op, None, entry.args);
@@ -796,6 +808,24 @@ fn test_parser() {
     assert_eq!(parse("1.#"), syntax_err);
     assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_block(Expr::new_repl('#', None),
         Some(Item::new_number(1).into()), vec![Item::new_number(2).into()])));
+
+    // [part] binds to an @ operand rather than the full chain
+    assert_eq!(parse("a.b@c@d[1]"), parse("a.b.args(c.args(d[1]))"));
+    // list, #, (x) may follow @
+    assert_eq!(parse("a@[1,2]"), parse("{a{.args([1,2])"));
+    assert_eq!(parse("a@(b.c@#)"), parse("a.args(b.c.args(#))"));
+    // but not (x,y)
+    assert_eq!(parse("a@(b.c@#,d)"), err("only one expression expected"));
+    // blocks allowed both before and after
+    assert_eq!(parse("{a}@{b}"), parse("{a}.args({b})"));
+    // here both (c) and [d] bind to b before @
+    assert_eq!(parse("a@b(c)[d]"), parse("a.args(b(c).part(d))"));
+    // no @ after arguments
+    assert_eq!(parse("a(b)@c"), syntax_err);
+    assert_eq!(parse("a@@c"), syntax_err);
+    assert_eq!(parse("a@1"), syntax_err);
+    assert_eq!(parse("1@a"), syntax_err);
+    assert_eq!(parse("a@"), err("incomplete expression"));
 }
 
 #[test]
