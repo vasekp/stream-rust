@@ -661,14 +661,14 @@ impl Expr {
     pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {
             Expr::Imm(ref item) => Ok(item),
-            _ => Err(format!("expected value, found {:?}", self).into()),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
         }
     }
 
     pub fn as_item_mut(&mut self) -> Result<&mut Item, BaseError> {
         match self {
             Expr::Imm(ref mut item) => Ok(item),
-            _ => Err(format!("expected value, found {:?}", self).into()),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
         }
     }
 
@@ -676,21 +676,21 @@ impl Expr {
     pub fn to_item(&self) -> Result<Item, BaseError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
-            _ => Err(format!("expected value, found {:?}", self).into()),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
         }
     }
 
     pub fn into_item(self) -> Result<Item, BaseError> {
         match self {
             Expr::Imm(item) => Ok(item),
-            _ => Err(format!("expected value, found {:?}", self).into()),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
         }
     }
 
     pub fn to_node(&self) -> Result<Node, BaseError> {
         match self {
             Expr::Eval(node) => Ok(node.to_owned()),
-            _ => Err(format!("expected node, found {:?}", self).into()),
+            Expr::Imm(imm) => Err(format!("expected node, found {:?}", imm).into()),
         }
     }
 
