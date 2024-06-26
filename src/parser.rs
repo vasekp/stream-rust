@@ -411,7 +411,7 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
             (TC::Open, Some(Term(TT::Node(_, args @ None))), "(")
                 => *args = Some(parse_main(tk, Some(t.1))?),
             // List
-            (TC::Open, Some(Oper(_)) | None, "[")
+            (TC::Open, Some(Oper(_) | Chain(Token(_, "@"))) | None, "[")
                 => expr.push(Term(TT::List(parse_main(tk, Some(t.1))?))),
             // Parts construction
             (TC::Open, Some(Term(_)), "[") => {
@@ -422,7 +422,7 @@ fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -
                 expr.push(Part(vec));
             },
             // Block (expression used as a node)
-            (TC::Open, Some(Oper(_)) | Some(Chain(_)) | None, "{") => {
+            (TC::Open, Some(Oper(_) | Chain(_)) | None, "{") => {
                 let vec = parse_main(tk, Some(t.1))?;
                 match vec.len() {
                     1 => {
@@ -812,7 +812,7 @@ fn test_parser() {
     // [part] binds to an @ operand rather than the full chain
     assert_eq!(parse("a.b@c@d[1]"), parse("a.b.args(c.args(d[1]))"));
     // list, #, (x) may follow @
-    assert_eq!(parse("a@[1,2]"), parse("{a{.args([1,2])"));
+    assert_eq!(parse("a@[1,2]"), parse("a.args([1,2])"));
     assert_eq!(parse("a@(b.c@#)"), parse("a.args(b.c.args(#))"));
     // but not (x,y)
     assert_eq!(parse("a@(b.c@#,d)"), err("only one expression expected"));
