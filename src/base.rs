@@ -793,6 +793,13 @@ impl Node {
         Ok(Node{head: self.head, source, args: self.args})
     }
 
+    pub(crate) fn eval_args(self, env: &Env) -> Result<Node, StreamError> {
+        let args = self.args.into_iter()
+            .map(|x| x.eval(env).map(Expr::new_imm))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Node{head: self.head, source: self.source, args})
+    }
+
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {
             head: self.head,

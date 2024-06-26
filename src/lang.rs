@@ -390,6 +390,42 @@ fn test_join() {
 }
 
 
+fn eval_args(node: Node, env: &Env) -> Result<Item, StreamError> {
+    if node.args.len() != 1 {
+        return Err(StreamError::new("exactly 1 argument expected", node));
+    }
+    let node = node.eval_args(env)?;
+    let src_stream = try_with!(node, node.args[0].as_item()?.as_stream());
+    if src_stream.length() == Length::Infinite {
+        return Err(StreamError::new("stream is infinite", node));
+    }
+    let mut src = try_with!(node, node.source_checked()?.to_node());
+    if !src.args.is_empty() {
+        return Err(StreamError::new("body already has arguments", node));
+    }
+    src.args = src_stream.iter()
+        .map(|res| res.map(Expr::new_imm))
+        .collect::<Result<Vec<_>, _>>()?;
+    src.eval(env)
+}
+
+#[test]
+fn test_args() {
+    use crate::parser::parse;
+    let env = Default::default();
+
+    assert_eq!(parse("range@[3]").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
+    assert_eq!(parse("range@range(3)").unwrap().eval(&env).unwrap().to_string(), "[1]");
+    assert_eq!(parse("range@range(3)").unwrap().eval(&env).unwrap().to_string(), "[1]");
+    assert_eq!(parse("range@[1,[2]][2]").unwrap().eval(&env).unwrap().to_string(), "[1, 2]");
+    assert!(parse("range@[1,[2]][1]").unwrap().eval(&env).is_err());
+    assert!(parse("range.args(3)").unwrap().eval(&env).is_err());
+    assert!(parse("range(3).args([3])").unwrap().eval(&env).is_err());
+    assert!(parse("3.args([1])").unwrap().eval(&env).is_err());
+    assert!(parse("range@seq").unwrap().eval(&env).is_err());
+}
+
+
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("list", List::eval);
     keywords.insert("part", eval_part);
@@ -400,4 +436,5 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("/", eval_div);
     keywords.insert("^", eval_pow);
     keywords.insert("~", Join::eval);
+    keywords.insert("args", eval_args);
 }
