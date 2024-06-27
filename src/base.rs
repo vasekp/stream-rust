@@ -135,7 +135,7 @@ impl Item {
         match self {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
-            Char(c) => write!(f, "'{c}'"),
+            Char(c) => write!(f, "{c}"),
             Stream(s) => (*s).writeout(f, error)
         }
     }
@@ -172,7 +172,7 @@ impl Describe for Item {
             Number(n) if n.is_negative() => format!("({n})"),
             Number(n) => format!("{n}"),
             Bool(b) => format!("{b}"),
-            Char(c) => format!("'{c}'"),
+            Char(c) => format!("{c}"),
             Stream(s) => s.describe()
         }
     }

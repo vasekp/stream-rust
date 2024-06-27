@@ -124,8 +124,14 @@ pub struct Range {
     from: Number,
     to: Number,
     step: Number,
-    chars: Option<Case>,
+    rtype: RangeType,
     env: Env
+}
+
+#[derive(Clone, Copy)]
+enum RangeType {
+    Numeric,
+    Character(CharCase)
 }
 
 struct RangeIter<'node> {
@@ -158,30 +164,30 @@ impl Range {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
-        let (from, to, step, case) = try_with!(node, match node.args[..] {
+        let (from, to, step, rtype) = try_with!(node, match node.args[..] {
             [Item::Number(ref mut to)]
-                => Ok((Number::one(), std::mem::take(to), Number::one(), None)),
+                => Ok((Number::one(), std::mem::take(to), Number::one(), RangeType::Numeric)),
             [Item::Number(ref mut from), Item::Number(ref mut to)]
-                => Ok((std::mem::take(from), std::mem::take(to), Number::one(), None)),
+                => Ok((std::mem::take(from), std::mem::take(to), Number::one(), RangeType::Numeric)),
             [Item::Number(ref mut from), Item::Number(ref mut to), Item::Number(ref mut step)]
-                => Ok((std::mem::take(from), std::mem::take(to), std::mem::take(step), None)),
+                => Ok((std::mem::take(from), std::mem::take(to), std::mem::take(step), RangeType::Numeric)),
             [Item::Char(ref from), Item::Char(ref to)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
                     let (to_ix, _) = abc.ord_case(to)?;
-                    Ok((from_ix.into(), to_ix.into(), Number::one(), Some(case)))
+                    Ok((from_ix.into(), to_ix.into(), Number::one(), RangeType::Character(case)))
                 },
             [Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
                     let (to_ix, _) = abc.ord_case(to)?;
-                    Ok((from_ix.into(), to_ix.into(), std::mem::take(step), Some(case)))
+                    Ok((from_ix.into(), to_ix.into(), std::mem::take(step), RangeType::Character(case)))
                 },
             _ => Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
         });
-        Ok(Item::new_stream(Range{from, to, step, chars: case, env: env.clone()}))
+        Ok(Item::new_stream(Range{from, to, step, rtype, env: env.clone()}))
     }
 
     fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<Number> {
@@ -196,9 +202,9 @@ impl Range {
 
 impl Describe for Range {
     fn describe(&self) -> String {
-        match self.chars {
-            None => format!("range({}, {}, {})", self.from, self.to, self.step),
-            Some(case) => {
+        match self.rtype {
+            RangeType::Numeric => format!("range({}, {}, {})", self.from, self.to, self.step),
+            RangeType::Character(case) => {
                 let abc = self.env.alphabet();
                 let base = format!("range({}, {}, {})", abc.chr_case(&self.from, case), abc.chr_case(&self.to, case), self.step);
                 self.env.wrap_describe(base)
@@ -214,9 +220,9 @@ impl Iterator for RangeIter<'_> {
         if self.parent.step.is_zero()
             || (self.parent.step.is_positive() && self.value <= self.parent.to)
             || (self.parent.step.is_negative() && self.value >= self.parent.to) {
-                let ret = match self.parent.chars {
-                    None => Item::new_number(self.value.clone()),
-                    Some(case) => Item::new_char(self.parent.env.alphabet().chr_case(&self.value, case))
+                let ret = match self.parent.rtype {
+                    RangeType::Numeric => Item::new_number(self.value.clone()),
+                    RangeType::Character(case) => Item::new_char(self.parent.env.alphabet().chr_case(&self.value, case))
                 };
                 self.value += &self.parent.step;
                 Some(Ok(ret))

@@ -10,22 +10,23 @@ pub enum Char {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Case {
-    /// All lowercase.
+pub enum CharCase {
+    Undefined,
     Lower,
-    /// Contains some uppercase.
     Upper
 }
 
 impl Char {
-    fn case(&self) -> Case {
-        let lower = match self {
-            Char::Single(ch) => ch.is_lowercase(),
-            Char::Multi(st) => st == &st.to_lowercase()
-        };
-        match lower {
-            true => Case::Lower,
-            false => Case::Upper
+    fn case(&self) -> CharCase {
+        match self {
+            Char::Single(ch) =>
+                if ch.is_lowercase() { CharCase::Lower }
+                else if ch.is_uppercase() { CharCase::Upper }
+                else { CharCase::Undefined },
+            Char::Multi(ch) =>
+                if ch == &ch.to_lowercase() { CharCase::Lower }
+                else if ch == &ch.to_uppercase() { CharCase::Upper }
+                else { CharCase::Undefined }
         }
     }
 }
@@ -67,6 +68,7 @@ impl Display for Char {
                 _ => c.into()
             }
         };
+        if !alt { write!(f, "'")? };
         match self {
             Char::Single(c) => write!(f, "{}", escape(*c))?,
             Char::Multi(s) => {
@@ -75,6 +77,7 @@ impl Display for Char {
                 }
             }
         }
+        if !alt { write!(f, "'")? };
         Ok(())
     }
 }
@@ -87,7 +90,7 @@ fn test_char() {
     assert_eq!(Char::from("❤"), Char::Single('❤'));
     assert_eq!(Char::from("é"), Char::Multi("é".into())); // combining mark
     assert_eq!(Char::from("as"), Char::Multi("as".into()));
-    assert_eq!(Char::from('\n').to_string(), "\\n");
+    assert_eq!(Char::from('\n').to_string(), "'\\n'");
 }
 
 
@@ -101,8 +104,8 @@ pub enum Alphabet {
 
 impl Alphabet {
     /// Returns the order of `chr` in the alphabet. Counts between 1 and the size.
-    /// The information about the case of the character is preserved using `Case`.
-    pub fn ord_case(&self, chr: &Char) -> Result<(isize, Case), BaseError> {
+    /// The information about the case of the character is preserved using `CharCase`.
+    pub fn ord_case(&self, chr: &Char) -> Result<(isize, CharCase), BaseError> {
         match self {
             Alphabet::Std26 => {
                 let Char::Single(ch) = chr else {
@@ -118,15 +121,15 @@ impl Alphabet {
         }
     }
 
-    /// Returns the `ord`-th character in the alphabet in the given `Case`. Wraps around.
-    pub fn chr_case(&self, ord: &Number, case: Case) -> Char {
+    /// Returns the `ord`-th character in the alphabet in the given `CharCase`. Wraps around.
+    pub fn chr_case(&self, ord: &Number, case: CharCase) -> Char {
         match self {
             Alphabet::Std26 => {
                 let ord: u8 = ord.rem_euclid(&Number::from(26)).try_into().unwrap();
                 let c = char::from(b'a' + (ord + 25u8) % 26u8);
                 Char::from(match case {
-                    Case::Lower => c,
-                    Case::Upper => c.to_ascii_uppercase()
+                    CharCase::Upper => c.to_ascii_uppercase(),
+                    _ => c
                 })
             },
             _ => todo!()
@@ -146,18 +149,18 @@ impl Alphabet {
 #[test]
 fn test_std26() {
     let abc = Alphabet::Std26;
-    assert_eq!(abc.ord_case(&Char::from('a')), Ok((1isize, Case::Lower)));
-    assert_eq!(abc.ord_case(&Char::from('Z')), Ok((26isize, Case::Upper)));
+    assert_eq!(abc.ord_case(&Char::from('a')), Ok((1isize, CharCase::Lower)));
+    assert_eq!(abc.ord_case(&Char::from('Z')), Ok((26isize, CharCase::Upper)));
     assert!(abc.ord_case(&Char::from('@')).is_err());
     assert!(abc.ord_case(&Char::from('á')).is_err());
     assert!(abc.ord_case(&Char::Multi("ch".into())).is_err());
 
-    assert_eq!(abc.chr_case(&Number::from(1), Case::Lower), Char::from('a'));
-    assert_eq!(abc.chr_case(&Number::from(0), Case::Lower), Char::from('z'));
-    assert_eq!(abc.chr_case(&Number::from(26), Case::Upper), Char::from('Z'));
-    assert_eq!(abc.chr_case(&Number::from(100), Case::Lower), Char::from('v'));
-    assert_eq!(abc.chr_case(&Number::from(-1), Case::Lower), Char::from('y'));
-    assert_eq!(abc.chr_case(&Number::from(-100), Case::Lower), Char::from('d'));
+    assert_eq!(abc.chr_case(&Number::from(1), CharCase::Lower), Char::from('a'));
+    assert_eq!(abc.chr_case(&Number::from(0), CharCase::Undefined), Char::from('z'));
+    assert_eq!(abc.chr_case(&Number::from(26), CharCase::Upper), Char::from('Z'));
+    assert_eq!(abc.chr_case(&Number::from(100), CharCase::Lower), Char::from('v'));
+    assert_eq!(abc.chr_case(&Number::from(-1), CharCase::Lower), Char::from('y'));
+    assert_eq!(abc.chr_case(&Number::from(-100), CharCase::Lower), Char::from('d'));
 
     assert_eq!(abc.c_plus_c(&Char::from('C'), &Char::from('e')), Ok(Char::from('H')));
     assert_eq!(abc.c_plus_c(&Char::from('x'), &Char::from('Y')), Ok(Char::from('w')));
