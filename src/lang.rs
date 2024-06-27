@@ -452,14 +452,14 @@ fn test_args() {
 
 
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("list", List::eval);
-    keywords.insert("part", eval_part);
-    keywords.insert("map", Map::eval);
+    keywords.insert("$list", List::eval);
+    keywords.insert("$part", eval_part);
+    keywords.insert("$map", Map::eval);
+    keywords.insert("$args", eval_args);
     keywords.insert("+", eval_plus);
     keywords.insert("-", eval_minus);
     keywords.insert("*", eval_times);
     keywords.insert("/", eval_div);
     keywords.insert("^", eval_pow);
     keywords.insert("~", Join::eval);
-    keywords.insert("args", eval_args);
 }

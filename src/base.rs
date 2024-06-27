@@ -634,7 +634,28 @@ pub enum Head {
     Symbol(String),
     Oper(String),
     Block(Box<Expr>),
+    Lang(LangItem),
     Repl(char, Option<usize>)
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum LangItem {
+    List,
+    Part,
+    Map,
+    Args
+}
+
+impl LangItem {
+    fn keyword(&self) -> &'static str {
+        use LangItem::*;
+        match self {
+            List => "$list",
+            Part => "$part",
+            Map => "$map",
+            Args => "$args"
+        }
+    }
 }
 
 impl Expr {
@@ -667,6 +688,14 @@ impl Expr {
             head: Head::Repl(chr, ix),
             source: None,
             args: vec![]
+        })
+    }
+
+    pub(crate) fn new_lang(head: LangItem, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{
+            head: Head::Lang(head),
+            source: source.map(Box::new),
+            args
         })
     }
 
@@ -793,7 +822,8 @@ impl Node {
                 Err(e) => Err(StreamError::new(e, self))
             },
             Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(env),
-            Head::Repl(_, _) => Err(StreamError::new("out of context", self))
+            Head::Repl(_, _) => Err(StreamError::new("out of context", self)),
+            Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env)
         }
     }
 
@@ -841,7 +871,12 @@ impl Node {
         let mut ret = String::new();
         if let Some(source) = source {
             ret += &source.describe();
-            ret.push('.');
+            match head {
+                Head::Lang(LangItem::Map) => ret.push(':'),
+                Head::Lang(LangItem::Args) => ret.push('@'),
+                Head::Lang(LangItem::Part) => (),
+                _ => ret.push('.')
+            }
         }
         match head {
             Head::Symbol(s) => ret += s,
@@ -870,10 +905,15 @@ impl Node {
                 if let Some(num) = opt {
                     ret += &format!("{num}");
                 }
-            }
+            },
+            Head::Lang(_) => ()
         };
         if !args.is_empty() {
-            ret.push('(');
+            match head {
+                Head::Lang(LangItem::Part | LangItem::List) => ret.push('['),
+                Head::Lang(LangItem::Map) => (),
+                _ => ret.push('(')
+            };
             let mut it = args.iter().map(Describe::describe);
             if let Some(s) = it.next() {
                 ret += &s;
@@ -882,7 +922,11 @@ impl Node {
                     ret += &s
                 }
             }
-            ret.push(')');
+            match head {
+                Head::Lang(LangItem::Part | LangItem::List) => ret.push(']'),
+                Head::Lang(LangItem::Map) => (),
+                _ => ret.push(')')
+            };
         }
         ret
     }
@@ -945,6 +989,16 @@ fn test_describe() {
 
     // lists, parts
     let orig = parse("[1,2][3,4] + [[1,2]][[3,4]]").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+
+    // map
+    let orig = parse("a:b:c").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+
+    // args
+    let orig = parse("a@b@c(d)[e]").unwrap();
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
 }
