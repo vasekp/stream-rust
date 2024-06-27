@@ -197,9 +197,28 @@ fn eval_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     try_with!(node, node.check_args_nonempty());
-    let ans = try_with!(node, node.args.iter().try_fold(Number::zero(),
-        |a, e| Ok(a + e.as_num()?)));
-    Ok(Item::new_number(ans))
+    let mut iter = node.args.iter();
+    match iter.next().unwrap() {
+        Item::Number(init) => {
+            let ans = try_with!(node, iter.try_fold(init.to_owned(),
+                |a, e| Ok(a + e.as_num()?)));
+            Ok(Item::new_number(ans))
+        },
+        Item::Char(ref ch) => {
+            let abc = env.alphabet();
+            let (index, case) = try_with!(node, abc.ord_case(ch));
+            let ans = try_with!(node, iter.try_fold(index.into(),
+                |a, e| {
+                    match e {
+                        Item::Number(ref num) => Ok(a + num),
+                        Item::Char(ref ch) => Ok(a + abc.ord_case(ch)?.0),
+                        _ => Err(format!("expected number or character, found {:?}", e).into())
+                    }
+                }));
+            Ok(Item::new_char(abc.chr_case(&ans, case)))
+        },
+        item => Err(StreamError::new(format!("expected number or character, found {:?}", item), node.into()))
+    }
 }
 
 fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
@@ -259,6 +278,7 @@ fn eval_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
 fn test_opers() {
     use crate::parser::parse;
     let env = Default::default();
+
     assert_eq!(parse("1+(-2)").unwrap().eval(&env).unwrap().to_string(), "-1");
     assert_eq!(parse("(-1)-(-2)").unwrap().eval(&env).unwrap().to_string(), "1");
     assert_eq!(parse("2*(-4)").unwrap().eval(&env).unwrap().to_string(), "-8");
@@ -270,6 +290,11 @@ fn test_opers() {
     assert_eq!(parse("0^0").unwrap().eval(&env).unwrap().to_string(), "1");
     assert_eq!(parse("0^1").unwrap().eval(&env).unwrap().to_string(), "0");
     assert!(parse("1^(-1)").unwrap().eval(&env).is_err());
+
+    assert_eq!(parse("'a'+'b'+'c'").unwrap().eval(&env).unwrap().to_string(), "'f'");
+    assert_eq!(parse("'E'+3+'a'").unwrap().eval(&env).unwrap().to_string(), "'I'");
+    assert_eq!(parse("'x'+'Y'+'z'").unwrap().eval(&env).unwrap().to_string(), "'w'");
+    assert!(parse("1+'a'").unwrap().eval(&env).is_err());
 }
 
 
