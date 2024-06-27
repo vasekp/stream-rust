@@ -179,13 +179,22 @@ impl Describe for Item {
 }
 
 impl PartialEq for Item {
+    /// `PartialEq::eq()` must be used with caution because if asked of two infinite streams it
+    /// will never return.
     fn eq(&self, other: &Self) -> bool {
         use Item::*;
         match (self, other) {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
-            _ => todo!()
+            (Stream(x1), Stream(x2)) => {
+                let l1 = x1.length();
+                let l2 = x2.length();
+                if !Length::possibly_eq(&l1, &l2) { return false; }
+                x1.iter().zip(x2.iter())
+                    .all(|(x, y)| x == y)
+            },
+            _ => false
         }
     }
 }
@@ -539,6 +548,19 @@ impl Length {
             AtMost(x) => AtMost(x.clone()),
             UnknownFinite => UnknownFinite,
             _ => Unknown
+        }
+    }
+
+    fn possibly_eq(l1: &Length, l2: &Length) -> bool {
+        use Length::*;
+        match (l1, l2) {
+            (Unknown, _) | (_, Unknown) => true,
+            (Infinite, Infinite) => true,
+            (Infinite, _) | (_, Infinite) => false,
+            (Exact(x), Exact(y)) => x == y,
+            (Exact(x), AtMost(y)) => x <= y,
+            (AtMost(x), Exact(y)) => y <= x,
+            _ => true
         }
     }
 }
@@ -907,10 +929,9 @@ fn test_describe() {
     assert_eq!(orig, copy);
 
     // value types
-    let orig = parse("[1,true,'a\"b']").unwrap();
+    let orig = parse(r#"[1,true,'a"\'b\nc',"a'b\"c\n"]"#).unwrap();
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
-    // TODO: strings
 
     // character escaping
     let orig = parse("'a\\n\\r\\t\\'\\\"'").unwrap();
