@@ -122,7 +122,7 @@ struct MapIter<'node> {
 impl Map {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_source(env)?;
-        let source = try_with!(node, node.source_checked()?.to_item()?.into_stream());
+        let source = try_with!(node, node.source_checked()?.as_item()?.to_stream());
         let body = match node.args.len() {
             1 => try_with!(node, node.args[0].to_node()),
             _ => return Err(StreamError::new("exactly 1 argument required", node))
@@ -315,16 +315,12 @@ impl Join {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
-        let mut string = None;
-        for arg in &node.args {
+        let mut iter = node.args.iter();
+        let string = try_with!(node, iter.next().unwrap().as_stream()).is_string();
+        for arg in iter {
             let stream = try_with!(node, arg.as_stream());
-            match string {
-                None => string = Some(stream.is_string()),
-                Some(string) => {
-                    if stream.is_string() != string {
-                        return Err(StreamError::new("mixed streams and strings", node.into()));
-                    }
-                }
+            if stream.is_string() != string {
+                return Err(StreamError::new("mixed streams and strings", node.into()));
             }
         }
         Ok(Item::new_stream(Join{node}))

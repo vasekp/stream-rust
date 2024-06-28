@@ -111,6 +111,13 @@ impl Item {
         }
     }
 
+    pub fn to_stream(&self) -> Result<Box<dyn Stream>, BaseError> {
+        match self {
+            Item::Stream(s) => Ok(dyn_clone::clone_box(&**s)),
+            _ => Err(format!("expected stream, found {:?}", &self).into())
+        }
+    }
+
     pub fn format(&self, max_len: usize) -> (String, FormatError) {
         struct Stateful<'item> {
             item: &'item Item,
