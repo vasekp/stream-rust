@@ -316,16 +316,21 @@ impl Join {
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
         let mut iter = node.args.iter();
-        let string = try_with!(node, iter.next().unwrap().as_stream()).is_string();
+        let string = Join::is_string(iter.next().unwrap());
         for arg in iter {
-            let stream = try_with!(node, arg.as_stream());
-            if stream.is_string() != string {
-                return Err(StreamError::new("mixed streams and strings", node.into()));
+            if Join::is_string(arg) != string {
+                return Err(StreamError::new("mixed strings and non-strings", node.into()));
             }
         }
         Ok(Item::new_stream(Join{node}))
     }
-    // TODO: string+char, stream+item, item+item etc.
+
+    fn is_string(item: &Item) -> bool {
+        match item {
+            Item::Stream(stm) => stm.is_string(),
+            _ => false
+        }
+    }
 }
 
 impl Describe for Join {
@@ -336,21 +341,23 @@ impl Describe for Join {
 
 impl Stream for Join {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let first = self.node.args[0]
-            .as_stream().unwrap()
-            .iter();
+        let first = match &self.node.args[0] {
+            Item::Stream(stm) => stm.iter(),
+            item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
+        };
         Box::new(JoinIter{node: &self.node, index: 0, cur: first})
     }
 
     fn is_string(&self) -> bool {
-        self.node.args[0]
-            .as_stream().unwrap()
-            .is_string()
+        Join::is_string(&self.node.args[0])
     }
 
     fn length(&self) -> Length {
         self.node.args.iter()
-            .map(|expr| expr.as_stream().unwrap().length())
+            .map(|item| match item {
+                Item::Stream(stm) => stm.length(),
+                _ => Length::from(1)
+            })
             .reduce(|acc, e| acc + e).unwrap()
     }
 }
@@ -365,9 +372,10 @@ impl Iterator for JoinIter<'_> {
                 return next;
             } else {
                 self.index += 1;
-                self.cur = self.node.args.get(self.index)?
-                    .as_stream().unwrap()
-                    .iter();
+                self.cur = match self.node.args.get(self.index)? {
+                    Item::Stream(stm) => stm.iter(),
+                    item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
+                };
             }
         }
     }
@@ -383,7 +391,10 @@ impl SIterator for JoinIter<'_> {
             self.index += 1;
             let Some(next) = self.node.args.get(self.index)
                 else { return Ok(Some(n)); };
-            self.cur = next.as_stream().unwrap().iter();
+            self.cur = match next {
+                Item::Stream(stm) => stm.iter(),
+                item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
+            };
         }
     }
 }
@@ -404,10 +415,14 @@ fn test_join() {
 
     assert_eq!(parse("[1]~[2]").unwrap().eval(&env).unwrap().to_string(), "[1, 2]");
     assert_eq!(parse("[1]~[[2]]").unwrap().eval(&env).unwrap().to_string(), "[1, [2]]");
-    assert!(parse("[1]~2").unwrap().eval(&env).is_err());
+    assert_eq!(parse("[1]~2~[3]").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
+    assert_eq!(parse("1~2~3").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
+    assert_eq!(parse("0~seq").unwrap().eval(&env).unwrap().to_string(), "[0, 1, 2, ...");
+    assert_eq!(parse("(0~1..3~4)[3]").unwrap().eval(&env).unwrap().to_string(), "2");
+    assert_eq!(parse("(0~1..3~4)[4]").unwrap().eval(&env).unwrap().to_string(), "3");
     assert!(parse("[1]~\"a\"").unwrap().eval(&env).is_err());
     assert!(parse("\"a\"~[1]").unwrap().eval(&env).is_err());
-    assert!(parse("\"a\"~[\"b\"]").unwrap().eval(&env).is_err());
+    assert!(parse("\"a\"~['b']").unwrap().eval(&env).is_err());
 }
 
 

@@ -531,6 +531,8 @@ where T: Iterator<Item = V>,
       U: FnMut(V) -> Result<Item, StreamError>
 { }
 
+impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
+
 
 /// The enum returned by [`Stream::length()`].
 #[derive(Debug, Clone, PartialEq)]
