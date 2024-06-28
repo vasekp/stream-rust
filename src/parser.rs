@@ -101,7 +101,7 @@ fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
         'a'..='z' | 'A'..='Z' | '_' => if slice == "true" || slice == "false" { Bool } else { Ident },
         '"' => String,
         '\'' => Char,
-        '.' | ':' | '@' => Chain,
+        '.' | ':' | '@' => if slice == ".." { Oper } else { Chain },
         c if OPERS.contains(c) => Oper,
         '(' | '[' | '{' => Open,
         ')' | ']' | '}' => Close,
@@ -158,9 +158,6 @@ impl<'str> Iterator for Tokenizer<'str> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let (start, ch) = self.iter.next()?;
-        if ch == ';' {
-            return None;
-        }
         let class = char_class(ch);
         use CharClass::*;
         let res = match class {
@@ -170,10 +167,13 @@ impl<'str> Iterator for Tokenizer<'str> {
             },
             Delim => self.skip_until(ch),
             Other => Ok(()),
-            Comment => unreachable!()
+            Comment => return None
         };
         if class == CharClass::Space {
             return self.next();
+        }
+        if ch == '.' && matches!(self.iter.peek(), Some(&(_, '.'))) {
+            self.iter.next();
         }
         let end = match self.iter.peek() {
             Some(&(pos, _)) => pos,
@@ -238,12 +238,13 @@ fn test_tokenizer() {
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "b"))));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"abc_12  3..:<=>xy'a"b'c"d'e""""#); // character classes
+    let mut tk = Tokenizer::new(r#"abc_12  3...::<=>xy'a"b'c"d'e""""#); // character classes
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "abc_12")))); // mixed alpha, numeric, _ should be single token
     assert_eq!(tk.next(), Some(Ok(Token(Number, "3")))); // space ignored, but prevents gluing to previous
-    assert_eq!(tk.next(), Some(Ok(Token(Chain, ".")))); // should remain single character
-    assert_eq!(tk.next(), Some(Ok(Token(Chain, ".")))); // should remain separate
-    assert_eq!(tk.next(), Some(Ok(Token(Chain, ":")))); // ditto
+    assert_eq!(tk.next(), Some(Ok(Token(Oper, "..")))); // greedy & special case
+    assert_eq!(tk.next(), Some(Ok(Token(Chain, ".")))); // third in a row does not merge
+    assert_eq!(tk.next(), Some(Ok(Token(Chain, ":")))); // should remain separate
+    assert_eq!(tk.next(), Some(Ok(Token(Chain, ":")))); // should remain single character
     assert_eq!(tk.next(), Some(Ok(Token(Oper, "<=>")))); // relational symbols merged
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "xy")))); // alphanumeric merged, but not with previous
     assert_eq!(tk.next(), Some(Ok(Token(Char, "'a\"b'")))); // " within '
@@ -672,6 +673,7 @@ fn get_op(op: &str) -> (u32, bool) {
         "*" => (3, true),
         "/" => (3, false),
         "^" => (4, false),
+        ".." => (5, false),
         _ => todo!()
     }
 }
@@ -753,6 +755,14 @@ fn test_parser() {
     assert_eq!(parse("(1"), err("missing close bracket: ')'"));
     assert_eq!(parse("1)"), err("unexpected closing bracket"));
     assert_eq!(parse("(1;2)"), err("missing close bracket: ')'"));
+
+    assert_eq!(parse("a.b..c.d"), Ok(Expr::new_op("..", None,
+        vec![Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![]),
+        Expr::new_node("d", Some(Expr::new_node("c", None, vec![])), vec![])])));
+    assert_eq!(parse("a..b..c"), Ok(Expr::new_op("..", None,
+        vec![Expr::new_op("..", None,
+            vec![Expr::new_node("a", None, vec![]), Expr::new_node("b", None, vec![])]),
+            Expr::new_node("c", None, vec![])])));
 
     assert_eq!(parse("{1}"), Ok(Expr::new_block(Item::new_number(1).into(), None, vec![])));
     assert_eq!(parse("{}"), err("empty block"));
@@ -894,4 +904,7 @@ fn test_prec() {
         Expr::new_op("-", None, vec![Item::new_number(1).into()]),
         Item::new_number(2).into()])));
     assert_eq!(parse("*1*2"), err("cannot appear here"));
+    // -(1..1) (error)
+    assert_eq!(parse("-1..1"), Ok(Expr::new_op("-", None,
+        vec![Expr::new_op("..", None, vec![Item::new_number(1).into(), Item::new_number(1).into()])])));
 }

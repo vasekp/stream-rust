@@ -334,5 +334,6 @@ fn test_range_length() {
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::eval);
     keywords.insert("range", Range::eval);
+    keywords.insert("..", Range::eval);
     keywords.insert("len", eval_len);
 }
