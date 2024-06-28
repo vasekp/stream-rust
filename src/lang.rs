@@ -444,9 +444,7 @@ fn test_args() {
     assert_eq!(parse("range@range(3)").unwrap().eval(&env).unwrap().to_string(), "[1]");
     assert_eq!(parse("range@[1,[2]][2]").unwrap().eval(&env).unwrap().to_string(), "[1, 2]");
     assert!(parse("range@[1,[2]][1]").unwrap().eval(&env).is_err());
-    assert!(parse("range.args(3)").unwrap().eval(&env).is_err());
-    assert!(parse("range(3).args([3])").unwrap().eval(&env).is_err());
-    assert!(parse("3.args([1])").unwrap().eval(&env).is_err());
+    assert!(parse("range@(3)").unwrap().eval(&env).is_err());
     assert!(parse("range@seq").unwrap().eval(&env).is_err());
 }
 
