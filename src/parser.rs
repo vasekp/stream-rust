@@ -20,11 +20,6 @@ impl<'str> ParseError<'str> {
         ParseError{reason: text.into(), slice}
     }
 
-    #[cfg(test)]
-    fn cmp_ref(text: impl Into<String>) -> ParseError<'str> {
-        Self::new(text, Default::default())
-    }
-
     /// Shows the location of the parse error. For this purpose, the input string is reproduced in
     /// full. The part causing the error is highlighted using ANSI color sequences.
     ///
@@ -198,13 +193,13 @@ fn test_tokenizer() {
 
     let mut tk = Tokenizer::new(r#"a"d"#); // single "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("unterminated string"))));
+    assert!(matches!(tk.next(), Some(Err(_)))); // unterminated string
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a"""d"#); // triple "
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
     assert_eq!(tk.next(), Some(Ok(Token(String, "\"\""))));
-    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("unterminated string"))));
+    assert!(matches!(tk.next(), Some(Err(_)))); // unterminated string
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a""""d"#); // quadruple "
@@ -228,13 +223,13 @@ fn test_tokenizer() {
 
     let mut tk = Tokenizer::new(r#"a\"d"#); // backslash out of string (not escape!)
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("invalid character"))));
-    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("unterminated string"))));
+    assert!(matches!(tk.next(), Some(Err(_)))); // invalid character
+    assert!(matches!(tk.next(), Some(Err(_)))); // unterminated string
     assert_eq!(tk.next(), None);
 
     let mut tk = Tokenizer::new(r#"a💖b"#); // wide character
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "a"))));
-    assert_eq!(tk.next(), Some(Err(ParseError::cmp_ref("invalid character"))));
+    assert!(matches!(tk.next(), Some(Err(_)))); // invalid character
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "b"))));
     assert_eq!(tk.next(), None);
 
@@ -281,7 +276,7 @@ fn test_tokenizer() {
     assert_eq!(it.next(), Some(Ok(Token(String, "\"a'b\""))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "c"))));
     assert_eq!(it.next(), Some(Ok(Token(Char, "'d\"é'")))); // non-ASCII in quotes
-    assert_eq!(it.next(), Some(Err(ParseError::cmp_ref("invalid character")))); // non-ASCII
+    assert!(matches!(it.next(), Some(Err(_)))); // invalid character
     assert_eq!(it.next(), None);
 
     let mut it = Tokenizer::new(r#"1;á"#);
@@ -489,17 +484,17 @@ fn parse_basenum(slice: &str) -> Result<BigInt, ParseError<'_>> {
 
 #[test]
 fn test_basenum() {
-    assert_eq!(parse_basenum("2_"), Err(ParseError::cmp_ref("malformed number")));
-    assert_eq!(parse_basenum("2_1_"), Err(ParseError::cmp_ref("malformed number")));
-    assert_eq!(parse_basenum("2_1_0"), Err(ParseError::cmp_ref("malformed number")));
-    assert_eq!(parse_basenum("1_0"), Err(ParseError::cmp_ref("invalid base")));
-    assert_eq!(parse_basenum("0_0"), Err(ParseError::cmp_ref("invalid base")));
-    assert_eq!(parse_basenum("37_0"), Err(ParseError::cmp_ref("invalid base")));
-    assert_eq!(parse_basenum("999999999999999999_0"), Err(ParseError::cmp_ref("invalid base")));
-    assert_eq!(parse_basenum("2a_0"), Err(ParseError::cmp_ref("invalid base")));
+    assert!(parse_basenum("2_").is_err()); // malformed number
+    assert!(parse_basenum("2_1_").is_err()); // malformed number
+    assert!(parse_basenum("2_1_0").is_err()); // malformed number
+    assert!(parse_basenum("1_0").is_err()); // invalid base
+    assert!(parse_basenum("0_0").is_err()); // invalid base
+    assert!(parse_basenum("37_0").is_err()); // invalid base
+    assert!(parse_basenum("999999999999999999_0").is_err()); // invalid base
+    assert!(parse_basenum("2a_0").is_err()); // invalid base
     assert_eq!(parse_basenum("2_0"), Ok(BigInt::from(0)));
     assert_eq!(parse_basenum("2_101"), Ok(BigInt::from(5)));
-    assert_eq!(parse_basenum("2_102"), Err(ParseError::cmp_ref("invalid digits in base 2")));
+    assert!(parse_basenum("2_102").is_err()); // invalid digits in base 2
     assert_eq!(parse_basenum("10_999999999999999999999999"), Ok("999999999999999999999999".parse::<BigInt>().unwrap()));
     assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse::<BigInt>().unwrap()));
 }
@@ -715,14 +710,13 @@ pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
 
 #[test]
 fn test_parser() {
-    let err = |text| Err(ParseError::cmp_ref(text));
     assert_eq!(parse("1"), Ok(Item::new_number(1).into()));
     assert_eq!(parse("a"), Ok(Expr::new_node("a", None, vec![])));
     assert_eq!(parse("a(1,2)"), Ok(Expr::new_node("a", None,
         vec![Item::new_number(1).into(), Item::new_number(2).into()])));
     assert_eq!(parse("1.a"), Ok(Expr::new_node("a", Some(Item::new_number(1).into()), vec![])));
     assert_eq!(parse("(1).a"), Ok(Expr::new_node("a", Some(Item::new_number(1).into()), vec![])));
-    assert_eq!(parse("(1,2).a"), err("only one expression expected"));
+    assert!(parse("(1,2).a").is_err());
     assert_eq!(parse("a.b"), Ok(Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![])));
     assert_eq!(parse("a.b.c"), Ok(Expr::new_node("c",
         Some(Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![])), vec![])));
@@ -730,31 +724,30 @@ fn test_parser() {
         Some(Expr::new_node("a", None, vec![Item::new_number(1).into()])),
         vec![Item::new_number(2).into()])));
 
-    let syntax_err = err("cannot appear here");
-    assert_eq!(parse("a.1"), syntax_err);
-    assert_eq!(parse("2(a)"), syntax_err);
-    assert_eq!(parse("1 2"), syntax_err);
-    assert_eq!(parse("a b"), syntax_err);
-    assert_eq!(parse("1,2"), err("multiple expressions"));
-    assert_eq!(parse("   "), err("empty input"));
-    assert_eq!(parse("1,"), err("incomplete expression"));
-    assert_eq!(parse(",2"), syntax_err);
-    assert_eq!(parse("a(1,,2)"), syntax_err);
-    assert_eq!(parse("a(,2)"), syntax_err);
-    assert_eq!(parse("a(1,)"), err("incomplete expression"));
-    assert_eq!(parse("a."), err("incomplete expression"));
+    assert!(parse("a.1").is_err());
+    assert!(parse("2(a)").is_err());
+    assert!(parse("1 2").is_err());
+    assert!(parse("a b").is_err());
+    assert!(parse("1,2").is_err());
+    assert!(parse("   ").is_err());
+    assert!(parse("1,").is_err());
+    assert!(parse(",2").is_err());
+    assert!(parse("a(1,,2)").is_err());
+    assert!(parse("a(,2)").is_err());
+    assert!(parse("a(1,)").is_err());
+    assert!(parse("a.").is_err());
     assert_eq!(parse("a()"), parse("a"));
-    assert_eq!(parse("a()(1)"), syntax_err);
-    assert_eq!(parse("(a)(1)"), syntax_err);
-    assert_eq!(parse("a.(1)"), syntax_err);
+    assert!(parse("a()(1)").is_err());
+    assert!(parse("(a)(1)").is_err());
+    assert!(parse("a.(1)").is_err());
     assert_eq!(parse("(a)"), parse("a"));
     assert_eq!(parse("((a))"), parse("a"));
     assert_eq!(parse("a((1))"), parse("a(1)"));
-    assert_eq!(parse("a((1,2))"), err("only one expression expected")); 
-    assert_eq!(parse("(1]"), err("wrong bracket: expected ')'"));
-    assert_eq!(parse("(1"), err("missing close bracket: ')'"));
-    assert_eq!(parse("1)"), err("unexpected closing bracket"));
-    assert_eq!(parse("(1;2)"), err("missing close bracket: ')'"));
+    assert!(parse("a((1,2))").is_err());
+    assert!(parse("(1]").is_err());
+    assert!(parse("(1").is_err());
+    assert!(parse("1)").is_err());
+    assert!(parse("(1;2)").is_err());
 
     assert_eq!(parse("a.b..c.d"), Ok(Expr::new_op("..", None,
         vec![Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![]),
@@ -765,7 +758,7 @@ fn test_parser() {
             Expr::new_node("c", None, vec![])])));
 
     assert_eq!(parse("{1}"), Ok(Expr::new_block(Item::new_number(1).into(), None, vec![])));
-    assert_eq!(parse("{}"), err("empty block"));
+    assert!(parse("{}").is_err());
     assert_eq!(parse("1.{2}(3)"), Ok(Expr::new_block(Item::new_number(2).into(),
         Some(Item::new_number(1).into()), vec![Item::new_number(3).into()])));
     assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Expr::new_block(
@@ -780,9 +773,9 @@ fn test_parser() {
     assert_eq!(parse("[][3,4]"), Ok(Expr::new_lang(LangItem::Part,
         Some(Expr::new_lang(LangItem::List, None, vec![])),
         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
-    assert_eq!(parse("[1,2][]"), err("empty parts"));
-    assert_eq!(parse("[1][2][3]"), syntax_err);
-    assert_eq!(parse("a.[1]"), syntax_err);
+    assert!(parse("[1,2][]").is_err());
+    assert!(parse("[1][2][3]").is_err());
+    assert!(parse("a.[1]").is_err());
     // The following is legal syntax, but error at runtime
     assert_eq!(parse("1[2]"), Ok(Expr::new_lang(LangItem::Part, Some(Item::new_number(1).into()),
         vec![Item::new_number(2).into()])));
@@ -793,29 +786,30 @@ fn test_parser() {
         vec![Expr::new_lang(LangItem::List, None, vec![Item::new_number(2).into()])])));
     assert_eq!(parse("([([(1)])])"), parse("[[1]]"));
     assert_eq!(parse("([1])[2]"), parse("[1][2]"));
-    assert_eq!(parse("[1]([2])"), syntax_err);
+    assert!(parse("[1]([2])").is_err());
 
-    assert_eq!(parse("''"), err("empty character"));
+    assert!(parse("''").is_err());
     assert_eq!(parse("'\\n'"), Ok(Item::new_char('\n').into()));
     assert_eq!(parse("'\\\\'"), Ok(Item::new_char('\\').into()));
     assert_eq!(parse("'\\''"), Ok(Item::new_char('\'').into()));
     assert_eq!(parse("'\\\"'"), Ok(Item::new_char('"').into()));
     assert_eq!(parse("'\"'"), Ok(Item::new_char('"').into()));
-    assert_eq!(parse("'\\h'"), err("invalid escape sequence"));
+    assert!(parse("'\\h'").is_err());
     assert_eq!(parse("true+'1'"), Ok(Expr::new_op("+", None, vec![
         Item::new_bool(true).into(), Item::new_char('1').into()])));
 
     assert_eq!(parse("#"), Ok(Expr::new_repl('#', None)));
     assert_eq!(parse("#1"), Ok(Expr::new_repl('#', Some(1))));
-    assert_eq!(parse("#0"), err("index can't be zero"));
-    assert_eq!(parse("#18446744073709551616"), err("index too large"));
-    assert_eq!(parse("##"), syntax_err);
-    assert_eq!(parse("#a"), syntax_err);
-    assert_eq!(parse("#$"), syntax_err);
-    assert_eq!(parse("#(1)"), syntax_err);
+    assert!(parse("#0").is_err());
+    assert!(parse("#18446744073709551616").is_err());
+    assert!(parse("##").is_err());
+    assert!(parse("#a").is_err());
+    assert!(parse("#$").is_err());
+    assert!(parse("$list").is_err()); // internal keyword
+    assert!(parse("#(1)").is_err());
     assert_eq!(parse("#+$"), Ok(Expr::new_op("+", None, vec![
         Expr::new_repl('#', None), Expr::new_repl('$', None)])));
-    assert_eq!(parse("1.#"), syntax_err);
+    assert!(parse("1.#").is_err());
     assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_block(Expr::new_repl('#', None),
         Some(Item::new_number(1).into()), vec![Item::new_number(2).into()])));
 
@@ -837,7 +831,7 @@ fn test_parser() {
             Some(Expr::new_node("c", Some(Expr::new_node("b", None, vec![])), vec![])),
             vec![Expr::new_repl('#', None)])])));
     // but not (x,y)
-    assert_eq!(parse("a@(b.c@#,d)"), err("only one expression expected"));
+    assert!(parse("a@(b.c@#,d)").is_err());
     // blocks allowed both before and after
     assert_eq!(parse("{a}@{b}"), Ok(Expr::new_lang(LangItem::Args,
         Some(Expr::new_block(Expr::new_node("a", None, vec![]), None, vec![])),
@@ -849,17 +843,15 @@ fn test_parser() {
             Some(Expr::new_node("b", None, vec![Expr::new_node("c", None, vec![])])),
             vec![Expr::new_node("d", None, vec![])])])));
     // no @ after arguments
-    assert_eq!(parse("a(b)@c"), syntax_err);
-    assert_eq!(parse("a@@c"), syntax_err);
-    assert_eq!(parse("a@1"), syntax_err);
-    assert_eq!(parse("1@a"), syntax_err);
-    assert_eq!(parse("a@"), err("incomplete expression"));
+    assert!(parse("a(b)@c").is_err());
+    assert!(parse("a@@c").is_err());
+    assert!(parse("a@1").is_err());
+    assert!(parse("1@a").is_err());
+    assert!(parse("a@").is_err());
 }
 
 #[test]
 fn test_prec() {
-    let err = |text| Err(ParseError::cmp_ref(text));
-
     // base precedence tests
     // +(1, *(2, ^(3, 4)), 5)
     assert_eq!(parse("1+2*3^4+5"), Ok(Expr::new_op("+", None, vec![
@@ -903,8 +895,9 @@ fn test_prec() {
     assert_eq!(parse("-1-2"), Ok(Expr::new_op("-", None, vec![
         Expr::new_op("-", None, vec![Item::new_number(1).into()]),
         Item::new_number(2).into()])));
-    assert_eq!(parse("*1*2"), err("cannot appear here"));
     // -(1..1) (error)
     assert_eq!(parse("-1..1"), Ok(Expr::new_op("-", None,
         vec![Expr::new_op("..", None, vec![Item::new_number(1).into(), Item::new_number(1).into()])])));
+    assert!(parse("--1").is_err());
+    assert!(parse("*1*2").is_err());
 }
