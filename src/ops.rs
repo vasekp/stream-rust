@@ -270,6 +270,14 @@ fn test_range() {
     assert!(parse("range('a', 1)").unwrap().eval(&env).is_err());
     assert!(parse("range(1, 'a')").unwrap().eval(&env).is_err());
     assert!(parse("range('a', 'h', 'c')").unwrap().eval(&env).is_err());
+
+    assert_eq!(parse("1..3").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
+    assert_eq!(parse("3..3").unwrap().eval(&env).unwrap().to_string(), "[3]");
+    assert_eq!(parse("3..1").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert!(parse("1..2..3").unwrap().eval(&env).is_err());
+    assert_eq!(parse("'a'..'z'").unwrap().eval(&env).unwrap().to_string(), "['a', 'b', 'c', ...");
+    assert_eq!(parse("'A'..'z'").unwrap().eval(&env).unwrap().to_string(), "['A', 'B', 'C', ...");
+    assert!(parse("'a'..'á'").unwrap().eval(&env).is_err());
 }
 
 #[test]
