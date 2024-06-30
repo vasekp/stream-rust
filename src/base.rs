@@ -536,6 +536,24 @@ where T: Iterator<Item = V>,
 
 impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
 
+pub struct Repeat<'node> {
+    pub item: &'node Item
+}
+
+impl Iterator for Repeat<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(Ok(self.item.clone()))
+    }
+}
+
+impl SIterator for Repeat<'_> {
+    fn skip_n(&mut self, _n: Number) -> Result<Option<Number>, StreamError> {
+        Ok(None)
+    }
+}
+
 
 /// The enum returned by [`Stream::length()`].
 #[derive(Debug, Clone, PartialEq)]

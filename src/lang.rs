@@ -249,8 +249,10 @@ impl Describe for Plus {
 impl Stream for Plus {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let args = self.node.args.iter()
-            .map(|item| item.as_stream().unwrap().iter()) // TODO
-            .collect();
+            .map(|item| match item {
+                Item::Stream(stm) => stm.iter(),
+                item => Box::new(Repeat{item})
+            }).collect();
         Box::new(PlusIter{args, env: &self.env})
     }
 
@@ -260,8 +262,10 @@ impl Stream for Plus {
 
     fn length(&self) -> Length {
         self.node.args.iter()
-            .map(|item| item.as_stream().unwrap().length()) // TODO
-            .reduce(|a, e| Length::smaller(&a, &e)).unwrap()
+            .map(|item| match item {
+                Item::Stream(stm) => stm.length(),
+                _ => Length::Infinite
+            }).reduce(|a, e| Length::smaller(&a, &e)).unwrap()
     }
 }
 
@@ -365,6 +369,21 @@ fn test_opers() {
     assert_eq!(parse("'E'+3+'a'").unwrap().eval(&env).unwrap().to_string(), "'I'");
     assert_eq!(parse("'x'+'Y'+'z'").unwrap().eval(&env).unwrap().to_string(), "'w'");
     assert!(parse("1+'a'").unwrap().eval(&env).is_err());
+
+    assert_eq!(parse("1..5+3+[0,10,20]").unwrap().eval(&env).unwrap().to_string(), "[4, 15, 26]");
+    assert_eq!(parse("1..3+3+seq").unwrap().eval(&env).unwrap().to_string(), "[5, 7, 9]");
+    assert_eq!(parse("'A'..'e'+3+[0,10,20]").unwrap().eval(&env).unwrap().to_string(), "['D', 'O', 'Z']");
+    assert_eq!(parse("\"AbCdE\"+3+[0,10,20]").unwrap().eval(&env).unwrap().to_string(), "\"DoZ\"");
+    assert_eq!(parse("\"Test\"+13+13").unwrap().eval(&env).unwrap().to_string(), "\"Test\"");
+    assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval(&env).unwrap().to_string(), "\"cmqo\"");
+    assert_eq!(parse("(1..5+3+[]).len").unwrap().eval(&env).unwrap().to_string(), "0");
+    assert_eq!(parse("(1..5+3+seq).len").unwrap().eval(&env).unwrap().to_string(), "5");
+    assert_eq!(parse(r#""abc"+['d',5,'f']"#).unwrap().eval(&env).unwrap().to_string(), "\"egi\"");
+    assert_eq!(parse(r#"['a','b','c']+"def""#).unwrap().eval(&env).unwrap().to_string(), "['e', 'g', 'i']");
+    assert_eq!(parse(r#"['a','b',3]+"def""#).unwrap().eval(&env).unwrap().to_string(), "['e', 'g', <!>");
+    assert_eq!(parse("seq+true").unwrap().eval(&env).unwrap().to_string(), "[<!>");
+    assert!(parse("true+false").unwrap().eval(&env).is_err());
+    assert!(parse("1+\"a\"").unwrap().eval(&env).is_err());
 }
 
 
