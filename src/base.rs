@@ -5,6 +5,7 @@ use crate::utils::describe_range;
 use num::{Signed, One, Zero};
 use crate::keywords::find_keyword;
 use std::cell::Cell;
+use std::rc::Rc;
 pub use crate::alphabet::*;
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -804,7 +805,7 @@ impl Expr {
 
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
     /// `Node::eval()`.
-    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
+    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
             Expr::Eval(node) => node.eval(env)
@@ -857,7 +858,7 @@ impl Node {
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
-    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
+    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
         match self.head {
             Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
                 Ok(func) => func(self, env),
@@ -869,7 +870,7 @@ impl Node {
         }
     }
 
-    pub(crate) fn eval_all(self, env: &Env) -> Result<ENode, StreamError> {
+    pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
         let source = match self.source {
             Some(source) => Some((*source).eval(env)?),
             None => None
@@ -880,14 +881,14 @@ impl Node {
         Ok(ENode{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, env: &Env) -> Result<Node, StreamError> {
+    pub(crate) fn eval_source(self, env: &Rc<Env>) -> Result<Node, StreamError> {
         let source = self.source.map(|x| (*x).eval(env))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
         Ok(Node{head: self.head, source, args: self.args})
     }
 
-    pub(crate) fn eval_args(self, env: &Env) -> Result<Node, StreamError> {
+    pub(crate) fn eval_args(self, env: &Rc<Env>) -> Result<Node, StreamError> {
         let args = self.args.into_iter()
             .map(|x| x.eval(env).map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;

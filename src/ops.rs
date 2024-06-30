@@ -2,6 +2,7 @@
 use crate::base::*;
 use num::{Zero, One, ToPrimitive, Signed};
 use crate::base::Describe;
+use std::rc::Rc;
 
 /// An infinite stream returning consecutive numbers, `seq`.
 ///
@@ -46,7 +47,7 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         let (from, step) = try_with!(node, match node.args[..] {
@@ -125,7 +126,7 @@ pub struct Range {
     to: Number,
     step: Number,
     rtype: RangeType,
-    env: Env
+    env: Rc<Env>
 }
 
 #[derive(Clone, Copy)]
@@ -161,7 +162,7 @@ impl Stream for Range {
 }
 
 impl Range {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         let (from, to, step, rtype) = try_with!(node, match node.args[..] {
@@ -187,7 +188,7 @@ impl Range {
                 },
             _ => Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
         });
-        Ok(Item::new_stream(Range{from, to, step, rtype, env: env.clone()}))
+        Ok(Item::new_stream(Range{from, to, step, rtype, env: Rc::clone(env)}))
     }
 
     fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<Number> {
@@ -295,7 +296,7 @@ fn test_range_skip() {
 }
 
 
-fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     if !node.args.is_empty() {
         return Err(StreamError::new("no arguments allowed", node.into()));

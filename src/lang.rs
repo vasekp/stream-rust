@@ -2,6 +2,7 @@
 use crate::base::*;
 use num::{One, Signed, Zero};
 use crate::base::Describe;
+use std::rc::Rc;
 
 
 /// A `Stream` formed by direct enumeration of its `Item`s.
@@ -9,7 +10,7 @@ use crate::base::Describe;
 pub struct List(Vec<Item>);
 
 impl List {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         Ok(Item::new_stream(List::from(node.args)))
@@ -86,7 +87,7 @@ impl From<String> for LiteralString {
 }
 
 
-fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_part(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let mut item = try_with!(node, node.source_checked()).to_owned();
     if node.args.is_empty() {
@@ -111,7 +112,7 @@ fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
 struct Map {
     source: Box<dyn Stream>,
     body: Node,
-    env: Env
+    env: Rc<Env>
 }
 
 struct MapIter<'node> {
@@ -120,7 +121,7 @@ struct MapIter<'node> {
 }
 
 impl Map {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_source(env)?;
         let source = try_with!(node, node.source_checked()?.as_item()?.to_stream());
         let body = match node.args.len() {
@@ -130,7 +131,7 @@ impl Map {
         if body.source.is_some() {
             return Err(StreamError::new("body already has source", node));
         }
-        Ok(Item::new_stream(Map{source, body, env: env.clone()}))
+        Ok(Item::new_stream(Map{source, body, env: Rc::clone(env)}))
     }
 }
 
@@ -155,7 +156,7 @@ impl Stream for Map {
 
 impl Clone for Map {
     fn clone(&self) -> Map {
-        Map{source: dyn_clone::clone_box(&*self.source), body: self.body.clone(), env: self.env.clone()}
+        Map{source: dyn_clone::clone_box(&*self.source), body: self.body.clone(), env: Rc::clone(&self.env)}
     }
 }
 
@@ -196,26 +197,26 @@ fn test_map() {
 #[derive(Clone)]
 struct Plus {
     node: ENode,
-    env: Env
+    env: Rc<Env>
 }
 
 struct PlusIter<'node> {
     args: Vec<Box<dyn SIterator + 'node>>,
-    env: &'node Env
+    env: &'node Rc<Env>
 }
 
 impl Plus {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
         match node.args[0] {
-            Item::Stream(_) => Ok(Item::new_stream(Plus{node, env: env.clone()})),
+            Item::Stream(_) => Ok(Item::new_stream(Plus{node, env: Rc::clone(env)})),
             _ => Ok(try_with!(node, Plus::helper(&node.args, env)))
         }
     }
 
-    fn helper(items: &[Item], env: &Env) -> Result<Item, BaseError> {
+    fn helper(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
         match iter.next().unwrap() {
             Item::Number(init) => {
@@ -295,7 +296,7 @@ impl Iterator for PlusIter<'_> {
 impl SIterator for PlusIter<'_> { }
 
 
-fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_minus(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     let args = &node.args;
@@ -307,7 +308,7 @@ fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans))
 }
 
-fn eval_times(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_times(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     try_with!(node, node.check_args_nonempty());
@@ -316,7 +317,7 @@ fn eval_times(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(ans))
 }
 
-fn eval_div(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_div(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     if node.args.len() != 2 {
@@ -330,7 +331,7 @@ fn eval_div(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(x / y))
 }
 
-fn eval_pow(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_pow(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     use num::ToPrimitive;
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
@@ -400,7 +401,7 @@ struct JoinIter<'node> {
 
 
 impl Join {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
@@ -515,7 +516,7 @@ fn test_join() {
 }
 
 
-fn eval_args(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_args(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     if node.args.len() != 1 {
         return Err(StreamError::new("exactly 1 argument expected", node));
     }
