@@ -136,10 +136,21 @@ impl Alphabet {
         }
     }
 
-    /// The 'char + char' operation. Wraps around within the alphabet. Preserves the case of the 
-    /// left-hand side operand.
+    /// Checks whether the alphabet contains `chr`.
+    pub fn contains(&self, chr: &Char) -> bool {
+        match self {
+            Alphabet::Std26 => {
+                let Char::Single(ch) = chr else {
+                    return false;
+                };
+                matches!(ch.to_ascii_lowercase().try_into(), Ok(b'a'..=b'z'))
+            },
+            _ => todo!()
+        }
+    }
+
     #[cfg(test)]
-    pub fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, BaseError> {
+    fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, BaseError> {
         let (index1, case) = self.ord_case(lhs)?;
         let (index2, _) = self.ord_case(rhs)?;
         Ok(self.chr_case(&Number::from(index1 + index2), case))

@@ -202,7 +202,8 @@ struct Plus {
 
 struct PlusIter<'node> {
     args: Vec<Box<dyn SIterator + 'node>>,
-    env: &'node Rc<Env>
+    env: &'node Rc<Env>,
+    is_string: bool
 }
 
 impl Plus {
@@ -254,7 +255,7 @@ impl Stream for Plus {
                 Item::Stream(stm) => stm.iter(),
                 item => Box::new(Repeat{item})
             }).collect();
-        Box::new(PlusIter{args, env: &self.env})
+        Box::new(PlusIter{args, env: &self.env, is_string: self.is_string()})
     }
 
     fn is_string(&self) -> bool {
@@ -274,18 +275,42 @@ impl Iterator for PlusIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.args.iter_mut()
-                .map(|iter| (*iter).next())
-                .collect::<Option<Result<Vec<_>, _>>>()
-        {
+        fn aux_node(inputs: Vec<Item>) -> Node {
+            Node {
+                head: Head::Oper("+".into()),
+                source: None,
+                args: inputs.into_iter().map(Expr::new_imm).collect()
+            }
+        }
+
+        // Special case for strings: leave non-alphabet characters untouched, don't advance other
+        // iterators.
+        let first = match self.args[0].next() {
+            None => return None,
+            Some(Ok(item)) => item,
+            Some(Err(err)) => return Some(Err(err))
+        };
+        if self.is_string {
+            if let Item::Char(ref ch) = first {
+                if !self.env.alphabet().contains(ch) {
+                    return Some(Ok(first));
+                }
+            } else {
+                return Some(Ok(first));
+            }
+        }
+
+        let rest = self.args.iter_mut()
+            .skip(1)
+            .map(|iter| (*iter).next())
+            .collect::<Option<Result<Vec<_>, _>>>();
+        match rest {
             None => None,
-            Some(Ok(inputs)) => {
+            Some(Ok(mut inputs)) => {
+                inputs.insert(0, first);
                 match Plus::helper(&inputs, self.env) {
                     Ok(item) => Some(Ok(item)),
-                    Err(err) => Some(Err(StreamError::new(err, Node{
-                        head: Head::Oper("+".into()),
-                        source: None,
-                        args: inputs.into_iter().map(Expr::new_imm).collect()})))
+                    Err(err) => Some(Err(StreamError::new(err, aux_node(inputs))))
                 }
             },
             Some(Err(err)) => Some(Err(err))
@@ -385,6 +410,7 @@ fn test_opers() {
     assert_eq!(parse("seq+true").unwrap().eval(&env).unwrap().to_string(), "[<!>");
     assert!(parse("true+false").unwrap().eval(&env).is_err());
     assert!(parse("1+\"a\"").unwrap().eval(&env).is_err());
+    assert_eq!(parse(r#""Hello world!"+seq"#).unwrap().eval(&env).unwrap().to_string(), r#""Igopt cvzun!""#);
 }
 
 
