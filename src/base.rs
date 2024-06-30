@@ -365,6 +365,9 @@ pub trait Stream: DynClone + Describe {
                         }
                     },
                     Some(Err(err)) => {
+                        if i > 0 {
+                            s += ", ";
+                        }
                         s += "<!>";
                         error.set(err.into());
                         break 'a;
@@ -550,17 +553,17 @@ pub enum Length {
 }
 
 impl Length {
-    fn _at_most(value: &Length) -> Length {
+    pub fn at_most(value: &Length) -> Length {
         use Length::*;
         match value {
-            Exact(x) => AtMost(x.clone()),
-            AtMost(x) => AtMost(x.clone()),
+            Exact(x) => AtMost(x.to_owned()),
+            AtMost(x) => AtMost(x.to_owned()),
             UnknownFinite => UnknownFinite,
             _ => Unknown
         }
     }
 
-    fn possibly_eq(l1: &Length, l2: &Length) -> bool {
+    pub fn possibly_eq(l1: &Length, l2: &Length) -> bool {
         use Length::*;
         match (l1, l2) {
             (Unknown, _) | (_, Unknown) => true,
@@ -570,6 +573,18 @@ impl Length {
             (Exact(x), AtMost(y)) => x <= y,
             (AtMost(x), Exact(y)) => y <= x,
             _ => true
+        }
+    }
+
+    pub fn smaller(l1: &Length, l2: &Length) -> Length {
+        use Length::*;
+        match (l1, l2) {
+            (Infinite, len) | (len, Infinite) => len.to_owned(),
+            (Unknown, len) | (len, Unknown) => Length::at_most(len),
+            // can't be merged with previous, otherwise (UnkFin, Unk) would give at_most(Unk) == Unk
+            (UnknownFinite, len) | (len, UnknownFinite) => Length::at_most(len),
+            (Exact(x), Exact(y)) => Exact(std::cmp::min(x, y).to_owned()),
+            (Exact(x) | AtMost(x), Exact(y) | AtMost(y)) => AtMost(std::cmp::min(x, y).to_owned())
         }
     }
 }

@@ -193,33 +193,103 @@ fn test_map() {
 }
 
 
-fn eval_plus(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source());
-    try_with!(node, node.check_args_nonempty());
-    let mut iter = node.args.iter();
-    match iter.next().unwrap() {
-        Item::Number(init) => {
-            let ans = try_with!(node, iter.try_fold(init.to_owned(),
-                |a, e| Ok(a + e.as_num()?)));
-            Ok(Item::new_number(ans))
-        },
-        Item::Char(ref ch) => {
-            let abc = env.alphabet();
-            let (index, case) = try_with!(node, abc.ord_case(ch));
-            let ans = try_with!(node, iter.try_fold(index.into(),
-                |a, e| {
-                    match e {
-                        Item::Number(ref num) => Ok(a + num),
-                        Item::Char(ref ch) => Ok(a + abc.ord_case(ch)?.0),
-                        _ => Err(format!("expected number or character, found {:?}", e).into())
-                    }
-                }));
-            Ok(Item::new_char(abc.chr_case(&ans, case)))
-        },
-        item => Err(StreamError::new(format!("expected number or character, found {:?}", item), node.into()))
+#[derive(Clone)]
+struct Plus {
+    node: ENode,
+    env: Env
+}
+
+struct PlusIter<'node> {
+    args: Vec<Box<dyn SIterator + 'node>>,
+    env: &'node Env
+}
+
+impl Plus {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+        let node = node.eval_all(env)?;
+        try_with!(node, node.check_no_source());
+        try_with!(node, node.check_args_nonempty());
+        match node.args[0] {
+            Item::Stream(_) => Ok(Item::new_stream(Plus{node, env: env.clone()})),
+            _ => Ok(try_with!(node, Plus::helper(&node.args, env)))
+        }
+    }
+
+    fn helper(items: &[Item], env: &Env) -> Result<Item, BaseError> {
+        let mut iter = items.iter();
+        match iter.next().unwrap() {
+            Item::Number(init) => {
+                let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a + num));
+                Ok(Item::new_number(ans?))
+            },
+            Item::Char(ref ch) => {
+                let abc = env.alphabet();
+                let (index, case) = abc.ord_case(ch)?;
+                let ans = iter.try_fold(index.into(),
+                    |a, e| {
+                        match e {
+                            Item::Number(ref num) => Ok(a + num),
+                            Item::Char(ref ch) => Ok(a + abc.ord_case(ch)?.0),
+                            _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
+                        }
+                    })?;
+                Ok(Item::new_char(abc.chr_case(&ans, case)))
+            },
+            item => Err(format!("expected number or character, found {:?}", item).into())
+        }
     }
 }
+
+impl Describe for Plus {
+    fn describe(&self) -> String {
+        self.env.wrap_describe(self.node.describe())
+    }
+}
+
+impl Stream for Plus {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        let args = self.node.args.iter()
+            .map(|item| item.as_stream().unwrap().iter()) // TODO
+            .collect();
+        Box::new(PlusIter{args, env: &self.env})
+    }
+
+    fn is_string(&self) -> bool {
+        self.node.args[0].as_stream().unwrap().is_string()
+    }
+
+    fn length(&self) -> Length {
+        self.node.args.iter()
+            .map(|item| item.as_stream().unwrap().length()) // TODO
+            .reduce(|a, e| Length::smaller(&a, &e)).unwrap()
+    }
+}
+
+impl Iterator for PlusIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.args.iter_mut()
+                .map(|iter| (*iter).next())
+                .collect::<Option<Result<Vec<_>, _>>>()
+        {
+            None => None,
+            Some(Ok(inputs)) => {
+                match Plus::helper(&inputs, self.env) {
+                    Ok(item) => Some(Ok(item)),
+                    Err(err) => Some(Err(StreamError::new(err, Node{
+                        head: Head::Oper("+".into()),
+                        source: None,
+                        args: inputs.into_iter().map(Expr::new_imm).collect()})))
+                }
+            },
+            Some(Err(err)) => Some(Err(err))
+        }
+    }
+}
+
+impl SIterator for PlusIter<'_> { }
+
 
 fn eval_minus(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
@@ -465,7 +535,7 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("$part", eval_part);
     keywords.insert("$map", Map::eval);
     keywords.insert("$args", eval_args);
-    keywords.insert("+", eval_plus);
+    keywords.insert("+", Plus::eval);
     keywords.insert("-", eval_minus);
     keywords.insert("*", eval_times);
     keywords.insert("/", eval_div);
