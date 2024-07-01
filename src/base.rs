@@ -337,12 +337,9 @@ pub trait Stream: DynClone + Describe {
     {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
-            Some(prec) => (prec, usize::MAX),
+            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
             None => (usize::MAX, 3)
         };
-        if prec < 4 {
-            return Err(std::fmt::Error)
-        }
         let mut s = String::new();
         let mut i = 0;
         s.push('[');
@@ -394,12 +391,9 @@ pub trait Stream: DynClone + Describe {
     {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
-            Some(prec) => (prec, usize::MAX),
+            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
             None => (usize::MAX, 20)
         };
-        if prec < 4 {
-            return Err(std::fmt::Error)
-        }
         let mut s = String::new();
         let mut i = 0;
         s.push('"');
