@@ -166,6 +166,12 @@ impl Display for Item {
     }
 }
 
+impl Default for Item {
+    fn default() -> Item {
+        Item::Number(Default::default())
+    }
+}
+
 impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.type_str())?;
@@ -557,11 +563,13 @@ where T: Iterator<Item = V>,
 
 impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
 
-pub struct Repeat<'node> {
+impl SIterator for std::iter::Empty<Result<Item, StreamError>> { }
+
+pub struct Forever<'node> {
     pub item: &'node Item
 }
 
-impl Iterator for Repeat<'_> {
+impl Iterator for Forever<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -569,7 +577,7 @@ impl Iterator for Repeat<'_> {
     }
 }
 
-impl SIterator for Repeat<'_> {
+impl SIterator for Forever<'_> {
     fn skip_n(&mut self, _n: Number) -> Result<Option<Number>, StreamError> {
         Ok(None)
     }

@@ -253,7 +253,7 @@ impl Stream for Plus {
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
-                item => Box::new(Repeat{item})
+                item => Box::new(Forever{item})
             }).collect();
         Box::new(PlusIter{args, env: &self.env, is_string: self.is_string()})
     }
@@ -411,6 +411,8 @@ fn test_opers() {
     assert!(parse("true+false").unwrap().eval(&env).is_err());
     assert!(parse("1+\"a\"").unwrap().eval(&env).is_err());
     assert_eq!(parse(r#""Hello world!"+seq"#).unwrap().eval(&env).unwrap().to_string(), r#""Igopt cvzun!""#);
+    assert_eq!(parse(r#""Hello world!"+"ab""#).unwrap().eval(&env).unwrap().to_string(), r#""Ig""#);
+    assert_eq!(parse(r#""Hello world!"+"ab".repeat"#).unwrap().eval(&env).unwrap().to_string(), r#""Igmnp yptmf!""#);
 }
 
 

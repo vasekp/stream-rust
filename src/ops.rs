@@ -340,9 +340,222 @@ fn test_range_length() {
     assert_eq!(parse("range(10^9, 10^10, 2).len").unwrap().eval(&env).unwrap().to_string(), "4500000001");
 }
 
+
+#[derive(Clone)]
+pub struct Repeat {
+    item: Item,
+    count: Option<Number>
+}
+
+struct RepeatItemIter<'node> {
+    item: &'node Item,
+    count_rem: Number // None covered by stream::Forever
+}
+
+struct RepeatStreamIter<'node> {
+    stream: &'node Box<dyn Stream>,
+    iter: Box<dyn SIterator + 'node>,
+    count_rem: Option<Number>
+}
+
+impl Repeat {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        let mut node = node.eval_all(env)?;
+        let (item, count) = match (&mut node.source, node.args.len(), node.args.get_mut(0)) {
+            (Some(ref mut src), 0, None)
+                => (std::mem::take(src), None),
+            (Some(ref mut src), 1, Some(Item::Number(ref mut count)))
+                => (std::mem::take(src), Some(std::mem::take(count))),
+            _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", node.into()))
+        };
+        Ok(Item::new_stream(Repeat{item, count}))
+    }
+}
+
+impl Stream for Repeat {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        match &self.item {
+            Item::Stream(stream) => Box::new(RepeatStreamIter {
+                stream: &stream,
+                iter: stream.iter(),
+                count_rem: self.count.clone()
+            }),
+            item => match &self.count {
+                Some(count) => Box::new(RepeatItemIter{item, count_rem: count.clone()}),
+                None => Box::new(Forever{item})
+            }
+        }
+    }
+
+    fn length(&self) -> Length {
+        use Length::*;
+        if self.count == Some(Number::zero()) { return Exact(Number::zero()); }
+        match &self.item {
+            Item::Stream(stream) => {
+                if stream.is_empty() { return Exact(Number::zero()); }
+                match (stream.length(), &self.count) {
+                    (_, None) | (Infinite, _) => Infinite,
+                    (Exact(len), Some(count)) => Exact(len * count),
+                    (AtMost(len), Some(count)) => AtMost(len * count),
+                    (UnknownFinite, _) => UnknownFinite,
+                    (Unknown, _) => Unknown
+                }
+            },
+            _ => match &self.count {
+                Some(count) => Exact(count.to_owned()),
+                None => Infinite
+            }
+        }
+    }
+
+    fn is_string(&self) -> bool {
+        match &self.item {
+            Item::Stream(stream) => stream.is_string(),
+            _ => false
+        }
+    }
+}
+
+impl Describe for Repeat {
+    fn describe(&self) -> String {
+        Node::describe_helper(&Head::Symbol("repeat".into()), Some(&self.item),
+            self.clone().count.map(|count| Item::new_number(count)).as_slice())
+    }
+}
+
+impl Iterator for RepeatItemIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.count_rem.is_zero() {
+            self.count_rem -= 1;
+            Some(Ok(self.item.clone()))
+        } else {
+            None
+        }
+    }
+}
+
+impl SIterator for RepeatItemIter<'_> {
+    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
+        assert!(!n.is_negative());
+        if n > self.count_rem {
+            Ok(Some(n - &self.count_rem))
+        } else {
+            self.count_rem -= n;
+            Ok(None)
+        }
+    }
+}
+
+impl Iterator for RepeatStreamIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count_rem.as_ref().map_or(false, |count| count.is_zero()) {
+            return None;
+        }
+        let next = self.iter.next();
+        if next.is_some() {
+            return next;
+        }
+        if let Some(ref mut count) = self.count_rem {
+            *count -= 1;
+            if count.is_zero() {
+                return None;
+            }
+        }
+        self.iter = self.stream.iter();
+        self.iter.next()
+    }
+}
+
+impl SIterator for RepeatStreamIter<'_> {
+    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
+        assert!(!n.is_negative());
+
+        // If count_rem = 0, don't read the iterator! [1].repeat(0) still has iterator with
+        // 1 element in it.
+        if self.count_rem.as_ref().map_or(false, |count| count.is_zero()) {
+            return Ok(Some(n));
+        }
+
+        match self.iter.skip_n(n)? {
+            None => return Ok(None),
+            Some(remain) => n = remain
+        }
+        if let Some(ref mut count) = self.count_rem {
+            *count -= 1;
+            if count.is_zero() {
+                return Ok(Some(n));
+            }
+        }
+        self.iter = self.stream.iter();
+
+        // This point is special: we know that iter() is now newly initiated, so we can use it to
+        // determine the length regardless of whether it's statically known.
+        let (full_length, mut n) = match self.iter.skip_n(n.clone())? {
+            None => return Ok(None),
+            Some(remain) => (n - &remain, remain)
+        };
+        self.iter = self.stream.iter();
+
+        if full_length.is_zero() {
+            return Ok(Some(n));
+        }
+        let skip_full = &n / &full_length;
+        if let Some(count) = &mut self.count_rem {
+            if *count <= skip_full {
+                return Ok(Some(n - &*count * full_length));
+            } else {
+                *count -= &skip_full;
+                debug_assert!(count.is_positive());
+            }
+        }
+        n -= &skip_full * &full_length;
+        debug_assert!(n < full_length);
+        self.iter.skip_n(n)
+    }
+}
+
+#[test]
+fn test_repeat() {
+    use crate::parser::parse;
+    let env = Default::default();
+    assert_eq!(parse("1.repeat").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1, ...");
+    assert_eq!(parse("1.repeat(3)").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1]");
+    assert_eq!(parse("1.repeat(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("(1..2).repeat(2)").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 1, ...");
+    assert_eq!(parse("\"ab\".repeat").unwrap().eval(&env).unwrap().to_string(), "\"abababababababababab...");
+    assert_eq!(parse("\"ab\".repeat(3)").unwrap().eval(&env).unwrap().to_string(), "\"ababab\"");
+    assert_eq!(parse("\"ab\".repeat(0)").unwrap().eval(&env).unwrap().to_string(), "\"\"");
+    assert_eq!(parse("seq.repeat(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("[].repeat(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
+
+    assert_eq!(parse("1.repeat[10^10]").unwrap().eval(&env).unwrap().to_string(), "1");
+    assert!(parse("[].repeat[10^10]").unwrap().eval(&env).is_err());
+    assert_eq!(parse("1.repeat(10^10)[10^10]").unwrap().eval(&env).unwrap().to_string(), "1");
+    assert!(parse("1.repeat(10^10)[10^10+1]").unwrap().eval(&env).is_err());
+    assert_eq!(parse("\"abc\".repeat[10^10]").unwrap().eval(&env).unwrap().to_string(), "'a'");
+    assert_eq!(parse("[].repeat~1").unwrap().eval(&env).unwrap().to_string(), "[1]");
+    assert_eq!(parse(r#"("ab".repeat(10^10)~"cd".repeat(10^10))[4*10^10]"#).unwrap().eval(&env).unwrap().to_string(), "'d'");
+    assert!(parse("1.repeat(0)[1]").unwrap().eval(&env).is_err());
+    assert!(parse("(1..3).repeat(0)[1]").unwrap().eval(&env).is_err());
+    assert!(parse("seq.repeat(0)[1]").unwrap().eval(&env).is_err());
+
+    assert_eq!(parse("\"ab\".repeat(10^10).len").unwrap().eval(&env).unwrap().to_string(), "20000000000");
+    assert_eq!(parse("\"\".repeat(10^10).len").unwrap().eval(&env).unwrap().to_string(), "0");
+    assert_eq!(parse("seq.repeat(0).len").unwrap().eval(&env).unwrap().to_string(), "0");
+    assert_eq!(parse("1.repeat(0).len").unwrap().eval(&env).unwrap().to_string(), "0");
+    assert!(parse("\"ab\".repeat.len").unwrap().eval(&env).is_err());
+    assert!(parse("1.repeat.len").unwrap().eval(&env).is_err());
+    assert_eq!(parse("[].repeat.len").unwrap().eval(&env).unwrap().to_string(), "0");
+}
+
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::eval);
     keywords.insert("range", Range::eval);
     keywords.insert("..", Range::eval);
     keywords.insert("len", eval_len);
+    keywords.insert("repeat", Repeat::eval);
 }
