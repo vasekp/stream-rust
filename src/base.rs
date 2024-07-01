@@ -998,6 +998,8 @@ impl Node {
                 Head::Lang(LangItem::Map) => (),
                 _ => ret.push(')')
             };
+        } else if head == &Head::Lang(LangItem::List) {
+            ret += "[]";
         }
         ret
     }
@@ -1044,7 +1046,7 @@ fn test_describe() {
     assert_eq!(orig, copy);
 
     // value types
-    let orig = parse(r#"[1,true,'a"\'b\nc',"a'b\"c\n"]"#).unwrap();
+    let orig = parse(r#"[1,true,'a"\'b\nc',"a'b\"c\n",[],""]"#).unwrap();
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
 
