@@ -9,7 +9,7 @@ use num::BigInt;
 
 /// The error type returned by [`parse`]. Contains the description of the error and its location
 /// within the input string. The lifetime is bound to the lifetime of the input string.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ParseError<'str> {
     reason: String,
     slice: &'str str
@@ -35,12 +35,6 @@ impl<'str> ParseError<'str> {
 impl<'str> Display for ParseError<'str> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self.reason, f)
-    }
-}
-
-impl<'str> PartialEq for ParseError<'str> {
-    fn eq(&self, other: &ParseError<'str>) -> bool {
-        self.reason == other.reason
     }
 }
 
