@@ -843,7 +843,13 @@ impl Expr {
 
 impl From<Item> for Expr {
     fn from(item: Item) -> Expr {
-        Expr::new_imm(item)
+        Expr::Imm(item)
+    }
+}
+
+impl From<Node> for Expr {
+    fn from(item: Node) -> Expr {
+        Expr::Eval(item)
     }
 }
 
