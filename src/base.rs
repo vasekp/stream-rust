@@ -666,6 +666,12 @@ pub enum Expr {
     Eval(Node)
 }
 
+impl Default for Expr {
+    fn default() -> Expr {
+        Expr::Imm(Default::default())
+    }
+}
+
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
