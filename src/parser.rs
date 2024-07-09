@@ -588,7 +588,7 @@ fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
         debug_assert!(!chain.is_empty());
         let mut ret = chain.pop().unwrap();
         while let Some(expr) = chain.pop() {
-            ret = Expr::new_lang(LangItem::Args, Some(expr), vec![ret]);
+            //ret = Expr::new_lang(LangItem::Args, Some(expr), vec![ret]);
         }
         ret
     }
@@ -835,39 +835,35 @@ fn test_parser() {
     assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_block(Expr::new_repl('#', None),
         Some(Item::new_number(1).into()), vec![Item::new_number(2).into()])));
 
-    // [part] binds to an @ operand rather than the full chain
-    assert_eq!(parse("a.b@c@d[1]"), Ok(Expr::new_lang(LangItem::Args,
-        Some(Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![])),
-        vec![Expr::new_lang(LangItem::Args,
-            Some(Expr::new_node("c", None, vec![])),
-            vec![Expr::new_lang(LangItem::Part,
-                Some(Expr::new_node("d", None, vec![])), vec![Item::new_number(1).into()])])])));
-    // list, #, (x) may follow @
-    assert_eq!(parse("a@[1,2]"), Ok(Expr::new_lang(LangItem::Args,
-        Some(Expr::new_node("a", None, vec![])),
-        vec![Expr::new_lang(LangItem::List, None,
+    assert_eq!(parse("a.b@c@d[1]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("b".into()))),
+            Some(Expr::new_node("a", None, vec![])),
+            vec![Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("c".into()))), None,
+                vec![Expr::new_node("d", None, vec![])])])),
+        vec![Item::new_number(1).into()])));
+    // literals, list, #, (x) may follow @
+    assert_eq!(parse("a@1"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+        None, vec![Item::new_number(1).into()])));
+    assert_eq!(parse("a@[1,2]"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+        None, vec![Expr::new_lang(LangItem::List, None,
             vec![Item::new_number(1).into(), Item::new_number(2).into()])])));
-    assert_eq!(parse("a@(b.c@#)"), Ok(Expr::new_lang(LangItem::Args,
-        Some(Expr::new_node("a", None, vec![])),
-        vec![Expr::new_lang(LangItem::Args,
-            Some(Expr::new_node("c", Some(Expr::new_node("b", None, vec![])), vec![])),
-            vec![Expr::new_repl('#', None)])])));
+    assert_eq!(parse("a@(b.c@#)"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+        None, vec![Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("c".into()))),
+            Some(Expr::new_node("b", None, vec![])), vec![Expr::new_repl('#', None)])])));
     // but not (x,y)
     assert!(parse("a@(b.c@#,d)").is_err());
     // blocks allowed both before and after
-    assert_eq!(parse("{a}@{b}"), Ok(Expr::new_lang(LangItem::Args,
-        Some(Expr::new_block(Expr::new_node("a", None, vec![]), None, vec![])),
-        vec![Expr::new_block(Expr::new_node("b", None, vec![]), None, vec![])])));
-    // here both (c) and [d] bind to b before @
-    assert_eq!(parse("a@b(c)[d]"), Ok(Expr::new_lang(LangItem::Args,
-        Some(Expr::new_node("a", None, vec![])),
-        vec![Expr::new_lang(LangItem::Part,
-            Some(Expr::new_node("b", None, vec![Expr::new_node("c", None, vec![])])),
-            vec![Expr::new_node("d", None, vec![])])])));
+    assert_eq!(parse("{a}@{b}"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Block(Box::new(
+            Expr::new_node("a", None, vec![]))))),
+        None, vec![Expr::new_block(Expr::new_node("b", None, vec![]), None, vec![])])));
+    // (c) binds to b but [d] to entire expression
+    assert_eq!(parse("a@b(c)[d]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+            None, vec![Expr::new_node("b", None, vec![Expr::new_node("c", None, vec![])])])),
+        vec![Expr::new_node("d", None, vec![])])));
     // no @ after arguments
     assert!(parse("a(b)@c").is_err());
     assert!(parse("a@@c").is_err());
-    assert!(parse("a@1").is_err());
     assert!(parse("1@a").is_err());
     assert!(parse("a@").is_err());
 }
@@ -937,31 +933,30 @@ impl<'str> Parser<'str> {
         use crate::base::{Node, Head};
         let Some(tok) = self.tk.next().transpose()? else { return Ok(None); };
         use TokenClass as TC;
-        let mut node = match tok {
-            Token(TC::Ident, name) => Node{head: Head::Symbol(name.into()), source: None, args: vec![]},
+        let head = match tok {
+            Token(TC::Ident, name) => Head::Symbol(name.into()),
             Token(TC::Open, bkt @ "{") => {
                 match &mut self.read_args(bkt)?[..] {
-                    [e] => Node{head: Head::Block(Box::new(std::mem::take(e))), source: None, args: vec![]},
+                    [e] => Head::Block(Box::new(std::mem::take(e))),
                     [] => return Err(ParseError::new("empty block", self.tk.slice_from(bkt))),
                     _ => return Err(ParseError::new("only one expression expected", self.tk.slice_from(bkt)))
                 }
             },
             Token(_, tok) => return Err(ParseError::new("cannot appear here", tok))
         };
-        match self.tk.peek()? {
+        Ok(Some(match self.tk.peek()? {
             Some(&Token(TC::Open, bkt @ "(")) => {
                 self.tk.next();
-                node.args = self.read_args(bkt)?;
+                Node{head, source: None, args: self.read_args(bkt)?}
             },
             Some(&Token(TC::Chain, tok @ "@")) => {
                 self.tk.next();
                 let arg = self.read_expr_part()?
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
-                node = Node{head: Head::Lang(LangItem::Args), source: None, args: vec![Expr::Eval(node), arg]};
+                Node{head: Head::Lang(LangItem::Args(Box::new(head))), source: None, args: vec![arg]}
             },
-            _ => ()
-        }
-        Ok(Some(node))
+            _ => Node{head, source: None, args: vec![]}
+        }))
     }
 
     fn read_expr_part(&mut self) -> Result<Option<Expr>, ParseError<'str>> {
