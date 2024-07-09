@@ -479,8 +479,8 @@ impl<'str> Parser<'str> {
     fn read_expr(&mut self) -> Result<Option<Expr>, ParseError<'str>> {
         use TokenClass as TC;
 
-        struct StackEntry {
-            op: String,
+        struct StackEntry<'str> {
+            op: &'str str,
             prec: u32,
             args: Vec<Expr>
         }
@@ -489,7 +489,6 @@ impl<'str> Parser<'str> {
         let mut cur = None;
 
         'a: loop {
-            //println!("{:?}", self.tk.peek()); // TODO
             let Some(tok) = self.tk.next().transpose()? else { break; };
             if tok.0 == TC::Close || tok.0 == TC::Comma {
                 self.tk.unread(tok);
@@ -517,7 +516,7 @@ impl<'str> Parser<'str> {
                     cur = Some(Expr::new_lang(LangItem::Part, Some(src), args));
                 },
                 (None, Token(TC::Oper, sign @ ("+" | "-"))) => {
-                    stack.push(StackEntry{op: sign.into(), prec: get_op(sign).0, args: vec![]});
+                    stack.push(StackEntry{op: sign, prec: get_op(sign).0, args: vec![]});
                     cur = Some(self.read_expr_part()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(sign)))?);
                 },
@@ -540,7 +539,7 @@ impl<'str> Parser<'str> {
                             break;
                         }
                     }
-                    stack.push(StackEntry{op: op.into(), prec, args: vec![expr]});
+                    stack.push(StackEntry{op, prec, args: vec![expr]});
                     cur = Some(self.read_expr_part()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?);
                 },
@@ -551,7 +550,12 @@ impl<'str> Parser<'str> {
                 (_, Token(_, tok)) => return Err(ParseError::new("cannot appear here", tok))
             }
         }
-        let Some(mut ret) = cur else { return Ok(None) };
+        let Some(mut ret) = cur else {
+            match stack.pop() {
+                None => return Ok(None),
+                Some(StackEntry{op, ..}) => return Err(ParseError::new("incomplete expression", self.tk.slice_from(op)))
+            }
+        };
         while let Some(mut entry) = stack.pop() {
             entry.args.push(ret);
             ret = Expr::new_op(entry.op, None, entry.args);
@@ -559,30 +563,34 @@ impl<'str> Parser<'str> {
         Ok(Some(ret))
     }
 
-    fn read_args(&mut self, bracket: &'str str) -> Result<Vec<Expr>, ParseError<'str>> {
+    fn read_args(&mut self, open: &'str str) -> Result<Vec<Expr>, ParseError<'str>> {
         use TokenClass as TC;
         let mut ret = vec![];
-        if let Some(expr) = self.read_expr()? {
-            ret.push(expr);
-            while self.tk.peek()? == Some(&Token(TC::Comma, ",")) {
-                let comma = self.tk.next().unwrap()?; // can't fail after peek()
-                let expr = self.read_expr()?
-                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(comma.1)))?;
-                ret.push(expr);
+        let close = loop {
+            let expr = self.read_expr()?;
+            let next = self.tk.next().transpose()?
+                .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(open)))?;
+            match (expr, next) {
+                (Some(expr), Token(TC::Comma, ",")) => ret.push(expr),
+                (None, Token(TC::Comma, tok)) => return Err(ParseError::new("empty expression", tok)),
+                (Some(expr), Token(TC::Close, close)) => {
+                    ret.push(expr);
+                    break close;
+                },
+                (None, Token(TC::Close, close)) => {
+                    if ret.is_empty() {
+                        break close;
+                    } else {
+                        return Err(ParseError::new("empty expression", close));
+                    }
+                },
+                _ => unreachable!()
             }
-        }
-        match self.tk.next().transpose()? {
-            Some(Token(TC::Close, bkt)) => {
-                if bkt == closing(bracket) {
-                    Ok(ret)
-                } else {
-                    Err(ParseError::new("unexpected closing bracket", bkt))
-                }
-            },
-            Some(Token(TC::Comma, _)) =>
-                Err(ParseError::new("incomplete expression", self.tk.slice_from(bracket))),
-            None => Err(ParseError::new("incomplete expression", self.tk.slice_from(bracket))),
-            x => panic!("unexpected token in read_args: {x:?}")
+        };
+        if close == closing(open) {
+            Ok(ret)
+        } else {
+            Err(ParseError::new("unexpected closing bracket", close))
         }
     }
 
@@ -591,7 +599,7 @@ impl<'str> Parser<'str> {
         let expr = parser.read_expr()?
             .ok_or(ParseError::new("empty input", input))?;
         if let Some(tok) = parser.tk.next().transpose()? {
-            Err(ParseError::new("trailing characters", parser.tk.slice_from(tok.1)))
+            Err(ParseError::new("cannot appear here", tok.1))
         } else {
             Ok(expr)
         }
