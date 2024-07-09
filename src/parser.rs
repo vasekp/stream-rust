@@ -788,11 +788,15 @@ fn test_parser() {
     assert_eq!(parse("[1,2][3,4]"), Ok(Expr::new_lang(LangItem::Part,
         Some(Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into(), Item::new_number(2).into()])),
         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
+    assert_eq!(parse("[1][2][3]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::Part,
+            Some(Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into()])),
+            vec![Item::new_number(2).into()])),
+        vec![Item::new_number(3).into()])));
     assert_eq!(parse("[][3,4]"), Ok(Expr::new_lang(LangItem::Part,
         Some(Expr::new_lang(LangItem::List, None, vec![])),
         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
     assert!(parse("[1,2][]").is_err());
-    assert!(parse("[1][2][3]").is_err());
     assert!(parse("a.[1]").is_err());
     // The following is legal syntax, but error at runtime
     assert_eq!(parse("1[2]"), Ok(Expr::new_lang(LangItem::Part, Some(Item::new_number(1).into()),
