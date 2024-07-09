@@ -8,4 +8,3 @@ mod lang;
 mod ops;
 
 pub use parser::parse;
-pub use parser::parse2;

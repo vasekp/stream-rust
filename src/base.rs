@@ -943,12 +943,12 @@ impl Node {
         Ok(self)
     }
 
-    pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+    /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
             .map(|x| x.eval(env).map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
-    }
+    }*/
 
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {

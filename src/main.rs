@@ -13,13 +13,6 @@ fn main() {
             break;
         }
         let input = buffer.trim();
-        match stream::parse2(input) {
-            Ok(expr) => println!("parse2: {expr:?}"),
-            Err(err) => {
-                err.display(input);
-                println!("{err}");
-            }
-        }
         match stream::parse(input) {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");

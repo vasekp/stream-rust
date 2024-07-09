@@ -1,8 +1,7 @@
 use std::str::CharIndices;
 use std::iter::Peekable;
 use std::fmt::{Display, Formatter, Debug};
-use std::cell::RefCell;
-use crate::base::{Item, Expr, Char, LangItem};
+use crate::base::*;
 use crate::lang::LiteralString;
 use num::BigInt;
 
@@ -306,40 +305,6 @@ fn test_tokenizer() {
 }
 
 
-type PreExpr<'str> = Vec<ExprPart<'str>>;
-
-#[derive(Debug)]
-enum ExprPart<'str> {
-    Oper(Token<'str>),
-    Chain(Token<'str>),
-    Term(TTerm<'str>),
-    Part(Vec<Expr>)
-}
-
-#[derive(Debug)]
-enum TTerm<'str> {
-    Node(Node<'str>, Option<Vec<Expr>>),
-    ParExpr(Box<Expr>),
-    Literal(Literal<'str>),
-    List(Vec<Expr>),
-    Special(Token<'str>, Option<Token<'str>>)
-}
-
-#[derive(Debug)]
-enum Node<'str> {
-    Ident(Token<'str>),
-    Block(Box<Expr>)
-}
-
-#[derive(Debug)]
-enum Literal<'str> {
-    Number(Token<'str>),
-    BaseNum(Token<'str>),
-    Bool(Token<'str>),
-    Char(Token<'str>),
-    String(Token<'str>)
-}
-
 fn closing(bracket: &str) -> &'static str {
     match bracket {
         "(" => ")",
@@ -347,137 +312,6 @@ fn closing(bracket: &str) -> &'static str {
         "{" => "}",
         _ => unreachable!()
     }
-}
-
-fn parse_main<'str>(tk: &RefCell<Tokenizer<'str>>, bracket: Option<&'str str>) -> Result<Vec<Expr>, ParseError<'str>> {
-    // This may parse several expressions separated by commas.
-    let mut exprs: Vec<Expr> = vec![];
-    // Each expression is a string of terms separated by operators OR chaining.
-    let mut expr: PreExpr = vec![];
-    let mut last_comma: Option<Token<'str>> = None;
-    use ExprPart::*;
-    use TTerm as TT;
-    use TokenClass as TC;
-    let slice_from = |start| tk.borrow_mut().slice_from(start);
-    loop {
-        // Get next token.
-        let t = {
-            // We need the borrow to be temporary and strictly localized as this fn is recursive.
-            let mut tk = tk.borrow_mut();
-            match tk.next() {
-                // Some: test for ParseError
-                Some(t0) => t0?,
-                // None (end of input): test for unclosed brackets
-                None => {
-                    if let Some(open) = bracket {
-                        return Err(ParseError::new(format!("missing close bracket: '{}'", closing(open)), tk.slice_from(open)));
-                    }
-                    // NB: after this break it's too late to do so
-                    break;
-                }
-            }
-        };
-        // At this point t = Token(TokenClass, &str).
-
-        let last = expr.last_mut();
-        match (t.0, last, t.1) {
-            // Immediate values
-            (cls @ (TC::Number | TC::BaseNum | TC::Bool | TC::String | TC::Char), Some(Oper(_)) | None, _)
-                => expr.push(Term(match cls {
-                    TC::Number => TT::Literal(Literal::Number(t)),
-                    TC::BaseNum => TT::Literal(Literal::BaseNum(t)),
-                    TC::Bool => TT::Literal(Literal::Bool(t)),
-                    TC::String => TT::Literal(Literal::String(t)),
-                    TC::Char => TT::Literal(Literal::Char(t)),
-                    _ => unreachable!()
-                })),
-            // Identifier: also can follow ., :, @
-            (TC::Ident, Some(Oper(_) | Chain(_)) | None, _)
-                => expr.push(Term(TT::Node(Node::Ident(t), None))),
-            // Special use of numbers: # -> #1, $ -> $1
-            (TC::Number, Some(Term(TT::Special(_, arg @ None))), _)
-                => *arg = Some(t),
-            // Operators (+, -, ...)
-            (TC::Oper, Some(Term(_) | Part(_)), _)
-                => expr.push(Oper(t)),
-            // Special case: unary minus, plus can appear at start of expression
-            (TC::Oper, None, "-" | "+")
-                => expr.push(Oper(t)),
-            // Chaining (., :, @)
-            (TC::Chain, Some(Term(_) | Part(_)), "." | ":")
-                => expr.push(Chain(t)),
-            (TC::Chain, Some(Term(TT::Node(_, None))), "@")
-                => expr.push(Chain(t)),
-            // Parenthesized expression
-            (TC::Open, Some(Oper(_) | Chain(Token(_, "@"))) | None, "(") => {
-                let vec = parse_main(tk, Some(t.1))?;
-                match vec.len() {
-                    1 => {
-                        let e = vec.into_iter().next().unwrap();
-                        expr.push(Term(TT::ParExpr(Box::new(e))));
-                    },
-                    0 => return Err(ParseError::new("empty expression", slice_from(t.1))),
-                    _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
-                }
-            },
-            // Arguments to a node
-            (TC::Open, Some(Term(TT::Node(_, args @ None))), "(")
-                => *args = Some(parse_main(tk, Some(t.1))?),
-            // List
-            (TC::Open, Some(Oper(_) | Chain(Token(_, "@"))) | None, "[")
-                => expr.push(Term(TT::List(parse_main(tk, Some(t.1))?))),
-            // Parts construction
-            (TC::Open, Some(Term(_)), "[") => {
-                let vec = parse_main(tk, Some(t.1))?;
-                if vec.is_empty() {
-                    return Err(ParseError::new("empty parts", slice_from(t.1)));
-                }
-                expr.push(Part(vec));
-            },
-            // Block (expression used as a node)
-            (TC::Open, Some(Oper(_) | Chain(_)) | None, "{") => {
-                let vec = parse_main(tk, Some(t.1))?;
-                match vec.len() {
-                    1 => {
-                        let e = vec.into_iter().next().unwrap();
-                        expr.push(Term(TT::Node(Node::Block(Box::new(e)), None)));
-                    },
-                    0 => return Err(ParseError::new("empty block", slice_from(t.1))),
-                    _ => return Err(ParseError::new("only one expression expected", slice_from(t.1)))
-                }
-            },
-            // Special characters #, $
-            (TC::Special, Some(Oper(_) | Chain(Token(_, "@"))) | None, _)
-                => expr.push(Term(TT::Special(t, None))),
-            // Separator of multiple exprs.
-            // Checking whether >1 makes sense is caller's responsibility!
-            (TC::Comma, Some(Term(_) | Part(_)), _) => {
-                exprs.push(into_expr(std::mem::take(&mut expr))?);
-                last_comma = Some(t);
-            },
-            // Closing bracket
-            (TC::Close, _, _) => {
-                let Some(open) = bracket else {
-                    return Err(ParseError::new("unexpected closing bracket", t.1));
-                };
-                let close = closing(open);
-                if t.1 == close {
-                    break;
-                } else {
-                    return Err(ParseError::new(format!("wrong bracket: expected '{close}'"), t.1));
-                }
-            },
-            _ => return Err(ParseError::new("cannot appear here", t.1))
-        }
-    }
-    match expr.last() {
-        Some(Term(_) | Part(_)) => exprs.push(into_expr(expr)?),
-        Some(Oper(t) | Chain(t)) => return Err(ParseError::new("incomplete expression", slice_from(t.1))),
-        None => if let Some(t) = last_comma {
-            return Err(ParseError::new("incomplete expression", slice_from(t.1)));
-        }
-    }
-    Ok(exprs)
 }
 
 fn parse_basenum(slice: &str) -> Result<BigInt, ParseError<'_>> {
@@ -555,128 +389,6 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     }
 }
 
-fn into_expr(input: PreExpr<'_>) -> Result<Expr, ParseError<'_>> {
-    struct StackEntry {
-        op: String,
-        prec: u32,
-        args: Vec<Expr>
-    }
-
-    #[derive(Debug)]
-    enum ChainOp {
-        Dot,
-        Colon
-    }
-
-    #[derive(Debug)]
-    enum TermState {
-        Base(Vec<Expr>),
-        AfterTerm(Vec<Expr>),
-        Chained(Expr, ChainOp)
-    }
-
-    impl Default for TermState {
-        fn default() -> TermState {
-            TermState::Base(vec![])
-        }
-    }
-
-    use ChainOp::*;
-    use TermState::*;
-
-    fn collapse_at_chain(mut chain: Vec<Expr>) -> Expr {
-        debug_assert!(!chain.is_empty());
-        let mut ret = chain.pop().unwrap();
-        while let Some(expr) = chain.pop() {
-            //ret = Expr::new_lang(LangItem::Args, Some(expr), vec![ret]);
-        }
-        ret
-    }
-
-    debug_assert!(!input.is_empty());
-    let mut stack: Vec<StackEntry> = vec![];
-    let mut cur: TermState = Default::default();
-    'a: for part in input {
-        use ExprPart::*;
-        use TTerm as TT;
-        use Node::*;
-        match (std::mem::take(&mut cur), part) {
-            (Base(mut chain), Term(TT::Literal(lit)))
-                => cur = AfterTerm({ chain.push(lit.to_item()?.into()); chain }),
-            (Base(mut chain), Term(TT::List(vec)))
-                => cur = AfterTerm({ chain.push(Expr::new_lang(LangItem::List, None, vec)); chain }),
-            (Base(mut chain), Term(TT::Special(tok, None)))
-                => cur = AfterTerm({ chain.push(Expr::new_repl(tok.1.as_bytes()[0].into(), None)); chain }),
-            (Base(mut chain), Term(TT::Special(tok, Some(ix_tok)))) => {
-                let ix = ix_tok.1.parse::<usize>()
-                    .map_err(|_| ParseError::new("index too large", ix_tok.1))?;
-                if ix == 0 {
-                    return Err(ParseError::new("index can't be zero", ix_tok.1));
-                }
-                chain.push(Expr::new_repl(tok.1.as_bytes()[0].into(), Some(ix)));
-                cur = AfterTerm(chain);
-            },
-            (Base(mut chain), Term(TT::Node(Ident(tok), args)))
-                => cur = AfterTerm({ chain.push(Expr::new_node(tok.1, None, args.unwrap_or(vec![]))); chain }),
-            (Base(mut chain), Term(TT::Node(Block(body), args)))
-                => cur = AfterTerm({ chain.push(Expr::new_block(*body, None, args.unwrap_or(vec![]))); chain }),
-            (Base(mut chain), Term(TT::ParExpr(expr)))
-                => cur = AfterTerm({ chain.push(*expr); chain }),
-            (AfterTerm(mut chain), Part(vec)) => {
-                let last = chain.pop().unwrap();
-                chain.push(Expr::new_lang(LangItem::Part, Some(last), vec));
-                cur = AfterTerm(chain);
-            },
-            (AfterTerm(chain), Chain(Token(_, ".")))
-                => cur = Chained(collapse_at_chain(chain), Dot),
-            (AfterTerm(chain), Chain(Token(_, ":")))
-                => cur = Chained(collapse_at_chain(chain), Colon),
-            (AfterTerm(chain), Chain(Token(_, "@")))
-                => cur = Base(chain),
-            (Chained(src, Dot), Term(TT::Node(Ident(tok), args)))
-                => cur = AfterTerm(vec![Expr::new_node(tok.1, Some(src), args.unwrap_or(vec![]))]),
-            (Chained(src, Dot), Term(TT::Node(Block(body), args)))
-                => cur = AfterTerm(vec![Expr::new_block(*body, Some(src), args.unwrap_or(vec![]))]),
-            (Chained(src, Colon), Term(TT::Node(Ident(tok), args)))
-                => cur = AfterTerm(vec![Expr::new_lang(LangItem::Map, Some(src), vec![Expr::new_node(tok.1, None, args.unwrap_or(vec![]))])]),
-            (Chained(src, Colon), Term(TT::Node(Block(body), args)))
-                => cur = AfterTerm(vec![Expr::new_lang(LangItem::Map, Some(src), vec![Expr::new_block(*body, None, args.unwrap_or(vec![]))])]),
-            (AfterTerm(chain), Oper(Token(_, op))) => {
-                let mut prev = collapse_at_chain(chain);
-                let (prec, multi) = get_op(op);
-                while let Some(entry) = stack.last_mut() {
-                    if entry.prec > prec {
-                        let mut entry = stack.pop().unwrap();
-                        entry.args.push(prev);
-                        prev = Expr::new_op(entry.op, None, entry.args);
-                    } else if entry.prec == prec && entry.op == op && multi {
-                        entry.args.push(prev);
-                        continue 'a;
-                    } else if entry.prec == prec {
-                        let mut entry = stack.pop().unwrap();
-                        entry.args.push(prev);
-                        prev = Expr::new_op(entry.op, None, entry.args);
-                        break;
-                    } else {
-                        break;
-                    }
-                }
-                stack.push(StackEntry{ op: op.into(), prec, args: vec![prev] });
-            },
-            (Base(chain), Oper(Token(_, op @ ("+" | "-")))) if chain.is_empty()
-                => stack.push(StackEntry{ op: op.into(), prec: get_op(op).0, args: vec![] }),
-            (cur, part) => panic!("Unexpected parser state (into_expr): cur = {cur:?}, part = {part:?}")
-        }
-    }
-    let AfterTerm(chain) = cur else { panic!("Final state of into_expr differs from AfterTerm: {cur:?}"); };
-    let mut ret = collapse_at_chain(chain);
-    while let Some(mut entry) = stack.pop() {
-        entry.args.push(ret);
-        ret = Expr::new_op(entry.op, None, entry.args);
-    }
-    Ok(ret)
-}
-
 fn get_op(op: &str) -> (u32, bool) {
     match op {
         "~" => (1, true),
@@ -690,41 +402,7 @@ fn get_op(op: &str) -> (u32, bool) {
     }
 }
 
-impl<'str> Literal<'str> {
-    fn to_item(&self) -> Result<Item, ParseError<'str>> {
-        Ok(match self {
-            Literal::Number(tok) => Item::new_number(tok.1.parse::<BigInt>()
-                .map_err(|_| ParseError::new("invalid number", tok.1))?),
-            Literal::BaseNum(tok) => Item::new_number(parse_basenum(tok.1)?),
-            Literal::Bool(tok) => Item::new_bool(tok.1.parse::<bool>().unwrap()),
-            Literal::Char(tok) => Item::new_char(parse_char(tok.1)?),
-            Literal::String(tok) => Item::new_stream(LiteralString::from(parse_string(tok.1)?))
-        })
-    }
-}
 
-
-
-/// Parse a textual input into an [`Expr`].
-///
-/// # Examples
-/// ```
-/// use streamlang::base::*;
-/// use streamlang::parser::parse;
-/// assert_eq!(parse("a.b(3,4)"),
-///     Ok(Expr::new_node("b",
-///         Some(Expr::new_node("a", None, vec![])),
-///         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
-/// ```
-pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
-    /*let mut it = parse_main(&RefCell::new(Tokenizer::new(input)), None)?.into_iter();
-    match (it.next(), it.next()) {
-        (Some(expr), None) => Ok(expr),
-        (None, _) => Err(ParseError::new("empty input", input)),
-        (Some(_), Some(_)) => Err(ParseError::new("multiple expressions", input))
-    }*/
-    parse2(input)
-}
 
 #[test]
 fn test_parser() {
@@ -925,12 +603,7 @@ struct Parser<'str> {
 }
 
 impl<'str> Parser<'str> {
-    fn new(input: &'str str) -> Parser<'str> {
-        Parser{tk: Tokenizer::new(input)}
-    }
-
-    fn read_node(&mut self) -> Result<Option<crate::base::Node>, ParseError<'str>> {// TODO crate::base
-        use crate::base::{Node, Head};
+    fn read_node(&mut self) -> Result<Option<Node>, ParseError<'str>> {
         let Some(tok) = self.tk.next().transpose()? else { return Ok(None); };
         use TokenClass as TC;
         let head = match tok {
@@ -1120,6 +793,17 @@ impl<'str> Parser<'str> {
     }
 }
 
-pub fn parse2(input: &str) -> Result<Expr, ParseError<'_>> {
+/// Parse a textual input into an [`Expr`].
+///
+/// # Examples
+/// ```
+/// use streamlang::base::*;
+/// use streamlang::parser::parse;
+/// assert_eq!(parse("a.b(3,4)"),
+///     Ok(Expr::new_node("b",
+///         Some(Expr::new_node("a", None, vec![])),
+///         vec![Item::new_number(3).into(), Item::new_number(4).into()])));
+/// ```
+pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
     Parser::parse(input)
 }
