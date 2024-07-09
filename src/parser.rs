@@ -403,201 +403,6 @@ fn get_op(op: &str) -> (u32, bool) {
 }
 
 
-
-#[test]
-fn test_parser() {
-    assert_eq!(parse("1"), Ok(Item::new_number(1).into()));
-    assert_eq!(parse("a"), Ok(Expr::new_node("a", None, vec![])));
-    assert_eq!(parse("a(1,2)"), Ok(Expr::new_node("a", None,
-        vec![Item::new_number(1).into(), Item::new_number(2).into()])));
-    assert_eq!(parse("1.a"), Ok(Expr::new_node("a", Some(Item::new_number(1).into()), vec![])));
-    assert_eq!(parse("(1).a"), Ok(Expr::new_node("a", Some(Item::new_number(1).into()), vec![])));
-    assert!(parse("(1,2).a").is_err());
-    assert_eq!(parse("a.b"), Ok(Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![])));
-    assert_eq!(parse("a.b.c"), Ok(Expr::new_node("c",
-        Some(Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![])), vec![])));
-    assert_eq!(parse("a(1).b(2)"), Ok(Expr::new_node("b",
-        Some(Expr::new_node("a", None, vec![Item::new_number(1).into()])),
-        vec![Item::new_number(2).into()])));
-
-    assert!(parse("a.1").is_err());
-    assert!(parse("2(a)").is_err());
-    assert!(parse("1 2").is_err());
-    assert!(parse("a b").is_err());
-    assert!(parse("1,2").is_err());
-    assert!(parse("   ").is_err());
-    assert!(parse("1,").is_err());
-    assert!(parse(",2").is_err());
-    assert!(parse("a(1,,2)").is_err());
-    assert!(parse("a(,2)").is_err());
-    assert!(parse("a(1,)").is_err());
-    assert!(parse("a.").is_err());
-    assert_eq!(parse("a()"), parse("a"));
-    assert!(parse("a()(1)").is_err());
-    assert!(parse("(a)(1)").is_err());
-    assert!(parse("a.(1)").is_err());
-    assert_eq!(parse("(a)"), parse("a"));
-    assert_eq!(parse("((a))"), parse("a"));
-    assert_eq!(parse("a((1))"), parse("a(1)"));
-    assert!(parse("a((1,2))").is_err());
-    assert!(parse("(1]").is_err());
-    assert!(parse("(1").is_err());
-    assert!(parse("1)").is_err());
-    assert!(parse("(1;2)").is_err());
-
-    assert_eq!(parse("a.b..c.d"), Ok(Expr::new_op("..", None,
-        vec![Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![]),
-        Expr::new_node("d", Some(Expr::new_node("c", None, vec![])), vec![])])));
-    assert_eq!(parse("a..b..c"), Ok(Expr::new_op("..", None,
-        vec![Expr::new_op("..", None,
-            vec![Expr::new_node("a", None, vec![]), Expr::new_node("b", None, vec![])]),
-            Expr::new_node("c", None, vec![])])));
-
-    assert_eq!(parse("{1}"), Ok(Expr::new_block(Item::new_number(1).into(), None, vec![])));
-    assert!(parse("{}").is_err());
-    assert_eq!(parse("1.{2}(3)"), Ok(Expr::new_block(Item::new_number(2).into(),
-        Some(Item::new_number(1).into()), vec![Item::new_number(3).into()])));
-    assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Expr::new_block(
-        Expr::new_node("a", Some(Item::new_number(2).into()), vec![Item::new_number(3).into()]),
-        Some(Item::new_number(1).into()), vec![Item::new_number(4).into()])));
-    assert_eq!(parse("{1}.{2}"), Ok(Expr::new_block(Item::new_number(2).into(),
-        Some(Expr::new_block(Item::new_number(1).into(), None, vec![])), vec![])));
-
-    assert_eq!(parse("[1,2][3,4]"), Ok(Expr::new_lang(LangItem::Part,
-        Some(Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into(), Item::new_number(2).into()])),
-        vec![Item::new_number(3).into(), Item::new_number(4).into()])));
-    assert_eq!(parse("[1][2][3]"), Ok(Expr::new_lang(LangItem::Part,
-        Some(Expr::new_lang(LangItem::Part,
-            Some(Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into()])),
-            vec![Item::new_number(2).into()])),
-        vec![Item::new_number(3).into()])));
-    assert_eq!(parse("[][3,4]"), Ok(Expr::new_lang(LangItem::Part,
-        Some(Expr::new_lang(LangItem::List, None, vec![])),
-        vec![Item::new_number(3).into(), Item::new_number(4).into()])));
-    assert!(parse("[1,2][]").is_err());
-    assert!(parse("a.[1]").is_err());
-    // The following is legal syntax, but error at runtime
-    assert_eq!(parse("1[2]"), Ok(Expr::new_lang(LangItem::Part, Some(Item::new_number(1).into()),
-        vec![Item::new_number(2).into()])));
-    assert_eq!(parse("a[b]"), Ok(Expr::new_lang(LangItem::Part,
-        Some(Expr::new_node("a", None, vec![])), vec![Expr::new_node("b", None, vec![])])));
-    assert_eq!(parse("[[1]][[2]]"), Ok(Expr::new_lang(LangItem::Part,
-        Some(Expr::new_lang(LangItem::List, None, vec![Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into()])])),
-        vec![Expr::new_lang(LangItem::List, None, vec![Item::new_number(2).into()])])));
-    assert_eq!(parse("([([(1)])])"), parse("[[1]]"));
-    assert_eq!(parse("([1])[2]"), parse("[1][2]"));
-    assert!(parse("[1]([2])").is_err());
-
-    assert!(parse("''").is_err());
-    assert_eq!(parse("'\\n'"), Ok(Item::new_char('\n').into()));
-    assert_eq!(parse("'\\\\'"), Ok(Item::new_char('\\').into()));
-    assert_eq!(parse("'\\''"), Ok(Item::new_char('\'').into()));
-    assert_eq!(parse("'\\\"'"), Ok(Item::new_char('"').into()));
-    assert_eq!(parse("'\"'"), Ok(Item::new_char('"').into()));
-    assert!(parse("'\\h'").is_err());
-    assert_eq!(parse("true+'1'"), Ok(Expr::new_op("+", None, vec![
-        Item::new_bool(true).into(), Item::new_char('1').into()])));
-
-    assert_eq!(parse("#"), Ok(Expr::new_repl('#', None)));
-    assert_eq!(parse("#1"), Ok(Expr::new_repl('#', Some(1))));
-    assert!(parse("#0").is_err());
-    assert!(parse("#18446744073709551616").is_err());
-    assert!(parse("##").is_err());
-    assert!(parse("#a").is_err());
-    assert!(parse("#$").is_err());
-    assert!(parse("$list").is_err()); // internal keyword
-    assert!(parse("#(1)").is_err());
-    assert_eq!(parse("#+$"), Ok(Expr::new_op("+", None, vec![
-        Expr::new_repl('#', None), Expr::new_repl('$', None)])));
-    assert!(parse("1.#").is_err());
-    assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_block(Expr::new_repl('#', None),
-        Some(Item::new_number(1).into()), vec![Item::new_number(2).into()])));
-
-    assert_eq!(parse("a.b@c@d[1]"), Ok(Expr::new_lang(LangItem::Part,
-        Some(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("b".into()))),
-            Some(Expr::new_node("a", None, vec![])),
-            vec![Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("c".into()))), None,
-                vec![Expr::new_node("d", None, vec![])])])),
-        vec![Item::new_number(1).into()])));
-    // literals, list, #, (x) may follow @
-    assert_eq!(parse("a@1"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
-        None, vec![Item::new_number(1).into()])));
-    assert_eq!(parse("a@[1,2]"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
-        None, vec![Expr::new_lang(LangItem::List, None,
-            vec![Item::new_number(1).into(), Item::new_number(2).into()])])));
-    assert_eq!(parse("a@(b.c@#)"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
-        None, vec![Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("c".into()))),
-            Some(Expr::new_node("b", None, vec![])), vec![Expr::new_repl('#', None)])])));
-    // but not (x,y)
-    assert!(parse("a@(b.c@#,d)").is_err());
-    // blocks allowed both before and after
-    assert_eq!(parse("{a}@{b}"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Block(Box::new(
-            Expr::new_node("a", None, vec![]))))),
-        None, vec![Expr::new_block(Expr::new_node("b", None, vec![]), None, vec![])])));
-    // (c) binds to b but [d] to entire expression
-    assert_eq!(parse("a@b(c)[d]"), Ok(Expr::new_lang(LangItem::Part,
-        Some(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
-            None, vec![Expr::new_node("b", None, vec![Expr::new_node("c", None, vec![])])])),
-        vec![Expr::new_node("d", None, vec![])])));
-    // no @ after arguments
-    assert!(parse("a(b)@c").is_err());
-    assert!(parse("a@@c").is_err());
-    assert!(parse("1@a").is_err());
-    assert!(parse("a@").is_err());
-}
-
-#[test]
-fn test_prec() {
-    // base precedence tests
-    // +(1, *(2, ^(3, 4)), 5)
-    assert_eq!(parse("1+2*3^4+5"), Ok(Expr::new_op("+", None, vec![
-        Item::new_number(1).into(),
-        Expr::new_op("*", None, vec![
-            Item::new_number(2).into(),
-            Expr::new_op("^", None, vec![Item::new_number(3).into(), Item::new_number(4).into()])]),
-        Item::new_number(5).into()
-        ])));
-    // +(1, *( ^(2, 3), 4), 5)
-    assert_eq!(parse("1+2^3*4+5"), Ok(Expr::new_op("+", None, vec![
-        Item::new_number(1).into(),
-        Expr::new_op("*", None, vec![
-            Expr::new_op("^", None, vec![Item::new_number(2).into(), Item::new_number(3).into()]),
-            Item::new_number(4).into()]),
-        Item::new_number(5).into()
-        ])));
-    // mixing + and -: same precedence, but - don't mix and stack
-    // -( -( -( +(1, 2, 3), 4), 5), 6)
-    assert_eq!(parse("1+2+3-4-5-6"), Ok(Expr::new_op("-", None, vec![
-        Expr::new_op("-", None, vec![
-            Expr::new_op("-", None, vec![
-                Expr::new_op("+", None, vec![
-                    Item::new_number(1).into(),
-                    Item::new_number(2).into(),
-                    Item::new_number(3).into()]),
-                Item::new_number(4).into()]),
-            Item::new_number(5).into()]),
-        Item::new_number(6).into()])));
-    // chaining takes precedence over everything
-    // +(1, a.b, 2)
-    assert_eq!(parse("1+a.b+2"), Ok(Expr::new_op("+", None, vec![
-        Item::new_number(1).into(),
-        Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![]),
-        Item::new_number(2).into()])));
-    // +(1, 2)
-    assert_eq!(parse("+1+2"), Ok(Expr::new_op("+", None, vec![
-        Item::new_number(1).into(),
-        Item::new_number(2).into()])));
-    // -( -(1), 2)
-    assert_eq!(parse("-1-2"), Ok(Expr::new_op("-", None, vec![
-        Expr::new_op("-", None, vec![Item::new_number(1).into()]),
-        Item::new_number(2).into()])));
-    // -(1..1) (error)
-    assert_eq!(parse("-1..1"), Ok(Expr::new_op("-", None,
-        vec![Expr::new_op("..", None, vec![Item::new_number(1).into(), Item::new_number(1).into()])])));
-    assert!(parse("--1").is_err());
-    assert!(parse("*1*2").is_err());
-}
-
 struct Parser<'str> {
     tk: Tokenizer<'str>
 }
@@ -806,4 +611,199 @@ impl<'str> Parser<'str> {
 /// ```
 pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
     Parser::parse(input)
+}
+
+
+#[test]
+fn test_parser() {
+    assert_eq!(parse("1"), Ok(Item::new_number(1).into()));
+    assert_eq!(parse("a"), Ok(Expr::new_node("a", None, vec![])));
+    assert_eq!(parse("a(1,2)"), Ok(Expr::new_node("a", None,
+        vec![Item::new_number(1).into(), Item::new_number(2).into()])));
+    assert_eq!(parse("1.a"), Ok(Expr::new_node("a", Some(Item::new_number(1).into()), vec![])));
+    assert_eq!(parse("(1).a"), Ok(Expr::new_node("a", Some(Item::new_number(1).into()), vec![])));
+    assert!(parse("(1,2).a").is_err());
+    assert_eq!(parse("a.b"), Ok(Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![])));
+    assert_eq!(parse("a.b.c"), Ok(Expr::new_node("c",
+        Some(Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![])), vec![])));
+    assert_eq!(parse("a(1).b(2)"), Ok(Expr::new_node("b",
+        Some(Expr::new_node("a", None, vec![Item::new_number(1).into()])),
+        vec![Item::new_number(2).into()])));
+
+    assert!(parse("a.1").is_err());
+    assert!(parse("2(a)").is_err());
+    assert!(parse("1 2").is_err());
+    assert!(parse("a b").is_err());
+    assert!(parse("1,2").is_err());
+    assert!(parse("   ").is_err());
+    assert!(parse("1,").is_err());
+    assert!(parse(",2").is_err());
+    assert!(parse("a(1,,2)").is_err());
+    assert!(parse("a(,2)").is_err());
+    assert!(parse("a(1,)").is_err());
+    assert!(parse("a.").is_err());
+    assert_eq!(parse("a()"), parse("a"));
+    assert!(parse("a()(1)").is_err());
+    assert!(parse("(a)(1)").is_err());
+    assert!(parse("a.(1)").is_err());
+    assert_eq!(parse("(a)"), parse("a"));
+    assert_eq!(parse("((a))"), parse("a"));
+    assert_eq!(parse("a((1))"), parse("a(1)"));
+    assert!(parse("a((1,2))").is_err());
+    assert!(parse("(1]").is_err());
+    assert!(parse("(1").is_err());
+    assert!(parse("1)").is_err());
+    assert!(parse("(1;2)").is_err());
+
+    assert_eq!(parse("a.b..c.d"), Ok(Expr::new_op("..", None,
+        vec![Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![]),
+        Expr::new_node("d", Some(Expr::new_node("c", None, vec![])), vec![])])));
+    assert_eq!(parse("a..b..c"), Ok(Expr::new_op("..", None,
+        vec![Expr::new_op("..", None,
+            vec![Expr::new_node("a", None, vec![]), Expr::new_node("b", None, vec![])]),
+            Expr::new_node("c", None, vec![])])));
+
+    assert_eq!(parse("{1}"), Ok(Expr::new_block(Item::new_number(1).into(), None, vec![])));
+    assert!(parse("{}").is_err());
+    assert_eq!(parse("1.{2}(3)"), Ok(Expr::new_block(Item::new_number(2).into(),
+        Some(Item::new_number(1).into()), vec![Item::new_number(3).into()])));
+    assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Expr::new_block(
+        Expr::new_node("a", Some(Item::new_number(2).into()), vec![Item::new_number(3).into()]),
+        Some(Item::new_number(1).into()), vec![Item::new_number(4).into()])));
+    assert_eq!(parse("{1}.{2}"), Ok(Expr::new_block(Item::new_number(2).into(),
+        Some(Expr::new_block(Item::new_number(1).into(), None, vec![])), vec![])));
+
+    assert_eq!(parse("[1,2][3,4]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into(), Item::new_number(2).into()])),
+        vec![Item::new_number(3).into(), Item::new_number(4).into()])));
+    assert_eq!(parse("[1][2][3]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::Part,
+            Some(Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into()])),
+            vec![Item::new_number(2).into()])),
+        vec![Item::new_number(3).into()])));
+    assert_eq!(parse("[][3,4]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::List, None, vec![])),
+        vec![Item::new_number(3).into(), Item::new_number(4).into()])));
+    assert!(parse("[1,2][]").is_err());
+    assert!(parse("a.[1]").is_err());
+    // The following is legal syntax, but error at runtime
+    assert_eq!(parse("1[2]"), Ok(Expr::new_lang(LangItem::Part, Some(Item::new_number(1).into()),
+        vec![Item::new_number(2).into()])));
+    assert_eq!(parse("a[b]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_node("a", None, vec![])), vec![Expr::new_node("b", None, vec![])])));
+    assert_eq!(parse("[[1]][[2]]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::List, None, vec![Expr::new_lang(LangItem::List, None, vec![Item::new_number(1).into()])])),
+        vec![Expr::new_lang(LangItem::List, None, vec![Item::new_number(2).into()])])));
+    assert_eq!(parse("([([(1)])])"), parse("[[1]]"));
+    assert_eq!(parse("([1])[2]"), parse("[1][2]"));
+    assert!(parse("[1]([2])").is_err());
+
+    assert!(parse("''").is_err());
+    assert_eq!(parse("'\\n'"), Ok(Item::new_char('\n').into()));
+    assert_eq!(parse("'\\\\'"), Ok(Item::new_char('\\').into()));
+    assert_eq!(parse("'\\''"), Ok(Item::new_char('\'').into()));
+    assert_eq!(parse("'\\\"'"), Ok(Item::new_char('"').into()));
+    assert_eq!(parse("'\"'"), Ok(Item::new_char('"').into()));
+    assert!(parse("'\\h'").is_err());
+    assert_eq!(parse("true+'1'"), Ok(Expr::new_op("+", None, vec![
+        Item::new_bool(true).into(), Item::new_char('1').into()])));
+
+    assert_eq!(parse("#"), Ok(Expr::new_repl('#', None)));
+    assert_eq!(parse("#1"), Ok(Expr::new_repl('#', Some(1))));
+    assert!(parse("#0").is_err());
+    assert!(parse("#18446744073709551616").is_err());
+    assert!(parse("##").is_err());
+    assert!(parse("#a").is_err());
+    assert!(parse("#$").is_err());
+    assert!(parse("$list").is_err()); // internal keyword
+    assert!(parse("#(1)").is_err());
+    assert_eq!(parse("#+$"), Ok(Expr::new_op("+", None, vec![
+        Expr::new_repl('#', None), Expr::new_repl('$', None)])));
+    assert!(parse("1.#").is_err());
+    assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_block(Expr::new_repl('#', None),
+        Some(Item::new_number(1).into()), vec![Item::new_number(2).into()])));
+
+    assert_eq!(parse("a.b@c@d[1]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("b".into()))),
+            Some(Expr::new_node("a", None, vec![])),
+            vec![Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("c".into()))), None,
+                vec![Expr::new_node("d", None, vec![])])])),
+        vec![Item::new_number(1).into()])));
+    // literals, list, #, (x) may follow @
+    assert_eq!(parse("a@1"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+        None, vec![Item::new_number(1).into()])));
+    assert_eq!(parse("a@[1,2]"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+        None, vec![Expr::new_lang(LangItem::List, None,
+            vec![Item::new_number(1).into(), Item::new_number(2).into()])])));
+    assert_eq!(parse("a@(b.c@#)"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+        None, vec![Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("c".into()))),
+            Some(Expr::new_node("b", None, vec![])), vec![Expr::new_repl('#', None)])])));
+    // but not (x,y)
+    assert!(parse("a@(b.c@#,d)").is_err());
+    // blocks allowed both before and after
+    assert_eq!(parse("{a}@{b}"), Ok(Expr::new_lang(LangItem::Args(Box::new(Head::Block(Box::new(
+            Expr::new_node("a", None, vec![]))))),
+        None, vec![Expr::new_block(Expr::new_node("b", None, vec![]), None, vec![])])));
+    // (c) binds to b but [d] to entire expression
+    assert_eq!(parse("a@b(c)[d]"), Ok(Expr::new_lang(LangItem::Part,
+        Some(Expr::new_lang(LangItem::Args(Box::new(Head::Symbol("a".into()))),
+            None, vec![Expr::new_node("b", None, vec![Expr::new_node("c", None, vec![])])])),
+        vec![Expr::new_node("d", None, vec![])])));
+    // no @ after arguments
+    assert!(parse("a(b)@c").is_err());
+    assert!(parse("a@@c").is_err());
+    assert!(parse("1@a").is_err());
+    assert!(parse("a@").is_err());
+}
+
+#[test]
+fn test_prec() {
+    // base precedence tests
+    // +(1, *(2, ^(3, 4)), 5)
+    assert_eq!(parse("1+2*3^4+5"), Ok(Expr::new_op("+", None, vec![
+        Item::new_number(1).into(),
+        Expr::new_op("*", None, vec![
+            Item::new_number(2).into(),
+            Expr::new_op("^", None, vec![Item::new_number(3).into(), Item::new_number(4).into()])]),
+        Item::new_number(5).into()
+        ])));
+    // +(1, *( ^(2, 3), 4), 5)
+    assert_eq!(parse("1+2^3*4+5"), Ok(Expr::new_op("+", None, vec![
+        Item::new_number(1).into(),
+        Expr::new_op("*", None, vec![
+            Expr::new_op("^", None, vec![Item::new_number(2).into(), Item::new_number(3).into()]),
+            Item::new_number(4).into()]),
+        Item::new_number(5).into()
+        ])));
+    // mixing + and -: same precedence, but - don't mix and stack
+    // -( -( -( +(1, 2, 3), 4), 5), 6)
+    assert_eq!(parse("1+2+3-4-5-6"), Ok(Expr::new_op("-", None, vec![
+        Expr::new_op("-", None, vec![
+            Expr::new_op("-", None, vec![
+                Expr::new_op("+", None, vec![
+                    Item::new_number(1).into(),
+                    Item::new_number(2).into(),
+                    Item::new_number(3).into()]),
+                Item::new_number(4).into()]),
+            Item::new_number(5).into()]),
+        Item::new_number(6).into()])));
+    // chaining takes precedence over everything
+    // +(1, a.b, 2)
+    assert_eq!(parse("1+a.b+2"), Ok(Expr::new_op("+", None, vec![
+        Item::new_number(1).into(),
+        Expr::new_node("b", Some(Expr::new_node("a", None, vec![])), vec![]),
+        Item::new_number(2).into()])));
+    // +(1, 2)
+    assert_eq!(parse("+1+2"), Ok(Expr::new_op("+", None, vec![
+        Item::new_number(1).into(),
+        Item::new_number(2).into()])));
+    // -( -(1), 2)
+    assert_eq!(parse("-1-2"), Ok(Expr::new_op("-", None, vec![
+        Expr::new_op("-", None, vec![Item::new_number(1).into()]),
+        Item::new_number(2).into()])));
+    // -(1..1) (error)
+    assert_eq!(parse("-1..1"), Ok(Expr::new_op("-", None,
+        vec![Expr::new_op("..", None, vec![Item::new_number(1).into(), Item::new_number(1).into()])])));
+    assert!(parse("--1").is_err());
+    assert!(parse("*1*2").is_err());
 }
