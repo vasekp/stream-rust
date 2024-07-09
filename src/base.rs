@@ -915,18 +915,18 @@ impl Node {
         Ok(ENode{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, env: &Rc<Env>) -> Result<Node, StreamError> {
-        let source = self.source.map(|x| (*x).eval(env))
+    pub(crate) fn eval_source(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+        self.source = self.source.map(|x| (*x).eval(env))
             .transpose()?
             .map(|x| Box::new(Expr::new_imm(x)));
-        Ok(Node{head: self.head, source, args: self.args})
+        Ok(self)
     }
 
-    pub(crate) fn eval_args(self, env: &Rc<Env>) -> Result<Node, StreamError> {
-        let args = self.args.into_iter()
+    pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+        self.args = self.args.into_iter()
             .map(|x| x.eval(env).map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Node{head: self.head, source: self.source, args})
+        Ok(self)
     }
 
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
