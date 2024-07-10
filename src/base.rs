@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Debug};
 use dyn_clone::DynClone;
-use num::{Signed, Zero, Integer};
+pub use num::*;
 pub use crate::error::*;
 pub use crate::alphabet::Char;
 use crate::keywords::find_keyword;

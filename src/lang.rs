@@ -2,7 +2,6 @@
 use crate::base::*;
 use crate::alphabet::*;
 use crate::utils::NumWithin;
-use num::{One, Signed, Zero};
 use std::rc::Rc;
 
 
@@ -358,7 +357,6 @@ fn eval_div(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
 }
 
 fn eval_pow(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    use num::ToPrimitive;
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     if node.args.len() != 2 {

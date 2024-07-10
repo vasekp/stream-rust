@@ -2,7 +2,6 @@ use std::str::CharIndices;
 use std::iter::Peekable;
 use crate::base::*;
 use crate::lang::LiteralString;
-use num::BigInt;
 
 
 struct Tokenizer<'str> {
@@ -275,7 +274,7 @@ fn test_tokenizer() {
 }
 
 
-fn parse_basenum(slice: &str) -> Result<BigInt, ParseError<'_>> {
+fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
     let mut iter = slice.split(|c| c == '_');
     let base_str = iter.next().unwrap();
     let base = base_str.parse::<u32>().map_err(|_| ParseError::new("invalid base", base_str))?;
@@ -286,7 +285,7 @@ fn parse_basenum(slice: &str) -> Result<BigInt, ParseError<'_>> {
     if main_str.is_empty() {
         return Err(ParseError::new("malformed number", slice));
     }
-    let res = BigInt::parse_bytes(main_str.as_bytes(), base)
+    let res = Number::parse_bytes(main_str.as_bytes(), base)
         .ok_or(ParseError::new(format!("invalid digits in base {base}"), main_str))?;
     if iter.next().is_some() {
         return Err(ParseError::new("malformed number", slice));
@@ -304,11 +303,11 @@ fn test_basenum() {
     assert!(parse_basenum("37_0").is_err()); // invalid base
     assert!(parse_basenum("999999999999999999_0").is_err()); // invalid base
     assert!(parse_basenum("2a_0").is_err()); // invalid base
-    assert_eq!(parse_basenum("2_0"), Ok(BigInt::from(0)));
-    assert_eq!(parse_basenum("2_101"), Ok(BigInt::from(5)));
+    assert_eq!(parse_basenum("2_0"), Ok(Number::zero()));
+    assert_eq!(parse_basenum("2_101"), Ok(Number::from(5)));
     assert!(parse_basenum("2_102").is_err()); // invalid digits in base 2
-    assert_eq!(parse_basenum("10_999999999999999999999999"), Ok("999999999999999999999999".parse::<BigInt>().unwrap()));
-    assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse::<BigInt>().unwrap()));
+    assert_eq!(parse_basenum("10_999999999999999999999999"), Ok("999999999999999999999999".parse().unwrap()));
+    assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse().unwrap()));
 }
 
 fn parse_string(slice: &str) -> Result<String, ParseError<'_>> {
@@ -402,10 +401,10 @@ impl<'str> Parser<'str> {
         let Some(tok) = self.tk.next().transpose()? else { return Ok(None); };
         use TokenClass as TC;
         Some(match tok {
-            Token(TC::Number, value) => Ok(Item::new_number(value.parse::<BigInt>()
+            Token(TC::Number, value) => Ok(Item::new_number(value.parse::<Number>()
                 .map_err(|_| ParseError::new("invalid number", value))?).into()),
             Token(TC::BaseNum, value) => Ok(Item::new_number(parse_basenum(value)?).into()),
-            Token(TC::Bool, value) => Ok(Item::new_bool(value.parse::<bool>().unwrap()).into()),
+            Token(TC::Bool, value) => Ok(Item::new_bool(value.parse().unwrap()).into()),
             Token(TC::Char, value) => Ok(Item::new_char(parse_char(value)?).into()),
             Token(TC::String, value) => Ok(Item::new_stream(LiteralString::from(parse_string(value)?)).into()),
             Token(TC::Open, bkt @ "[") => Ok(Node::new(LangItem::List, None, self.read_args(bkt)?).into()),
