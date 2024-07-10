@@ -110,6 +110,11 @@ fn eval_part(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let index = try_with!(node, arg.as_num());
         try_with!(node, index.check_within(Number::one()..));
         let stm = try_with!(node, item.into_stream());
+        match stm.length() {
+            Length::Exact(len) | Length::AtMost(len) if &len < index =>
+                return Err(StreamError::new("index past end of stream", node.into())),
+            _ => ()
+        }
         let mut iter = stm.iter();
         if iter.skip_n(&(index - 1))?.is_some() {
             return Err(StreamError::new("index past end of stream", node.into()));
