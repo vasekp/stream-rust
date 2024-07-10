@@ -169,7 +169,7 @@ impl Iterator for MapIter<'_> {
             return Some(source)
         };
         let expr = Expr::Eval(Node{
-            source: Some(Box::new(Expr::new_imm(source))),
+            source: Some(Box::new(source.into())),
             head: self.parent.body.head.clone(),
             args: self.parent.body.args.clone()
         });
@@ -279,7 +279,7 @@ impl Iterator for PlusIter<'_> {
             Node {
                 head: Head::Oper("+".into()),
                 source: None,
-                args: inputs.into_iter().map(Expr::new_imm).collect()
+                args: inputs.into_iter().map(Expr::from).collect()
             }
         }
 
@@ -557,9 +557,9 @@ fn eval_args(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         else { panic!("eval_args() called on something else than $args") };
     let expr = Expr::Eval(Node{
         head: *head,
-        source: node.source.map(|item| Box::new(Expr::new_imm(item))),
+        source: node.source.map(|item| Box::new(item.into())),
         args: src_stream.iter()
-            .map(|res| res.map(Expr::new_imm))
+            .map(|res| res.map(Expr::from))
             .collect::<Result<Vec<_>, _>>()?
     });
     expr.eval(env)

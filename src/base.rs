@@ -467,8 +467,9 @@ pub trait Stream: DynClone + Describe {
     }
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
-    /// looking at [`length()`]. If the information is insufficient, constructs the iterator and
-    /// tries answering using `Iterator::size_hint()`. As a last resort, the iterator is consumed.
+    /// looking at [`length()`](Stream::length). If the information is insufficient, constructs the
+    /// iterator and tries answering using `Iterator::size_hint()`. As a last resort, the iterator
+    /// is consumed.
     ///
     /// This function can't return an error. If the first call to `iter().next()` produces an
     /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
@@ -750,56 +751,44 @@ impl Head {
     }
 }
 
+impl<T> From<T> for Head where T: Into<String> {
+    fn from(symbol: T) -> Head {
+        Head::Symbol(symbol.into())
+    }
+}
+
+impl From<LangItem> for Head {
+    fn from(lang: LangItem) -> Head {
+        Head::Lang(lang)
+    }
+}
+
+impl From<Expr> for Head {
+    fn from(expr: Expr) -> Head {
+        Head::Block(Box::new(expr))
+    }
+}
+
+impl From<Item> for Head {
+    fn from(expr: Item) -> Head {
+        Head::Block(Box::new(expr.into()))
+    }
+}
+
+impl From<Node> for Head {
+    fn from(expr: Node) -> Head {
+        Head::Block(Box::new(expr.into()))
+    }
+}
+
+impl Head {
+    pub fn args<T>(head: T) -> Head where T: Into<Head> {
+        Head::Lang(LangItem::Args(Box::new(head.into())))
+    }
+}
+
+
 impl Expr {
-    /// Creates a new `Expr` of a value type.
-    pub fn new_imm(item: Item) -> Expr {
-        Expr::Imm(item)
-    }
-
-    /// Creates a new `Expr` of a node with a symbolic head.
-    pub fn new_node(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{
-            head: Head::Symbol(symbol.into()),
-            source: source.map(Box::new),
-            args
-        })
-    }
-
-    /// Creates a new `Expr` of a node with an operation head.
-    pub fn new_op(symbol: impl Into<String>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{
-            head: Head::Oper(symbol.into()),
-            source: source.map(Box::new),
-            args
-        })
-    }
-
-    /// Creates a new `Expr` of a node with an operation head.
-    pub fn new_repl(chr: char, ix: Option<usize>) -> Expr {
-        Expr::Eval(Node{
-            head: Head::Repl(chr, ix),
-            source: None,
-            args: vec![]
-        })
-    }
-
-    pub(crate) fn new_lang(head: LangItem, source: Option<Expr>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{
-            head: Head::Lang(head),
-            source: source.map(Box::new),
-            args
-        })
-    }
-
-    /// Creates a new `Expr` of a node with a block head.
-    pub fn new_block(body: Expr, source: Option<Expr>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{
-            head: Head::Block(Box::new(body)),
-            source: source.map(Box::new),
-            args
-        })
-    }
-
     /// For an `Expr::Imm(value)`, returns a reference to `value`.
     pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {
@@ -884,6 +873,29 @@ impl Describe for Expr {
 }
 
 impl Node {
+    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by
+    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
+    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
+    pub fn new(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Node {
+        Node{head: head.into(), source: source.map(Box::new), args}
+    }
+
+    /// Creates a new `Node` with a [`Head::Oper`] head. By nature these don't have `source`.
+    /// Operands are provided as `args`.
+    pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Node {
+        Node{head: Head::Oper(op.into()), source: None, args}
+    }
+
+    /// Creates a new `Node` with a [`Head::Repl`] head (for `#1` etc.). By nature these don't take
+    /// any arguments or source.
+    pub fn new_repl(chr: char, ix: Option<usize>) -> Node {
+        Node{
+            head: Head::Repl(chr, ix),
+            source: None,
+            args: vec![]
+        }
+    }
+
     /*pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
         match &self.source {
             Some(_) => Err("no source accepted".into()),
@@ -937,15 +949,15 @@ impl Node {
     }
 
     pub(crate) fn eval_source(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
-        self.source = self.source.map(|x| (*x).eval(env))
-            .transpose()?
-            .map(|x| Box::new(Expr::new_imm(x)));
+        if let Some(source) = self.source.take() {
+            self.source = Some(Box::new((*source).eval(env)?.into()));
+        }
         Ok(self)
     }
 
     /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
-            .map(|x| x.eval(env).map(Expr::new_imm))
+            .map(|x| x.eval(env).map(Expr::from))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
     }*/
@@ -1124,8 +1136,8 @@ impl From<ENode> for Node {
     fn from(enode: ENode) -> Node {
         Node {
             head: enode.head,
-            source: enode.source.map(|item| Box::new(Expr::new_imm(item))),
-            args: enode.args.into_iter().map(Expr::new_imm).collect()
+            source: enode.source.map(|item| Box::new(item.into())),
+            args: enode.args.into_iter().map(Expr::from).collect()
         }
     }
 }
