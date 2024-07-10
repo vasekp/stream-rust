@@ -361,7 +361,7 @@ impl Repeat {
             _ => Err("expected one of: source.repeat(), source.repeat(count)".into())
         });
         if let Item::Stream(ref stm) = &item {
-            if stm.is_empty() {
+            if stm.is_empty() || count.as_ref().map_or(false, Zero::is_zero) {
                 return Ok(
                     if stm.is_string() { Item::new_stream(EmptyString()) }
                     else { Item::new_stream(EmptyStream()) }
