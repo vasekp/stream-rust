@@ -79,7 +79,7 @@ impl Iterator for SeqIter<'_> {
 }
 
 impl SIterator for SeqIter<'_> {
-    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
         self.value += n * self.step;
         Ok(None)
@@ -234,11 +234,11 @@ impl Iterator for RangeIter<'_> {
 }
 
 impl SIterator for RangeIter<'_> {
-    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
         let Some(max) = Range::len_helper(&self.value, &self.parent.to, &self.parent.step)
             else { return Ok(None); };
-        if n <= max {
+        if n <= &max {
             self.value += n * &self.parent.step;
             Ok(None)
         } else {
@@ -437,9 +437,9 @@ impl Iterator for RepeatItemIter<'_> {
 }
 
 impl SIterator for RepeatItemIter<'_> {
-    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
-        if n > self.count_rem {
+        if n > &self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
             self.count_rem -= n;
@@ -471,19 +471,16 @@ impl Iterator for RepeatStreamIter<'_> {
 }
 
 impl SIterator for RepeatStreamIter<'_> {
-    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
 
         // If count_rem = 0, don't read the iterator! [1].repeat(0) still has iterator with
         // 1 element in it.
         if self.count_rem.as_ref().map_or(false, |count| count.is_zero()) {
-            return Ok(Some(n));
+            return Ok(Some(n.to_owned()));
         }
 
-        match self.iter.skip_n(n)? {
-            None => return Ok(None),
-            Some(remain) => n = remain
-        }
+        let Some(n) = self.iter.skip_n(n)? else { return Ok(None); };
         if let Some(ref mut count) = self.count_rem {
             *count -= 1;
             if count.is_zero() {
@@ -494,7 +491,7 @@ impl SIterator for RepeatStreamIter<'_> {
 
         // This point is special: we know that iter() is now newly initiated, so we can use it to
         // determine the length regardless of whether it's statically known.
-        let (full_length, mut n) = match self.iter.skip_n(n.clone())? {
+        let (full_length, mut n) = match self.iter.skip_n(&n)? {
             None => return Ok(None),
             Some(remain) => (n - &remain, remain)
         };
@@ -514,7 +511,7 @@ impl SIterator for RepeatStreamIter<'_> {
         }
         n -= &skip_full * &full_length;
         debug_assert!(n < full_length);
-        self.iter.skip_n(n)
+        self.iter.skip_n(&n)
     }
 }
 

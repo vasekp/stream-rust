@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Debug};
 use dyn_clone::DynClone;
-use num::{Signed, One, Zero};
+use num::{Signed, Zero, Integer};
 pub use crate::error::*;
 pub use crate::alphabet::Char;
 use crate::keywords::find_keyword;
@@ -922,21 +922,21 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     ///
     /// # Panics
     /// This function may panic if a negative value is passed in `n`.
-    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
         if let Some(len) = self.len_remain() {
-            if n > len {
-                return Ok(Some(n - len));
+            if n > &len {
+                return Ok(Some(n - &len));
             }
         }
-        let one = Number::one();
+        let mut n = n.to_owned();
         while !n.is_zero() {
             match self.next() {
                 Some(Ok(_)) => (),
                 Some(Err(err)) => return Err(err),
                 None => return Ok(Some(n))
             }
-            n -= &one;
+            n.dec();
         }
         Ok(None)
     }
@@ -964,7 +964,7 @@ impl Iterator for Forever<'_> {
 }
 
 impl SIterator for Forever<'_> {
-    fn skip_n(&mut self, _n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, _n: &Number) -> Result<Option<Number>, StreamError> {
         Ok(None)
     }
 }

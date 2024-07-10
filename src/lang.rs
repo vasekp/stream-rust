@@ -99,7 +99,7 @@ fn eval_part(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         try_with!(node, index.check_within(Number::one()..));
         let stm = try_with!(node, item.into_stream());
         let mut iter = stm.iter();
-        if iter.skip_n(index - 1)?.is_some() {
+        if iter.skip_n(&(index - 1))?.is_some() {
             return Err(StreamError::new("index past end of stream", node.into()));
         }
         item = match iter.next() {
@@ -179,7 +179,7 @@ impl Iterator for MapIter<'_> {
 }
 
 impl SIterator for MapIter<'_> {
-    fn skip_n(&mut self, n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         self.source.skip_n(n)
     }
 }
@@ -501,10 +501,11 @@ impl Iterator for JoinIter<'_> {
 }
 
 impl SIterator for JoinIter<'_> {
-    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
+        let mut n = n.to_owned();
         loop {
-            let Some(m) = self.cur.skip_n(n)?
+            let Some(m) = self.cur.skip_n(&n)?
                 else { return Ok(None); };
             n = m;
             self.index += 1;
