@@ -545,22 +545,24 @@ fn test_join() {
 
 
 fn eval_args(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
     if node.args.len() != 1 {
-        return Err(StreamError::new("exactly 1 argument expected", node));
+        return Err(StreamError::new("exactly 1 argument expected", node.into()));
     }
-    let node = node.eval_args(env)?;
-    let src_stream = try_with!(node, node.args[0].as_item()?.as_stream());
+    let src_stream = try_with!(node, node.args[0].as_stream());
     if src_stream.length() == Length::Infinite {
-        return Err(StreamError::new("stream is infinite", node));
+        return Err(StreamError::new("stream is infinite", node.into()));
     }
-    let mut src = try_with!(node, node.source_checked()?.to_node());
-    if !src.args.is_empty() {
-        return Err(StreamError::new("body already has arguments", node));
-    }
-    src.args = src_stream.iter()
-        .map(|res| res.map(Expr::new_imm))
-        .collect::<Result<Vec<_>, _>>()?;
-    src.eval(env)
+    let Head::Lang(LangItem::Args(head)) = node.head
+        else { panic!("eval_args() called on something else than $args") };
+    let expr = Expr::Eval(Node{
+        head: *head,
+        source: node.source.map(|item| Box::new(Expr::new_imm(item))),
+        args: src_stream.iter()
+            .map(|res| res.map(Expr::new_imm))
+            .collect::<Result<Vec<_>, _>>()?
+    });
+    expr.eval(env)
 }
 
 #[test]
@@ -571,9 +573,9 @@ fn test_args() {
     assert_eq!(parse("range@[3]").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
     assert_eq!(parse("range@range(3)").unwrap().eval(&env).unwrap().to_string(), "[1]");
     assert_eq!(parse("range@range(3)").unwrap().eval(&env).unwrap().to_string(), "[1]");
-    assert_eq!(parse("range@[1,[2]][2]").unwrap().eval(&env).unwrap().to_string(), "[1, 2]");
-    assert!(parse("range@[1,[2]][1]").unwrap().eval(&env).is_err());
-    assert!(parse("range@(3)").unwrap().eval(&env).is_err());
+    assert_eq!(parse("range@[3][2]").unwrap().eval(&env).unwrap().to_string(), "2");
+    assert_eq!(parse("range@range(3)[1]").unwrap().eval(&env).unwrap().to_string(), "1");
+    assert!(parse("range@3").unwrap().eval(&env).is_err());
     assert!(parse("range@seq").unwrap().eval(&env).is_err());
 }
 

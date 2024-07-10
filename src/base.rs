@@ -666,6 +666,12 @@ pub enum Expr {
     Eval(Node)
 }
 
+impl Default for Expr {
+    fn default() -> Expr {
+        Expr::Imm(Default::default())
+    }
+}
+
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
@@ -709,12 +715,12 @@ pub enum Head {
     Repl(char, Option<usize>)
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LangItem {
     List,
     Part,
     Map,
-    Args
+    Args(Box<Head>)
 }
 
 impl LangItem {
@@ -724,7 +730,22 @@ impl LangItem {
             List => "$list",
             Part => "$part",
             Map => "$map",
-            Args => "$args"
+            Args(_) => "$args"
+        }
+    }
+}
+
+// Only for private use in Node::describe_helper.
+impl Head {
+    fn describe(&self) -> String {
+        match self {
+            Head::Symbol(s) => s.to_owned(),
+            Head::Block(b) => format!("{{{}}}", b.describe()),
+            Head::Oper(_) => Default::default(),
+            Head::Repl(chr, None) => chr.to_string(),
+            Head::Repl(chr, Some(num)) => format!("{chr}{num}"),
+            Head::Lang(LangItem::Args(head)) => format!("{}@", head.describe()),
+            Head::Lang(_) => Default::default(),
         }
     }
 }
@@ -922,12 +943,12 @@ impl Node {
         Ok(self)
     }
 
-    pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+    /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
             .map(|x| x.eval(env).map(Expr::new_imm))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
-    }
+    }*/
 
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {
@@ -950,42 +971,25 @@ impl Node {
             ret += &source.describe();
             match head {
                 Head::Lang(LangItem::Map) => ret.push(':'),
-                Head::Lang(LangItem::Args) => ret.push('@'),
                 Head::Lang(LangItem::Part) => (),
                 _ => ret.push('.')
             }
         }
-        match head {
-            Head::Symbol(s) => ret += s,
-            Head::Block(b) => {
-                ret.push('{');
-                ret += &b.describe();
-                ret.push('}');
-            },
-            Head::Oper(o) => { // special, early return
-                ret.push('(');
-                let mut it = args.iter().map(Describe::describe);
-                if args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
-                    if let Some(s) = it.next() {
-                        ret += &s;
-                    }
-                }
-                for s in it {
-                    ret += o;
+        ret += &(*head).describe();
+        if let Head::Oper(o) = head {
+            ret.push('(');
+            let mut it = args.iter().map(Describe::describe);
+            if args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
+                if let Some(s) = it.next() {
                     ret += &s;
                 }
-                ret.push(')');
-                return ret;
-            },
-            Head::Repl(chr, opt) => {
-                ret.push(*chr);
-                if let Some(num) = opt {
-                    ret += &format!("{num}");
-                }
-            },
-            Head::Lang(_) => ()
-        };
-        if !args.is_empty() {
+            }
+            for s in it {
+                ret += o;
+                ret += &s;
+            }
+            ret.push(')');
+        } else if !args.is_empty() {
             match head {
                 Head::Lang(LangItem::Part | LangItem::List) => ret.push('['),
                 Head::Lang(LangItem::Map) => (),
