@@ -1,7 +1,7 @@
 #![allow(clippy::redundant_closure_call)]
 use crate::base::*;
+use crate::alphabet::*;
 use num::{Zero, One, ToPrimitive, Signed};
-use crate::base::Describe;
 use std::rc::Rc;
 
 /// An infinite stream returning consecutive numbers, `seq`.

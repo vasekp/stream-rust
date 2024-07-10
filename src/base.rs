@@ -1,30 +1,17 @@
 use std::fmt::{Display, Formatter, Debug};
-use std::ops::RangeBounds;
 use dyn_clone::DynClone;
-use crate::utils::describe_range;
 use num::{Signed, One, Zero};
+pub use crate::error::*;
+pub use crate::alphabet::Char;
 use crate::keywords::find_keyword;
 use std::cell::Cell;
 use std::rc::Rc;
-pub use crate::alphabet::*;
+use crate::alphabet::*;
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
 /// BigInt fallback in the future for better performance.
 pub type Number = num::BigInt;
-
-pub(crate) trait NumWithin : PartialOrd {
-    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), BaseError>;
-}
-
-impl NumWithin for Number {
-    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), BaseError> {
-        match range.contains(self) {
-            true => Ok(()),
-            false => Err(format!("expected {}, found {}", describe_range(&range), &self).into())
-        }
-    }
-}
 
 
 /// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into an input form.
@@ -221,87 +208,6 @@ impl Clone for Item {
             Bool(x) => Bool(*x),
             Char(x) => Char(x.clone()),
             Stream(s) => Stream(dyn_clone::clone_box(&**s))
-        }
-    }
-}
-
-
-/// The runtime error type with an indication of the [`Node`] whose evaluation caused it.
-#[derive(PartialEq, Debug)]
-pub struct StreamError {
-    reason: BaseError,
-    node: Node
-}
-
-impl StreamError {
-    pub fn new<T>(reason: T, node: Node) -> StreamError where T: Into<BaseError> {
-        StreamError{reason: reason.into(), node}
-    }
-}
-
-impl std::error::Error for StreamError { }
-
-impl Display for StreamError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.node.describe(), self.reason)
-    }
-}
-
-/// The base error returned by helper functions. In most situations this is intended to be
-/// turned into [`StreamError`] by supplementing a [`Node`].
-#[derive(Debug, PartialEq)]
-pub struct BaseError(String);
-
-impl<T> From<T> for BaseError where T: Into<String> {
-    fn from(string: T) -> BaseError {
-        BaseError(string.into())
-    }
-}
-
-impl Display for BaseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-/// A special error type which can hold both [`StreamError`] or [`BaseError`], i.e., has an
-/// optional [`Node`] attached.
-///
-/// The situation where a [`Node`] is not available can happen in [`Stream::writeout`] for strings
-/// when an [`Item`] fails to be a [`Item::Char`]. For that reason this error type is returned by
-/// [`Item::format`].
-#[derive(Default, PartialEq)]
-pub enum FormatError {
-    #[default]
-    None,
-    StreamError(StreamError),
-    BaseError(BaseError)
-}
-
-impl FormatError {
-    pub fn is_some(&self) -> bool {
-        self != &FormatError::None
-    }
-}
-
-impl From<StreamError> for FormatError {
-    fn from(err: StreamError) -> FormatError {
-        FormatError::StreamError(err)
-    }
-}
-
-impl From<BaseError> for FormatError {
-    fn from(err: BaseError) -> FormatError {
-        FormatError::BaseError(err)
-    }
-}
-
-impl Display for FormatError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FormatError::None => write!(f, "no error"),
-            FormatError::BaseError(err) => write!(f, "{err}"),
-            FormatError::StreamError(err) => write!(f, "{err}"),
         }
     }
 }
@@ -1021,18 +927,6 @@ impl Node {
         ret
     }
 }
-
-macro_rules! try_with {
-    ($node:ident, $expr:expr) => {
-        match (|| -> Result<_, BaseError> { $expr })() {
-            Ok(result) => result,
-            Err(err) => return Err(StreamError::new(err, $node.into()))
-        }
-    }
-}
-
-pub(crate) use try_with;
-
 
 #[test]
 fn test_block() {

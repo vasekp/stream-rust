@@ -1,7 +1,8 @@
 #![allow(clippy::redundant_closure_call)]
 use crate::base::*;
+use crate::alphabet::*;
+use crate::utils::NumWithin;
 use num::{One, Signed, Zero};
-use crate::base::Describe;
 use std::rc::Rc;
 
 
