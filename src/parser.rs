@@ -55,15 +55,17 @@ enum CharClass {
     Other
 }
 
-fn char_class(c: char) -> CharClass {
-    use CharClass::*;
-    match c {
-        ' ' | '\t' | '\n' => Space,
-        'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => Ident,
-        '"' | '\'' => Delim,
-        '<' | '=' | '>' => Rel,
-        ';' => Comment,
-        _ => Other
+impl CharClass {
+    fn of(c: char) -> CharClass {
+        use CharClass::*;
+        match c {
+            ' ' | '\t' | '\n' => Space,
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => Ident,
+            '"' | '\'' => Delim,
+            '<' | '=' | '>' => Rel,
+            ';' => Comment,
+            _ => Other
+        }
     }
 }
 
@@ -83,27 +85,29 @@ enum TokenClass {
     Special
 }
 
-fn token_class(slice: &str) -> Result<TokenClass, ParseError> {
-    use TokenClass::*;
-    const OPERS: &str = "+-*/%^~&|<=>";
-    let class = match slice.chars().next().unwrap() {
-        '0'..='9' => if slice.contains('_') { BaseNum } else { Number },
-        'a'..='z' | 'A'..='Z' | '_' => if slice == "true" || slice == "false" { Bool } else { Ident },
-        '"' => String,
-        '\'' => Char,
-        '.' | ':' | '@' => if slice == ".." { Oper } else { Chain },
-        c if OPERS.contains(c) => Oper,
-        '(' | '[' | '{' => Open,
-        ')' | ']' | '}' => Close,
-        ',' => Comma,
-        '#' | '$' => Special,
-        _ => return Err(ParseError::new("invalid character", slice))
-    };
-    Ok(class)
-}
-
 #[derive(PartialEq, Debug)]
 struct Token<'str>(TokenClass, &'str str);
+
+impl Token<'_> {
+    fn new(slice: &str) -> Result<Token, ParseError> {
+        use TokenClass::*;
+        const OPERS: &str = "+-*/%^~&|<=>";
+        let class = match slice.chars().next().unwrap() {
+            '0'..='9' => if slice.contains('_') { BaseNum } else { Number },
+            'a'..='z' | 'A'..='Z' | '_' => if slice == "true" || slice == "false" { Bool } else { Ident },
+            '"' => String,
+            '\'' => Char,
+            '.' | ':' | '@' => if slice == ".." { Oper } else { Chain },
+            c if OPERS.contains(c) => Oper,
+            '(' | '[' | '{' => Open,
+            ')' | ']' | '}' => Close,
+            ',' => Comma,
+            '#' | '$' => Special,
+            _ => return Err(ParseError::new("invalid character", slice))
+        };
+        Ok(Token(class, slice))
+    }
+}
 
 impl<'str> Tokenizer<'str> {
     pub fn new(input: &'str str) -> Tokenizer<'str> {
@@ -112,7 +116,7 @@ impl<'str> Tokenizer<'str> {
 
     fn skip_same(&mut self, class: &CharClass) {
         while let Some(&(_, ch)) = self.iter.peek() {
-            if char_class(ch) == *class {
+            if CharClass::of(ch) == *class {
                 self.iter.next();
             } else {
                 break;
@@ -164,7 +168,7 @@ impl<'str> Iterator for Tokenizer<'str> {
             return Ok(ret).transpose();
         }
         let (start, ch) = self.iter.next()?;
-        let class = char_class(ch);
+        let class = CharClass::of(ch);
         use CharClass::*;
         let res = match class {
             Ident | Rel | Space => {
@@ -191,7 +195,7 @@ impl<'str> Iterator for Tokenizer<'str> {
         let slice = &self.input[start..end];
         Some(res
             .map_err(|reason| ParseError::new(reason, slice))
-            .and_then(|_| token_class(slice).map(|class| Token(class, slice)) ))
+            .and_then(|_| Token::new(slice)))
     }
 }
 
@@ -304,15 +308,6 @@ fn test_tokenizer() {
     assert_eq!(it.next(), None);
 }
 
-
-fn closing(bracket: &str) -> &'static str {
-    match bracket {
-        "(" => ")",
-        "[" => "]",
-        "{" => "}",
-        _ => unreachable!()
-    }
-}
 
 fn parse_basenum(slice: &str) -> Result<BigInt, ParseError<'_>> {
     let mut iter = slice.split(|c| c == '_');
@@ -587,10 +582,9 @@ impl<'str> Parser<'str> {
                 _ => unreachable!()
             }
         };
-        if close == closing(open) {
-            Ok(ret)
-        } else {
-            Err(ParseError::new("unexpected closing bracket", close))
+        match (open, close) {
+            ("(", ")") | ("[", "]") | ("{", "}") => Ok(ret),
+            (_, close) => Err(ParseError::new("unexpected closing bracket", close))
         }
     }
 
