@@ -353,7 +353,7 @@ struct RepeatItemIter<'node> {
 }
 
 struct RepeatStreamIter<'node> {
-    stream: &'node Box<dyn Stream>,
+    stream: &'node dyn Stream,
     iter: Box<dyn SIterator + 'node>,
     count_rem: Option<Number>
 }
@@ -376,7 +376,7 @@ impl Stream for Repeat {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         match &self.item {
             Item::Stream(stream) => Box::new(RepeatStreamIter {
-                stream: &stream,
+                stream: &**stream,
                 iter: stream.iter(),
                 count_rem: self.count.clone()
             }),
@@ -419,7 +419,7 @@ impl Stream for Repeat {
 impl Describe for Repeat {
     fn describe(&self) -> String {
         Node::describe_helper(&Head::Symbol("repeat".into()), Some(&self.item),
-            self.clone().count.map(|count| Item::new_number(count)).as_slice())
+            self.clone().count.map(Item::new_number).as_slice())
     }
 }
 

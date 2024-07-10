@@ -482,12 +482,7 @@ pub trait Stream: DynClone + Describe {
                 match iter.size_hint() {
                     (1.., _) => false,
                     (0, Some(0)) => true,
-                    _ => {
-                        match iter.next() {
-                            None => true,
-                            Some(_) => false
-                        }
-                    }
+                    _ => iter.next().is_none()
                 }
             }
         }
