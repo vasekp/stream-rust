@@ -24,6 +24,416 @@ pub trait Describe {
 }
 
 
+/// Any Stream language expression. This may be either a directly accessible [`Item`] (including
+/// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
+#[derive(Debug, PartialEq, Clone)]
+pub enum Expr {
+    Imm(Item),
+    Eval(Node)
+}
+
+impl Default for Expr {
+    fn default() -> Expr {
+        Expr::Imm(Default::default())
+    }
+}
+
+impl Expr {
+    /// For an `Expr::Imm(value)`, returns a reference to `value`.
+    pub fn as_item(&self) -> Result<&Item, BaseError> {
+        match self {
+            Expr::Imm(ref item) => Ok(item),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+        }
+    }
+
+    pub fn as_item_mut(&mut self) -> Result<&mut Item, BaseError> {
+        match self {
+            Expr::Imm(ref mut item) => Ok(item),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+        }
+    }
+
+    /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
+    pub fn to_item(&self) -> Result<Item, BaseError> {
+        match self {
+            Expr::Imm(item) => Ok(item.clone()),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+        }
+    }
+
+    pub fn into_item(self) -> Result<Item, BaseError> {
+        match self {
+            Expr::Imm(item) => Ok(item),
+            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+        }
+    }
+
+    pub fn to_node(&self) -> Result<Node, BaseError> {
+        match self {
+            Expr::Eval(node) => Ok(node.to_owned()),
+            Expr::Imm(imm) => Err(format!("expected node, found {:?}", imm).into()),
+        }
+    }
+
+    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
+        match self {
+            Expr::Imm(_) => Ok(self),
+            Expr::Eval(node) => match node.head {
+                Head::Repl('#', None) => source.as_ref()
+                        .ok_or(StreamError::new("no source provided", node))
+                        .map(|boxed| (**boxed).clone()),
+                Head::Repl('#', Some(ix)) => args.get(ix - 1)
+                    .ok_or(StreamError::new("no such input", node))
+                    .cloned(),
+                _ => Ok(Expr::Eval(node.apply(source, args)?))
+            }
+        }
+    }
+
+    /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
+    /// `Node::eval()`.
+    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
+        match self {
+            Expr::Imm(item) => Ok(item),
+            Expr::Eval(node) => node.eval(env)
+        }
+    }
+}
+
+impl From<Item> for Expr {
+    fn from(item: Item) -> Expr {
+        Expr::Imm(item)
+    }
+}
+
+impl From<Node> for Expr {
+    fn from(item: Node) -> Expr {
+        Expr::Eval(item)
+    }
+}
+
+impl Describe for Expr {
+    fn describe(&self) -> String {
+        match self {
+            Expr::Imm(item) => item.describe(),
+            Expr::Eval(node) => node.describe()
+        }
+    }
+}
+
+
+/// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
+/// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
+/// value, potentially depending on the nature of the source or arguments provided. This evaluation
+/// happens in [`Expr::eval()`].
+#[derive(Debug, PartialEq, Clone)]
+pub struct Node {
+    pub head: Head,
+    pub source: Option<Box<Expr>>,
+    pub args: Vec<Expr>
+}
+
+impl Node {
+    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by
+    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
+    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
+    pub fn new(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Node {
+        Node{head: head.into(), source: source.map(Box::new), args}
+    }
+
+    /// Creates a new `Node` with a [`Head::Oper`] head. By nature these don't have `source`.
+    /// Operands are provided as `args`.
+    pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Node {
+        Node{head: Head::Oper(op.into()), source: None, args}
+    }
+
+    /// Creates a new `Node` with a [`Head::Repl`] head (for `#1` etc.). By nature these don't take
+    /// any arguments or source.
+    pub fn new_repl(chr: char, ix: Option<usize>) -> Node {
+        Node{
+            head: Head::Repl(chr, ix),
+            source: None,
+            args: vec![]
+        }
+    }
+
+    /*pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
+        match &self.source {
+            Some(_) => Err("no source accepted".into()),
+            None => Ok(())
+        }
+    }*/
+
+    pub(crate) fn source_checked(&self) -> Result<&Expr, BaseError> {
+        match &self.source {
+            Some(source) => Ok(source),
+            None => Err("source required".into()),
+        }
+    }
+
+    /*pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
+        if self.args.is_empty() {
+            Err("at least 1 argument required".into())
+        } else {
+            Ok(())
+        }
+    }*/
+
+    /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
+    /// describes an atomic constant or a stream.
+    ///
+    /// The evaluation is done by finding the head of the node in a global keyword table.
+    /// Locally defined symbols aren't handled here.
+    // Note to self: for assignments, this will happen in Session::process. For `with`, this will
+    // happen in Expr::apply(Context).
+    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
+        match self.head {
+            Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
+                Ok(func) => func(self, env),
+                Err(e) => Err(StreamError::new(e, self))
+            },
+            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(env),
+            Head::Repl(_, _) => Err(StreamError::new("out of context", self)),
+            Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env)
+        }
+    }
+
+    pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
+        let source = match self.source {
+            Some(source) => Some((*source).eval(env)?),
+            None => None
+        };
+        let args = self.args.into_iter()
+            .map(|x| x.eval(env))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ENode{head: self.head, source, args})
+    }
+
+    pub(crate) fn eval_source(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+        if let Some(source) = self.source.take() {
+            self.source = Some(Box::new((*source).eval(env)?.into()));
+        }
+        Ok(self)
+    }
+
+    /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+        self.args = self.args.into_iter()
+            .map(|x| x.eval(env).map(Expr::from))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(self)
+    }*/
+
+    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
+        Ok(Node {
+            head: self.head,
+            source: match self.source {
+                None => None,
+                Some(boxed) => Some(Box::new((*boxed).apply(source, args)?))
+            },
+            args: self.args.into_iter()
+                .map(|expr| expr.apply(source, args))
+                .collect::<Result<Vec<_>, _>>()?
+        })
+    }
+
+    pub(crate) fn describe_helper<T>(head: &Head, source: Option<&T>, args: &[T]) -> String
+        where T: Describe
+    {
+        let mut ret = String::new();
+        if let Some(source) = source {
+            ret += &source.describe();
+            match head {
+                Head::Lang(LangItem::Map) => ret.push(':'),
+                Head::Lang(LangItem::Part) => (),
+                _ => ret.push('.')
+            }
+        }
+        ret += &(*head).describe();
+        if let Head::Oper(o) = head {
+            ret.push('(');
+            let mut it = args.iter().map(Describe::describe);
+            if args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
+                if let Some(s) = it.next() {
+                    ret += &s;
+                }
+            }
+            for s in it {
+                ret += o;
+                ret += &s;
+            }
+            ret.push(')');
+        } else if !args.is_empty() {
+            match head {
+                Head::Lang(LangItem::Part | LangItem::List) => ret.push('['),
+                Head::Lang(LangItem::Map) => (),
+                _ => ret.push('(')
+            };
+            let mut it = args.iter().map(Describe::describe);
+            if let Some(s) = it.next() {
+                ret += &s;
+                for s in it {
+                    ret += ", ";
+                    ret += &s
+                }
+            }
+            match head {
+                Head::Lang(LangItem::Part | LangItem::List) => ret.push(']'),
+                Head::Lang(LangItem::Map) => (),
+                _ => ret.push(')')
+            };
+        } else if head == &Head::Lang(LangItem::List) {
+            ret += "[]";
+        }
+        ret
+    }
+}
+
+impl Describe for Node {
+    fn describe(&self) -> String {
+        Node::describe_helper(&self.head, self.source.as_deref(), &self.args)
+    }
+}
+
+
+/// A variant of `Node` in which all the arguments and source are type-guaranteed to be evaluated.
+/// This is achieved by using `Item` instead of `Expr`, avoiding the possibility of `Expr::Eval`.
+#[derive(Debug, PartialEq, Clone)]
+pub(crate) struct ENode {
+    pub head: Head,
+    pub source: Option<Item>,
+    pub args: Vec<Item>
+}
+
+impl ENode {
+    pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
+        match &self.source {
+            Some(_) => Err("no source accepted".into()),
+            None => Ok(())
+        }
+    }
+
+    pub(crate) fn source_checked(&self) -> Result<&Item, BaseError> {
+        match &self.source {
+            Some(source) => Ok(source),
+            None => Err("source required".into()),
+        }
+    }
+
+    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
+        if self.args.is_empty() {
+            Err("at least 1 argument required".into())
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl From<ENode> for Node {
+    fn from(enode: ENode) -> Node {
+        Node {
+            head: enode.head,
+            source: enode.source.map(|item| Box::new(item.into())),
+            args: enode.args.into_iter().map(Expr::from).collect()
+        }
+    }
+}
+
+impl Describe for ENode {
+    fn describe(&self) -> String {
+        Node::describe_helper(&self.head, self.source.as_ref(), &self.args)
+    }
+}
+
+
+/// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
+/// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
+/// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
+#[derive(Debug, PartialEq, Clone)]
+pub enum Head {
+    Symbol(String),
+    Oper(String),
+    Block(Box<Expr>),
+    Lang(LangItem),
+    Repl(char, Option<usize>)
+}
+
+// Only for private use in Node::describe_helper.
+impl Head {
+    fn describe(&self) -> String {
+        match self {
+            Head::Symbol(s) => s.to_owned(),
+            Head::Block(b) => format!("{{{}}}", b.describe()),
+            Head::Oper(_) => Default::default(),
+            Head::Repl(chr, None) => chr.to_string(),
+            Head::Repl(chr, Some(num)) => format!("{chr}{num}"),
+            Head::Lang(LangItem::Args(head)) => format!("{}@", head.describe()),
+            Head::Lang(_) => Default::default(),
+        }
+    }
+
+    pub fn args<T>(head: T) -> Head where T: Into<Head> {
+        Head::Lang(LangItem::Args(Box::new(head.into())))
+    }
+}
+
+impl<T> From<T> for Head where T: Into<String> {
+    fn from(symbol: T) -> Head {
+        Head::Symbol(symbol.into())
+    }
+}
+
+impl From<LangItem> for Head {
+    fn from(lang: LangItem) -> Head {
+        Head::Lang(lang)
+    }
+}
+
+impl From<Expr> for Head {
+    fn from(expr: Expr) -> Head {
+        Head::Block(Box::new(expr))
+    }
+}
+
+impl From<Item> for Head {
+    fn from(expr: Item) -> Head {
+        Head::Block(Box::new(expr.into()))
+    }
+}
+
+impl From<Node> for Head {
+    fn from(expr: Node) -> Head {
+        Head::Block(Box::new(expr.into()))
+    }
+}
+
+
+/// Special types of [`Head`] for language constructs with special syntax.
+#[derive(Debug, PartialEq, Clone)]
+pub enum LangItem {
+    /// List (`[1, 2, 3]` ~ `$part(1, 2, 3)`)
+    List,
+    /// Parts (`source[1, 2]` ~ `source.$part(1, 2)`)
+    Part,
+    /// Colon (`source:func` ~ `source.$map(func)`)
+    Map,
+    /// At-sign (`source.head@args` ~ `source.$args{head}(args)`)
+    Args(Box<Head>)
+}
+
+impl LangItem {
+    fn keyword(&self) -> &'static str {
+        use LangItem::*;
+        match self {
+            List => "$list",
+            Part => "$part",
+            Map => "$map",
+            Args(_) => "$args"
+        }
+    }
+}
+
+
 /// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
 pub enum Item {
     Number(Number),
@@ -402,90 +812,6 @@ impl Display for dyn Stream {
 }
 
 
-/// The iterator trait returned by [`Stream::iter()`]. Every call to `next` returns either:
-/// - `Some(Ok(item))`: any [`Item`] ready for direct consumption,
-/// - `Some(Err(err))`: an error occurred at some point,
-/// - `None`: the stream ended.
-///
-/// `next()` should not be called any more after *either* of the two latter conditions.
-/// The iterators are not required to be fused and errors are not meant to be recoverable or
-/// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
-    /// Returns the number of items remaining in the iterator, if it can be deduced from its
-    /// current state. If it can't, or is known to be infinite, returns `None`.
-    ///
-    /// [`SIterator::skip_n`] may use this value for optimization. It is also used by the default
-    /// implementation of [`Stream::length()`]. If you override both methods then you don't need
-    /// to override this one, unless you want to use it for similar purposes.
-    fn len_remain(&self) -> Option<Number> {
-        match self.size_hint() {
-            (lo, Some(hi)) if lo == hi => Some(lo.into()),
-            _ => None
-        }
-    }
-
-    /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
-    /// by `n` elements.
-    ///
-    /// The return value is `Ok(None)` if `n` elements were skipped. If the iterator finishes
-    /// early, the result is `Ok(Some(k))`, where `k` is the number of remaining elements. This is
-    /// important to know when multiple iterators are chained. Calling `next()` after this
-    /// condition, or after an `Err` is returned, is undefined behaviour.
-    ///
-    /// The default implementation calls `next()` an appropriate number of times, and thus is
-    /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
-    /// value given by [`SIterator::len_remain()`].
-    ///
-    /// # Panics
-    /// This function may panic if a negative value is passed in `n`.
-    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
-        assert!(!n.is_negative());
-        if let Some(len) = self.len_remain() {
-            if n > len {
-                return Ok(Some(n - len));
-            }
-        }
-        let one = Number::one();
-        while !n.is_zero() {
-            match self.next() {
-                Some(Ok(_)) => (),
-                Some(Err(err)) => return Err(err),
-                None => return Ok(Some(n))
-            }
-            n -= &one;
-        }
-        Ok(None)
-    }
-}
-
-impl<T, U, V> SIterator for std::iter::Map<T, U>
-where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<Item, StreamError>
-{ }
-
-impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
-
-impl SIterator for std::iter::Empty<Result<Item, StreamError>> { }
-
-pub struct Forever<'node> {
-    pub item: &'node Item
-}
-
-impl Iterator for Forever<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(Ok(self.item.clone()))
-    }
-}
-
-impl SIterator for Forever<'_> {
-    fn skip_n(&mut self, _n: Number) -> Result<Option<Number>, StreamError> {
-        Ok(None)
-    }
-}
-
-
 /// The enum returned by [`Stream::length()`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum Length {
@@ -560,31 +886,92 @@ impl std::ops::Add for Length {
 }
 
 
-/// Any Stream language expression. This may be either a directly accessible [`Item`] (including
-/// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
-#[derive(Debug, PartialEq, Clone)]
-pub enum Expr {
-    Imm(Item),
-    Eval(Node)
-}
+/// The iterator trait returned by [`Stream::iter()`]. Every call to `next` returns either:
+/// - `Some(Ok(item))`: any [`Item`] ready for direct consumption,
+/// - `Some(Err(err))`: an error occurred at some point,
+/// - `None`: the stream ended.
+///
+/// `next()` should not be called any more after *either* of the two latter conditions.
+/// The iterators are not required to be fused and errors are not meant to be recoverable or
+/// replicable, so the behaviour of doing so is undefined.
+pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
+    /// Returns the number of items remaining in the iterator, if it can be deduced from its
+    /// current state. If it can't, or is known to be infinite, returns `None`.
+    ///
+    /// [`SIterator::skip_n`] may use this value for optimization. It is also used by the default
+    /// implementation of [`Stream::length()`]. If you override both methods then you don't need
+    /// to override this one, unless you want to use it for similar purposes.
+    fn len_remain(&self) -> Option<Number> {
+        match self.size_hint() {
+            (lo, Some(hi)) if lo == hi => Some(lo.into()),
+            _ => None
+        }
+    }
 
-impl Default for Expr {
-    fn default() -> Expr {
-        Expr::Imm(Default::default())
+    /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
+    /// by `n` elements.
+    ///
+    /// The return value is `Ok(None)` if `n` elements were skipped. If the iterator finishes
+    /// early, the result is `Ok(Some(k))`, where `k` is the number of remaining elements. This is
+    /// important to know when multiple iterators are chained. Calling `next()` after this
+    /// condition, or after an `Err` is returned, is undefined behaviour.
+    ///
+    /// The default implementation calls `next()` an appropriate number of times, and thus is
+    /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
+    /// value given by [`SIterator::len_remain()`].
+    ///
+    /// # Panics
+    /// This function may panic if a negative value is passed in `n`.
+    fn skip_n(&mut self, mut n: Number) -> Result<Option<Number>, StreamError> {
+        assert!(!n.is_negative());
+        if let Some(len) = self.len_remain() {
+            if n > len {
+                return Ok(Some(n - len));
+            }
+        }
+        let one = Number::one();
+        while !n.is_zero() {
+            match self.next() {
+                Some(Ok(_)) => (),
+                Some(Err(err)) => return Err(err),
+                None => return Ok(Some(n))
+            }
+            n -= &one;
+        }
+        Ok(None)
     }
 }
 
-/// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
-/// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
-/// value, potentially depending on the nature of the source or arguments provided. This evaluation
-/// happens in [`Expr::eval()`].
-#[derive(Debug, PartialEq, Clone)]
-pub struct Node {
-    pub head: Head,
-    pub source: Option<Box<Expr>>,
-    pub args: Vec<Expr>
+impl<T, U, V> SIterator for std::iter::Map<T, U>
+where T: Iterator<Item = V>,
+      U: FnMut(V) -> Result<Item, StreamError>
+{ }
+
+impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
+
+impl SIterator for std::iter::Empty<Result<Item, StreamError>> { }
+
+pub(crate) struct Forever<'node> {
+    pub item: &'node Item
 }
 
+impl Iterator for Forever<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(Ok(self.item.clone()))
+    }
+}
+
+impl SIterator for Forever<'_> {
+    fn skip_n(&mut self, _n: Number) -> Result<Option<Number>, StreamError> {
+        Ok(None)
+    }
+}
+
+
+/// The environment in which expressions are evaluated. This is passed as an argument to
+/// [`Expr::eval()`]. Currently a placeholder, but in the future to be defined through `env`.
 #[derive(Default, Clone)]
 pub struct Env { }
 
@@ -598,334 +985,12 @@ impl Env {
         }
     }
 
+    /// The alphabet used for ordering characters and arithmetic operations on them.
     pub fn alphabet(&self) -> &Alphabet { &Alphabet::Std26 }
 }
 
 impl Describe for Env {
     fn describe(&self) -> String { todo!() }
-}
-
-/// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
-/// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
-/// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
-#[derive(Debug, PartialEq, Clone)]
-pub enum Head {
-    Symbol(String),
-    Oper(String),
-    Block(Box<Expr>),
-    Lang(LangItem),
-    Repl(char, Option<usize>)
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum LangItem {
-    List,
-    Part,
-    Map,
-    Args(Box<Head>)
-}
-
-impl LangItem {
-    fn keyword(&self) -> &'static str {
-        use LangItem::*;
-        match self {
-            List => "$list",
-            Part => "$part",
-            Map => "$map",
-            Args(_) => "$args"
-        }
-    }
-}
-
-// Only for private use in Node::describe_helper.
-impl Head {
-    fn describe(&self) -> String {
-        match self {
-            Head::Symbol(s) => s.to_owned(),
-            Head::Block(b) => format!("{{{}}}", b.describe()),
-            Head::Oper(_) => Default::default(),
-            Head::Repl(chr, None) => chr.to_string(),
-            Head::Repl(chr, Some(num)) => format!("{chr}{num}"),
-            Head::Lang(LangItem::Args(head)) => format!("{}@", head.describe()),
-            Head::Lang(_) => Default::default(),
-        }
-    }
-}
-
-impl<T> From<T> for Head where T: Into<String> {
-    fn from(symbol: T) -> Head {
-        Head::Symbol(symbol.into())
-    }
-}
-
-impl From<LangItem> for Head {
-    fn from(lang: LangItem) -> Head {
-        Head::Lang(lang)
-    }
-}
-
-impl From<Expr> for Head {
-    fn from(expr: Expr) -> Head {
-        Head::Block(Box::new(expr))
-    }
-}
-
-impl From<Item> for Head {
-    fn from(expr: Item) -> Head {
-        Head::Block(Box::new(expr.into()))
-    }
-}
-
-impl From<Node> for Head {
-    fn from(expr: Node) -> Head {
-        Head::Block(Box::new(expr.into()))
-    }
-}
-
-impl Head {
-    pub fn args<T>(head: T) -> Head where T: Into<Head> {
-        Head::Lang(LangItem::Args(Box::new(head.into())))
-    }
-}
-
-
-impl Expr {
-    /// For an `Expr::Imm(value)`, returns a reference to `value`.
-    pub fn as_item(&self) -> Result<&Item, BaseError> {
-        match self {
-            Expr::Imm(ref item) => Ok(item),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
-        }
-    }
-
-    pub fn as_item_mut(&mut self) -> Result<&mut Item, BaseError> {
-        match self {
-            Expr::Imm(ref mut item) => Ok(item),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
-        }
-    }
-
-    /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
-    pub fn to_item(&self) -> Result<Item, BaseError> {
-        match self {
-            Expr::Imm(item) => Ok(item.clone()),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
-        }
-    }
-
-    pub fn into_item(self) -> Result<Item, BaseError> {
-        match self {
-            Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
-        }
-    }
-
-    pub fn to_node(&self) -> Result<Node, BaseError> {
-        match self {
-            Expr::Eval(node) => Ok(node.to_owned()),
-            Expr::Imm(imm) => Err(format!("expected node, found {:?}", imm).into()),
-        }
-    }
-
-    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
-        match self {
-            Expr::Imm(_) => Ok(self),
-            Expr::Eval(node) => match node.head {
-                Head::Repl('#', None) => source.as_ref()
-                        .ok_or(StreamError::new("no source provided", node))
-                        .map(|boxed| (**boxed).clone()),
-                Head::Repl('#', Some(ix)) => args.get(ix - 1)
-                    .ok_or(StreamError::new("no such input", node))
-                    .cloned(),
-                _ => Ok(Expr::Eval(node.apply(source, args)?))
-            }
-        }
-    }
-
-    /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
-    /// `Node::eval()`.
-    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
-        match self {
-            Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => node.eval(env)
-        }
-    }
-}
-
-impl From<Item> for Expr {
-    fn from(item: Item) -> Expr {
-        Expr::Imm(item)
-    }
-}
-
-impl From<Node> for Expr {
-    fn from(item: Node) -> Expr {
-        Expr::Eval(item)
-    }
-}
-
-impl Describe for Expr {
-    fn describe(&self) -> String {
-        match self {
-            Expr::Imm(item) => item.describe(),
-            Expr::Eval(node) => node.describe()
-        }
-    }
-}
-
-impl Node {
-    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by
-    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
-    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
-    pub fn new(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Node {
-        Node{head: head.into(), source: source.map(Box::new), args}
-    }
-
-    /// Creates a new `Node` with a [`Head::Oper`] head. By nature these don't have `source`.
-    /// Operands are provided as `args`.
-    pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Node {
-        Node{head: Head::Oper(op.into()), source: None, args}
-    }
-
-    /// Creates a new `Node` with a [`Head::Repl`] head (for `#1` etc.). By nature these don't take
-    /// any arguments or source.
-    pub fn new_repl(chr: char, ix: Option<usize>) -> Node {
-        Node{
-            head: Head::Repl(chr, ix),
-            source: None,
-            args: vec![]
-        }
-    }
-
-    /*pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
-        match &self.source {
-            Some(_) => Err("no source accepted".into()),
-            None => Ok(())
-        }
-    }*/
-
-    pub(crate) fn source_checked(&self) -> Result<&Expr, BaseError> {
-        match &self.source {
-            Some(source) => Ok(source),
-            None => Err("source required".into()),
-        }
-    }
-
-    /*pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
-        if self.args.is_empty() {
-            Err("at least 1 argument required".into())
-        } else {
-            Ok(())
-        }
-    }*/
-
-    /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
-    /// describes an atomic constant or a stream.
-    ///
-    /// The evaluation is done by finding the head of the node in a global keyword table.
-    /// Locally defined symbols aren't handled here.
-    // Note to self: for assignments, this will happen in Session::process. For `with`, this will
-    // happen in Expr::apply(Context).
-    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
-        match self.head {
-            Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
-                Ok(func) => func(self, env),
-                Err(e) => Err(StreamError::new(e, self))
-            },
-            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(env),
-            Head::Repl(_, _) => Err(StreamError::new("out of context", self)),
-            Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env)
-        }
-    }
-
-    pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
-        let source = match self.source {
-            Some(source) => Some((*source).eval(env)?),
-            None => None
-        };
-        let args = self.args.into_iter()
-            .map(|x| x.eval(env))
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(ENode{head: self.head, source, args})
-    }
-
-    pub(crate) fn eval_source(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
-        if let Some(source) = self.source.take() {
-            self.source = Some(Box::new((*source).eval(env)?.into()));
-        }
-        Ok(self)
-    }
-
-    /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
-        self.args = self.args.into_iter()
-            .map(|x| x.eval(env).map(Expr::from))
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(self)
-    }*/
-
-    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
-        Ok(Node {
-            head: self.head,
-            source: match self.source {
-                None => None,
-                Some(boxed) => Some(Box::new((*boxed).apply(source, args)?))
-            },
-            args: self.args.into_iter()
-                .map(|expr| expr.apply(source, args))
-                .collect::<Result<Vec<_>, _>>()?
-        })
-    }
-
-    pub(crate) fn describe_helper<T>(head: &Head, source: Option<&T>, args: &[T]) -> String
-        where T: Describe
-    {
-        let mut ret = String::new();
-        if let Some(source) = source {
-            ret += &source.describe();
-            match head {
-                Head::Lang(LangItem::Map) => ret.push(':'),
-                Head::Lang(LangItem::Part) => (),
-                _ => ret.push('.')
-            }
-        }
-        ret += &(*head).describe();
-        if let Head::Oper(o) = head {
-            ret.push('(');
-            let mut it = args.iter().map(Describe::describe);
-            if args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
-                if let Some(s) = it.next() {
-                    ret += &s;
-                }
-            }
-            for s in it {
-                ret += o;
-                ret += &s;
-            }
-            ret.push(')');
-        } else if !args.is_empty() {
-            match head {
-                Head::Lang(LangItem::Part | LangItem::List) => ret.push('['),
-                Head::Lang(LangItem::Map) => (),
-                _ => ret.push('(')
-            };
-            let mut it = args.iter().map(Describe::describe);
-            if let Some(s) = it.next() {
-                ret += &s;
-                for s in it {
-                    ret += ", ";
-                    ret += &s
-                }
-            }
-            match head {
-                Head::Lang(LangItem::Part | LangItem::List) => ret.push(']'),
-                Head::Lang(LangItem::Map) => (),
-                _ => ret.push(')')
-            };
-        } else if head == &Head::Lang(LangItem::List) {
-            ret += "[]";
-        }
-        ret
-    }
 }
 
 #[test]
@@ -939,12 +1004,6 @@ fn test_block() {
     assert_eq!(parse("1.{2}(3)").unwrap().eval(&env).unwrap().to_string(), "2");
     assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval(&env).unwrap().to_string(), "6");
     assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval(&env).unwrap().to_string(), "4");
-}
-
-impl Describe for Node {
-    fn describe(&self) -> String {
-        Node::describe_helper(&self.head, self.source.as_deref(), &self.args)
-    }
 }
 
 #[test]
@@ -985,54 +1044,4 @@ fn test_describe() {
     let orig = parse("a@b@c(d)[e]").unwrap();
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
-}
-
-
-/// A variant of `Node` in which all the arguments and source are type-guaranteed to be evaluated.
-/// This is achieved by using `Item` instead of `Expr`, avoiding the possibility of `Expr::Eval`.
-#[derive(Debug, PartialEq, Clone)]
-pub struct ENode {
-    pub head: Head,
-    pub source: Option<Item>,
-    pub args: Vec<Item>
-}
-
-impl ENode {
-    pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
-        match &self.source {
-            Some(_) => Err("no source accepted".into()),
-            None => Ok(())
-        }
-    }
-
-    pub(crate) fn source_checked(&self) -> Result<&Item, BaseError> {
-        match &self.source {
-            Some(source) => Ok(source),
-            None => Err("source required".into()),
-        }
-    }
-
-    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
-        if self.args.is_empty() {
-            Err("at least 1 argument required".into())
-        } else {
-            Ok(())
-        }
-    }
-}
-
-impl From<ENode> for Node {
-    fn from(enode: ENode) -> Node {
-        Node {
-            head: enode.head,
-            source: enode.source.map(|item| Box::new(item.into())),
-            args: enode.args.into_iter().map(Expr::from).collect()
-        }
-    }
-}
-
-impl Describe for ENode {
-    fn describe(&self) -> String {
-        Node::describe_helper(&self.head, self.source.as_ref(), &self.args)
-    }
 }
