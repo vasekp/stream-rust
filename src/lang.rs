@@ -318,7 +318,18 @@ impl Iterator for PlusIter<'_> {
     }
 }
 
-impl SIterator for PlusIter<'_> { }
+impl SIterator for PlusIter<'_> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+        let mut remain = Number::zero();
+        for iter in &mut self.args {
+            if let Some(r) = (*iter).skip_n(n)? {
+                remain = std::cmp::max(remain, r);
+            }
+        }
+        if remain.is_zero() { Ok(None) }
+        else { Ok(Some(remain)) }
+    }
+}
 
 
 fn eval_minus(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
@@ -412,6 +423,8 @@ fn test_opers() {
     assert_eq!(parse(r#""Hello world!"+seq"#).unwrap().eval(&env).unwrap().to_string(), r#""Igopt cvzun!""#);
     assert_eq!(parse(r#""Hello world!"+"ab""#).unwrap().eval(&env).unwrap().to_string(), r#""Ig""#);
     assert_eq!(parse(r#""Hello world!"+"ab".repeat"#).unwrap().eval(&env).unwrap().to_string(), r#""Igmnp yptmf!""#);
+
+    assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval(&env).unwrap().to_string(), "9");
 }
 
 
