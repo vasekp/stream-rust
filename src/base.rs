@@ -1099,11 +1099,71 @@ pub(crate) fn test_skip_n(item: &Item) {
 
                 let mut it = stm.iter();
                 assert_eq!(it.skip_n(&(&len + 100)).unwrap(), Some(100.into()));
+
+                let mut half = (&len - 1) / 2;
+                let mut rest = &len - 1 - &half;
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&half).unwrap(), None);
+                assert_eq!(i1.skip_n(&rest).unwrap(), None);
+                assert_eq!(i2.skip_n(&(&len - 1)).unwrap(), None);
+                assert_eq!(i1.next(), i2.next());
+
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&half).unwrap(), None);
+                assert_eq!(i1.skip_n(&Number::zero()).unwrap(), None);
+                assert_eq!(i2.skip_n(&half).unwrap(), None);
+                assert_eq!(i1.next(), i2.next());
+
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&half).unwrap(), None);
+                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
+                assert_eq!(i2.skip_n(&half).unwrap(), None);
+                assert_ne!(i2.next(), None);
+                assert_eq!(i1.next(), i2.next());
+
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&half).unwrap(), None);
+                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
+                assert_eq!(i2.skip_n(&(&half + 1)).unwrap(), None);
+                assert_eq!(i1.next(), i2.next());
+
+                half.inc();
+                rest.inc(); // now half + rest = len + 1
+                let mut it = stm.iter();
+                assert_eq!(it.skip_n(&half).unwrap(), None);
+                assert_eq!(it.skip_n(&rest).unwrap(), Some(Number::one()));
             },
             Length::Infinite => {
+                let many = 10000000000_i64.into();
+
                 let mut it = stm.iter();
-                assert_eq!(it.skip_n(&10000000000_i64.into()).unwrap(), None);
+                assert_eq!(it.skip_n(&many).unwrap(), None);
                 assert_ne!(it.next(), None);
+
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&many).unwrap(), None);
+                assert_eq!(i1.skip_n(&many).unwrap(), None);
+                assert_eq!(i2.skip_n(&(&many * 2)).unwrap(), None);
+                assert_eq!(i1.next(), i2.next());
+
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&many).unwrap(), None);
+                assert_eq!(i1.skip_n(&Number::zero()).unwrap(), None);
+                assert_eq!(i2.skip_n(&many).unwrap(), None);
+                assert_eq!(i1.next(), i2.next());
+
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&many).unwrap(), None);
+                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
+                assert_eq!(i2.skip_n(&many).unwrap(), None);
+                assert_ne!(i2.next(), None);
+                assert_eq!(i1.next(), i2.next());
+
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&many).unwrap(), None);
+                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
+                assert_eq!(i2.skip_n(&(&many + 1)).unwrap(), None);
+                assert_eq!(i1.next(), i2.next());
             },
             _ => ()
         }
