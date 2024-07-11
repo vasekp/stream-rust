@@ -135,27 +135,6 @@ enum RangeType {
     Character(CharCase)
 }
 
-struct RangeIter<'node> {
-    parent: &'node Range,
-    value: Number
-}
-
-impl Stream for Range {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(RangeIter{
-            parent: self,
-            value: self.from.clone()
-        })
-    }
-
-    fn length(&self) -> Length {
-        match Range::len_helper(&self.from, &self.to, &self.step) {
-            Some(num) => Length::Exact(num),
-            None => Length::Infinite
-        }
-    }
-}
-
 impl Range {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
@@ -183,11 +162,15 @@ impl Range {
                 },
             _ => Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
         });
-        if (to > from && step.is_negative()) || (to < from && step.is_positive()) {
+        if Range::empty_helper(&from, &to, &step) {
             Ok(Item::new_stream(EmptyStream()))
         } else {
             Ok(Item::new_stream(Range{from, to, step, rtype, env: Rc::clone(env)}))
         }
+    }
+
+    fn empty_helper(from: &Number, to: &Number, step: &Number) -> bool {
+        (to > from && step.is_negative()) || (to < from && step.is_positive())
     }
 
     fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<Number> {
@@ -196,6 +179,22 @@ impl Range {
             Some(-1) => Some(from - to + 1),
             Some(0) => None,
             _ => Some((to - from) / step + 1)
+        }
+    }
+}
+
+impl Stream for Range {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(RangeIter{
+            parent: self,
+            value: self.from.clone()
+        })
+    }
+
+    fn length(&self) -> Length {
+        match Range::len_helper(&self.from, &self.to, &self.step) {
+            Some(num) => Length::Exact(num),
+            None => Length::Infinite
         }
     }
 }
@@ -211,6 +210,11 @@ impl Describe for Range {
             }
         }
     }
+}
+
+struct RangeIter<'node> {
+    parent: &'node Range,
+    value: Number
 }
 
 impl Iterator for RangeIter<'_> {
@@ -235,6 +239,9 @@ impl Iterator for RangeIter<'_> {
 impl SIterator for RangeIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
+        if Range::empty_helper(&self.value, &self.parent.to, &self.parent.step) {
+            return Ok(Some(n.to_owned()))
+        };
         let Some(max) = Range::len_helper(&self.value, &self.parent.to, &self.parent.step)
             else { return Ok(None); };
         if n <= &max {
