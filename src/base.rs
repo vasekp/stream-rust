@@ -1100,28 +1100,35 @@ pub(crate) fn test_skip_n(item: &Item) {
     let stm = item.as_stream().unwrap();
 
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
-    assert!(i2.skip_n(&Number::zero()).unwrap().is_none());
-    assert_eq!(i1.next(), i2.next());
+    assert_eq!(i1.next(), match i2.skip_n(&Number::zero()).unwrap() {
+        Some(_) => None,
+        None => i2.next()
+    });
 
     if !stm.is_empty() {
-        assert!(stm.iter().next().is_some());
+        assert_ne!(stm.iter().next(), None);
 
         let (mut i1, mut i2) = (stm.iter(), stm.iter());
         i1.next();
-        assert!(i2.skip_n(&Number::one()).unwrap().is_none());
-        assert_eq!(i1.next(), i2.next());
+        assert_eq!(i1.next(), match i2.skip_n(&Number::one()).unwrap() {
+            Some(_) => None,
+            None => i2.next()
+        });
 
         match stm.length() {
             Length::Exact(len) => {
                 assert!(len.is_positive());
 
                 let mut it = stm.iter();
-                assert!(it.skip_n(&(&len - 1)).unwrap().is_none());
-                assert!(matches!((it.next(), it.next()), (Some(_), None)));
+                assert_eq!(it.skip_n(&(&len - 1)).unwrap(), None);
+                assert_ne!(it.next(), None);
+                assert_eq!(it.next(), None);
 
                 let mut it = stm.iter();
-                assert!(it.skip_n(&len).unwrap().is_none());
-                assert!(it.next().is_none());
+                match it.skip_n(&len).unwrap() {
+                    None => assert_eq!(it.next(), None),
+                    Some(rem) => assert_eq!(rem, Number::zero())
+                }
 
                 let mut it = stm.iter();
                 assert_eq!(it.skip_n(&(&len + 1)).unwrap(), Some(Number::one()));
@@ -1131,13 +1138,13 @@ pub(crate) fn test_skip_n(item: &Item) {
             },
             Length::Infinite => {
                 let mut it = stm.iter();
-                assert!(it.skip_n(&10000000000_i64.into()).unwrap().is_none());
-                assert!(it.next().is_some());
+                assert_eq!(it.skip_n(&10000000000_i64.into()).unwrap(), None);
+                assert_ne!(it.next(), None);
             },
             _ => ()
         }
     } else {
-        assert!(stm.iter().next().is_none());
+        assert_eq!(stm.iter().next(), None);
         assert_eq!(stm.iter().skip_n(&Number::one()).unwrap(), Some(Number::one()));
     }
 }
