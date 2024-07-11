@@ -355,13 +355,18 @@ struct RepeatStreamIter<'node> {
 impl Repeat {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
-        let (item, count) = match (&mut node.source, node.args.len(), node.args.get_mut(0)) {
+        let (item, count) = try_with!(node, match (&mut node.source, node.args.len(), node.args.get_mut(0)) {
             (Some(ref mut src), 0, None)
-                => (std::mem::take(src), None),
-            (Some(ref mut src), 1, Some(Item::Number(ref mut count)))
-                => (std::mem::take(src), Some(std::mem::take(count))),
-            _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", node.into()))
-        };
+                => Ok((std::mem::take(src), None)),
+            (Some(ref mut src), 1, Some(Item::Number(ref mut count))) => {
+                if count.is_negative() {
+                    Err(format!("expected nonnegative count, found {}", count).into())
+                } else {
+                    Ok((std::mem::take(src), Some(std::mem::take(count))))
+                }
+            },
+            _ => Err("expected one of: source.repeat(), source.repeat(count)".into())
+        });
         Ok(Item::new_stream(Repeat{item, count}))
     }
 }
@@ -516,6 +521,7 @@ fn test_repeat() {
     assert_eq!(parse("1.repeat").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1, ...");
     assert_eq!(parse("1.repeat(3)").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1]");
     assert_eq!(parse("1.repeat(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert!(parse("1.repeat(-1)").unwrap().eval(&env).is_err());
     assert_eq!(parse("(1..2).repeat(2)").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 1, ...");
     assert_eq!(parse("\"ab\".repeat").unwrap().eval(&env).unwrap().to_string(), "\"abababababababababab...");
     assert_eq!(parse("\"ab\".repeat(3)").unwrap().eval(&env).unwrap().to_string(), "\"ababab\"");
