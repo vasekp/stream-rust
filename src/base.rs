@@ -952,6 +952,10 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// important to know when multiple iterators are chained. Calling `next()` after this
     /// condition, or after an `Err` is returned, is undefined behaviour.
     ///
+    /// It is possible to return `Ok(Some(0))` to indicate that all elements have been skipped
+    /// without remainder, but that `next()` should not be called again. If `None` is returned,
+    /// `next()` may be called and must return `None` for consistency.
+    ///
     /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
     /// value given by [`SIterator::len_remain()`].
