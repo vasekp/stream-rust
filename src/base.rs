@@ -1045,3 +1045,59 @@ fn test_describe() {
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
 }
+
+#[cfg(test)]
+pub(crate) fn test_len_exact(item: &Item, len: usize) {
+    let stm = item.as_stream().unwrap();
+    assert_eq!(stm.iter().count(), len);
+    assert!(Length::possibly_eq(&stm.length(), &Length::Exact(len.into())));
+    assert_eq!(len == 0, stm.is_empty());
+}
+
+#[cfg(test)]
+#[track_caller]
+pub(crate) fn test_skip_n(item: &Item) {
+    let stm = item.as_stream().unwrap();
+
+    let (mut i1, mut i2) = (stm.iter(), stm.iter());
+    assert!(i2.skip_n(&Number::zero()).unwrap().is_none());
+    assert_eq!(i1.next(), i2.next());
+
+    if !stm.is_empty() {
+        assert!(stm.iter().next().is_some());
+
+        let (mut i1, mut i2) = (stm.iter(), stm.iter());
+        i1.next();
+        assert!(i2.skip_n(&Number::one()).unwrap().is_none());
+        assert_eq!(i1.next(), i2.next());
+
+        match stm.length() {
+            Length::Exact(len) => {
+                assert!(len.is_positive());
+
+                let mut it = stm.iter();
+                assert!(it.skip_n(&(&len - 1)).unwrap().is_none());
+                assert!(matches!((it.next(), it.next()), (Some(_), None)));
+
+                let mut it = stm.iter();
+                assert!(it.skip_n(&len).unwrap().is_none());
+                assert!(it.next().is_none());
+
+                let mut it = stm.iter();
+                assert_eq!(it.skip_n(&(&len + 1)).unwrap(), Some(Number::one()));
+
+                let mut it = stm.iter();
+                assert_eq!(it.skip_n(&(&len + 100)).unwrap(), Some(100.into()));
+            },
+            Length::Infinite => {
+                let mut it = stm.iter();
+                assert!(it.skip_n(&10000000000_i64.into()).unwrap().is_none());
+                assert!(it.next().is_some());
+            },
+            _ => ()
+        }
+    } else {
+        assert!(stm.iter().next().is_none());
+        assert_eq!(stm.iter().skip_n(&Number::one()).unwrap(), Some(Number::one()));
+    }
+}

@@ -50,6 +50,19 @@ impl From<Vec<Item>> for List {
     }
 }
 
+#[test]
+fn test_list() {
+    use crate::parser::parse;
+    let env = Default::default();
+    assert_eq!(parse("[1,2,3]").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
+    test_len_exact(&parse("[1,2,3]").unwrap().eval(&env).unwrap(), 3);
+    test_len_exact(&parse("[1]").unwrap().eval(&env).unwrap(), 1);
+    test_len_exact(&parse("[]").unwrap().eval(&env).unwrap(), 0);
+    test_skip_n(&parse("[1,2,3]").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("[1]").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("[]").unwrap().eval(&env).unwrap());
+}
+
 
 #[derive(Clone)]
 pub struct LiteralString(Vec<Char>);
@@ -191,6 +204,10 @@ fn test_map() {
     assert_eq!(parse("seq:{#^2}").unwrap().eval(&env).unwrap().to_string(), "[1, 4, 9, ...");
     assert_eq!(parse("seq:{#1}").unwrap().eval(&env).unwrap().to_string(), "[<!>");
     assert_eq!(parse("seq:{range(#)}").unwrap().eval(&env).unwrap().to_string(), "[[1], [1, 2], [1, 2, 3], ...");
+    test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval(&env).unwrap(), 3);
+    test_len_exact(&parse("[]:{#}").unwrap().eval(&env).unwrap(), 0);
+    test_skip_n(&parse("range(10^10):{#}").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("seq:{#}").unwrap().eval(&env).unwrap());
 }
 
 

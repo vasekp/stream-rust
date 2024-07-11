@@ -89,16 +89,16 @@ impl SIterator for SeqIter<'_> {
 fn test_seq() {
     use crate::parser::parse;
     let env = Default::default();
-
     // in addition to doc tests
     assert!(parse("1.seq").unwrap().eval(&env).is_err());
     assert_eq!(parse("seq(0)").unwrap().eval(&env).unwrap().to_string(), "[0, 1, 2, ...");
     assert_eq!(parse("seq(2, 3)").unwrap().eval(&env).unwrap().to_string(), "[2, 5, 8, ...");
     assert_eq!(parse("seq(2, 0)").unwrap().eval(&env).unwrap().to_string(), "[2, 2, 2, ...");
     assert_eq!(parse("seq(2, -3)").unwrap().eval(&env).unwrap().to_string(), "[2, -1, -4, ...");
-
     assert_eq!(parse("seq(2, 3)[10^10]").unwrap().eval(&env).unwrap().to_string(), "29999999999");
     assert_eq!(parse("seq(2, 0)[10^10]").unwrap().eval(&env).unwrap().to_string(), "2");
+    test_skip_n(&parse("seq(2,0)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("seq(2,3)").unwrap().eval(&env).unwrap());
 }
 
 
