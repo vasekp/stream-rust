@@ -141,24 +141,13 @@ struct RangeIter<'node> {
 
 impl Stream for Range {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        if self.is_empty() {
-            return Box::new(std::iter::empty());
-        }
         Box::new(RangeIter{
             parent: self,
             value: self.from.clone()
         })
     }
 
-    fn is_empty(&self) -> bool {
-        (self.to > self.from && self.step.is_negative())
-            || (self.to < self.from && self.step.is_positive())
-    }
-
     fn length(&self) -> Length {
-        if self.is_empty() {
-            return Length::Exact(Number::zero());
-        }
         match Range::len_helper(&self.from, &self.to, &self.step) {
             Some(num) => Length::Exact(num),
             None => Length::Infinite
@@ -193,7 +182,11 @@ impl Range {
                 },
             _ => Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
         });
-        Ok(Item::new_stream(Range{from, to, step, rtype, env: Rc::clone(env)}))
+        if (to > from && step.is_negative()) || (to < from && step.is_positive()) {
+            Ok(Item::new_stream(EmptyStream()))
+        } else {
+            Ok(Item::new_stream(Range{from, to, step, rtype, env: Rc::clone(env)}))
+        }
     }
 
     fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<Number> {

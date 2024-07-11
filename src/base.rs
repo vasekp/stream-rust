@@ -812,6 +812,22 @@ impl Display for dyn Stream {
 }
 
 
+#[derive(Clone)]
+pub(crate) struct EmptyStream();
+
+impl Stream for EmptyStream {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(std::iter::empty())
+    }
+}
+
+impl Describe for EmptyStream {
+    fn describe(&self) -> String {
+        "[]".into()
+    }
+}
+
+
 /// The enum returned by [`Stream::length()`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum Length {
