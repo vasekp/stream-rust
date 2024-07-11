@@ -127,6 +127,22 @@ fn eval_part(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     Ok(item)
 }
 
+#[test]
+fn test_part() {
+    use crate::parser::parse;
+    let env = Default::default();
+    assert_eq!(parse("range(3)[1]").unwrap().eval(&env).unwrap().to_string(), "1");
+    assert_eq!(parse("range(3)[3]").unwrap().eval(&env).unwrap().to_string(), "3");
+    assert!(parse("range(3)[4]").unwrap().eval(&env).is_err());
+    assert!(parse("range(3)[10]").unwrap().eval(&env).is_err());
+    assert!(parse("range(3)[0]").unwrap().eval(&env).is_err());
+    assert!(parse("range(3)[-1]").unwrap().eval(&env).is_err());
+
+    assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval(&env).unwrap().to_string(), "3");
+    assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval(&env).unwrap().to_string(), "3");
+}
+
+
 struct Map {
     source: Box<dyn Stream>,
     body: Node,
