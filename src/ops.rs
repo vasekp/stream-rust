@@ -360,6 +360,21 @@ impl Repeat {
             },
             _ => Err("expected one of: source.repeat(), source.repeat(count)".into())
         });
+        if let Item::Stream(ref stm) = &item {
+            if stm.is_empty() {
+                return Ok(
+                    if stm.is_string() { Item::new_stream(EmptyString()) }
+                    else { Item::new_stream(EmptyStream()) }
+                );
+            }
+            if count.as_ref().map_or(false, One::is_one) {
+                return Ok(item)
+            }
+        } else if let Some(ref count) = count {
+            if count.is_zero() {
+                return Ok(Item::new_stream(EmptyStream()));
+            }
+        }
         Ok(Item::new_stream(Repeat{item, count}))
     }
 }
@@ -512,15 +527,23 @@ fn test_repeat() {
     use crate::parser::parse;
     let env = Default::default();
     assert_eq!(parse("1.repeat").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1, ...");
+    assert_eq!(parse("1.repeat(1)").unwrap().eval(&env).unwrap().to_string(), "[1]");
     assert_eq!(parse("1.repeat(3)").unwrap().eval(&env).unwrap().to_string(), "[1, 1, 1]");
-    assert_eq!(parse("1.repeat(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("1.repeat(0)").unwrap().eval(&env).unwrap().describe(), "[]");
     assert!(parse("1.repeat(-1)").unwrap().eval(&env).is_err());
     assert_eq!(parse("(1..2).repeat(2)").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 1, ...");
+    assert_eq!(parse("[1, 2].repeat(1)").unwrap().eval(&env).unwrap().describe(), "[1, 2]");
     assert_eq!(parse("\"ab\".repeat").unwrap().eval(&env).unwrap().to_string(), "\"abababababababababab...");
     assert_eq!(parse("\"ab\".repeat(3)").unwrap().eval(&env).unwrap().to_string(), "\"ababab\"");
     assert_eq!(parse("\"ab\".repeat(0)").unwrap().eval(&env).unwrap().to_string(), "\"\"");
+    assert_eq!(parse("\"ab\".repeat(1)").unwrap().eval(&env).unwrap().describe(), "\"ab\"");
     assert_eq!(parse("seq.repeat(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
-    assert_eq!(parse("[].repeat(0)").unwrap().eval(&env).unwrap().to_string(), "[]");
+    assert_eq!(parse("[].repeat(0)").unwrap().eval(&env).unwrap().describe(), "[]");
+    assert_eq!(parse("[].repeat(1)").unwrap().eval(&env).unwrap().describe(), "[]");
+    assert_eq!(parse("[].repeat(10)").unwrap().eval(&env).unwrap().describe(), "[]");
+    assert_eq!(parse("\"\".repeat(0)").unwrap().eval(&env).unwrap().describe(), "\"\"");
+    assert_eq!(parse("\"\".repeat(1)").unwrap().eval(&env).unwrap().describe(), "\"\"");
+    assert_eq!(parse("\"\".repeat(10)").unwrap().eval(&env).unwrap().describe(), "\"\"");
 
     assert_eq!(parse("1.repeat[10^10]").unwrap().eval(&env).unwrap().to_string(), "1");
     assert!(parse("[].repeat[10^10]").unwrap().eval(&env).is_err());
