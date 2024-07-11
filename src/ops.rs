@@ -334,17 +334,6 @@ pub struct Repeat {
     count: Option<Number>
 }
 
-struct RepeatItemIter<'node> {
-    item: &'node Item,
-    count_rem: Number // None covered by stream::Forever
-}
-
-struct RepeatStreamIter<'node> {
-    stream: &'node dyn Stream,
-    iter: Box<dyn SIterator + 'node>,
-    count_rem: Option<Number>
-}
-
 impl Repeat {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
@@ -385,10 +374,11 @@ impl Stream for Repeat {
             Item::Stream(stream) => Box::new(RepeatStreamIter {
                 stream: &**stream,
                 iter: stream.iter(),
-                count_rem: self.count.clone()
+                resets_rem: self.count.as_ref()
+                    .map(|count| count - 1)
             }),
             item => match &self.count {
-                Some(count) => Box::new(RepeatItemIter{item, count_rem: count.clone()}),
+                Some(count) => Box::new(RepeatItemIter{item, count_rem: count.to_owned()}),
                 None => Box::new(Forever{item})
             }
         }
@@ -430,12 +420,17 @@ impl Describe for Repeat {
     }
 }
 
+struct RepeatItemIter<'node> {
+    item: &'node Item,
+    count_rem: Number // None covered by stream::Forever
+}
+
 impl Iterator for RepeatItemIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.count_rem.is_zero() {
-            self.count_rem -= 1;
+            self.count_rem.dec();
             Some(Ok(self.item.clone()))
         } else {
             None
@@ -455,22 +450,25 @@ impl SIterator for RepeatItemIter<'_> {
     }
 }
 
+struct RepeatStreamIter<'node> {
+    stream: &'node dyn Stream,
+    iter: Box<dyn SIterator + 'node>,
+    resets_rem: Option<Number>
+}
+
 impl Iterator for RepeatStreamIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.count_rem.as_ref().map_or(false, |count| count.is_zero()) {
-            return None;
-        }
         let next = self.iter.next();
         if next.is_some() {
             return next;
         }
-        if let Some(ref mut count) = self.count_rem {
-            *count -= 1;
+        if let Some(ref mut count) = self.resets_rem {
             if count.is_zero() {
                 return None;
             }
+            (*count).dec();
         }
         self.iter = self.stream.iter();
         self.iter.next()
@@ -481,18 +479,14 @@ impl SIterator for RepeatStreamIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         assert!(!n.is_negative());
 
-        // If count_rem = 0, don't read the iterator! [1].repeat(0) still has iterator with
-        // 1 element in it.
-        if self.count_rem.as_ref().map_or(false, |count| count.is_zero()) {
-            return Ok(Some(n.to_owned()));
-        }
-
         let Some(n) = self.iter.skip_n(n)? else { return Ok(None); };
-        if let Some(ref mut count) = self.count_rem {
-            *count -= 1;
+
+        // If skip_n returned Some, iter is depleted. Restart.
+        if let Some(ref mut count) = self.resets_rem {
             if count.is_zero() {
                 return Ok(Some(n));
             }
+            (*count).dec();
         }
         self.iter = self.stream.iter();
 
@@ -502,21 +496,28 @@ impl SIterator for RepeatStreamIter<'_> {
             None => return Ok(None),
             Some(remain) => (n - &remain, remain)
         };
-        self.iter = self.stream.iter();
 
         if full_length.is_zero() {
             return Ok(Some(n));
         }
         let skip_full = &n / &full_length;
-        if let Some(count) = &mut self.count_rem {
-            if *count <= skip_full {
+        if let Some(count) = &mut self.resets_rem {
+            if *count < skip_full {
                 return Ok(Some(n - &*count * full_length));
             } else {
                 *count -= &skip_full;
-                debug_assert!(count.is_positive());
             }
         }
         n -= &skip_full * &full_length;
+
+        // Iter is depleted from the counting, restart once more.
+        if let Some(ref mut count) = self.resets_rem {
+            if count.is_zero() {
+                return Ok(Some(n));
+            }
+            (*count).dec();
+        }
+        self.iter = self.stream.iter();
         debug_assert!(n < full_length);
         self.iter.skip_n(&n)
     }
@@ -545,24 +546,32 @@ fn test_repeat() {
     assert_eq!(parse("\"\".repeat(1)").unwrap().eval(&env).unwrap().describe(), "\"\"");
     assert_eq!(parse("\"\".repeat(10)").unwrap().eval(&env).unwrap().describe(), "\"\"");
 
-    assert_eq!(parse("1.repeat[10^10]").unwrap().eval(&env).unwrap().to_string(), "1");
-    assert!(parse("[].repeat[10^10]").unwrap().eval(&env).is_err());
-    assert_eq!(parse("1.repeat(10^10)[10^10]").unwrap().eval(&env).unwrap().to_string(), "1");
-    assert!(parse("1.repeat(10^10)[10^10+1]").unwrap().eval(&env).is_err());
     assert_eq!(parse("\"abc\".repeat[10^10]").unwrap().eval(&env).unwrap().to_string(), "'a'");
     assert_eq!(parse("[].repeat~1").unwrap().eval(&env).unwrap().to_string(), "[1]");
     assert_eq!(parse(r#"("ab".repeat(10^10)~"cd".repeat(10^10))[4*10^10]"#).unwrap().eval(&env).unwrap().to_string(), "'d'");
-    assert!(parse("1.repeat(0)[1]").unwrap().eval(&env).is_err());
-    assert!(parse("(1..3).repeat(0)[1]").unwrap().eval(&env).is_err());
-    assert!(parse("seq.repeat(0)[1]").unwrap().eval(&env).is_err());
 
-    assert_eq!(parse("\"ab\".repeat(10^10).len").unwrap().eval(&env).unwrap().to_string(), "20000000000");
-    assert_eq!(parse("\"\".repeat(10^10).len").unwrap().eval(&env).unwrap().to_string(), "0");
-    assert_eq!(parse("seq.repeat(0).len").unwrap().eval(&env).unwrap().to_string(), "0");
-    assert_eq!(parse("1.repeat(0).len").unwrap().eval(&env).unwrap().to_string(), "0");
     assert!(parse("\"ab\".repeat.len").unwrap().eval(&env).is_err());
     assert!(parse("1.repeat.len").unwrap().eval(&env).is_err());
-    assert_eq!(parse("[].repeat.len").unwrap().eval(&env).unwrap().to_string(), "0");
+    test_len_exact(&parse("1.repeat(0)").unwrap().eval(&env).unwrap(), 0);
+    test_len_exact(&parse("1.repeat(1)").unwrap().eval(&env).unwrap(), 1);
+    test_len_exact(&parse("1.repeat(3)").unwrap().eval(&env).unwrap(), 3);
+    test_len_exact(&parse("[].repeat").unwrap().eval(&env).unwrap(), 0);
+    test_len_exact(&parse("[].repeat(3)").unwrap().eval(&env).unwrap(), 0);
+    test_len_exact(&parse("[1,2].repeat(0)").unwrap().eval(&env).unwrap(), 0);
+    test_len_exact(&parse("[1,2].repeat(1)").unwrap().eval(&env).unwrap(), 2);
+    test_len_exact(&parse("[1,2].repeat(3)").unwrap().eval(&env).unwrap(), 6);
+    test_len_exact(&parse("seq.repeat(0)").unwrap().eval(&env).unwrap(), 0);
+    test_skip_n(&parse("1.repeat").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("1.repeat(10^10)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("[].repeat").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("[].repeat(10^10)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("[1,2].repeat").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("[1,2].repeat(10^10)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("range(10^10).repeat(10^10)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("seq.repeat").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("seq.repeat(0)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("seq.repeat(1)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("seq.repeat(2)").unwrap().eval(&env).unwrap());
 }
 
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
