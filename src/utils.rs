@@ -1,6 +1,6 @@
 use std::ops::RangeBounds;
 use std::ops::Bound::*;
-use crate::base::{Number, BaseError};
+use crate::base::*;
 
 fn describe_range<T>(range: &impl RangeBounds<T>) -> String
 where T: std::fmt::Display + std::fmt::Debug + PartialEq {
@@ -23,5 +23,41 @@ impl NumWithin for Number {
             true => Ok(()),
             false => Err(format!("expected {}, found {}", describe_range(&range), &self).into())
         }
+    }
+}
+
+
+#[derive(Clone)]
+pub(crate) struct EmptyStream();
+
+impl Stream for EmptyStream {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(std::iter::empty())
+    }
+}
+
+impl Describe for EmptyStream {
+    fn describe(&self) -> String {
+        "[]".into()
+    }
+}
+
+
+#[derive(Clone)]
+pub struct EmptyString();
+
+impl Stream for EmptyString {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(std::iter::empty())
+    }
+
+    fn is_string(&self) -> bool {
+        true
+    }
+}
+
+impl Describe for EmptyString {
+    fn describe(&self) -> String {
+        "\"\"".into()
     }
 }
