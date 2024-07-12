@@ -432,8 +432,13 @@ impl SIterator for StringPlusIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         let mut args_iter = self.args.iter_mut();
         let remain = args_iter.next().unwrap().skip_n(n)?;
-        for iter in args_iter {
-            iter.skip_n(n)?;
+        if remain.is_none() {
+            for iter in args_iter {
+                if iter.skip_n(n)?.is_some() {
+                    println!("{n}");
+                    return Err(StreamError::new("another operand ended earlier than the first", self.node.clone().into()));
+                }
+            }
         }
         Ok(remain)
     }
