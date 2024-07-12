@@ -1064,6 +1064,7 @@ pub(crate) fn test_len_exact(item: &Item, len: usize) {
 pub(crate) fn test_skip_n(item: &Item) {
     let stm = item.as_stream().unwrap();
 
+    // skip(0) = no-op on fresh iterator
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
     assert_eq!(i1.next(), match i2.skip_n(&Number::zero()).unwrap() {
         Some(_) => None,
@@ -1073,6 +1074,7 @@ pub(crate) fn test_skip_n(item: &Item) {
     if !stm.is_empty() {
         assert_ne!(stm.iter().next().transpose().unwrap(), None); // fails if the first item fails
 
+        // skip(1) = next() on fresh iterator
         let (mut i1, mut i2) = (stm.iter(), stm.iter());
         i1.next();
         assert_eq!(i1.next(), match i2.skip_n(&Number::one()).unwrap() {
@@ -1084,23 +1086,26 @@ pub(crate) fn test_skip_n(item: &Item) {
             Length::Exact(len) => {
                 assert!(len.is_positive());
 
+                // skip(len - 1) leaves exactly one element
                 let mut it = stm.iter();
                 assert_eq!(it.skip_n(&(&len - 1)).unwrap(), None);
                 assert_ne!(it.next().transpose().unwrap(), None);
                 assert_eq!(it.next(), None);
 
+                // skip(len) leaves nothing
                 let mut it = stm.iter();
                 match it.skip_n(&len).unwrap() {
                     None => assert_eq!(it.next(), None),
                     Some(rem) => assert_eq!(rem, Number::zero())
                 }
 
+                // skip(len + N) reports N remaining elements
                 let mut it = stm.iter();
                 assert_eq!(it.skip_n(&(&len + 1)).unwrap(), Some(Number::one()));
-
                 let mut it = stm.iter();
                 assert_eq!(it.skip_n(&(&len + 100)).unwrap(), Some(100.into()));
 
+                // skip() following skip()
                 let mut half = (&len - 1) / 2;
                 let mut rest = &len - 1 - &half;
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
@@ -1109,12 +1114,14 @@ pub(crate) fn test_skip_n(item: &Item) {
                 assert_eq!(i2.skip_n(&(&len - 1)).unwrap(), None);
                 assert_eq!(i1.next(), i2.next());
 
+                // skip(0) = no-op later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&half).unwrap(), None);
                 assert_eq!(i1.skip_n(&Number::zero()).unwrap(), None);
                 assert_eq!(i2.skip_n(&half).unwrap(), None);
                 assert_eq!(i1.next(), i2.next());
 
+                // skip(1) = next() later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&half).unwrap(), None);
                 assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
@@ -1122,12 +1129,7 @@ pub(crate) fn test_skip_n(item: &Item) {
                 assert_ne!(i2.next().transpose().unwrap(), None);
                 assert_eq!(i1.next(), i2.next());
 
-                let (mut i1, mut i2) = (stm.iter(), stm.iter());
-                assert_eq!(i1.skip_n(&half).unwrap(), None);
-                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
-                assert_eq!(i2.skip_n(&(&half + 1)).unwrap(), None);
-                assert_eq!(i1.next(), i2.next());
-
+                // skip() from within past end
                 half.inc();
                 rest.inc(); // now half + rest = len + 1
                 let mut it = stm.iter();
