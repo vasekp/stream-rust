@@ -676,11 +676,20 @@ fn test_join() {
     assert_eq!(parse("[1]~2~[3]").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
     assert_eq!(parse("1~2~3").unwrap().eval(&env).unwrap().to_string(), "[1, 2, 3]");
     assert_eq!(parse("0~seq").unwrap().eval(&env).unwrap().to_string(), "[0, 1, 2, ...");
+    assert_eq!(parse("(0~1..0~2)").unwrap().eval(&env).unwrap().to_string(), "[0, 2]");
     assert_eq!(parse("(0~1..3~4)[3]").unwrap().eval(&env).unwrap().to_string(), "2");
     assert_eq!(parse("(0~1..3~4)[4]").unwrap().eval(&env).unwrap().to_string(), "3");
     assert!(parse("[1]~\"a\"").unwrap().eval(&env).is_err());
     assert!(parse("\"a\"~[1]").unwrap().eval(&env).is_err());
     assert!(parse("\"a\"~['b']").unwrap().eval(&env).is_err());
+
+    test_len_exact(&parse("[1,2,3]~4~[5]~[[5,6]]").unwrap().eval(&env).unwrap(), 6);
+    test_len_exact(&parse("1~2~3").unwrap().eval(&env).unwrap(), 3);
+    test_len_exact(&parse("0~1..2~3").unwrap().eval(&env).unwrap(), 4);
+    test_len_exact(&parse("0~1..0~3").unwrap().eval(&env).unwrap(), 2);
+    test_skip_n(&parse("range(10^10)~range(10^9)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval(&env).unwrap());
+    test_skip_n(&parse("('a'..'z').repeat(10^10)~'A'.repeat(10^10)").unwrap().eval(&env).unwrap());
 }
 
 
