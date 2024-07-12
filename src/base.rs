@@ -1051,9 +1051,10 @@ fn test_describe() {
 }
 
 #[cfg(test)]
+#[track_caller]
 pub(crate) fn test_len_exact(item: &Item, len: usize) {
     let stm = item.as_stream().unwrap();
-    assert_eq!(stm.iter().count(), len);
+    assert_eq!(stm.iter().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.length(), &Length::Exact(len.into())));
     assert_eq!(len == 0, stm.is_empty());
 }
@@ -1061,6 +1062,7 @@ pub(crate) fn test_len_exact(item: &Item, len: usize) {
 #[cfg(test)]
 #[track_caller]
 pub(crate) fn test_skip_n(item: &Item) {
+    // TODO: check Some(Ok(...))
     let stm = item.as_stream().unwrap();
 
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
