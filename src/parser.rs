@@ -113,7 +113,7 @@ impl<'str> Tokenizer<'str> {
 
     pub fn peek(&mut self) -> Result<Option<&Token<'str>>, ParseError<'str>> {
         if let Some(ref ret) = self.peek { return Ok(ret.as_ref()); }
-        let next = self.next().transpose()?;
+        let next = self.next_tr()?;
         Ok(self.peek.insert(next).as_ref())
     }
 
@@ -122,6 +122,10 @@ impl<'str> Tokenizer<'str> {
             panic!("Tokenizer::unread() called with peek nonempty");
         }
         self.peek = Some(Some(token));
+    }
+
+    pub fn next_tr(&mut self) -> Result<Option<Token<'str>>, ParseError<'str>> {
+        self.next().transpose()
     }
 }
 
@@ -369,7 +373,7 @@ struct Parser<'str> {
 
 impl<'str> Parser<'str> {
     fn read_node(&mut self) -> Result<Option<Node>, ParseError<'str>> {
-        let Some(tok) = self.tk.next().transpose()? else { return Ok(None); };
+        let Some(tok) = self.tk.next_tr()? else { return Ok(None); };
         use TokenClass as TC;
         let head = match tok {
             Token(TC::Ident, name) => name.into(),
@@ -398,7 +402,7 @@ impl<'str> Parser<'str> {
     }
 
     fn read_expr_part(&mut self) -> Result<Option<Expr>, ParseError<'str>> {
-        let Some(tok) = self.tk.next().transpose()? else { return Ok(None); };
+        let Some(tok) = self.tk.next_tr()? else { return Ok(None); };
         use TokenClass as TC;
         Some(match tok {
             Token(TC::Number, value) => Ok(Item::new_number(value.parse::<Number>()
@@ -449,7 +453,7 @@ impl<'str> Parser<'str> {
         let mut cur = None;
 
         'a: loop {
-            let Some(tok) = self.tk.next().transpose()? else { break; };
+            let Some(tok) = self.tk.next_tr()? else { break; };
             if tok.0 == TC::Close || tok.0 == TC::Comma {
                 self.tk.unread(tok);
                 break;
@@ -528,7 +532,7 @@ impl<'str> Parser<'str> {
         let mut ret = vec![];
         let close = loop {
             let expr = self.read_expr()?;
-            let next = self.tk.next().transpose()?
+            let next = self.tk.next_tr()?
                 .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(open)))?;
             match (expr, next) {
                 (Some(expr), Token(TC::Comma, ",")) => ret.push(expr),
@@ -557,7 +561,7 @@ impl<'str> Parser<'str> {
         let mut parser = Parser{tk: Tokenizer::new(input)};
         let expr = parser.read_expr()?
             .ok_or(ParseError::new("empty input", input))?;
-        if let Some(tok) = parser.tk.next().transpose()? {
+        if let Some(tok) = parser.tk.next_tr()? {
             Err(ParseError::new("cannot appear here", tok.1))
         } else {
             Ok(expr)
