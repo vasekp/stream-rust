@@ -305,7 +305,7 @@ impl Stream for Plus {
             .map(|item| match item {
                 Item::Stream(stm) => stm.length(),
                 _ => Length::Infinite
-            }).reduce(|a, e| Length::smaller(&a, &e)).unwrap()
+            }).reduce(|a, e| Length::intersection(&a, &e)).unwrap()
     }
 }
 

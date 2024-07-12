@@ -851,7 +851,7 @@ impl Length {
         }
     }
 
-    pub fn smaller(l1: &Length, l2: &Length) -> Length {
+    pub fn intersection(l1: &Length, l2: &Length) -> Length {
         use Length::*;
         match (l1, l2) {
             (Infinite, len) | (len, Infinite) => len.to_owned(),
