@@ -91,9 +91,14 @@ impl Expr {
         }
     }
 
+    /// Evaluates this `Expr` in a default environment.
+    pub fn eval(self) -> Result<Item, StreamError> {
+        self.eval_env(&Default::default())
+    }
+
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
-    /// `Node::eval()`.
-    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
+    /// `Node::eval_env()`.
+    pub fn eval_env(self, env: &Rc<Env>) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
             Expr::Eval(node) => node.eval(env)
@@ -193,7 +198,7 @@ impl Node {
                 Ok(func) => func(self, env),
                 Err(e) => Err(StreamError::new(e, self))
             },
-            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval(env),
+            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval_env(env),
             Head::Repl(_, _) => Err(StreamError::new("out of context", self)),
             Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env)
         }
@@ -201,25 +206,25 @@ impl Node {
 
     pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
         let source = match self.source {
-            Some(source) => Some((*source).eval(env)?),
+            Some(source) => Some((*source).eval_env(env)?),
             None => None
         };
         let args = self.args.into_iter()
-            .map(|x| x.eval(env))
+            .map(|x| x.eval_env(env))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(ENode{head: self.head, source, args})
     }
 
     pub(crate) fn eval_source(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         if let Some(source) = self.source.take() {
-            self.source = Some(Box::new((*source).eval(env)?.into()));
+            self.source = Some(Box::new((*source).eval_env(env)?.into()));
         }
         Ok(self)
     }
 
     /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
-            .map(|x| x.eval(env).map(Expr::from))
+            .map(|x| x.eval_env(env).map(Expr::from))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
     }*/
@@ -1000,14 +1005,13 @@ impl Describe for Env {
 #[test]
 fn test_block() {
     use crate::parser::parse;
-    let env = Default::default();
-    assert_eq!(parse("{#1}(3,4)").unwrap().eval(&env).unwrap().to_string(), "3");
-    assert_eq!(parse("{#2}(3,4)").unwrap().eval(&env).unwrap().to_string(), "4");
-    assert!(parse("{#3}(3,4)").unwrap().eval(&env).is_err());
-    assert!(parse("#1").unwrap().eval(&env).is_err());
-    assert_eq!(parse("1.{2}(3)").unwrap().eval(&env).unwrap().to_string(), "2");
-    assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval(&env).unwrap().to_string(), "6");
-    assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval(&env).unwrap().to_string(), "4");
+    assert_eq!(parse("{#1}(3,4)").unwrap().eval().unwrap().to_string(), "3");
+    assert_eq!(parse("{#2}(3,4)").unwrap().eval().unwrap().to_string(), "4");
+    assert!(parse("{#3}(3,4)").unwrap().eval().is_err());
+    assert!(parse("#1").unwrap().eval().is_err());
+    assert_eq!(parse("1.{2}(3)").unwrap().eval().unwrap().to_string(), "2");
+    assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval().unwrap().to_string(), "6");
+    assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval().unwrap().to_string(), "4");
 }
 
 #[test]
