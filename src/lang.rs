@@ -403,7 +403,7 @@ impl Iterator for StringPlusIter<'_> {
                 return Some(Ok(first));
             }
         } else {
-            return Some(Ok(first));
+            return Some(Err(StreamError::new("malformed string", self.node.clone().into())))
         }
 
         let rest = self.args.iter_mut()
@@ -427,16 +427,28 @@ impl Iterator for StringPlusIter<'_> {
 impl SIterator for StringPlusIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         let mut args_iter = self.args.iter_mut();
-        let remain = args_iter.next().unwrap().skip_n(n)?;
-        if remain.is_none() {
-            for iter in args_iter {
-                if iter.skip_n(n)?.is_some() {
-                    println!("{n}");
-                    return Err(StreamError::new("another operand ended earlier than the first", self.node.clone().into()));
-                }
+        let first_iter = args_iter.next().unwrap();
+        let mut n = n.to_owned();
+        let mut n_chars = Number::zero();
+        while n.is_positive() {
+            match first_iter.next() {
+                Some(Ok(Item::Char(ref ch))) => {
+                    if self.env.alphabet().contains(ch) {
+                        n_chars.inc();
+                    }
+                },
+                Some(Err(err)) => return Err(err),
+                Some(_) => return Err(StreamError::new("malformed string", self.node.clone().into())),
+                None => return Ok(Some(n))
+            }
+            n.dec();
+        }
+        for iter in args_iter {
+            if iter.skip_n(&n_chars)?.is_some() {
+                return Err(StreamError::new("another operand ended earlier than the first", self.node.clone().into()));
             }
         }
-        Ok(remain)
+        Ok(None)
     }
 }
 
@@ -546,7 +558,8 @@ fn test_opers() {
     test_skip_n(&parse("range(10^10)+range(10^11)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq+[]").unwrap().eval().unwrap());
     test_skip_n(&parse(r#""abcdefgh"+seq+"abcdefghijkl""#).unwrap().eval().unwrap());
-    test_skip_n(&parse(r#""ab".repeat+seq"#).unwrap().eval().unwrap());
+    test_skip_n(&parse(r#""ab".repeat(3)+seq"#).unwrap().eval().unwrap());
+    test_skip_n(&parse(r#""a b".repeat(3)+seq"#).unwrap().eval().unwrap());
 }
 
 
