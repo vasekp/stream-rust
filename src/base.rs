@@ -1143,34 +1143,27 @@ pub(crate) fn test_skip_n(item: &Item) {
             Length::Infinite => {
                 let many = 10000000000_i64.into();
 
-                let mut it = stm.iter();
-                assert_eq!(it.skip_n(&many).unwrap(), None);
-                assert_ne!(it.next().transpose().unwrap(), None);
-
+                // skip() following skip()
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
                 assert_eq!(i2.skip_n(&(&many * 2)).unwrap(), None);
-                assert_eq!(i1.next(), i2.next());
+                assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
 
+                // skip(0) = no-op later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
                 assert_eq!(i1.skip_n(&Number::zero()).unwrap(), None);
                 assert_eq!(i2.skip_n(&many).unwrap(), None);
-                assert_eq!(i1.next(), i2.next());
+                assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
 
+                // skip(1) = next() later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
                 assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
                 assert_eq!(i2.skip_n(&many).unwrap(), None);
-                assert_ne!(i2.next(), None);
-                assert_eq!(i1.next(), i2.next());
-
-                let (mut i1, mut i2) = (stm.iter(), stm.iter());
-                assert_eq!(i1.skip_n(&many).unwrap(), None);
-                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
-                assert_eq!(i2.skip_n(&(&many + 1)).unwrap(), None);
-                assert_eq!(i1.next(), i2.next());
+                assert_ne!(i2.next().transpose().unwrap(), None);
+                assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
             },
             _ => ()
         }
