@@ -103,7 +103,7 @@ fn eval_part(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let mut item = try_with!(node, node.source_checked()).to_owned();
     if node.args.is_empty() {
-        return Err(StreamError::new("at least 1 argument required", node.into()));
+        return Err(StreamError::new("at least 1 argument required", node));
     }
     for arg in &node.args {
         let index = try_with!(node, arg.as_num());
@@ -111,16 +111,16 @@ fn eval_part(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let stm = try_with!(node, item.into_stream());
         match stm.length() {
             Length::Exact(len) | Length::AtMost(len) if &len < index =>
-                return Err(StreamError::new("index past end of stream", node.into())),
+                return Err(StreamError::new("index past end of stream", node)),
             _ => ()
         }
         let mut iter = stm.iter();
         if iter.skip_n(&(index - 1))?.is_some() {
-            return Err(StreamError::new("index past end of stream", node.into()));
+            return Err(StreamError::new("index past end of stream", node));
         }
         item = match iter.next() {
             Some(value) => value?,
-            None => return Err(StreamError::new("index past end of stream", node.into()))
+            None => return Err(StreamError::new("index past end of stream", node))
         };
     }
     Ok(item)
@@ -403,7 +403,7 @@ impl Iterator for StringPlusIter<'_> {
                 return Some(Ok(first));
             }
         } else {
-            return Some(Err(StreamError::new("malformed string", self.node.clone().into())))
+            return Some(Err(StreamError::new("malformed string", self.node)))
         }
 
         let rest = self.args.iter_mut()
@@ -411,7 +411,7 @@ impl Iterator for StringPlusIter<'_> {
             .map(|iter| (*iter).next())
             .collect::<Option<Result<Vec<_>, _>>>();
         match rest {
-            None => Some(Err(StreamError::new("another operand ended earlier than the first", self.node.clone().into()))),
+            None => Some(Err(StreamError::new("another operand ended earlier than the first", self.node))),
             Some(Ok(mut inputs)) => {
                 inputs.insert(0, first);
                 match Plus::helper(&inputs, self.env) {
@@ -438,14 +438,14 @@ impl SIterator for StringPlusIter<'_> {
                     }
                 },
                 Some(Err(err)) => return Err(err),
-                Some(_) => return Err(StreamError::new("malformed string", self.node.clone().into())),
+                Some(_) => return Err(StreamError::new("malformed string", self.node)),
                 None => return Ok(Some(n))
             }
             n.dec();
         }
         for iter in args_iter {
             if iter.skip_n(&n_chars)?.is_some() {
-                return Err(StreamError::new("another operand ended earlier than the first", self.node.clone().into()));
+                return Err(StreamError::new("another operand ended earlier than the first", self.node));
             }
         }
         Ok(None)
@@ -460,7 +460,7 @@ fn eval_minus(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let ans = match args.len() {
         1 => -try_with!(node, args[0].as_num()),
         2 => try_with!(node, Ok(args[0].as_num()? - args[1].as_num()?)),
-        _ => return Err(StreamError::new("1 or 2 arguments required", node.into()))
+        _ => return Err(StreamError::new("1 or 2 arguments required", node))
     };
     Ok(Item::new_number(ans))
 }
@@ -478,12 +478,12 @@ fn eval_div(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     if node.args.len() != 2 {
-        return Err(StreamError::new("exactly 2 argument required", node.into()));
+        return Err(StreamError::new("exactly 2 argument required", node));
     }
     let x = try_with!(node, node.args[0].as_num());
     let y = try_with!(node, node.args[1].as_num());
     if y.is_zero() {
-        return Err(StreamError::new("division by zero", node.into()));
+        return Err(StreamError::new("division by zero", node));
     }
     Ok(Item::new_number(x / y))
 }
@@ -492,15 +492,15 @@ fn eval_pow(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source());
     if node.args.len() != 2 {
-        return Err(StreamError::new("exactly 2 argument required", node.into()));
+        return Err(StreamError::new("exactly 2 argument required", node));
     }
     let x = try_with!(node, node.args[0].as_num());
     let y = try_with!(node, node.args[1].as_num());
     if y.is_negative() {
-        return Err(StreamError::new("negative exponent", node.into()));
+        return Err(StreamError::new("negative exponent", node));
     }
     let Some(exp) = y.to_u32() else {
-        return Err(StreamError::new("exponent too large", node.into()));
+        return Err(StreamError::new("exponent too large", node));
     };
     Ok(Item::new_number(x.pow(exp)))
 }
@@ -584,7 +584,7 @@ impl Join {
         let string = Join::is_string(iter.next().unwrap());
         for arg in iter {
             if Join::is_string(arg) != string {
-                return Err(StreamError::new("mixed strings and non-strings", node.into()));
+                return Err(StreamError::new("mixed strings and non-strings", node));
             }
         }
         Ok(Item::new_stream(Join{node}))
@@ -703,11 +703,11 @@ fn test_join() {
 fn eval_args(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     if node.args.len() != 1 {
-        return Err(StreamError::new("exactly 1 argument expected", node.into()));
+        return Err(StreamError::new("exactly 1 argument expected", node));
     }
     let src_stream = try_with!(node, node.args[0].as_stream());
     if src_stream.length() == Length::Infinite {
-        return Err(StreamError::new("stream is infinite", node.into()));
+        return Err(StreamError::new("stream is infinite", node));
     }
     let Head::Lang(LangItem::Args(head)) = node.head
         else { panic!("eval_args() called on something else than $args") };

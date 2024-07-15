@@ -344,6 +344,12 @@ impl From<ENode> for Node {
     }
 }
 
+impl From<&ENode> for Node {
+    fn from(enode: &ENode) -> Node {
+        Node::from(enode.clone())
+    }
+}
+
 impl Describe for ENode {
     fn describe(&self) -> String {
         Node::describe_helper(&self.head, self.source.as_ref(), &self.args)

@@ -27,8 +27,8 @@ pub struct StreamError {
 }
 
 impl StreamError {
-    pub fn new<T>(reason: T, node: Node) -> StreamError where T: Into<BaseError> {
-        StreamError{reason: reason.into(), node}
+    pub fn new(reason: impl Into<BaseError>, node: impl Into<Node>) -> StreamError {
+        StreamError{reason: reason.into(), node: node.into()}
     }
 }
 
@@ -45,7 +45,7 @@ macro_rules! try_with {
     ($node:ident, $expr:expr) => {
         match (|| -> Result<_, BaseError> { $expr })() {
             Ok(result) => result,
-            Err(err) => return Err(StreamError::new(err, $node.into()))
+            Err(err) => return Err(StreamError::new(err, $node))
         }
     }
 }
