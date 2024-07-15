@@ -1073,6 +1073,7 @@ pub(crate) fn test_len_exact(item: &Item, len: usize) {
 #[track_caller]
 pub(crate) fn test_skip_n(item: &Item) {
     let stm = item.as_stream().unwrap();
+    const TEST: u32 = 5;
 
     // skip(0) = no-op on fresh iterator
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
@@ -1145,6 +1146,18 @@ pub(crate) fn test_skip_n(item: &Item) {
                 let mut it = stm.iter();
                 assert_eq!(it.skip_n(&half).unwrap(), None);
                 assert_eq!(it.skip_n(&rest).unwrap(), Some(Number::one()));
+
+                // test actually comparing a few elements after a small skip
+                if len > (2 * TEST).into() {
+                    let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                    assert_eq!(i1.skip_n(&TEST.into()).unwrap(), None);
+                    for _ in 0..TEST {
+                        i2.next().unwrap().unwrap();
+                    }
+                    for _ in 1..TEST {
+                        assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
+                    }
+                }
             },
             Length::Infinite => {
                 let many = 10000000000_i64.into();
@@ -1170,6 +1183,16 @@ pub(crate) fn test_skip_n(item: &Item) {
                 assert_eq!(i2.skip_n(&many).unwrap(), None);
                 assert_ne!(i2.next().transpose().unwrap(), None);
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
+
+                // test actually comparing a few elements after a small skip
+                let (mut i1, mut i2) = (stm.iter(), stm.iter());
+                assert_eq!(i1.skip_n(&TEST.into()).unwrap(), None);
+                for _ in 0..TEST {
+                    i2.next().unwrap().unwrap();
+                }
+                for _ in 0..TEST {
+                    assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
+                }
             },
             _ => ()
         }

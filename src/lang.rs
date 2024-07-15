@@ -557,9 +557,9 @@ fn test_opers() {
     test_skip_n(&parse("range(10^10)+seq+5").unwrap().eval().unwrap());
     test_skip_n(&parse("range(10^10)+range(10^11)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq+[]").unwrap().eval().unwrap());
-    test_skip_n(&parse(r#""abcdefgh"+seq+"abcdefghijkl""#).unwrap().eval().unwrap());
-    test_skip_n(&parse(r#""ab".repeat(3)+seq"#).unwrap().eval().unwrap());
-    test_skip_n(&parse(r#""a b".repeat(3)+seq"#).unwrap().eval().unwrap());
+    test_skip_n(&parse(r#""abcdefghijk"+seq+"abcdefghijklmn""#).unwrap().eval().unwrap());
+    test_skip_n(&parse(r#""ab".repeat(10)+seq"#).unwrap().eval().unwrap());
+    test_skip_n(&parse(r#""a b".repeat(10)+seq"#).unwrap().eval().unwrap());
 }
 
 
