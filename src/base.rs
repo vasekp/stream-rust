@@ -39,6 +39,22 @@ impl Default for Expr {
 }
 
 impl Expr {
+    pub fn new_number(value: impl Into<Number>) -> Expr {
+        Item::new_number(value).into()
+    }
+
+    pub fn new_bool(value: bool) -> Expr {
+        Item::new_bool(value).into()
+    }
+
+    pub fn new_char(value: impl Into<Char>) -> Expr {
+        Item::new_char(value).into()
+    }
+
+    /*pub fn new_stream(value: impl Stream + 'static) -> Expr {
+        Item::new_stream(value).into()
+    }*/
+
     /// For an `Expr::Imm(value)`, returns a reference to `value`.
     pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {

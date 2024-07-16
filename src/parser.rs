@@ -574,7 +574,7 @@ impl<'str> Parser<'str> {
 /// use streamlang::parser::parse;
 /// assert_eq!(parse("a.b(3,4)"),
 ///     Ok(Node::new("a", None, vec![]).chain(PreNode::new("b",
-///         vec![Item::new_number(3).into(), Item::new_number(4).into()]))));
+///         vec![Expr::new_number(3), Expr::new_number(4)]))));
 /// ```
 pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
     Parser::parse(input)
@@ -583,18 +583,18 @@ pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
 
 #[test]
 fn test_parser() {
-    assert_eq!(parse("1"), Ok(Item::new_number(1).into()));
+    assert_eq!(parse("1"), Ok(Expr::new_number(1)));
     assert_eq!(parse("a"), Ok(Node::new("a", None, vec![]).into()));
     assert_eq!(parse("a(1,2)"), Ok(Node::new("a", None,
-        vec![Item::new_number(1).into(), Item::new_number(2).into()]).into()));
-    assert_eq!(parse("1.a"), Ok(Item::new_number(1).chain(PreNode::new("a", vec![]))));
-    assert_eq!(parse("(1).a"), Ok(Item::new_number(1).chain(PreNode::new("a", vec![]))));
+        vec![Expr::new_number(1), Expr::new_number(2)]).into()));
+    assert_eq!(parse("1.a"), Ok(Expr::new_number(1).chain(PreNode::new("a", vec![]))));
+    assert_eq!(parse("(1).a"), Ok(Expr::new_number(1).chain(PreNode::new("a", vec![]))));
     assert!(parse("(1,2).a").is_err());
     assert_eq!(parse("a.b"), Ok(PreNode::new("a", vec![]).chain(PreNode::new("b", vec![]))));
     assert_eq!(parse("a.b.c"), Ok(PreNode::new("a", vec![]).chain(PreNode::new("b", vec![]))
             .chain(PreNode::new("c", vec![]))));
-    assert_eq!(parse("a(1).b(2)"), Ok(PreNode::new("a", vec![Item::new_number(1).into()])
-            .chain(PreNode::new("b", vec![Item::new_number(2).into()]))));
+    assert_eq!(parse("a(1).b(2)"), Ok(PreNode::new("a", vec![Expr::new_number(1)])
+            .chain(PreNode::new("b", vec![Expr::new_number(2)]))));
     assert!(parse("a.1").is_err());
     assert!(parse("2(a)").is_err());
     assert!(parse("1 2").is_err());
@@ -628,49 +628,49 @@ fn test_parser() {
             vec![Node::new("a", None, vec![]).into(), Node::new("b", None, vec![]).into()]).into(),
             Node::new("c", None, vec![]).into()]).into()));
 
-    assert_eq!(parse("{1}"), Ok(Node::new(Item::new_number(1), None, vec![]).into()));
+    assert_eq!(parse("{1}"), Ok(Node::new(Expr::new_number(1), None, vec![]).into()));
     assert!(parse("{}").is_err());
-    assert_eq!(parse("1.{2}(3)"), Ok(Node::new(Item::new_number(2),
-        Some(Item::new_number(1).into()), vec![Item::new_number(3).into()]).into()));
-    assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Item::new_number(1).chain(PreNode::new(
-        Item::new_number(2).chain(PreNode::new("a", vec![Item::new_number(3).into()])),
-        vec![Item::new_number(4).into()]))));
-    assert_eq!(parse("{1}.{2}"), Ok(PreNode::new(Item::new_number(1), vec![])
-            .chain(PreNode::new(Item::new_number(2), vec![]))));
+    assert_eq!(parse("1.{2}(3)"), Ok(Node::new(Expr::new_number(2),
+        Some(Expr::new_number(1)), vec![Expr::new_number(3)]).into()));
+    assert_eq!(parse("1.{2.a(3)}(4)"), Ok(Expr::new_number(1).chain(PreNode::new(
+        Expr::new_number(2).chain(PreNode::new("a", vec![Expr::new_number(3)])),
+        vec![Expr::new_number(4)]))));
+    assert_eq!(parse("{1}.{2}"), Ok(PreNode::new(Expr::new_number(1), vec![])
+            .chain(PreNode::new(Expr::new_number(2), vec![]))));
 
     assert_eq!(parse("[1,2][3,4]"), Ok(PreNode::new(LangItem::List,
-            vec![Item::new_number(1).into(), Item::new_number(2).into()])
+            vec![Expr::new_number(1), Expr::new_number(2)])
         .chain(PreNode::new(LangItem::Part,
-            vec![Item::new_number(3).into(), Item::new_number(4).into()]))));
-    assert_eq!(parse("[1][2][3]"), Ok(PreNode::new(LangItem::List, vec![Item::new_number(1).into()])
-        .chain(PreNode::new(LangItem::Part, vec![Item::new_number(2).into()]))
-        .chain(PreNode::new(LangItem::Part, vec![Item::new_number(3).into()]))));
+            vec![Expr::new_number(3), Expr::new_number(4)]))));
+    assert_eq!(parse("[1][2][3]"), Ok(PreNode::new(LangItem::List, vec![Expr::new_number(1)])
+        .chain(PreNode::new(LangItem::Part, vec![Expr::new_number(2)]))
+        .chain(PreNode::new(LangItem::Part, vec![Expr::new_number(3)]))));
     assert_eq!(parse("[][3,4]"), Ok(PreNode::new(LangItem::List, vec![])
-        .chain(PreNode::new(LangItem::Part, vec![Item::new_number(3).into(), Item::new_number(4).into()]))));
+        .chain(PreNode::new(LangItem::Part, vec![Expr::new_number(3), Expr::new_number(4)]))));
     assert!(parse("[1,2][]").is_err());
     assert!(parse("a.[1]").is_err());
     // The following is legal syntax, but error at runtime
-    assert_eq!(parse("1[2]"), Ok(Item::new_number(1)
-        .chain(PreNode::new(LangItem::Part, vec![Item::new_number(2).into()]))));
+    assert_eq!(parse("1[2]"), Ok(Expr::new_number(1)
+        .chain(PreNode::new(LangItem::Part, vec![Expr::new_number(2)]))));
     assert_eq!(parse("a[b]"), Ok(PreNode::new("a", vec![])
         .chain(PreNode::new(LangItem::Part, vec![Node::new("b", None, vec![]).into()]))));
     assert_eq!(parse("[[1]][[2]]"), Ok(PreNode::new(LangItem::List,
-            vec![PreNode::new(LangItem::List, vec![Item::new_number(1).into()]).into()])
+            vec![PreNode::new(LangItem::List, vec![Expr::new_number(1)]).into()])
         .chain(PreNode::new(LangItem::Part,
-            vec![PreNode::new(LangItem::List, vec![Item::new_number(2).into()]).into()]))));
+            vec![PreNode::new(LangItem::List, vec![Expr::new_number(2)]).into()]))));
     assert_eq!(parse("([([(1)])])").unwrap(), parse("[[1]]").unwrap());
     assert_eq!(parse("([1])[2]").unwrap(), parse("[1][2]").unwrap());
     assert!(parse("[1]([2])").is_err());
 
     assert!(parse("''").is_err());
-    assert_eq!(parse("'\\n'"), Ok(Item::new_char('\n').into()));
-    assert_eq!(parse("'\\\\'"), Ok(Item::new_char('\\').into()));
-    assert_eq!(parse("'\\''"), Ok(Item::new_char('\'').into()));
-    assert_eq!(parse("'\\\"'"), Ok(Item::new_char('"').into()));
-    assert_eq!(parse("'\"'"), Ok(Item::new_char('"').into()));
+    assert_eq!(parse("'\\n'"), Ok(Expr::new_char('\n')));
+    assert_eq!(parse("'\\\\'"), Ok(Expr::new_char('\\')));
+    assert_eq!(parse("'\\''"), Ok(Expr::new_char('\'')));
+    assert_eq!(parse("'\\\"'"), Ok(Expr::new_char('"')));
+    assert_eq!(parse("'\"'"), Ok(Expr::new_char('"')));
     assert!(parse("'\\h'").is_err());
     assert_eq!(parse("true+'1'"), Ok(Node::new_op("+",
-        vec![Item::new_bool(true).into(), Item::new_char('1').into()]).into()));
+        vec![Expr::new_bool(true), Expr::new_char('1')]).into()));
 
     assert_eq!(parse("#"), Ok(Node::new_repl('#', None).into()));
     assert_eq!(parse("#1"), Ok(Node::new_repl('#', Some(1)).into()));
@@ -684,19 +684,19 @@ fn test_parser() {
     assert_eq!(parse("#+$"), Ok(Node::new_op("+",
         vec![Node::new_repl('#', None).into(), Node::new_repl('$', None).into()]).into()));
     assert!(parse("1.#").is_err());
-    assert_eq!(parse("1.{#}(2)"), Ok(Item::new_number(1)
-        .chain(PreNode::new(Node::new_repl('#', None), vec![Item::new_number(2).into()]))));
+    assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_number(1)
+        .chain(PreNode::new(Node::new_repl('#', None), vec![Expr::new_number(2)]))));
 
     assert_eq!(parse("a.b@c@d[1]"), Ok(PreNode::new("a", vec![])
         .chain(PreNode::new(Head::args("b"),
             vec![PreNode::new(Head::args("c"), vec![PreNode::new("d", vec![]).into()]).into()]))
-        .chain(PreNode::new(LangItem::Part, vec![Item::new_number(1).into()]))));
+        .chain(PreNode::new(LangItem::Part, vec![Expr::new_number(1)]))));
     // literals, list, #, (x) may follow @
     assert_eq!(parse("a@1"), Ok(Node::new(Head::args("a"),
-        None, vec![Item::new_number(1).into()]).into()));
+        None, vec![Expr::new_number(1)]).into()));
     assert_eq!(parse("a@[1,2]"), Ok(Node::new(Head::args("a"),
         None, vec![PreNode::new(LangItem::List,
-            vec![Item::new_number(1).into(), Item::new_number(2).into()]).into()]).into()));
+            vec![Expr::new_number(1), Expr::new_number(2)]).into()]).into()));
     assert_eq!(parse("a@(b.c@#)"), Ok(Node::new(Head::args("a"),
         None, vec![PreNode::new("b", vec![])
             .chain(PreNode::new(Head::args("c"), vec![Node::new_repl('#', None).into()]))]).into()));
@@ -721,21 +721,21 @@ fn test_prec() {
     // base precedence tests
     // +(1, *(2, ^(3, 4)), 5)
     assert_eq!(parse("1+2*3^4+5"), Ok(Node::new_op("+", vec![
-        Item::new_number(1).into(),
+        Expr::new_number(1),
         Node::new_op("*", vec![
-            Item::new_number(2).into(),
+            Expr::new_number(2),
             Node::new_op("^", vec![
-                Item::new_number(3).into(), Item::new_number(4).into()
+                Expr::new_number(3), Expr::new_number(4)
             ]).into()]).into(),
-        Item::new_number(5).into()
+        Expr::new_number(5)
         ]).into()));
     // +(1, *( ^(2, 3), 4), 5)
     assert_eq!(parse("1+2^3*4+5"), Ok(Node::new_op("+", vec![
-        Item::new_number(1).into(),
+        Expr::new_number(1),
         Node::new_op("*", vec![
-            Node::new_op("^", vec![Item::new_number(2).into(), Item::new_number(3).into()]).into(),
-            Item::new_number(4).into()]).into(),
-        Item::new_number(5).into()
+            Node::new_op("^", vec![Expr::new_number(2), Expr::new_number(3)]).into(),
+            Expr::new_number(4)]).into(),
+        Expr::new_number(5)
         ]).into()));
     // mixing + and -: same precedence, but - don't mix and stack
     // -( -( -( +(1, 2, 3), 4), 5), 6)
@@ -743,29 +743,27 @@ fn test_prec() {
         Node::new_op("-", vec![
             Node::new_op("-", vec![
                 Node::new_op("+", vec![
-                    Item::new_number(1).into(),
-                    Item::new_number(2).into(),
-                    Item::new_number(3).into()]).into(),
-                Item::new_number(4).into()]).into(),
-            Item::new_number(5).into()]).into(),
-        Item::new_number(6).into()]).into()));
+                    Expr::new_number(1),
+                    Expr::new_number(2),
+                    Expr::new_number(3)]).into(),
+                Expr::new_number(4)]).into(),
+            Expr::new_number(5)]).into(),
+        Expr::new_number(6)]).into()));
     // chaining takes precedence over everything
     // +(1, a.b, 2)
     assert_eq!(parse("1+a.b+2"), Ok(Node::new_op("+", vec![
-        Item::new_number(1).into(),
+        Expr::new_number(1),
         PreNode::new("a", vec![]).chain(PreNode::new("b", vec![])),
-        Item::new_number(2).into()]).into()));
+        Expr::new_number(2)]).into()));
     // +(1, 2)
-    assert_eq!(parse("+1+2"), Ok(Node::new_op("+", vec![
-        Item::new_number(1).into(),
-        Item::new_number(2).into()]).into()));
+    assert_eq!(parse("+1+2"), Ok(Node::new_op("+", vec![Expr::new_number(1), Expr::new_number(2)]).into()));
     // -( -(1), 2)
     assert_eq!(parse("-1-2"), Ok(Node::new_op("-", vec![
-        Node::new_op("-", vec![Item::new_number(1).into()]).into(),
-        Item::new_number(2).into()]).into()));
+        Node::new_op("-", vec![Expr::new_number(1)]).into(),
+        Expr::new_number(2)]).into()));
     // -(1..1) (error)
     assert_eq!(parse("-1..1"), Ok(Node::new_op("-",
-        vec![Node::new_op("..", vec![Item::new_number(1).into(), Item::new_number(1).into()]).into()]).into()));
+        vec![Node::new_op("..", vec![Expr::new_number(1), Expr::new_number(1)]).into()]).into()));
     assert!(parse("--1").is_err());
     assert!(parse("*1*2").is_err());
 }
