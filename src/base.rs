@@ -55,6 +55,10 @@ impl Expr {
         Item::new_stream(value).into()
     }*/
 
+    pub fn new_node(head: impl Into<Head>, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{head: head.into(), source: None, args})
+    }
+
     /// Operands are provided as `args`.
     pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{head: Head::Oper(op.into()), source: None, args})
