@@ -403,7 +403,7 @@ impl Iterator for StringPlusIter<'_> {
                 return Some(Ok(first));
             }
         } else {
-            return Some(Err(StreamError::new("malformed string", self.node)))
+            return Some(Err(StreamError::new("malformed string", self.node.args[0].clone())))
         }
 
         let rest = self.args.iter_mut()
@@ -438,7 +438,7 @@ impl SIterator for StringPlusIter<'_> {
                     }
                 },
                 Some(Err(err)) => return Err(err),
-                Some(_) => return Err(StreamError::new("malformed string", self.node)),
+                Some(_) => return Err(StreamError::new("malformed string", self.node.args[0].clone())),
                 None => return Ok(Some(n))
             }
             n.dec();
