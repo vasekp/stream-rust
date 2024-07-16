@@ -448,80 +448,93 @@ impl<'str> Parser<'str> {
             prec: u32,
             args: Vec<Expr>
         }
-
         let mut stack: Vec<StackEntry> = vec![];
-        let mut cur: Option<Expr> = None;
 
-        'a: loop {
+        let mut cur = match self.tk.next_tr()? {
+            None => return Ok(None),
+            Some(tok @ Token(TC::Close | TC::Comma, _)) => {
+                self.tk.unread(tok);
+                return Ok(None)
+            },
+            Some(Token(TC::Oper, sign @ ("+" | "-"))) => {
+                stack.push(StackEntry{op: sign, prec: get_op(sign).0, args: vec![]});
+                self.read_expr_part()?
+                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(sign)))?
+            },
+            Some(tok) => {
+                self.tk.unread(tok);
+                self.read_expr_part()?.unwrap()
+            }
+        };
+
+        loop {
             let Some(tok) = self.tk.next_tr()? else { break; };
             if tok.0 == TC::Close || tok.0 == TC::Comma {
                 self.tk.unread(tok);
                 break;
             }
-            match (cur.take(), tok) {
-                (Some(src), Token(TC::Chain, tok @ ".")) => {
+            cur = match (cur, tok) {
+                (src, Token(TC::Chain, tok @ ".")) => {
                     let node = self.read_prenode()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
-                    cur = Some(src.chain(node));
+                    src.chain(node)
                 },
-                (Some(src), Token(TC::Chain, tok @ ":")) => {
+                (src, Token(TC::Chain, tok @ ":")) => {
                     let node = self.read_prenode()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
-                    cur = Some(src.chain(PreNode::new(LangItem::Map, vec![node.into()])));
+                    src.chain(PreNode::new(LangItem::Map, vec![node.into()]))
                 },
-                (Some(src), Token(TC::Open, bkt @ "[")) => {
+                (src, Token(TC::Open, bkt @ "[")) => {
                     let args = self.read_args(bkt)?;
                     if args.is_empty() {
                         return Err(ParseError::new("empty parts", self.tk.slice_from(bkt)));
                     }
-                    cur = Some(src.chain(PreNode::new(LangItem::Part, args)));
+                    src.chain(PreNode::new(LangItem::Part, args))
                 },
-                (None, Token(TC::Oper, sign @ ("+" | "-"))) => {
-                    stack.push(StackEntry{op: sign, prec: get_op(sign).0, args: vec![]});
-                    cur = Some(self.read_expr_part()?
-                        .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(sign)))?);
-                },
-                (Some(mut expr), Token(TC::Oper, op)) => {
+                (mut expr, Token(TC::Oper, op)) => {
                     let (prec, multi) = get_op(op);
-                    while let Some(entry) = stack.last_mut() {
+                    loop {
+                        let Some(mut entry) = stack.pop() else {
+                            // No stack: start new
+                            stack.push(StackEntry{op, prec, args: vec![expr]});
+                            break;
+                        };
                         if entry.prec > prec {
-                            let mut entry = stack.pop().unwrap();
+                            // Higher precedence: add current expr, wrap up and replace expr by the result
                             entry.args.push(expr);
                             expr = Expr::new_op(entry.op, entry.args);
+                            // Continue down the stack!
                         } else if entry.prec == prec && entry.op == op && multi {
+                            // We have the same operator, and it allows multiple parameters:
+                            // add current expr to them and put entry back
                             entry.args.push(expr);
-                            continue 'a;
+                            stack.push(entry);
+                            break;
                         } else if entry.prec == prec {
-                            let mut entry = stack.pop().unwrap();
+                            // Same precedence but no bunching: finish old operation and
+                            // replace stack top by the new one
                             entry.args.push(expr);
                             expr = Expr::new_op(entry.op, entry.args);
+                            stack.push(StackEntry{op, prec, args: vec![expr]});
                             break;
                         } else {
+                            // Lower precedence: keep the previous stack and add new op on top
+                            stack.push(entry);
+                            stack.push(StackEntry{op, prec, args: vec![expr]});
                             break;
                         }
                     }
-                    stack.push(StackEntry{op, prec, args: vec![expr]});
-                    cur = Some(self.read_expr_part()?
-                        .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?);
-                },
-                (None, tok) => {
-                    self.tk.unread(tok);
-                    cur = self.read_expr_part()?; // cannot be None after unread
+                    self.read_expr_part()?
+                        .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?
                 },
                 (_, Token(_, tok)) => return Err(ParseError::new("cannot appear here", tok))
             }
         }
-        let Some(mut ret) = cur else {
-            match stack.pop() {
-                None => return Ok(None),
-                Some(StackEntry{op, ..}) => return Err(ParseError::new("incomplete expression", self.tk.slice_from(op)))
-            }
-        };
         while let Some(mut entry) = stack.pop() {
-            entry.args.push(ret);
-            ret = Expr::new_op(entry.op, entry.args);
+            entry.args.push(cur);
+            cur = Expr::new_op(entry.op, entry.args);
         }
-        Ok(Some(ret))
+        Ok(Some(cur))
     }
 
     fn read_args(&mut self, open: &'str str) -> Result<Vec<Expr>, ParseError<'str>> {
@@ -591,9 +604,9 @@ fn test_parser() {
     assert!(parse("(1,2).a").is_err());
     assert_eq!(parse("a.b"), Ok(Expr::new_node("a", vec![]).chain(PreNode::new("b", vec![]))));
     assert_eq!(parse("a.b.c"), Ok(Expr::new_node("a", vec![]).chain(PreNode::new("b", vec![]))
-            .chain(PreNode::new("c", vec![]))));
+        .chain(PreNode::new("c", vec![]))));
     assert_eq!(parse("a(1).b(2)"), Ok(Expr::new_node("a", vec![Expr::new_number(1)])
-            .chain(PreNode::new("b", vec![Expr::new_number(2)]))));
+        .chain(PreNode::new("b", vec![Expr::new_number(2)]))));
     assert!(parse("a.1").is_err());
     assert!(parse("2(a)").is_err());
     assert!(parse("1 2").is_err());
@@ -634,7 +647,7 @@ fn test_parser() {
         Expr::new_number(2).chain(PreNode::new("a", vec![Expr::new_number(3)])),
         vec![Expr::new_number(4)]))));
     assert_eq!(parse("{1}.{2}"), Ok(Expr::new_node(Expr::new_number(1), vec![])
-            .chain(PreNode::new(Expr::new_number(2), vec![]))));
+        .chain(PreNode::new(Expr::new_number(2), vec![]))));
 
     assert_eq!(parse("[1,2][3,4]"), Ok(Expr::new_node(LangItem::List,
             vec![Expr::new_number(1), Expr::new_number(2)])
@@ -721,9 +734,7 @@ fn test_prec() {
         Expr::new_number(1),
         Expr::new_op("*", vec![
             Expr::new_number(2),
-            Expr::new_op("^", vec![
-                Expr::new_number(3), Expr::new_number(4)
-            ])]),
+            Expr::new_op("^", vec![Expr::new_number(3), Expr::new_number(4)])]),
         Expr::new_number(5)
         ])));
     // +(1, *( ^(2, 3), 4), 5)
@@ -739,10 +750,7 @@ fn test_prec() {
     assert_eq!(parse("1+2+3-4-5-6"), Ok(Expr::new_op("-", vec![
         Expr::new_op("-", vec![
             Expr::new_op("-", vec![
-                Expr::new_op("+", vec![
-                    Expr::new_number(1),
-                    Expr::new_number(2),
-                    Expr::new_number(3)]),
+                Expr::new_op("+", vec![Expr::new_number(1), Expr::new_number(2), Expr::new_number(3)]),
                 Expr::new_number(4)]),
             Expr::new_number(5)]),
         Expr::new_number(6)])));
