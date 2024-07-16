@@ -112,9 +112,9 @@ impl From<Item> for Expr {
     }
 }
 
-impl From<Node> for Expr {
-    fn from(item: Node) -> Expr {
-        Expr::Eval(item)
+impl<T> From<T> for Expr where T: Into<Node> {
+    fn from(item: T) -> Expr {
+        Expr::Eval(item.into())
     }
 }
 
@@ -126,6 +126,19 @@ impl Describe for Expr {
         }
     }
 }
+
+
+pub trait Chainable: Into<Expr> {
+    fn chain(self, next: PreNode) -> Expr {
+        Expr::Eval(Node{
+            head: next.head,
+            source: Some(Box::new(self.into())),
+            args: next.args
+        })
+    }
+}
+
+impl<T> Chainable for T where T: Into<Expr> { }
 
 
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
@@ -301,8 +314,8 @@ impl Describe for Node {
 }
 
 
-/// A variant of `Node` in which all the arguments and source are type-guaranteed to be evaluated.
-/// This is achieved by using `Item` instead of `Expr`, avoiding the possibility of `Expr::Eval`.
+/// A variant of [`Node`] in which all the arguments and source are type-guaranteed to be evaluated.
+/// This is achieved by using [`Item`] instead of [`Expr`], avoiding the possibility of [`Expr::Eval`].
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) struct ENode {
     pub head: Head,
@@ -353,6 +366,29 @@ impl From<&ENode> for Node {
 impl Describe for ENode {
     fn describe(&self) -> String {
         Node::describe_helper(&self.head, self.source.as_ref(), &self.args)
+    }
+}
+
+
+/// A precursor of [`Node`] which type-guarantees that the source is left empty.
+#[derive(Debug, PartialEq, Clone)]
+pub struct PreNode {
+    pub head: Head,
+    pub args: Vec<Expr>
+}
+
+impl PreNode {
+    /// Creates a new `PreNode`. The `head` may be specified by [`Head`] directly, but also by
+    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
+    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
+    pub fn new(head: impl Into<Head>, args: Vec<Expr>) -> PreNode {
+        PreNode{head: head.into(), args}
+    }
+}
+
+impl From<PreNode> for Node {
+    fn from(prenode: PreNode) -> Node {
+        Node{head: prenode.head, source: None, args: prenode.args}
     }
 }
 
