@@ -51,9 +51,9 @@ impl Expr {
         Item::new_char(value).into()
     }
 
-    /*pub fn new_stream(value: impl Stream + 'static) -> Expr {
+    pub fn new_stream(value: impl Stream + 'static) -> Expr {
         Item::new_stream(value).into()
-    }*/
+    }
 
     pub fn new_string(value: impl Into<String>) -> Expr {
         Item::new_string(value).into()
@@ -63,13 +63,12 @@ impl Expr {
         Expr::Eval(Node{head: head.into(), source: None, args})
     }
 
-    /// Operands are provided as `args`.
+    /// Creates an operator expression. Operands are provided as `args`.
     pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{head: Head::Oper(op.into()), source: None, args})
     }
 
-    /// Creates a new `Node` with a [`Head::Repl`] head (for `#1` etc.). By nature these don't take
-    /// any arguments or source.
+    /// Creates a special expression `#(n)` or `$(n)`.
     pub fn new_repl(chr: char, ix: Option<usize>) -> Expr {
         Expr::Eval(Node{
             head: Head::Repl(chr, ix),
@@ -78,6 +77,7 @@ impl Expr {
         })
     }
 
+    /// Makes the output of this expression an input to a [`Link`].
     pub fn chain(self, next: Link) -> Expr {
         Expr::Eval(Node{
             head: next.head,
@@ -86,7 +86,6 @@ impl Expr {
         })
     }
 
-    /// For an `Expr::Imm(value)`, returns a reference to `value`.
     pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {
             Expr::Imm(ref item) => Ok(item),
@@ -101,7 +100,6 @@ impl Expr {
         }
     }
 
-    /// For an `Expr::Imm(value)`, returns a owned copy of the `value`.
     pub fn to_item(&self) -> Result<Item, BaseError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
