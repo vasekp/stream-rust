@@ -613,13 +613,13 @@ fn test_parser() {
     assert!(parse("a(,2)").is_err());
     assert!(parse("a(1,)").is_err());
     assert!(parse("a.").is_err());
-    assert_eq!(parse("a()"), parse("a"));
+    assert_eq!(parse("a()").unwrap(), parse("a").unwrap());
     assert!(parse("a()(1)").is_err());
     assert!(parse("(a)(1)").is_err());
     assert!(parse("a.(1)").is_err());
-    assert_eq!(parse("(a)"), parse("a"));
-    assert_eq!(parse("((a))"), parse("a"));
-    assert_eq!(parse("a((1))"), parse("a(1)"));
+    assert_eq!(parse("(a)").unwrap(), parse("a").unwrap());
+    assert_eq!(parse("((a))").unwrap(), parse("a").unwrap());
+    assert_eq!(parse("a((1))").unwrap(), parse("a(1)").unwrap());
     assert!(parse("a((1,2))").is_err());
     assert!(parse("(1]").is_err());
     assert!(parse("(1").is_err());
@@ -665,8 +665,8 @@ fn test_parser() {
     assert_eq!(parse("[[1]][[2]]"), Ok(Node::new(LangItem::Part,
         Some(Node::new(LangItem::List, None, vec![Node::new(LangItem::List, None, vec![Item::new_number(1).into()]).into()]).into()),
         vec![Node::new(LangItem::List, None, vec![Item::new_number(2).into()]).into()]).into()));
-    assert_eq!(parse("([([(1)])])"), parse("[[1]]"));
-    assert_eq!(parse("([1])[2]"), parse("[1][2]"));
+    assert_eq!(parse("([([(1)])])").unwrap(), parse("[[1]]").unwrap());
+    assert_eq!(parse("([1])[2]").unwrap(), parse("[1][2]").unwrap());
     assert!(parse("[1]([2])").is_err());
 
     assert!(parse("''").is_err());
