@@ -55,6 +55,10 @@ impl Expr {
         Item::new_stream(value).into()
     }*/
 
+    pub fn new_string(value: impl Into<String>) -> Expr {
+        Item::new_string(value).into()
+    }
+
     pub fn new_node(head: impl Into<Head>, args: Vec<Expr>) -> Expr {
         Expr::Eval(Node{head: head.into(), source: None, args})
     }
@@ -518,6 +522,11 @@ impl Item {
 
     pub fn new_stream(value: impl Stream + 'static) -> Item {
         Item::Stream(Box::new(value))
+    }
+
+    pub fn new_string(value: impl Into<String>) -> Item {
+        use crate::lang::LiteralString;
+        Item::Stream(Box::new(LiteralString::from(value.into())))
     }
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {

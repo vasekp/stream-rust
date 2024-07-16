@@ -1,7 +1,6 @@
 use std::str::CharIndices;
 use std::iter::Peekable;
 use crate::base::*;
-use crate::lang::LiteralString;
 
 
 struct Tokenizer<'str> {
@@ -410,7 +409,7 @@ impl<'str> Parser<'str> {
             Token(TC::BaseNum, value) => Ok(Expr::new_number(parse_basenum(value)?)),
             Token(TC::Bool, value) => Ok(Expr::new_bool(value.parse().unwrap())),
             Token(TC::Char, value) => Ok(Expr::new_char(parse_char(value)?)),
-            Token(TC::String, value) => Ok(Item::new_stream(LiteralString::from(parse_string(value)?)).into()),
+            Token(TC::String, value) => Ok(Expr::new_string(parse_string(value)?)),
             Token(TC::Open, bkt @ "[") => Ok(Expr::new_node(LangItem::List, self.read_args(bkt)?)),
             Token(TC::Ident, _) | Token(TC::Open, "{") => {
                 self.tk.unread(tok);
@@ -674,6 +673,7 @@ fn test_parser() {
     assert!(parse("[1]([2])").is_err());
 
     assert!(parse("''").is_err());
+    assert!(parse("'a''").is_err());
     assert_eq!(parse("'\\n'"), Ok(Expr::new_char('\n')));
     assert_eq!(parse("'\\\\'"), Ok(Expr::new_char('\\')));
     assert_eq!(parse("'\\''"), Ok(Expr::new_char('\'')));
@@ -682,6 +682,10 @@ fn test_parser() {
     assert!(parse("'\\h'").is_err());
     assert_eq!(parse("true+'1'"), Ok(Expr::new_op("+",
         vec![Expr::new_bool(true), Expr::new_char('1')])));
+    assert_eq!(parse(r#""""#), Ok(Expr::new_string("")));
+    assert_eq!(parse(r#""abc""#), Ok(Expr::new_string("abc")));
+    assert_eq!(parse(r#""'\'\"""#), Ok(Expr::new_string("''\"")));
+    assert!(parse(r#"""""#).is_err());
 
     assert_eq!(parse("#"), Ok(Expr::new_repl('#', None)));
     assert_eq!(parse("#1"), Ok(Expr::new_repl('#', Some(1))));
