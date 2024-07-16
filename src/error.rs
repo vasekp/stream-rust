@@ -2,7 +2,7 @@ use crate::base::*;
 use std::fmt::{Display, Formatter, Debug};
 
 /// The base error returned by helper functions. In most situations this is intended to be
-/// turned into [`StreamError`] by supplementing a [`Node`].
+/// turned into [`StreamError`] by supplementing a [`Expr`].
 #[derive(Debug, PartialEq)]
 pub struct BaseError(String);
 
@@ -19,16 +19,16 @@ impl Display for BaseError {
 }
 
 
-/// The runtime error type with an indication of the [`Node`] whose evaluation caused it.
+/// The runtime error type with an indication of the [`Expr`] whose evaluation caused it.
 #[derive(PartialEq, Debug)]
 pub struct StreamError {
     reason: BaseError,
-    node: Node
+    expr: Expr
 }
 
 impl StreamError {
-    pub fn new(reason: impl Into<BaseError>, node: impl Into<Node>) -> StreamError {
-        StreamError{reason: reason.into(), node: node.into()}
+    pub fn new(reason: impl Into<BaseError>, expr: impl Into<Expr>) -> StreamError {
+        StreamError{reason: reason.into(), expr: expr.into()}
     }
 }
 
@@ -36,64 +36,21 @@ impl std::error::Error for StreamError { }
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.node.describe(), self.reason)
+        write!(f, "{}: {}", self.expr.describe(), self.reason)
     }
 }
 
 
 macro_rules! try_with {
-    ($node:ident, $expr:expr) => {
+    ($blame:ident, $expr:expr) => {
         match (|| -> Result<_, BaseError> { $expr })() {
             Ok(result) => result,
-            Err(err) => return Err(StreamError::new(err, $node))
+            Err(err) => return Err(StreamError::new(err, $blame))
         }
     }
 }
 
 pub(crate) use try_with;
-
-
-/// A special error type which can hold both [`StreamError`] or [`BaseError`], i.e., has an
-/// optional [`Node`] attached.
-///
-/// The situation where a [`Node`] is not available can happen in [`Stream::writeout`] for strings
-/// when an [`Item`] fails to be a [`Item::Char`]. For that reason this error type is returned by
-/// [`Item::format`].
-#[derive(Default, PartialEq)]
-pub enum FormatError {
-    #[default]
-    None,
-    StreamError(StreamError),
-    BaseError(BaseError)
-}
-
-impl FormatError {
-    pub fn is_some(&self) -> bool {
-        self != &FormatError::None
-    }
-}
-
-impl From<StreamError> for FormatError {
-    fn from(err: StreamError) -> FormatError {
-        FormatError::StreamError(err)
-    }
-}
-
-impl From<BaseError> for FormatError {
-    fn from(err: BaseError) -> FormatError {
-        FormatError::BaseError(err)
-    }
-}
-
-impl Display for FormatError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            FormatError::None => write!(f, "no error"),
-            FormatError::BaseError(err) => write!(f, "{err}"),
-            FormatError::StreamError(err) => write!(f, "{err}"),
-        }
-    }
-}
 
 
 /// The error type returned by [`parser::parse`](crate::parser::parse). Contains the description of

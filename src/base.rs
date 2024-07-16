@@ -577,10 +577,10 @@ impl Item {
         }
     }
 
-    pub fn format(&self, max_len: usize) -> (String, FormatError) {
+    pub fn format(&self, max_len: usize) -> (String, Option<StreamError>) {
         struct Stateful<'item> {
             item: &'item Item,
-            cell: Cell<FormatError>
+            cell: Cell<Option<StreamError>>
         }
 
         impl<'item> Display for Stateful<'item> {
@@ -594,7 +594,7 @@ impl Item {
         (result, s.cell.take())
     }
 
-    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
+    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         use Item::*;
@@ -602,7 +602,7 @@ impl Item {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
             Char(c) => write!(f, "{c}"),
-            Stream(s) => (*s).writeout(f, error)
+            Stream(s) => s.writeout(f, error)
         }
     }
 
@@ -693,134 +693,12 @@ pub trait Stream: DynClone + Describe {
     #[must_use]
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
 
-    /// Write the contents of the stream (i.e., the items returned by its iterator) in a
-    /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
-    /// maximum width (using the `"{:.n}"` syntax), in which case the output is truncated using
-    /// ellipsis (the width must be at least 4 to accommodate the string `"[..."`); if no width is
-    /// given, first three items are written out.  If an error happens during reading the stream,
-    /// it is represented as `"<!>"`.
-    ///
-    /// If this is `Stream` represents a string, as expressed by its [`Stream::is_string()`]
-    /// method, the formatting follows that of a string, including character escapes. If no length
-    /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
-    /// a [`Char`] is treated as a reading error.
-    fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
-        -> std::fmt::Result
-    {
-        if self.is_string() {
-            self.writeout_string(f, error)
-        } else {
-            self.writeout_stream(f, error)
-        }
-    }
-
-    #[doc(hidden)]
-    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
-        -> std::fmt::Result
-    {
-        let mut iter = self.iter();
-        let (prec, max) = match f.precision() {
-            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
-            None => (usize::MAX, 3)
-        };
-        let mut s = String::new();
-        let mut i = 0;
-        s.push('[');
-        'a: {
-            while s.len() < prec && i < max {
-                match iter.next() {
-                    None => {
-                        s.push(']');
-                        break 'a;
-                    },
-                    Some(Ok(item)) => {
-                        let plen = s.len();
-                        if i > 0 {
-                            s += ", ";
-                        }
-                        let (string, err) = item.format(prec - plen);
-                        s += &string;
-                        if err.is_some() {
-                            error.set(err);
-                            break 'a;
-                        }
-                    },
-                    Some(Err(err)) => {
-                        if i > 0 {
-                            s += ", ";
-                        }
-                        s += "<!>";
-                        error.set(err.into());
-                        break 'a;
-                    }
-                };
-                i += 1;
-            }
-            s += match iter.next() {
-                None => "]",
-                Some(_) => ", ..."
-            };
-        }
-        if s.len() < prec {
-            write!(f, "{}", s)
-        } else {
-            write!(f, "{:.*}...", prec - 3, s)
-        }
-    }
-
-    #[doc(hidden)]
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<FormatError>)
-        -> std::fmt::Result
-    {
-        let mut iter = self.iter();
-        let (prec, max) = match f.precision() {
-            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
-            None => (usize::MAX, 20)
-        };
-        let mut s = String::new();
-        let mut i = 0;
-        s.push('"');
-        'a: {
-            while s.len() < prec && i < max {
-                if let Some(next) = iter.next() {
-                    match next {
-                        Ok(item) => match item.as_char() {
-                            Ok(ch) => s += &format!("{ch:#}"),
-                            Err(err) => {
-                                s += "<!>";
-                                error.set(err.into());
-                                break 'a;
-                            }
-                        },
-                        Err(err) => {
-                            s += "<!>";
-                            error.set(err.into());
-                            break 'a;
-                        }
-                    }
-                } else {
-                    s.push('"');
-                    break 'a;
-                }
-                i += 1;
-            }
-            s += match iter.next() {
-                None => "\"",
-                Some(_) => "..."
-            };
-        }
-        if s.len() < prec {
-            write!(f, "{}", s)
-        } else {
-            write!(f, "{:.*}...", prec - 3, s)
-        }
-    }
-
     /// An indication whether this stream should be treated as a string. The implementation should
     /// only return `true` if it can be sure that the iterator will produce a stream of [`Char`]s.
-    /// If so, this affects the behaviour of [`Stream::writeout()`].
+    /// If so, this affects the behaviour of `Stream::writeout()`.
     ///
     /// The default implementation returns `false`.
+    // TODO link do <dyn Stream>::writeout unsupported?
     fn is_string(&self) -> bool {
         false
     }
@@ -863,6 +741,133 @@ pub trait Stream: DynClone + Describe {
                 }
             }
         }
+    }
+}
+
+impl dyn Stream {
+    /// Write the contents of the stream (i.e., the items returned by its iterator) in a
+    /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
+    /// maximum width (using the `"{:.n}"` syntax), in which case the output is truncated using
+    /// ellipsis (the width must be at least 4 to accommodate the string `"[..."`); if no width is
+    /// given, first three items are written out.  If an error happens during reading the stream,
+    /// it is represented as `"<!>"`.
+    ///
+    /// If this is `Stream` represents a string, as expressed by its [`Stream::is_string()`]
+    /// method, the formatting follows that of a string, including character escapes. If no length
+    /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
+    /// a [`Char`] is treated as a reading error.
+    pub fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+        -> std::fmt::Result
+    {
+        if self.is_string() {
+            self.writeout_string(f, error)
+        } else {
+            self.writeout_stream(f, error)
+        }
+    }
+
+    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+        -> std::fmt::Result
+    {
+        let mut iter = self.iter();
+        let (prec, max) = match f.precision() {
+            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
+            None => (usize::MAX, 3)
+        };
+        let mut s = String::new();
+        let mut i = 0;
+        s.push('[');
+        'a: {
+            while s.len() < prec && i < max {
+                match iter.next() {
+                    None => {
+                        s.push(']');
+                        break 'a;
+                    },
+                    Some(Ok(item)) => {
+                        let plen = s.len();
+                        if i > 0 {
+                            s += ", ";
+                        }
+                        let (string, err) = item.format(prec - plen);
+                        s += &string;
+                        if err.is_some() {
+                            error.set(err);
+                            break 'a;
+                        }
+                    },
+                    Some(Err(err)) => {
+                        if i > 0 {
+                            s += ", ";
+                        }
+                        s += "<!>";
+                        error.set(Some(err));
+                        break 'a;
+                    }
+                };
+                i += 1;
+            }
+            s += match iter.next() {
+                None => "]",
+                Some(_) => ", ..."
+            };
+        }
+        if s.len() < prec {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "{:.*}...", prec - 3, s)
+        }
+    }
+
+    fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+        -> std::fmt::Result
+    {
+        let mut iter = self.iter();
+        let (prec, max) = match f.precision() {
+            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
+            None => (usize::MAX, 20)
+        };
+        let mut s = String::new();
+        let mut i = 0;
+        s.push('"');
+        'a: {
+            while s.len() < prec && i < max {
+                if let Some(next) = iter.next() {
+                    match next {
+                        Ok(item) => match item.as_char() {
+                            Ok(ch) => s += &format!("{ch:#}"),
+                            Err(err) => {
+                                s += "<!>";
+                                error.set(Some(StreamError::new(err, self.to_expr())));
+                                break 'a;
+                            }
+                        },
+                        Err(err) => {
+                            s += "<!>";
+                            error.set(Some(err));
+                            break 'a;
+                        }
+                    }
+                } else {
+                    s.push('"');
+                    break 'a;
+                }
+                i += 1;
+            }
+            s += match iter.next() {
+                None => "\"",
+                Some(_) => "..."
+            };
+        }
+        if s.len() < prec {
+            write!(f, "{}", s)
+        } else {
+            write!(f, "{:.*}...", prec - 3, s)
+        }
+    }
+
+    pub(crate) fn to_expr(&self) -> Expr {
+        Expr::Imm(Item::Stream(dyn_clone::clone_box(self)))
     }
 }
 

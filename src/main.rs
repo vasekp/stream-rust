@@ -21,7 +21,7 @@ fn main() {
                         println!("Item Describe: {}", item.describe());
                         let (s, err) = item.format(80);
                         println!("Item Format: {s}");
-                        if err.is_some() {
+                        if let Some(err) = err {
                             println!("Err: {}", err);
                         }
                     },
