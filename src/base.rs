@@ -78,7 +78,7 @@ impl Expr {
         })
     }
 
-    pub fn chain(self, next: PreNode) -> Expr {
+    pub fn chain(self, next: Link) -> Expr {
         Expr::Eval(Node{
             head: next.head,
             source: Some(Box::new(self)),
@@ -390,22 +390,22 @@ impl Describe for ENode {
 
 /// A precursor of [`Node`] which type-guarantees that the source is left empty.
 #[derive(Debug, PartialEq, Clone)]
-pub struct PreNode {
+pub struct Link {
     head: Head,
     args: Vec<Expr>
 }
 
-impl PreNode {
-    /// Creates a new `PreNode`. The `head` may be specified by [`Head`] directly, but also by
+impl Link {
+    /// Creates a new `Link`. The `head` may be specified by [`Head`] directly, but also by
     /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
     /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
-    pub fn new(head: impl Into<Head>, args: Vec<Expr>) -> PreNode {
-        PreNode{head: head.into(), args}
+    pub fn new(head: impl Into<Head>, args: Vec<Expr>) -> Link {
+        Link{head: head.into(), args}
     }
 }
 
-impl From<PreNode> for Node {
-    fn from(prenode: PreNode) -> Node {
+impl From<Link> for Node {
+    fn from(prenode: Link) -> Node {
         Node{head: prenode.head, source: None, args: prenode.args}
     }
 }
