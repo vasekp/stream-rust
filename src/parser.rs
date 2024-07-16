@@ -428,12 +428,12 @@ impl<'str> Parser<'str> {
                     Some(&Token(TC::Number, _)) => {
                         let value = self.tk.next().unwrap()?.1;
                         match value.parse::<usize>() {
-                            Ok(ix @ 1..) => Ok(Node::new_repl(chr.as_bytes()[0].into(), Some(ix)).into()),
+                            Ok(ix @ 1..) => Ok(Expr::new_repl(chr.as_bytes()[0].into(), Some(ix))),
                             Ok(0) => Err(ParseError::new("index can't be zero", self.tk.slice_from(chr))),
                             Err(_) => Err(ParseError::new("index too large", self.tk.slice_from(chr))),
                         }
                     },
-                    _ => Ok(Node::new_repl(chr.as_bytes()[0].into(), None).into())
+                    _ => Ok(Expr::new_repl(chr.as_bytes()[0].into(), None))
                 }
             },
             Token(_, tok) => Err(ParseError::new("cannot appear here", tok))
@@ -487,14 +487,14 @@ impl<'str> Parser<'str> {
                         if entry.prec > prec {
                             let mut entry = stack.pop().unwrap();
                             entry.args.push(expr);
-                            expr = Node::new_op(entry.op, entry.args).into();
+                            expr = Expr::new_op(entry.op, entry.args);
                         } else if entry.prec == prec && entry.op == op && multi {
                             entry.args.push(expr);
                             continue 'a;
                         } else if entry.prec == prec {
                             let mut entry = stack.pop().unwrap();
                             entry.args.push(expr);
-                            expr = Node::new_op(entry.op, entry.args).into();
+                            expr = Expr::new_op(entry.op, entry.args);
                             break;
                         } else {
                             break;
@@ -519,7 +519,7 @@ impl<'str> Parser<'str> {
         };
         while let Some(mut entry) = stack.pop() {
             entry.args.push(ret);
-            ret = Node::new_op(entry.op, entry.args).into();
+            ret = Expr::new_op(entry.op, entry.args);
         }
         Ok(Some(ret))
     }
@@ -620,13 +620,13 @@ fn test_parser() {
     assert!(parse("1)").is_err());
     assert!(parse("(1;2)").is_err());
 
-    assert_eq!(parse("a.b..c.d"), Ok(Node::new_op("..", vec![
+    assert_eq!(parse("a.b..c.d"), Ok(Expr::new_op("..", vec![
         Node::new("a", None, vec![]).chain(PreNode::new("b", vec![])),
-        Node::new("c", None, vec![]).chain(PreNode::new("d", vec![]))]).into()));
-    assert_eq!(parse("a..b..c"), Ok(Node::new_op("..",
-        vec![Node::new_op("..",
-            vec![Node::new("a", None, vec![]).into(), Node::new("b", None, vec![]).into()]).into(),
-            Node::new("c", None, vec![]).into()]).into()));
+        Node::new("c", None, vec![]).chain(PreNode::new("d", vec![]))])));
+    assert_eq!(parse("a..b..c"), Ok(Expr::new_op("..",
+        vec![Expr::new_op("..",
+            vec![Node::new("a", None, vec![]).into(), Node::new("b", None, vec![]).into()]),
+            Node::new("c", None, vec![]).into()])));
 
     assert_eq!(parse("{1}"), Ok(Node::new(Expr::new_number(1), None, vec![]).into()));
     assert!(parse("{}").is_err());
@@ -669,11 +669,11 @@ fn test_parser() {
     assert_eq!(parse("'\\\"'"), Ok(Expr::new_char('"')));
     assert_eq!(parse("'\"'"), Ok(Expr::new_char('"')));
     assert!(parse("'\\h'").is_err());
-    assert_eq!(parse("true+'1'"), Ok(Node::new_op("+",
-        vec![Expr::new_bool(true), Expr::new_char('1')]).into()));
+    assert_eq!(parse("true+'1'"), Ok(Expr::new_op("+",
+        vec![Expr::new_bool(true), Expr::new_char('1')])));
 
-    assert_eq!(parse("#"), Ok(Node::new_repl('#', None).into()));
-    assert_eq!(parse("#1"), Ok(Node::new_repl('#', Some(1)).into()));
+    assert_eq!(parse("#"), Ok(Expr::new_repl('#', None)));
+    assert_eq!(parse("#1"), Ok(Expr::new_repl('#', Some(1))));
     assert!(parse("#0").is_err());
     assert!(parse("#18446744073709551616").is_err());
     assert!(parse("##").is_err());
@@ -681,11 +681,11 @@ fn test_parser() {
     assert!(parse("#$").is_err());
     assert!(parse("$list").is_err()); // internal keyword
     assert!(parse("#(1)").is_err());
-    assert_eq!(parse("#+$"), Ok(Node::new_op("+",
-        vec![Node::new_repl('#', None).into(), Node::new_repl('$', None).into()]).into()));
+    assert_eq!(parse("#+$"), Ok(Expr::new_op("+",
+        vec![Expr::new_repl('#', None), Expr::new_repl('$', None)])));
     assert!(parse("1.#").is_err());
     assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_number(1)
-        .chain(PreNode::new(Node::new_repl('#', None), vec![Expr::new_number(2)]))));
+        .chain(PreNode::new(Expr::new_repl('#', None), vec![Expr::new_number(2)]))));
 
     assert_eq!(parse("a.b@c@d[1]"), Ok(PreNode::new("a", vec![])
         .chain(PreNode::new(Head::args("b"),
@@ -699,7 +699,7 @@ fn test_parser() {
             vec![Expr::new_number(1), Expr::new_number(2)]).into()]).into()));
     assert_eq!(parse("a@(b.c@#)"), Ok(Node::new(Head::args("a"),
         None, vec![PreNode::new("b", vec![])
-            .chain(PreNode::new(Head::args("c"), vec![Node::new_repl('#', None).into()]))]).into()));
+            .chain(PreNode::new(Head::args("c"), vec![Expr::new_repl('#', None)]))]).into()));
     // but not (x,y)
     assert!(parse("a@(b.c@#,d)").is_err());
     // blocks allowed both before and after
@@ -720,50 +720,50 @@ fn test_parser() {
 fn test_prec() {
     // base precedence tests
     // +(1, *(2, ^(3, 4)), 5)
-    assert_eq!(parse("1+2*3^4+5"), Ok(Node::new_op("+", vec![
+    assert_eq!(parse("1+2*3^4+5"), Ok(Expr::new_op("+", vec![
         Expr::new_number(1),
-        Node::new_op("*", vec![
+        Expr::new_op("*", vec![
             Expr::new_number(2),
-            Node::new_op("^", vec![
+            Expr::new_op("^", vec![
                 Expr::new_number(3), Expr::new_number(4)
-            ]).into()]).into(),
+            ])]),
         Expr::new_number(5)
-        ]).into()));
+        ])));
     // +(1, *( ^(2, 3), 4), 5)
-    assert_eq!(parse("1+2^3*4+5"), Ok(Node::new_op("+", vec![
+    assert_eq!(parse("1+2^3*4+5"), Ok(Expr::new_op("+", vec![
         Expr::new_number(1),
-        Node::new_op("*", vec![
-            Node::new_op("^", vec![Expr::new_number(2), Expr::new_number(3)]).into(),
-            Expr::new_number(4)]).into(),
+        Expr::new_op("*", vec![
+            Expr::new_op("^", vec![Expr::new_number(2), Expr::new_number(3)]),
+            Expr::new_number(4)]),
         Expr::new_number(5)
-        ]).into()));
+        ])));
     // mixing + and -: same precedence, but - don't mix and stack
     // -( -( -( +(1, 2, 3), 4), 5), 6)
-    assert_eq!(parse("1+2+3-4-5-6"), Ok(Node::new_op("-", vec![
-        Node::new_op("-", vec![
-            Node::new_op("-", vec![
-                Node::new_op("+", vec![
+    assert_eq!(parse("1+2+3-4-5-6"), Ok(Expr::new_op("-", vec![
+        Expr::new_op("-", vec![
+            Expr::new_op("-", vec![
+                Expr::new_op("+", vec![
                     Expr::new_number(1),
                     Expr::new_number(2),
-                    Expr::new_number(3)]).into(),
-                Expr::new_number(4)]).into(),
-            Expr::new_number(5)]).into(),
-        Expr::new_number(6)]).into()));
+                    Expr::new_number(3)]),
+                Expr::new_number(4)]),
+            Expr::new_number(5)]),
+        Expr::new_number(6)])));
     // chaining takes precedence over everything
     // +(1, a.b, 2)
-    assert_eq!(parse("1+a.b+2"), Ok(Node::new_op("+", vec![
+    assert_eq!(parse("1+a.b+2"), Ok(Expr::new_op("+", vec![
         Expr::new_number(1),
         PreNode::new("a", vec![]).chain(PreNode::new("b", vec![])),
-        Expr::new_number(2)]).into()));
+        Expr::new_number(2)])));
     // +(1, 2)
-    assert_eq!(parse("+1+2"), Ok(Node::new_op("+", vec![Expr::new_number(1), Expr::new_number(2)]).into()));
+    assert_eq!(parse("+1+2"), Ok(Expr::new_op("+", vec![Expr::new_number(1), Expr::new_number(2)])));
     // -( -(1), 2)
-    assert_eq!(parse("-1-2"), Ok(Node::new_op("-", vec![
-        Node::new_op("-", vec![Expr::new_number(1)]).into(),
-        Expr::new_number(2)]).into()));
+    assert_eq!(parse("-1-2"), Ok(Expr::new_op("-", vec![
+        Expr::new_op("-", vec![Expr::new_number(1)]),
+        Expr::new_number(2)])));
     // -(1..1) (error)
-    assert_eq!(parse("-1..1"), Ok(Node::new_op("-",
-        vec![Node::new_op("..", vec![Expr::new_number(1), Expr::new_number(1)]).into()]).into()));
+    assert_eq!(parse("-1..1"), Ok(Expr::new_op("-",
+        vec![Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(1)])])));
     assert!(parse("--1").is_err());
     assert!(parse("*1*2").is_err());
 }

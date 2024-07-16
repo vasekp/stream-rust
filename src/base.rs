@@ -55,6 +55,21 @@ impl Expr {
         Item::new_stream(value).into()
     }*/
 
+    /// Operands are provided as `args`.
+    pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{head: Head::Oper(op.into()), source: None, args})
+    }
+
+    /// Creates a new `Node` with a [`Head::Repl`] head (for `#1` etc.). By nature these don't take
+    /// any arguments or source.
+    pub fn new_repl(chr: char, ix: Option<usize>) -> Expr {
+        Expr::Eval(Node{
+            head: Head::Repl(chr, ix),
+            source: None,
+            args: vec![]
+        })
+    }
+
     /// For an `Expr::Imm(value)`, returns a reference to `value`.
     pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {
@@ -174,22 +189,6 @@ impl Node {
     /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
     pub fn new(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Node {
         Node{head: head.into(), source: source.map(Box::new), args}
-    }
-
-    /// Creates a new `Node` with a [`Head::Oper`] head. By nature these don't have `source`.
-    /// Operands are provided as `args`.
-    pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Node {
-        Node{head: Head::Oper(op.into()), source: None, args}
-    }
-
-    /// Creates a new `Node` with a [`Head::Repl`] head (for `#1` etc.). By nature these don't take
-    /// any arguments or source.
-    pub fn new_repl(chr: char, ix: Option<usize>) -> Node {
-        Node{
-            head: Head::Repl(chr, ix),
-            source: None,
-            args: vec![]
-        }
     }
 
     /*pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
