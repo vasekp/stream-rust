@@ -579,10 +579,165 @@ fn test_repeat() {
     test_skip_n(&parse("seq.repeat(2)").unwrap().eval().unwrap());
 }
 
+
+#[derive(Clone)]
+struct Shift {
+    node: ENode,
+    env: Rc<Env>
+}
+
+impl Shift {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        let node = node.eval_all(env)?;
+        try_with!(node, node.source_checked()?.as_string());
+        try_with!(node, node.check_args_nonempty());
+        Ok(Item::new_stream(Shift{node, env: Rc::clone(env)}))
+    }
+
+    fn helper(base: &Char, items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
+        let abc = env.alphabet();
+        let (index, case) = abc.ord_case(base)?;
+        let ans = items.iter().try_fold(index.into(),
+            |a, e| {
+                match e {
+                    Item::Number(ref num) => Ok(a + num),
+                    Item::Char(ref ch) => Ok(a + abc.ord_case(ch)?.0),
+                    _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
+                }
+            })?;
+        Ok(Item::new_char(abc.chr_case(&ans, case)))
+    }
+}
+
+impl Describe for Shift {
+    fn describe(&self) -> String {
+        self.env.wrap_describe(self.node.describe())
+    }
+}
+
+impl Stream for Shift {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        let base = self.node.source.as_ref().unwrap().as_stream().unwrap().iter();
+        let args = self.node.args.iter()
+            .map(|item| match item {
+                Item::Stream(stm) => stm.iter(),
+                item => Box::new(Forever{item})
+            }).collect();
+        Box::new(ShiftIter{base, args, node: &self.node, env: &self.env})
+    }
+
+    fn is_string(&self) -> bool {
+        true
+    }
+
+    fn length(&self) -> Length {
+        self.node.source.as_ref().unwrap().as_stream().unwrap().length()
+    }
+}
+
+struct ShiftIter<'node> {
+    base: Box<dyn SIterator + 'node>,
+    args: Vec<Box<dyn SIterator + 'node>>,
+    node: &'node ENode,
+    env: &'node Rc<Env>
+}
+
+impl Iterator for ShiftIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        fn aux_node(base: Char, mut inputs: Vec<Item>) -> Node {
+            inputs.insert(0, Item::Char(base));
+            Node {
+                head: Head::Oper("+".into()),
+                source: None,
+                args: inputs.into_iter().map(Expr::from).collect()
+            }
+        }
+
+        let base = match self.base.next() {
+            None => return None,
+            Some(Ok(item)) => item,
+            Some(Err(err)) => return Some(Err(err))
+        };
+        let Item::Char(ch) = base else {
+            return Some(Err(StreamError::new("malformed string", self.node.source.as_ref().unwrap().clone())))
+        };
+        if !self.env.alphabet().contains(&ch) {
+            return Some(Ok(Item::Char(ch)));
+        }
+
+        let rest = self.args.iter_mut()
+            .map(|iter| (*iter).next())
+            .collect::<Option<Result<Vec<_>, _>>>();
+        match rest {
+            None => Some(Err(StreamError::new("some operand ended earlier than the source", self.node))),
+            Some(Ok(inputs)) => {
+                match Shift::helper(&ch, &inputs, self.env) {
+                    Ok(item) => Some(Ok(item)),
+                    Err(err) => Some(Err(StreamError::new(err, aux_node(ch, inputs))))
+                }
+            },
+            Some(Err(err)) => Some(Err(err))
+        }
+    }
+}
+
+impl SIterator for ShiftIter<'_> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+        let args_iter = self.args.iter_mut();
+        let mut n = n.to_owned();
+        let mut n_chars = Number::zero();
+        while n.is_positive() {
+            match self.base.next() {
+                Some(Ok(Item::Char(ref ch))) => {
+                    if self.env.alphabet().contains(ch) {
+                        n_chars.inc();
+                    }
+                },
+                Some(Err(err)) => return Err(err),
+                Some(_) => return Err(StreamError::new("malformed string", self.node.args[0].clone())),
+                None => return Ok(Some(n))
+            }
+            n.dec();
+        }
+        for iter in args_iter {
+            if iter.skip_n(&n_chars)?.is_some() {
+                return Err(StreamError::new("another operand ended earlier than the first", self.node));
+            }
+        }
+        Ok(None)
+    }
+}
+
+#[test]
+fn test_shift() {
+    use crate::parser::parse;
+    assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval().unwrap().to_string(), "\"DoZ\"");
+    assert_eq!(parse("\"Test\".shift(13,13)").unwrap().eval().unwrap().to_string(), "\"Test\"");
+    assert_eq!(parse(r#""ahoj".shift("bebe")"#).unwrap().eval().unwrap().to_string(), "\"cmqo\"");
+    assert_eq!(parse(r#""Hello world!".shift(seq)"#).unwrap().eval().unwrap().to_string(), r#""Igopt cvzun!""#);
+    assert_eq!(parse(r#""Hello world!".shift("ab")"#).unwrap().eval().unwrap().to_string(), r#""Ig<!>"#);
+    assert_eq!(parse(r#"("Hello world!".shift("ab"))[2]"#).unwrap().eval().unwrap().to_string(), "'g'");
+    assert!(parse(r#"("Hello world!".shift("ab"))[3]"#).unwrap().eval().is_err());
+    assert_eq!(parse(r#""Hello world!".shift([])"#).unwrap().eval().unwrap().to_string(), r#""<!>"#);
+    assert_eq!(parse(r#""Hello world!".shift("ab".repeat)"#).unwrap().eval().unwrap().to_string(), r#""Igmnp yptmf!""#);
+    assert_eq!(parse(r#""ab".repeat.shift(seq)"#).unwrap().eval().unwrap().to_string(), r#""bddffhhjjllnnpprrttv..."#);
+    assert_eq!(parse(r#"("ab".repeat.shift(seq))[20]"#).unwrap().eval().unwrap().to_string(), "'v'");
+    assert_eq!(parse(r#""abc".shift(['d',5,'f'])"#).unwrap().eval().unwrap().to_string(), "\"egi\"");
+    test_len_exact(&parse("\"abc\".shift(seq)").unwrap().eval().unwrap(), 3);
+    test_len_exact(&parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap(), 6);
+    test_skip_n(&parse(r#""abcdefghijk".shift(seq, "abcdefghijklmn")"#).unwrap().eval().unwrap());
+    test_skip_n(&parse(r#""ab".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
+    test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
+}
+
+
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::eval);
     keywords.insert("range", Range::eval);
     keywords.insert("..", Range::eval);
     keywords.insert("len", eval_len);
     keywords.insert("repeat", Repeat::eval);
+    keywords.insert("shift", Shift::eval);
 }

@@ -240,11 +240,7 @@ impl Plus {
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
         match &node.args[0] {
-            Item::Stream(ref stm) => Ok(if stm.is_string() {
-                Item::new_stream(StringPlus{node, env: Rc::clone(env)})
-            } else {
-                Item::new_stream(Plus{node, env: Rc::clone(env)})
-            }),
+            Item::Stream(_) => Ok(Item::new_stream(Plus{node, env: Rc::clone(env)})),
             _ => Ok(try_with!(node, Plus::helper(&node.args, env)))
         }
     }
@@ -344,114 +340,6 @@ impl SIterator for PlusIter<'_> {
     }
 }
 
-#[derive(Clone)]
-struct StringPlus {
-    node: ENode,
-    env: Rc<Env>
-}
-
-impl Describe for StringPlus {
-    fn describe(&self) -> String {
-        self.env.wrap_describe(self.node.describe())
-    }
-}
-
-impl Stream for StringPlus {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let args = self.node.args.iter()
-            .map(|item| match item {
-                Item::Stream(stm) => stm.iter(),
-                item => Box::new(Forever{item})
-            }).collect();
-        Box::new(StringPlusIter{args, node: &self.node, env: &self.env})
-    }
-
-    fn is_string(&self) -> bool {
-        true
-    }
-
-    fn length(&self) -> Length {
-        self.node.args[0].as_stream().unwrap().length()
-    }
-}
-
-struct StringPlusIter<'node> {
-    args: Vec<Box<dyn SIterator + 'node>>,
-    node: &'node ENode,
-    env: &'node Rc<Env>
-}
-
-impl Iterator for StringPlusIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        fn aux_node(inputs: Vec<Item>) -> Node {
-            Node {
-                head: Head::Oper("+".into()),
-                source: None,
-                args: inputs.into_iter().map(Expr::from).collect()
-            }
-        }
-
-        let first = match self.args[0].next() {
-            None => return None,
-            Some(Ok(item)) => item,
-            Some(Err(err)) => return Some(Err(err))
-        };
-        if let Item::Char(ref ch) = first {
-            if !self.env.alphabet().contains(ch) {
-                return Some(Ok(first));
-            }
-        } else {
-            return Some(Err(StreamError::new("malformed string", self.node.args[0].clone())))
-        }
-
-        let rest = self.args.iter_mut()
-            .skip(1)
-            .map(|iter| (*iter).next())
-            .collect::<Option<Result<Vec<_>, _>>>();
-        match rest {
-            None => Some(Err(StreamError::new("another operand ended earlier than the first", self.node))),
-            Some(Ok(mut inputs)) => {
-                inputs.insert(0, first);
-                match Plus::helper(&inputs, self.env) {
-                    Ok(item) => Some(Ok(item)),
-                    Err(err) => Some(Err(StreamError::new(err, aux_node(inputs))))
-                }
-            },
-            Some(Err(err)) => Some(Err(err))
-        }
-    }
-}
-
-impl SIterator for StringPlusIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        let mut args_iter = self.args.iter_mut();
-        let first_iter = args_iter.next().unwrap();
-        let mut n = n.to_owned();
-        let mut n_chars = Number::zero();
-        while n.is_positive() {
-            match first_iter.next() {
-                Some(Ok(Item::Char(ref ch))) => {
-                    if self.env.alphabet().contains(ch) {
-                        n_chars.inc();
-                    }
-                },
-                Some(Err(err)) => return Err(err),
-                Some(_) => return Err(StreamError::new("malformed string", self.node.args[0].clone())),
-                None => return Ok(Some(n))
-            }
-            n.dec();
-        }
-        for iter in args_iter {
-            if iter.skip_n(&n_chars)?.is_some() {
-                return Err(StreamError::new("another operand ended earlier than the first", self.node));
-            }
-        }
-        Ok(None)
-    }
-}
-
 
 fn eval_minus(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
@@ -529,37 +417,23 @@ fn test_opers() {
     assert_eq!(parse("1..5+3+[0,10,20]").unwrap().eval().unwrap().to_string(), "[4, 15, 26]");
     assert_eq!(parse("1..3+3+seq").unwrap().eval().unwrap().to_string(), "[5, 7, 9]");
     assert_eq!(parse("'A'..'e'+3+[0,10,20]").unwrap().eval().unwrap().to_string(), "['D', 'O', 'Z']");
-    assert_eq!(parse("\"AbC\"+3+[0,10,20]").unwrap().eval().unwrap().to_string(), "\"DoZ\"");
-    assert_eq!(parse("\"Test\"+13+13").unwrap().eval().unwrap().to_string(), "\"Test\"");
-    assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval().unwrap().to_string(), "\"cmqo\"");
+    assert_eq!(parse("\"AbC\"+3+[0,10,20]").unwrap().eval().unwrap().to_string(), "['D', 'o', 'Z']");
+    assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval().unwrap().to_string(), "['c', 'm', 'q', ...");
     assert_eq!(parse("(1..5+3+[]).len").unwrap().eval().unwrap().to_string(), "0");
     assert_eq!(parse("(1..5+3+seq).len").unwrap().eval().unwrap().to_string(), "5");
-    assert_eq!(parse(r#""abc"+['d',5,'f']"#).unwrap().eval().unwrap().to_string(), "\"egi\"");
+    assert_eq!(parse(r#""abc"+['d',5,'f']"#).unwrap().eval().unwrap().to_string(), "['e', 'g', 'i']");
     assert_eq!(parse(r#"['a','b','c']+"def""#).unwrap().eval().unwrap().to_string(), "['e', 'g', 'i']");
     assert_eq!(parse(r#"['a','b',3]+"def""#).unwrap().eval().unwrap().to_string(), "['e', 'g', <!>");
     assert_eq!(parse("seq+true").unwrap().eval().unwrap().to_string(), "[<!>");
     assert!(parse("true+false").unwrap().eval().is_err());
     assert!(parse("1+\"a\"").unwrap().eval().is_err());
-    assert_eq!(parse(r#""Hello world!"+seq"#).unwrap().eval().unwrap().to_string(), r#""Igopt cvzun!""#);
-    assert_eq!(parse(r#""Hello world!"+"ab""#).unwrap().eval().unwrap().to_string(), r#""Ig<!>"#);
-    assert_eq!(parse(r#"("Hello world!"+"ab")[2]"#).unwrap().eval().unwrap().to_string(), "'g'");
-    assert!(parse(r#"("Hello world!"+"ab")[3]"#).unwrap().eval().is_err());
-    assert_eq!(parse(r#""Hello world!"+[]"#).unwrap().eval().unwrap().to_string(), r#""<!>"#);
-    assert_eq!(parse(r#""Hello world!"+"ab".repeat"#).unwrap().eval().unwrap().to_string(), r#""Igmnp yptmf!""#);
-    assert_eq!(parse(r#""ab".repeat+seq"#).unwrap().eval().unwrap().to_string(), r#""bddffhhjjllnnpprrttv..."#);
-    assert_eq!(parse(r#"("ab".repeat+seq)[20]"#).unwrap().eval().unwrap().to_string(), "'v'");
 
     assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval().unwrap().to_string(), "9");
     test_len_exact(&parse("[1,2,3]+seq+5").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("[1,2,3]+seq+[5]").unwrap().eval().unwrap(), 1);
-    test_len_exact(&parse("\"abc\"+seq").unwrap().eval().unwrap(), 3);
-    test_len_exact(&parse("\"a b c!\"+1..3+1").unwrap().eval().unwrap(), 6);
     test_skip_n(&parse("range(10^10)+seq+5").unwrap().eval().unwrap());
     test_skip_n(&parse("range(10^10)+range(10^11)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq+[]").unwrap().eval().unwrap());
-    test_skip_n(&parse(r#""abcdefghijk"+seq+"abcdefghijklmn""#).unwrap().eval().unwrap());
-    test_skip_n(&parse(r#""ab".repeat(10)+seq"#).unwrap().eval().unwrap());
-    test_skip_n(&parse(r#""a b".repeat(10)+seq"#).unwrap().eval().unwrap());
 }
 
 

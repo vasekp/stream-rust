@@ -584,6 +584,13 @@ impl Item {
         }
     }
 
+    pub fn as_string(&self) -> Result<&dyn Stream, BaseError> {
+        match self {
+            Item::Stream(s) if s.is_string() => Ok(&**s),
+            _ => Err(format!("expected string, found {:?}", &self).into())
+        }
+    }
+
     pub fn format(&self, max_len: usize) -> (String, Option<StreamError>) {
         struct Stateful<'item> {
             item: &'item Item,
