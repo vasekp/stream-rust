@@ -376,10 +376,10 @@ impl<'str> Parser<'str> {
         let Some(tok) = self.tk.next_tr()? else { return Ok(None); };
         use TokenClass as TC;
         let head = match tok {
-            Token(TC::Ident, name) => name.into(),
+            Token(TC::Ident, name) => Head::Symbol(name.into()),
             Token(TC::Open, bkt @ "{") => {
                 match &mut self.read_args(bkt)?[..] {
-                    [e] => std::mem::take(e).into(),
+                    [e] => Head::Block(Box::new(std::mem::take(e))),
                     [] => return Err(ParseError::new("empty block", self.tk.slice_from(bkt))),
                     _ => return Err(ParseError::new("only one expression expected", self.tk.slice_from(bkt)))
                 }
@@ -405,13 +405,13 @@ impl<'str> Parser<'str> {
         let Some(tok) = self.tk.next_tr()? else { return Ok(None); };
         use TokenClass as TC;
         Some(match tok {
-            Token(TC::Number, value) => Ok(Item::new_number(value.parse::<Number>()
-                .map_err(|_| ParseError::new("invalid number", value))?).into()),
-            Token(TC::BaseNum, value) => Ok(Item::new_number(parse_basenum(value)?).into()),
-            Token(TC::Bool, value) => Ok(Item::new_bool(value.parse().unwrap()).into()),
-            Token(TC::Char, value) => Ok(Item::new_char(parse_char(value)?).into()),
+            Token(TC::Number, value) => Ok(Expr::new_number(value.parse::<Number>()
+                .map_err(|_| ParseError::new("invalid number", value))?)),
+            Token(TC::BaseNum, value) => Ok(Expr::new_number(parse_basenum(value)?)),
+            Token(TC::Bool, value) => Ok(Expr::new_bool(value.parse().unwrap())),
+            Token(TC::Char, value) => Ok(Expr::new_char(parse_char(value)?)),
             Token(TC::String, value) => Ok(Item::new_stream(LiteralString::from(parse_string(value)?)).into()),
-            Token(TC::Open, bkt @ "[") => Ok(Node::new(LangItem::List, None, self.read_args(bkt)?).into()),
+            Token(TC::Open, bkt @ "[") => Ok(Expr::new_node(LangItem::List, self.read_args(bkt)?)),
             Token(TC::Ident, _) | Token(TC::Open, "{") => {
                 self.tk.unread(tok);
                 Ok(self.read_prenode()?.unwrap().into()) // cannot be None after unread()
@@ -467,14 +467,14 @@ impl<'str> Parser<'str> {
                 (Some(src), Token(TC::Chain, tok @ ":")) => {
                     let node = self.read_prenode()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
-                    cur = Some(Node::new(LangItem::Map, Some(src), vec![node.into()]).into());
+                    cur = Some(src.chain(PreNode::new(LangItem::Map, vec![node.into()])));
                 },
                 (Some(src), Token(TC::Open, bkt @ "[")) => {
                     let args = self.read_args(bkt)?;
                     if args.is_empty() {
                         return Err(ParseError::new("empty parts", self.tk.slice_from(bkt)));
                     }
-                    cur = Some(Node::new(LangItem::Part, Some(src), args).into());
+                    cur = Some(src.chain(PreNode::new(LangItem::Part, args)));
                 },
                 (None, Token(TC::Oper, sign @ ("+" | "-"))) => {
                     stack.push(StackEntry{op: sign, prec: get_op(sign).0, args: vec![]});
