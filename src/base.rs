@@ -74,6 +74,14 @@ impl Expr {
         })
     }
 
+    pub fn chain(self, next: PreNode) -> Expr {
+        Expr::Eval(Node{
+            head: next.head,
+            source: Some(Box::new(self)),
+            args: next.args
+        })
+    }
+
     /// For an `Expr::Imm(value)`, returns a reference to `value`.
     pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {
@@ -161,19 +169,6 @@ impl Describe for Expr {
         }
     }
 }
-
-
-pub trait Chainable: Into<Expr> {
-    fn chain(self, next: PreNode) -> Expr {
-        Expr::Eval(Node{
-            head: next.head,
-            source: Some(Box::new(self.into())),
-            args: next.args
-        })
-    }
-}
-
-impl<T> Chainable for T where T: Into<Expr> { }
 
 
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
