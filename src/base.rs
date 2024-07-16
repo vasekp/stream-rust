@@ -391,8 +391,8 @@ impl Describe for ENode {
 /// A precursor of [`Node`] which type-guarantees that the source is left empty.
 #[derive(Debug, PartialEq, Clone)]
 pub struct PreNode {
-    pub head: Head,
-    pub args: Vec<Expr>
+    head: Head,
+    args: Vec<Expr>
 }
 
 impl PreNode {

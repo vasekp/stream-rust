@@ -388,15 +388,15 @@ impl<'str> Parser<'str> {
         Ok(Some(match self.tk.peek()? {
             Some(&Token(TC::Open, bkt @ "(")) => {
                 self.tk.next();
-                PreNode{head, args: self.read_args(bkt)?}
+                PreNode::new(head, self.read_args(bkt)?)
             },
             Some(&Token(TC::Chain, tok @ "@")) => {
                 self.tk.next();
                 let arg = self.read_expr_part()?
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
-                PreNode{head: Head::args(head), args: vec![arg]}
+                PreNode::new(Head::args(head), vec![arg])
             },
-            _ => PreNode{head, args: vec![]}
+            _ => PreNode::new(head, vec![])
         }))
     }
 
