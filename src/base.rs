@@ -556,6 +556,10 @@ impl Item {
         }
     }
 
+    pub fn is_stream(&self) -> bool {
+        matches!(self, Item::Stream(_))
+    }
+
     pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
         match self {
             Item::Stream(s) => Ok(&**s),

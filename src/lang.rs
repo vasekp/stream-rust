@@ -239,9 +239,10 @@ impl Plus {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
-        match &node.args[0] {
-            Item::Stream(_) => Ok(Item::new_stream(Plus{node, env: Rc::clone(env)})),
-            _ => Ok(try_with!(node, Plus::helper(&node.args, env)))
+        if node.args.iter().any(Item::is_stream) {
+            Ok(Item::new_stream(Plus{node, env: Rc::clone(env)}))
+        } else {
+            Ok(try_with!(node, Plus::helper(&node.args, env)))
         }
     }
 
@@ -421,15 +422,17 @@ fn test_opers() {
     assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval().unwrap().to_string(), "['c', 'm', 'q', ...");
     assert_eq!(parse("(1..5+3+[]).len").unwrap().eval().unwrap().to_string(), "0");
     assert_eq!(parse("(1..5+3+seq).len").unwrap().eval().unwrap().to_string(), "5");
-    assert_eq!(parse(r#""abc"+['d',5,'f']"#).unwrap().eval().unwrap().to_string(), "['e', 'g', 'i']");
+    assert_eq!(parse(r#""abc"+['d',5,true]"#).unwrap().eval().unwrap().to_string(), "['e', 'g', <!>");
     assert_eq!(parse(r#"['a','b','c']+"def""#).unwrap().eval().unwrap().to_string(), "['e', 'g', 'i']");
     assert_eq!(parse(r#"['a','b',3]+"def""#).unwrap().eval().unwrap().to_string(), "['e', 'g', <!>");
     assert_eq!(parse("seq+true").unwrap().eval().unwrap().to_string(), "[<!>");
+    assert_eq!(parse("1+\"a\"").unwrap().eval().unwrap().to_string(), "[<!>");
+    assert_eq!(parse("'a'+\"xyz\"").unwrap().eval().unwrap().to_string(), "['y', 'z', 'a']");
     assert!(parse("true+false").unwrap().eval().is_err());
-    assert!(parse("1+\"a\"").unwrap().eval().is_err());
 
     assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval().unwrap().to_string(), "9");
     test_len_exact(&parse("[1,2,3]+seq+5").unwrap().eval().unwrap(), 3);
+    test_len_exact(&parse("5+[1,2,3]+seq+5").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("[1,2,3]+seq+[5]").unwrap().eval().unwrap(), 1);
     test_skip_n(&parse("range(10^10)+seq+5").unwrap().eval().unwrap());
     test_skip_n(&parse("range(10^10)+range(10^11)").unwrap().eval().unwrap());
