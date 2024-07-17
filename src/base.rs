@@ -185,13 +185,6 @@ pub struct Node {
 }
 
 impl Node {
-    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by
-    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
-    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
-    pub fn new(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Node {
-        Node{head: head.into(), source: source.map(Box::new), args}
-    }
-
     /*pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
         match &self.source {
             Some(_) => Err("no source accepted".into()),
