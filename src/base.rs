@@ -767,7 +767,7 @@ impl dyn Stream {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    pub fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    pub fn writeout(self: &Box<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         if self.is_string() {
@@ -777,7 +777,7 @@ impl dyn Stream {
         }
     }
 
-    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    fn writeout_stream(self: &Box<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -830,10 +830,10 @@ impl dyn Stream {
         }
     }
 
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    fn writeout_string(self: &Box<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
-        let mut iter = self.iter();
+        let mut iter = self.string_iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
             None => (usize::MAX, 20)
@@ -845,14 +845,7 @@ impl dyn Stream {
             while s.len() < prec && i < max {
                 if let Some(next) = iter.next() {
                     match next {
-                        Ok(item) => match item.as_char() {
-                            Ok(ch) => s += &format!("{ch:#}"),
-                            Err(err) => {
-                                s += "<!>";
-                                error.set(Some(StreamError::new(err, self.to_expr())));
-                                break 'a;
-                            }
-                        },
+                        Ok(ch) => s += &format!("{ch:#}"),
                         Err(err) => {
                             s += "<!>";
                             error.set(Some(err));
@@ -880,9 +873,15 @@ impl dyn Stream {
     pub(crate) fn to_expr(&self) -> Expr {
         Expr::Imm(Item::Stream(dyn_clone::clone_box(self)))
     }
+
+    /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
+    /// failing for other types. Suitable for iterating over strings ([`Stream::is_string()`]` == true`)
+    pub fn string_iter<'node>(self: &'node Box<Self>) -> StringIterator<'node> {
+        StringIterator::new(self)
+    }
 }
 
-impl Display for dyn Stream {
+impl Display for Box<dyn Stream> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.writeout(f, &Default::default())
     }
@@ -963,7 +962,7 @@ impl std::ops::Add for Length {
 }
 
 
-/// The iterator trait returned by [`Stream::iter()`]. Every call to `next` returns either:
+/// The iterator trait returned by [`Stream::iter()`]. Every call to `next()` returns either:
 /// - `Some(Ok(item))`: any [`Item`] ready for direct consumption,
 /// - `Some(Err(err))`: an error occurred at some point,
 /// - `None`: the stream ended.
@@ -1047,6 +1046,41 @@ impl Iterator for Forever<'_> {
 impl SIterator for Forever<'_> {
     fn skip_n(&mut self, _n: &Number) -> Result<Option<Number>, StreamError> {
         Ok(None)
+    }
+}
+
+
+/// The iterator returned by `dyn Stream::string_iter`. The semantics of `next()` are the same as
+/// in the case of [`SIterator`], with the difference that the return type in success is [`Char`].
+/// If the conversion can not be done, the error message indicates a malformed string.
+// TODO: cargo doc reference to impl dyn Stream
+pub struct StringIterator<'node> {
+    iter: Box<dyn SIterator + 'node>,
+    parent: &'node Box<dyn Stream>
+}
+
+impl<'node> StringIterator<'node> {
+    fn new(item: &'node Box<dyn Stream>) -> Self {
+        StringIterator{iter: item.iter(), parent: item}
+    }
+
+    /// Calls [`SIterator::skip_n`] on the underlying stream iterator.
+    pub fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+        self.iter.skip_n(n)
+    }
+}
+
+impl<'node> Iterator for StringIterator<'node> {
+    type Item = Result<Char, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter.next() {
+            Some(Ok(Item::Char(ch))) => Some(Ok(ch)),
+            Some(Err(err)) => Some(Err(err)),
+            None => None,
+            Some(Ok(item)) => Some(Err(StreamError::new(format!("malformed string: contains {:?}", item),
+                        self.parent.to_expr())))
+        }
     }
 }
 
