@@ -290,17 +290,41 @@ impl MathOp {
         }
     }
 
-    fn minus_func(items: &[Item], _env: &Rc<Env>) -> Result<Item, BaseError> {
+    fn minus_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         match items {
             [item] => Ok(Item::new_number(-item.as_num()?)),
-            [lhs, rhs] => Ok(Item::new_number(lhs.as_num()? - rhs.as_num()?)),
+            [lhs, rhs] => match lhs {
+                Item::Number(lhs) => Ok(Item::new_number(lhs - rhs.as_num()?)),
+                Item::Char(ch) => {
+                    let abc = env.alphabet();
+                    let (index, case) = abc.ord_case(ch)?;
+                    match rhs {
+                        Item::Number(ref num) => Ok(Item::new_char(abc.chr_case(&(index - num), case))),
+                        Item::Char(ref ch) => Ok(Item::new_number(index - abc.ord_case(ch)?.0)),
+                        _ => Err(format!("expected number or character, found {:?}", rhs).into())
+                    }
+                },
+                _ => Err(format!("expected number or character, found {:?}", lhs).into())
+            },
             _ => Err("1 or 2 arguments required".into())
         }
     }
 
-    fn mul_func(items: &[Item], _env: &Rc<Env>) -> Result<Item, BaseError> {
-        let ret = items.iter().try_fold(Number::one(), |a, e| e.as_num().map(|e| a * e));
-        Ok(Item::new_number(ret?))
+    fn mul_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
+        let mut iter = items.iter();
+        match iter.next().unwrap() {
+            Item::Number(init) => {
+                let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a * num))?;
+                Ok(Item::new_number(ans))
+            },
+            Item::Char(ref ch) => {
+                let abc = env.alphabet();
+                let (index, case) = abc.ord_case(ch)?;
+                let ans = iter.try_fold(index.into(), |a, e| e.as_num().map(|num| a * num))?;
+                Ok(Item::new_char(abc.chr_case(&ans, case)))
+            },
+            item => Err(format!("expected number or character, found {:?}", item).into())
+        }
     }
 
     fn div_func(items: &[Item], _env: &Rc<Env>) -> Result<Item, BaseError> {
