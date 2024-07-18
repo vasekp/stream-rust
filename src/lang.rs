@@ -305,25 +305,17 @@ impl Iterator for PlusIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        fn aux_node(inputs: Vec<Item>) -> Node {
-            Node {
-                head: Head::Oper("+".into()),
-                source: None,
-                args: inputs.into_iter().map(Expr::from).collect()
-            }
-        }
-        let inputs = self.args.iter_mut()
+        match self.args.iter_mut()
             .map(|iter| (*iter).next())
-            .collect::<Option<Result<Vec<_>, _>>>();
-        match inputs {
-            None => None,
+            .collect::<Option<Result<Vec<_>, _>>>()
+        {
             Some(Ok(inputs)) => {
-                match Plus::helper(&inputs, self.env) {
-                    Ok(item) => Some(Ok(item)),
-                    Err(err) => Some(Err(StreamError::new(err, aux_node(inputs))))
-                }
+                let expr = Expr::new_node(Head::Oper("+".into()),
+                    inputs.into_iter().map(Expr::from).collect());
+                Some(expr.eval_env(self.env))
             },
-            Some(Err(err)) => Some(Err(err))
+            Some(Err(err)) => Some(Err(err)),
+            None => None
         }
     }
 }
@@ -429,6 +421,8 @@ fn test_opers() {
     assert_eq!(parse("1+\"a\"").unwrap().eval().unwrap().to_string(), "[<!>");
     assert_eq!(parse("'a'+\"xyz\"").unwrap().eval().unwrap().to_string(), "['y', 'z', 'a']");
     assert!(parse("true+false").unwrap().eval().is_err());
+    assert_eq!(parse("[1,[2,[3]]]+1").unwrap().eval().unwrap().to_string(), "[2, [3, [4]]]");
+    assert_eq!(parse("['a',['b',['c']]]+[1,2]").unwrap().eval().unwrap().to_string(), "['b', ['d', ['e']]]");
 
     assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval().unwrap().to_string(), "9");
     test_len_exact(&parse("[1,2,3]+seq+5").unwrap().eval().unwrap(), 3);
