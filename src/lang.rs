@@ -229,24 +229,44 @@ fn test_map() {
 
 
 #[derive(Clone)]
-struct Plus {
+struct MathOp {
     node: ENode,
-    env: Rc<Env>
+    env: Rc<Env>,
+    func: MathFunc
 }
 
-impl Plus {
+type MathFunc = fn(&[Item], &Rc<Env>) -> Result<Item, BaseError>;
+
+impl MathOp {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        let func = Self::find_fn(&node.head);
+        Self::eval_with(node, env, func)
+    }
+
+    fn eval_with(node: Node, env: &Rc<Env>, func: MathFunc) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
         if node.args.iter().any(Item::is_stream) {
-            Ok(Item::new_stream(Plus{node, env: Rc::clone(env)}))
+            Ok(Item::new_stream(MathOp{node, env: Rc::clone(env), func}))
         } else {
-            Ok(try_with!(node, Plus::helper(&node.args, env)))
+            Ok(try_with!(node, func(&node.args, env)))
         }
     }
 
-    fn helper(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
+    fn find_fn(head: &Head) -> MathFunc {
+        let Head::Oper(op) = head else { unreachable!() };
+        match op.as_str() {
+            "+" => Self::plus_func,
+            "-" => Self::minus_func,
+            "*" => Self::mul_func,
+            "/" => Self::div_func,
+            "^" => Self::pow_func,
+            _ => todo!()
+        }
+    }
+
+    fn plus_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
         match iter.next().unwrap() {
             Item::Number(init) => {
@@ -269,22 +289,65 @@ impl Plus {
             item => Err(format!("expected number or character, found {:?}", item).into())
         }
     }
+
+    fn minus_func(items: &[Item], _env: &Rc<Env>) -> Result<Item, BaseError> {
+        match items {
+            [item] => Ok(Item::new_number(-item.as_num()?)),
+            [lhs, rhs] => Ok(Item::new_number(lhs.as_num()? - rhs.as_num()?)),
+            _ => Err("1 or 2 arguments required".into())
+        }
+    }
+
+    fn mul_func(items: &[Item], _env: &Rc<Env>) -> Result<Item, BaseError> {
+        let ret = items.iter().try_fold(Number::one(), |a, e| e.as_num().map(|e| a * e));
+        Ok(Item::new_number(ret?))
+    }
+
+    fn div_func(items: &[Item], _env: &Rc<Env>) -> Result<Item, BaseError> {
+        match items {
+            [lhs, rhs] => {
+                let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);
+                if rhs.is_zero() {
+                    Err("division by zero".into())
+                } else {
+                    Ok(Item::new_number(lhs / rhs))
+                }
+            },
+            _ => Err("exactly 2 argument required".into())
+        }
+    }
+
+    fn pow_func(items: &[Item], _env: &Rc<Env>) -> Result<Item, BaseError> {
+        match items {
+            [base, exp] => {
+                let (base, exp) = (base.as_num()?, exp.as_num()?);
+                if exp.is_negative() {
+                    return Err("negative exponent".into());
+                }
+                let Some(exp) = exp.to_u32() else {
+                    return Err("exponent too large".into());
+                };
+                Ok(Item::new_number(base.pow(exp)))
+            },
+            _ => Err("exactly 2 argument required".into())
+        }
+    }
 }
 
-impl Describe for Plus {
+impl Describe for MathOp {
     fn describe(&self) -> String {
         self.env.wrap_describe(self.node.describe())
     }
 }
 
-impl Stream for Plus {
+impl Stream for MathOp {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
                 item => Box::new(Forever{item})
             }).collect();
-        Box::new(PlusIter{args, env: &self.env})
+        Box::new(MathOpIter{head: &self.node.head, args, env: &self.env, func: self.func})
     }
 
     fn length(&self) -> Length {
@@ -296,12 +359,14 @@ impl Stream for Plus {
     }
 }
 
-struct PlusIter<'node> {
+struct MathOpIter<'node> {
+    head: &'node Head,
     args: Vec<Box<dyn SIterator + 'node>>,
-    env: &'node Rc<Env>
+    env: &'node Rc<Env>,
+    func: MathFunc
 }
 
-impl Iterator for PlusIter<'_> {
+impl Iterator for MathOpIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -310,9 +375,9 @@ impl Iterator for PlusIter<'_> {
             .collect::<Option<Result<Vec<_>, _>>>()
         {
             Some(Ok(inputs)) => {
-                let expr = Expr::new_node(Head::Oper("+".into()),
+                let node = Node::new(self.head.clone(), None,
                     inputs.into_iter().map(Expr::from).collect());
-                Some(expr.eval_env(self.env))
+                Some(MathOp::eval_with(node, self.env, self.func))
             },
             Some(Err(err)) => Some(Err(err)),
             None => None
@@ -320,7 +385,7 @@ impl Iterator for PlusIter<'_> {
     }
 }
 
-impl SIterator for PlusIter<'_> {
+impl SIterator for MathOpIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         let mut remain = Number::zero();
         for iter in &mut self.args {
@@ -331,59 +396,6 @@ impl SIterator for PlusIter<'_> {
         if remain.is_zero() { Ok(None) }
         else { Ok(Some(remain)) }
     }
-}
-
-
-fn eval_minus(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source());
-    let args = &node.args;
-    let ans = match args.len() {
-        1 => -try_with!(node, args[0].as_num()),
-        2 => try_with!(node, Ok(args[0].as_num()? - args[1].as_num()?)),
-        _ => return Err(StreamError::new("1 or 2 arguments required", node))
-    };
-    Ok(Item::new_number(ans))
-}
-
-fn eval_times(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source());
-    try_with!(node, node.check_args_nonempty());
-    let ans = try_with!(node, node.args.iter().try_fold(Number::one(),
-        |a, e| Ok(a * e.as_num()?)));
-    Ok(Item::new_number(ans))
-}
-
-fn eval_div(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source());
-    if node.args.len() != 2 {
-        return Err(StreamError::new("exactly 2 argument required", node));
-    }
-    let x = try_with!(node, node.args[0].as_num());
-    let y = try_with!(node, node.args[1].as_num());
-    if y.is_zero() {
-        return Err(StreamError::new("division by zero", node));
-    }
-    Ok(Item::new_number(x / y))
-}
-
-fn eval_pow(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source());
-    if node.args.len() != 2 {
-        return Err(StreamError::new("exactly 2 argument required", node));
-    }
-    let x = try_with!(node, node.args[0].as_num());
-    let y = try_with!(node, node.args[1].as_num());
-    if y.is_negative() {
-        return Err(StreamError::new("negative exponent", node));
-    }
-    let Some(exp) = y.to_u32() else {
-        return Err(StreamError::new("exponent too large", node));
-    };
-    Ok(Item::new_number(x.pow(exp)))
 }
 
 #[test]
@@ -610,10 +622,10 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("$part", eval_part);
     keywords.insert("$map", Map::eval);
     keywords.insert("$args", eval_args);
-    keywords.insert("+", Plus::eval);
-    keywords.insert("-", eval_minus);
-    keywords.insert("*", eval_times);
-    keywords.insert("/", eval_div);
-    keywords.insert("^", eval_pow);
+    keywords.insert("+", MathOp::eval);
+    keywords.insert("-", MathOp::eval);
+    keywords.insert("*", MathOp::eval);
+    keywords.insert("/", MathOp::eval);
+    keywords.insert("^", MathOp::eval);
     keywords.insert("~", Join::eval);
 }
