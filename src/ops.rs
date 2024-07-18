@@ -617,7 +617,7 @@ impl Describe for Shift {
 
 impl Stream for Shift {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let base = self.node.source.as_ref().unwrap().as_stream().unwrap().iter();
+        let base = self.node.source.as_ref().unwrap().as_stream().unwrap().string_iter();
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
@@ -636,7 +636,7 @@ impl Stream for Shift {
 }
 
 struct ShiftIter<'node> {
-    base: Box<dyn SIterator + 'node>,
+    base: StringIterator<'node>,
     args: Vec<Box<dyn SIterator + 'node>>,
     node: &'node ENode,
     env: &'node Rc<Env>
@@ -655,13 +655,10 @@ impl Iterator for ShiftIter<'_> {
             }
         }
 
-        let base = match self.base.next() {
+        let ch = match self.base.next() {
             None => return None,
-            Some(Ok(item)) => item,
+            Some(Ok(ch)) => ch,
             Some(Err(err)) => return Some(Err(err))
-        };
-        let Item::Char(ch) = base else {
-            return Some(Err(StreamError::new("malformed string", self.node.source.as_ref().unwrap().clone())))
         };
         if !self.env.alphabet().contains(&ch) {
             return Some(Ok(Item::Char(ch)));
@@ -690,13 +687,12 @@ impl SIterator for ShiftIter<'_> {
         let mut n_chars = Number::zero();
         while n.is_positive() {
             match self.base.next() {
-                Some(Ok(Item::Char(ref ch))) => {
-                    if self.env.alphabet().contains(ch) {
+                Some(Ok(ch)) => {
+                    if self.env.alphabet().contains(&ch) {
                         n_chars.inc();
                     }
                 },
                 Some(Err(err)) => return Err(err),
-                Some(_) => return Err(StreamError::new("malformed string", self.node.args[0].clone())),
                 None => return Ok(Some(n))
             }
             n.dec();
@@ -724,7 +720,7 @@ fn test_shift() {
     assert_eq!(parse(r#""Hello world!".shift("ab".repeat)"#).unwrap().eval().unwrap().to_string(), r#""Igmnp yptmf!""#);
     assert_eq!(parse(r#""ab".repeat.shift(seq)"#).unwrap().eval().unwrap().to_string(), r#""bddffhhjjllnnpprrttv..."#);
     assert_eq!(parse(r#"("ab".repeat.shift(seq))[20]"#).unwrap().eval().unwrap().to_string(), "'v'");
-    assert_eq!(parse(r#""abc".shift(['d',5,'f'])"#).unwrap().eval().unwrap().to_string(), "\"egi\"");
+    assert_eq!(parse(r#""abc".shift(['d',5,true])"#).unwrap().eval().unwrap().to_string(), "\"eg<!>");
     test_len_exact(&parse("\"abc\".shift(seq)").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap(), 6);
     test_skip_n(&parse(r#""abcdefghijk".shift(seq, "abcdefghijklmn")"#).unwrap().eval().unwrap());

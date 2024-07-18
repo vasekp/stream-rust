@@ -560,9 +560,9 @@ impl Item {
         matches!(self, Item::Stream(_))
     }
 
-    pub fn as_stream(&self) -> Result<&dyn Stream, BaseError> {
+    pub fn as_stream(&self) -> Result<&Box<dyn Stream>, BaseError> {
         match self {
-            Item::Stream(s) => Ok(&**s),
+            Item::Stream(s) => Ok(s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
