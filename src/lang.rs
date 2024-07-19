@@ -459,6 +459,14 @@ fn test_opers() {
     assert!(parse("true+false").unwrap().eval().is_err());
     assert_eq!(parse("[1,[2,[3]]]+1").unwrap().eval().unwrap().to_string(), "[2, [3, [4]]]");
     assert_eq!(parse("['a',['b',['c']]]+[1,2]").unwrap().eval().unwrap().to_string(), "['b', ['d', ['e']]]");
+    assert_eq!(parse("['b','b',2]-[1,'a','a']").unwrap().eval().unwrap().to_string(), "['a', 1, <!>");
+    assert_eq!(parse("-[1,[1,'a']]").unwrap().eval().unwrap().to_string(), "[-1, [-1, <!>");
+    assert_eq!(parse("[2,'b','b']*[2,2,'b']").unwrap().eval().unwrap().to_string(), "[4, 'd', <!>");
+    assert!(parse("2*'b'").unwrap().eval().is_err());
+    assert!(parse("1/'a'").unwrap().eval().is_err());
+    assert!(parse("'a'/1").unwrap().eval().is_err());
+    assert_eq!(parse("[2,'b','b']*[2,2,'b']").unwrap().eval().unwrap().to_string(), "[4, 'd', <!>");
+    assert_eq!(parse("seq^seq").unwrap().eval().unwrap().to_string(), "[1, 4, 27, ...");
 
     assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval().unwrap().to_string(), "9");
     test_len_exact(&parse("[1,2,3]+seq+5").unwrap().eval().unwrap(), 3);
@@ -467,6 +475,7 @@ fn test_opers() {
     test_skip_n(&parse("range(10^10)+seq+5").unwrap().eval().unwrap());
     test_skip_n(&parse("range(10^10)+range(10^11)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq+[]").unwrap().eval().unwrap());
+    test_skip_n(&parse("seq*seq").unwrap().eval().unwrap());
 }
 
 
