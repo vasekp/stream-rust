@@ -55,18 +55,21 @@ struct Token<'str>(TokenClass, &'str str);
 impl Token<'_> {
     fn new(slice: &str) -> Result<Token, ParseError> {
         use TokenClass::*;
-        const OPERS: &str = "+-*/%^~&|<=>";
-        let class = match slice.chars().next().unwrap() {
-            '0'..='9' => if slice.contains('_') { BaseNum } else { Number },
-            'a'..='z' | 'A'..='Z' | '_' => if slice == "true" || slice == "false" { Bool } else { Ident },
-            '"' => String,
-            '\'' => Char,
-            '.' | ':' | '@' => if slice == ".." { Oper } else { Chain },
-            c if OPERS.contains(c) => Oper,
-            '(' | '[' | '{' => Open,
-            ')' | ']' | '}' => Close,
-            ',' => Comma,
-            '#' | '$' => Special,
+        const OPERS: &[u8] = b"+-*/%^~&|<=>";
+        let class = match slice.as_bytes() {
+            [b'0'..=b'9', ..] => if slice.contains('_') { BaseNum } else { Number },
+            b"true" | b"false" => Bool,
+            [b'a'..=b'z' | b'A'..=b'Z' | b'_', ..] => Ident,
+            [b'"', ..] => String,
+            [b'\'', ..] => Char,
+            b".." => Oper,
+            b"..." => Chain,
+            [b'.' | b':' | b'@'] => Chain,
+            [c, ..] if OPERS.contains(c) => Oper,
+            [b'(' | b'[' | b'{'] => Open,
+            [b')' | b']' | b'}'] => Close,
+            [b','] => Comma,
+            [b'#'] | [b'$'] => Special,
             _ => return Err(ParseError::new("invalid character", slice))
         };
         Ok(Token(class, slice))
@@ -139,23 +142,32 @@ impl<'str> Iterator for Tokenizer<'str> {
         let class = CharClass::of(ch);
         use CharClass::*;
         let res = match class {
-            Ident | Rel | Space => {
+            Ident | Rel => {
                 self.skip_same(&class);
                 Ok(())
             },
             Delim => self.skip_until(ch),
-            Other => Ok(()),
+            Other => {
+                if ch == '.' {
+                    for _ in 1..=2 {
+                        if matches!(self.iter.peek(), Some(&(_, '.'))) {
+                            self.iter.next();
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                Ok(())
+            }
+            Space => {
+                self.skip_same(&class);
+                return self.next();
+            },
             Comment => {
                 self.iter = "".char_indices().peekable();
                 return None
             }
         };
-        if class == CharClass::Space {
-            return self.next();
-        }
-        if ch == '.' && matches!(self.iter.peek(), Some(&(_, '.'))) {
-            self.iter.next();
-        }
         let end = match self.iter.peek() {
             Some(&(pos, _)) => pos,
             None => self.input.len()
@@ -219,13 +231,11 @@ fn test_tokenizer() {
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "b"))));
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new(r#"abc_12  3...::<=>xy'a"b'c"d'e""""#); // character classes
+    let mut tk = Tokenizer::new(r#"abc_12  3::<=>xy'a"b'c"d'e""""#); // character classes
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "abc_12")))); // mixed alpha, numeric, _ should be single token
     assert_eq!(tk.next(), Some(Ok(Token(Number, "3")))); // space ignored, but prevents gluing to previous
-    assert_eq!(tk.next(), Some(Ok(Token(Oper, "..")))); // greedy & special case
-    assert_eq!(tk.next(), Some(Ok(Token(Chain, ".")))); // third in a row does not merge
-    assert_eq!(tk.next(), Some(Ok(Token(Chain, ":")))); // should remain separate
     assert_eq!(tk.next(), Some(Ok(Token(Chain, ":")))); // should remain single character
+    assert_eq!(tk.next(), Some(Ok(Token(Chain, ":")))); // should remain separate
     assert_eq!(tk.next(), Some(Ok(Token(Oper, "<=>")))); // relational symbols merged
     assert_eq!(tk.next(), Some(Ok(Token(Ident, "xy")))); // alphanumeric merged, but not with previous
     assert_eq!(tk.next(), Some(Ok(Token(Char, "'a\"b'")))); // " within '
@@ -233,6 +243,10 @@ fn test_tokenizer() {
     assert_eq!(tk.next(), Some(Ok(Token(String, "\"d'e\"")))); // ' within "
     assert_eq!(tk.next(), Some(Ok(Token(String, "\"\"")))); // correctly paired
     assert_eq!(tk.next(), None);
+
+    let mut tk = Tokenizer::new("....."); // ., .., ... bunching
+    assert_eq!(tk.next(), Some(Ok(Token(Chain, "...")))); // greedy
+    assert_eq!(tk.next(), Some(Ok(Token(Oper, "..")))); // three are Chain, two are Oper
 
     let mut tk = Tokenizer::new(r#" " " " " "#); // spaces
     // leading space ignored
@@ -483,6 +497,8 @@ impl<'str> Parser<'str> {
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
                     src.chain(Link::new(LangItem::Map, vec![node.into()]))
                 },
+                (src, Token(TC::Chain, "...")) =>
+                    src.chain(Link::new("repeat", vec![])),
                 (src, Token(TC::Open, bkt @ "[")) => {
                     let args = self.read_args(bkt)?;
                     if args.is_empty() {
@@ -728,6 +744,14 @@ fn test_parser() {
     assert!(parse("a@@c").is_err());
     assert!(parse("1@a").is_err());
     assert!(parse("a@").is_err());
+
+    assert_eq!(parse("1..2"), Ok(Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(2)])));
+    assert_eq!(parse("1..."), Ok(Expr::new_number(1).chain(Link::new("repeat", vec![]))));
+    assert_eq!(parse("1....len"), Ok(Expr::new_number(1)
+            .chain(Link::new("repeat" , vec![])).chain(Link::new("len", vec![]))));
+    assert!(parse("1....").is_err());
+    assert!(parse("1...(2)").is_err());
+    assert!(parse("...").is_err());
 }
 
 #[test]
