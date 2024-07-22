@@ -100,30 +100,37 @@ impl From<String> for LiteralString {
 
 
 fn eval_part(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    let mut item = try_with!(node, node.source_checked()).to_owned();
-    if node.args.is_empty() {
-        return Err(StreamError::new("at least 1 argument required", node));
-    }
-    for arg in &node.args {
-        let index = try_with!(node, arg.as_num());
-        try_with!(node, index.check_within(Number::one()..));
-        let stm = try_with!(node, item.into_stream());
-        match stm.length() {
-            Length::Exact(len) | Length::AtMost(len) if &len < index =>
-                return Err(StreamError::new("index past end of stream", node)),
-            _ => ()
+    let mut node = node.eval_all(env)?;
+    let source = try_with!(node, node.source_checked());
+    match &node.args[..] {
+        [] => {
+            Err(StreamError::new("at least 1 argument required", node))
+        },
+        [first, ..] => {
+            let index = try_with!(node, first.as_num());
+            try_with!(node, index.check_within(Number::one()..));
+            let stm = try_with!(node, source.to_stream());
+            match stm.length() {
+                Length::Exact(len) | Length::AtMost(len) if &len < index =>
+                    return Err(StreamError::new("index past end of stream", node)),
+                _ => ()
+            }
+            let mut iter = stm.iter();
+            if iter.skip_n(&(index - 1))?.is_some() {
+                return Err(StreamError::new("index past end of stream", node));
+            }
+            let item = match iter.next() {
+                Some(value) => value?,
+                None => return Err(StreamError::new("index past end of stream", node))
+            };
+            node.args.remove(0);
+            if node.args.is_empty() {
+                Ok(item)
+            } else {
+                eval_part(ENode{head: node.head, source: Some(item), args: node.args}.into(), env)
+            }
         }
-        let mut iter = stm.iter();
-        if iter.skip_n(&(index - 1))?.is_some() {
-            return Err(StreamError::new("index past end of stream", node));
-        }
-        item = match iter.next() {
-            Some(value) => value?,
-            None => return Err(StreamError::new("index past end of stream", node))
-        };
     }
-    Ok(item)
 }
 
 #[test]
