@@ -268,6 +268,7 @@ impl MathOp {
 
     fn plus_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
+        assert!(!items.is_empty());
         match iter.next().unwrap() {
             Item::Number(init) => {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a + num));
@@ -312,6 +313,7 @@ impl MathOp {
 
     fn mul_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
+        assert!(!items.is_empty());
         match iter.next().unwrap() {
             Item::Number(init) => {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a * num))?;
@@ -481,7 +483,8 @@ fn test_opers() {
 
 #[derive(Clone)]
 struct Join {
-    node: ENode
+    node: ENode,
+    string: bool
 }
 
 struct JoinIter<'node> {
@@ -496,21 +499,17 @@ impl Join {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
-        let mut iter = node.args.iter();
-        let string = Join::is_string(iter.next().unwrap());
-        for arg in iter {
-            if Join::is_string(arg) != string {
+        let is_string = |item: &Item| match item {
+            Item::Stream(stm) => stm.is_string(),
+            _ => false
+        };
+        let string = is_string(&node.args[0]);
+        for arg in &node.args {
+            if is_string(arg) != string {
                 return Err(StreamError::new("mixed strings and non-strings", node));
             }
         }
-        Ok(Item::new_stream(Join{node}))
-    }
-
-    fn is_string(item: &Item) -> bool {
-        match item {
-            Item::Stream(stm) => stm.is_string(),
-            _ => false
-        }
+        Ok(Item::new_stream(Join{node, string}))
     }
 }
 
@@ -530,7 +529,7 @@ impl Stream for Join {
     }
 
     fn is_string(&self) -> bool {
-        Join::is_string(&self.node.args[0])
+        self.string
     }
 
     fn length(&self) -> Length {

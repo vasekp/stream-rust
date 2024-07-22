@@ -292,22 +292,18 @@ fn test_tokenizer() {
 
 
 fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
-    let mut iter = slice.split(|c| c == '_');
-    let base_str = iter.next().unwrap();
-    let base = base_str.parse::<u32>().map_err(|_| ParseError::new("invalid base", base_str))?;
-    if !(2..=36).contains(&base) {
-        return Err(ParseError::new("invalid base", base_str));
+    match slice.split(|c| c == '_').collect::<Vec<_>>()[..] {
+        [base_str, value_str] if !value_str.is_empty() => {
+            let base = base_str.parse::<u32>()
+                .map_err(|_| ParseError::new("invalid base", base_str))?;
+            if !matches!(base, 2..=36) {
+                return Err(ParseError::new("invalid base", base_str));
+            }
+            Number::parse_bytes(value_str.as_bytes(), base)
+                .ok_or(ParseError::new(format!("invalid digits in base {base}"), value_str))
+        },
+        _ => Err(ParseError::new("malformed number", slice))
     }
-    let main_str = iter.next().unwrap();
-    if main_str.is_empty() {
-        return Err(ParseError::new("malformed number", slice));
-    }
-    let res = Number::parse_bytes(main_str.as_bytes(), base)
-        .ok_or(ParseError::new(format!("invalid digits in base {base}"), main_str))?;
-    if iter.next().is_some() {
-        return Err(ParseError::new("malformed number", slice));
-    }
-    Ok(res)
 }
 
 #[test]
@@ -334,14 +330,11 @@ fn parse_string(slice: &str) -> Result<String, ParseError<'_>> {
     let mut it = inner.char_indices().peekable();
     while let Some((index, c)) = it.next() {
         if c == '\\' {
-            let d = it.next().unwrap().1; // \ is guaranteed to be followed by at least 1 char
-            match d {
-                '\\' => ret.push(d),
+            match it.next().unwrap().1 { // \ is guaranteed to be followed by at least 1 char
+                d @ ('\\' | '\'' | '"') => ret.push(d),
                 'n' => ret.push('\n'),
                 'r' => ret.push('\r'),
                 't' => ret.push('\t'),
-                '\'' => ret.push('\''),
-                '\"' => ret.push('"'),
                 _ => {
                     let end_index = match it.peek() {
                         Some(&(pos, _)) => pos,
@@ -438,8 +431,8 @@ impl<'str> Parser<'str> {
             },
             Token(TC::Special, chr) => {
                 match self.tk.peek()? {
-                    Some(&Token(TC::Number, _)) => {
-                        let value = self.tk.next().unwrap()?.1;
+                    Some(&Token(TC::Number, value)) => {
+                        self.tk.next();
                         match value.parse::<usize>() {
                             Ok(ix @ 1..) => Ok(Expr::new_repl(chr.as_bytes()[0].into(), Some(ix))),
                             Ok(0) => Err(ParseError::new("index can't be zero", self.tk.slice_from(chr))),
