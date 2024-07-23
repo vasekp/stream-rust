@@ -577,28 +577,43 @@ struct Join {
     string: bool
 }
 
-struct JoinIter<'node> {
-    node: &'node ENode,
-    index: usize,
-    cur: Box<dyn SIterator + 'node>
-}
-
-
 impl Join {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source());
         try_with!(node, node.check_args_nonempty());
-        let is_string = |item: &Item| match item {
-            Item::Stream(stm) => stm.is_string(),
-            _ => false
-        };
-        let string = is_string(&node.args[0]);
-        for arg in &node.args {
-            if is_string(arg) != string {
-                return Err(StreamError::new("mixed strings and non-strings", node));
+
+        #[derive(Clone, Copy)]
+        enum Type {
+            Stream,
+            String,
+            Either
+        }
+        impl Type {
+            fn of(item: &Item) -> Type {
+                match item {
+                    Item::Stream(stm) => if stm.is_string() { Type::String } else { Type::Stream },
+                    Item::Char(_) => Type::Either,
+                    _ => Type::Stream
+                }
+            }
+
+            fn common(x: Type, y: Type) -> Result<Type, ()> {
+                use Type::*;
+                match (x, y) {
+                    (Stream, Stream | Either) => Ok(Stream),
+                    (String, String | Either) => Ok(String),
+                    (Either, x) => Ok(x),
+                    _ => Err(())
+                }
             }
         }
+
+        let string = match node.args.iter().map(Type::of).try_fold(Type::Either, Type::common) {
+            Ok(Type::String) => true,
+            Ok(_) => false,
+            Err(_) => return Err(StreamError::new("mixed strings and non-strings", node))
+        };
         Ok(Item::new_stream(Join{node, string}))
     }
 }
@@ -630,6 +645,12 @@ impl Stream for Join {
             })
             .reduce(|acc, e| acc + e).unwrap()
     }
+}
+
+struct JoinIter<'node> {
+    node: &'node ENode,
+    index: usize,
+    cur: Box<dyn SIterator + 'node>
 }
 
 impl Iterator for JoinIter<'_> {
@@ -680,25 +701,30 @@ fn test_join() {
     assert!(parse("([5]~seq).len").unwrap().eval().is_err());
     assert_eq!(parse("(range(10^10)~seq)[10^11]").unwrap().eval().unwrap().to_string(), "90000000000");
 
-    assert_eq!(parse("\"ab\"~\"cd\"").unwrap().eval().unwrap().to_string(), "\"abcd\"");
     assert_eq!(parse("(\"ab\"~\"cd\").len").unwrap().eval().unwrap().to_string(), "4");
 
     assert_eq!(parse("[1]~[2]").unwrap().eval().unwrap().to_string(), "[1, 2]");
     assert_eq!(parse("[1]~[[2]]").unwrap().eval().unwrap().to_string(), "[1, [2]]");
-    assert_eq!(parse("[1]~2~[3]").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
+    assert_eq!(parse("[1]~2~'c'").unwrap().eval().unwrap().to_string(), "[1, 2, 'c']");
     assert_eq!(parse("1~2~3").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
     assert_eq!(parse("0~seq").unwrap().eval().unwrap().to_string(), "[0, 1, 2, ...");
     assert_eq!(parse("(0~1..0~2)").unwrap().eval().unwrap().to_string(), "[0, 2]");
     assert_eq!(parse("(0~1..3~4)[3]").unwrap().eval().unwrap().to_string(), "2");
     assert_eq!(parse("(0~1..3~4)[4]").unwrap().eval().unwrap().to_string(), "3");
-    assert!(parse("[1]~\"a\"").unwrap().eval().is_err());
+    assert_eq!(parse("\"ab\"~\"cd\"").unwrap().eval().unwrap().to_string(), "\"abcd\"");
+    assert_eq!(parse("\"ab\"~'c'").unwrap().eval().unwrap().to_string(), "\"abc\"");
+    assert_eq!(parse("'a'~\"b\"~'c'").unwrap().eval().unwrap().to_string(), "\"abc\"");
+    assert!(parse("\"a\"~1").unwrap().eval().is_err());
     assert!(parse("\"a\"~[1]").unwrap().eval().is_err());
     assert!(parse("\"a\"~['b']").unwrap().eval().is_err());
+    assert!(parse("[1]~\"a\"").unwrap().eval().is_err());
 
     test_len_exact(&parse("[1,2,3]~4~[5]~[[5,6]]").unwrap().eval().unwrap(), 6);
     test_len_exact(&parse("1~2~3").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("0~1..2~3").unwrap().eval().unwrap(), 4);
     test_len_exact(&parse("0~1..0~3").unwrap().eval().unwrap(), 2);
+    test_len_exact(&parse("\"ab\"~\"cd\"").unwrap().eval().unwrap(), 4);
+    test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval().unwrap(), 3);
     test_skip_n(&parse("range(10^10)~range(10^9)").unwrap().eval().unwrap());
     test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval().unwrap());
     test_skip_n(&parse("('a'..'z').repeat(10^10)~'A'.repeat(10^10)").unwrap().eval().unwrap());
