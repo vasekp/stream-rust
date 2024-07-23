@@ -194,7 +194,7 @@ impl Stream for Map {
 
 impl Clone for Map {
     fn clone(&self) -> Map {
-        Map{source: dyn_clone::clone_box(&*self.source), body: self.body.clone(), env: Rc::clone(&self.env)}
+        Map{source: self.source.clone_box(), body: self.body.clone(), env: Rc::clone(&self.env)}
     }
 }
 

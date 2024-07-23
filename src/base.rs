@@ -583,7 +583,7 @@ impl Item {
 
     pub fn to_stream(&self) -> Result<Box<dyn Stream>, BaseError> {
         match self {
-            Item::Stream(s) => Ok(dyn_clone::clone_box(&**s)),
+            Item::Stream(s) => Ok(s.clone_box()),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
@@ -696,7 +696,7 @@ impl Clone for Item {
             Number(x) => Number(x.clone()),
             Bool(x) => Bool(*x),
             Char(x) => Char(x.clone()),
-            Stream(s) => Stream(dyn_clone::clone_box(&**s))
+            Stream(s) => Stream(s.clone_box())
         }
     }
 }
@@ -877,8 +877,16 @@ impl dyn Stream {
         }
     }
 
+    pub(crate) fn clone_box(&self) -> Box<dyn Stream> {
+        dyn_clone::clone_box(self)
+    }
+
+    pub(crate) fn to_item(&self) -> Item {
+        Item::Stream(self.clone_box())
+    }
+
     pub(crate) fn to_expr(&self) -> Expr {
-        Expr::Imm(Item::Stream(dyn_clone::clone_box(self)))
+        Expr::Imm(self.to_item())
     }
 
     /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
