@@ -378,18 +378,12 @@ struct Parser<'str> {
 }
 
 impl<'str> Parser<'str> {
-    fn read_prenode(&mut self) -> Result<Option<Link>, ParseError<'str>> {
+    fn read_link(&mut self) -> Result<Option<Link>, ParseError<'str>> {
         let Some(tok) = self.tk.next_tr()? else { return Ok(None); };
         use TokenClass as TC;
         let head = match tok {
             Token(TC::Ident, name) => Head::Symbol(name.into()),
-            Token(TC::Open, bkt @ "{") => {
-                match &mut self.read_args(bkt)?[..] {
-                    [e] => Head::Block(Box::new(std::mem::take(e))),
-                    [] => return Err(ParseError::new("empty block", self.tk.slice_from(bkt))),
-                    _ => return Err(ParseError::new("only one expression expected", self.tk.slice_from(bkt)))
-                }
-            },
+            Token(TC::Open, bkt @ "{") => Head::Block(Box::new(self.read_arg(bkt)?)),
             Token(_, tok) => return Err(ParseError::new("cannot appear here", tok))
         };
         Ok(Some(match self.tk.peek()? {
@@ -420,15 +414,9 @@ impl<'str> Parser<'str> {
             Token(TC::Open, bkt @ "[") => Ok(Expr::new_node(LangItem::List, self.read_args(bkt)?)),
             Token(TC::Ident, _) | Token(TC::Open, "{") => {
                 self.tk.unread(tok);
-                Ok(self.read_prenode()?.unwrap().into()) // cannot be None after unread()
+                Ok(self.read_link()?.unwrap().into()) // cannot be None after unread()
             },
-            Token(TC::Open, bkt @ "(") => {
-                match &mut self.read_args(bkt)?[..] {
-                    [e] => Ok(std::mem::take(e)),
-                    [] => Err(ParseError::new("empty expression", self.tk.slice_from(bkt))),
-                    _ => Err(ParseError::new("only one expression expected", self.tk.slice_from(bkt)))
-                }
-            },
+            Token(TC::Open, bkt @ "(") => Ok(self.read_arg(bkt)?),
             Token(TC::Special, chr) => {
                 match self.tk.peek()? {
                     Some(&Token(TC::Number, value)) => {
@@ -481,12 +469,12 @@ impl<'str> Parser<'str> {
             }
             cur = match (cur, tok) {
                 (src, Token(TC::Chain, tok @ ".")) => {
-                    let node = self.read_prenode()?
+                    let node = self.read_link()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
                     src.chain(node)
                 },
                 (src, Token(TC::Chain, tok @ ":")) => {
-                    let node = self.read_prenode()?
+                    let node = self.read_link()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
                     src.chain(Link::new(LangItem::Map, vec![node.into()]))
                 },
@@ -543,6 +531,20 @@ impl<'str> Parser<'str> {
             cur = Expr::new_op(entry.op, entry.args);
         }
         Ok(Some(cur))
+    }
+
+    fn read_arg(&mut self, open: &'str str) -> Result<Expr, ParseError<'str>> {
+        let expr = self.read_expr()?
+            .ok_or(ParseError::new("empty expression", self.tk.slice_from(open)))?;
+        let next = self.tk.next_tr()?
+            .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(open)))?;
+        let Token(TokenClass::Close, close) = next else {
+            return Err(ParseError::new("cannot appear here", next.1));
+        };
+        match (open, close) {
+            ("(", ")") | ("[", "]") | ("{", "}") => Ok(expr),
+            (_, close) => Err(ParseError::new("unexpected closing bracket", close))
+        }
     }
 
     fn read_args(&mut self, open: &'str str) -> Result<Vec<Expr>, ParseError<'str>> {
