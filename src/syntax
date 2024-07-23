@@ -1,0 +1,15 @@
+Expr: [+|-] (Term Op)* Term
+Term: ExprPart (. ExprPart | : ExprPart | ... | [ Args ])*
+Args: ( [[Expr ,]* Expr] )
+ExprPart: Number | BaseNum | Bool | Char | String | List | ( Expr ) | Special | Link
+List: [ [[Expr ,]* Expr] ]
+Special: #|$ [Number]
+Link: (Ident | { Expr }) [( Args ) | @ ExprPart]
+Number: (0-9)+
+BaseNum: (0-9)+ _ (0-9|a-z|A-Z)+
+Bool: true | false
+Char: ' [char | "] '
+char: (any except ', ", \) | \ (n|r|t|\)
+String: " [char | ']* "
+Ident: (_|a-z|A-Z) (0-9|a-z|A-Z|_)*
+Op: (+|-|*|/|%|^|~|&|<|=|>|..||)
