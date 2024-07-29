@@ -1,4 +1,4 @@
-#![allow(clippy::redundant_closure_call)]
+#![allow(clippy::redundant_closure_call, clippy::borrowed_box)]
 use crate::base::*;
 use crate::alphabet::*;
 use crate::utils::NumWithin;
@@ -110,7 +110,7 @@ impl Part {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         let source = try_with!(node, node.source_checked()?.to_stream());
-        match node.args.get(0) {
+        match node.args.first() {
             None => {
                 Err(StreamError::new("at least 1 argument required", node))
             },

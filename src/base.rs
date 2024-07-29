@@ -1,3 +1,4 @@
+#![allow(clippy::borrowed_box)]
 use std::fmt::{Display, Formatter, Debug};
 use dyn_clone::DynClone;
 pub use num::*;
