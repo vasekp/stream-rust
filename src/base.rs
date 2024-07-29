@@ -207,13 +207,13 @@ impl Node {
         }
     }
 
-    /*pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
+    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
         if self.args.is_empty() {
             Err("at least 1 argument required".into())
         } else {
             Ok(())
         }
-    }*/
+    }
 
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
@@ -468,6 +468,15 @@ impl From<Item> for Head {
 impl From<Node> for Head {
     fn from(expr: Node) -> Head {
         Head::Block(Box::new(expr.into()))
+    }
+}
+
+impl PartialEq<str> for Head {
+    fn eq(&self, other: &str) -> bool {
+        match self {
+            Head::Symbol(sym) => sym == other,
+            _ => false
+        }
     }
 }
 

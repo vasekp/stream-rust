@@ -102,48 +102,87 @@ impl From<String> for LiteralString {
 pub struct Part {
     source: Box<dyn Stream>,
     indices: Box<dyn Stream>,
-    rest: Vec<Item>,
+    rest: Vec<Expr>,
     env: Rc<Env>
 }
 
 impl Part {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let mut node = node.eval_all(env)?;
-        let source = try_with!(node, node.source_checked()?.to_stream());
-        match node.args.first() {
-            None => {
-                Err(StreamError::new("at least 1 argument required", node))
-            },
-            Some(first) => {
-                match first {
-                    Item::Number(index) => {
-                        try_with!(node, index.check_within(Number::one()..));
-                        match source.length() {
-                            Length::Exact(len) | Length::AtMost(len) if &len < index =>
-                                return Err(StreamError::new("index past end of stream", node)),
-                            _ => ()
+        use once_cell::unsync::Lazy;
+        let mut node = node.eval_source(env)?;
+        let source = try_with!(node, node.source_checked()?.as_item()?.to_stream());
+        try_with!(node, node.check_args_nonempty());
+        let length = Lazy::new(|| match source.length() {
+            Length::Exact(len) => Ok(len),
+            Length::Infinite => Err(BaseError::from("stream is infinite")),
+            _ => Ok(source.iter().count().into())
+        });
+        type R = Result<Number, BaseError>;
+        fn subs_len(expr: &mut Expr, length: &Lazy<R, impl Fn() -> R>) ->
+            Result<(), BaseError>
+        {
+            match expr {
+                Expr::Imm(_) => Ok(()),
+                Expr::Eval(node) => {
+                    if &node.head == "len" && node.source.is_none() {
+                        match Lazy::force(length) {
+                            Ok(len) => *expr = Expr::new_number(len.to_owned()),
+                            Err(err) => return Err(err.clone())
                         }
-                        let mut iter = source.iter();
-                        if iter.skip_n(&(index - 1))?.is_some() {
-                            return Err(StreamError::new("index past end of stream", node));
-                        }
-                        let item = match iter.next() {
-                            Some(value) => value?,
-                            None => return Err(StreamError::new("index past end of stream", node))
-                        };
-                        node.args.remove(0);
-                        if node.args.is_empty() {
-                            Ok(item)
-                        } else {
-                            Part::eval(ENode{head: node.head, source: Some(item), args: node.args}.into(), env)
-                        }
-                    },
-                    Item::Stream(_) => {
-                        let indices = node.args.remove(0).to_stream().unwrap();
-                        Ok(Item::new_stream(Part{source, indices, rest: node.args, env: Rc::clone(env)}))
-                    },
-                    _ => Err(StreamError::new(format!("expected number or stream, found {:?}", first), node))
+                        return Ok(());
+                    }
+                    node.source.iter_mut().try_for_each(|sbox| subs_len(sbox, length))?;
+                    match &mut node.head {
+                        Head::Lang(LangItem::Part) => return Ok(()), // $part does not enter into args
+                        Head::Block(expr) => subs_len(expr, length)?,
+                        Head::Lang(LangItem::Args(head)) => {
+                            if let Head::Block(ref mut expr) = **head {
+                                subs_len(expr, length)?
+                            }
+                        },
+                        _ => ()
+                    }
+                    node.args.iter_mut().try_for_each(|arg| subs_len(arg, length))?;
+                    Ok(())
                 }
+            }
+        }
+        try_with!(node, subs_len(node.args.get_mut(0).unwrap(), &length));
+        let first = node.args.remove(0).eval_env(env)?;
+        match first {
+            Item::Number(index) => {
+                macro_rules! orig_node {
+                    () => { {
+                        node.args.insert(0, Expr::new_number(index));
+                        node
+                    } }
+                }
+                try_with!(orig_node!(), index.check_within(Number::one()..));
+                match source.length() {
+                    Length::Exact(len) | Length::AtMost(len) if len < index =>
+                        return Err(StreamError::new("index past end of stream", orig_node!())),
+                    _ => ()
+                }
+                let mut iter = source.iter();
+                if iter.skip_n(&(&index - 1))?.is_some() {
+                    return Err(StreamError::new("index past end of stream", orig_node!()));
+                }
+                let item = match iter.next() {
+                    Some(value) => value?,
+                    None => return Err(StreamError::new("index past end of stream", orig_node!()))
+                };
+                if node.args.is_empty() {
+                    Ok(item)
+                } else {
+                    Part::eval(Node::new(node.head, Some(item.into()), node.args), env)
+                }
+            },
+            Item::Stream(indices) => {
+                Ok(Item::new_stream(Part{source, indices, rest: node.args, env: Rc::clone(env)}))
+            },
+            item => {
+                node.args.insert(0, item.into());
+                Err(StreamError::new(format!("expected number or stream, found {:?}", node.args[0]), node))
             }
         }
     }
@@ -158,8 +197,8 @@ impl Stream for Part {
 impl Describe for Part {
     fn describe(&self) -> String {
         let mut args = self.rest.clone();
-        let source = self.source.to_item();
-        args.insert(0, self.indices.to_item());
+        let source = self.source.to_expr();
+        args.insert(0, self.indices.to_expr());
         Node::describe_helper(&Head::Lang(LangItem::Part), Some(&source), &args)
     }
 }
@@ -190,9 +229,9 @@ impl Iterator for PartIter<'_> {
         };
         // TODO: smarter - number tracks increments, stream unfolds?
         let mut args = self.parent.rest.clone();
-        args.insert(0, part);
-        let node = ENode{head: LangItem::Part.into(), source: Some(self.parent.source.to_item()), args};
-        Some(Part::eval(node.into(), &self.parent.env))
+        args.insert(0, Expr::Imm(part));
+        let node = Node::new(LangItem::Part, Some(self.parent.source.to_expr()), args);
+        Some(Part::eval(node, &self.parent.env))
     }
 }
 
@@ -227,6 +266,18 @@ fn test_part() {
     assert!(parse("seq[2,5]").unwrap().eval().is_err());
     assert_eq!(parse("seq[[2,5]]").unwrap().eval().unwrap().to_string(), "[2, 5]");
     assert_eq!(parse("seq[[[2,5]]]").unwrap().eval().unwrap().to_string(), "[[2, 5]]"); // subject to change
+
+    assert_eq!(parse("[1,2,3][len]").unwrap().eval().unwrap().to_string(), "3");
+    assert_eq!(parse("[1,2,3][[len]]").unwrap().eval().unwrap().to_string(), "[3]");
+    assert_eq!(parse("[1,2,3][len-seq]").unwrap().eval().unwrap().to_string(), "[2, 1, <!>");
+    assert_eq!(parse("[[1], [1,2,3]][len, len]").unwrap().eval().unwrap().to_string(), "3");
+    assert_eq!(parse("[[1], [1,2,3]][1..2, len]").unwrap().eval().unwrap().to_string(), "[1, 3]");
+    assert_eq!(parse("[1,2,3][[1,2].len]").unwrap().eval().unwrap().to_string(), "2");
+    assert!(parse("[1,2,3][seq[len]]").unwrap().eval().is_err());
+    assert_eq!(parse("[1,2,3][range(len-1)[len]]").unwrap().eval().unwrap().to_string(), "2");
+    assert_eq!(parse("[1,2,3,4][{#1..(#1+1)}(len/2)]").unwrap().eval().unwrap().to_string(), "[2, 3]");
+    assert_eq!(parse("[1,2,3][{len}]").unwrap().eval().unwrap().to_string(), "3");
+    assert_eq!(parse("[1,2,3][{len}@[]]").unwrap().eval().unwrap().to_string(), "3");
 }
 
 

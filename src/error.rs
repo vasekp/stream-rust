@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter, Debug};
 
 /// The base error returned by helper functions. In most situations this is intended to be
 /// turned into [`StreamError`] by supplementing a [`Expr`].
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BaseError(String);
 
 impl<T> From<T> for BaseError where T: Into<String> {
@@ -42,7 +42,7 @@ impl Display for StreamError {
 
 
 macro_rules! try_with {
-    ($blame:ident, $expr:expr) => {
+    ($blame:expr, $expr:expr) => {
         match (|| -> Result<_, BaseError> { $expr })() {
             Ok(result) => result,
             Err(err) => return Err(StreamError::new(err, $blame))
