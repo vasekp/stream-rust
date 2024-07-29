@@ -2,17 +2,12 @@ use streamlang as stream;
 use stream::base::Describe;
 use std::io;
 
-fn main() {
+fn main() -> std::io::Result<()> {
     println!("ready >");
 
-    let mut buffer = String::new();
-    let stdin = io::stdin();
-    while let Ok(len) = stdin.read_line(&mut buffer) {
-        if len == 0 {
-            break;
-        }
-        let input = buffer.trim();
-        match stream::parse(input) {
+    for line in io::stdin().lines() {
+        let input = line?;
+        match stream::parse(&input) {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");
                 println!("Expr Describe: {}", expr.describe());
@@ -29,11 +24,11 @@ fn main() {
                 }
             },
             Err(err) => {
-                err.display(input);
+                err.display(&input);
                 println!("{err}");
             }
         }
-        buffer.clear();
         println!();
     }
+    Ok(())
 }
