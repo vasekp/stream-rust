@@ -1,4 +1,4 @@
-#![allow(clippy::borrowed_box)]
+#![allow(clippy::redundant_closure_call, clippy::borrowed_box)]
 use std::fmt::{Display, Formatter, Debug};
 use dyn_clone::DynClone;
 pub use num::*;
@@ -228,9 +228,10 @@ impl Node {
                 Ok(func) => func(self, env),
                 Err(e) => Err(StreamError::new(e, self))
             },
+            Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env),
             Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval_env(env),
-            Head::Repl(_, _) => Err(StreamError::new("out of context", self)),
-            Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env)
+            Head::Args(_) => Node::eval_at(self, env),
+            Head::Repl(_, _) => Err(StreamError::new("out of context", self))
         }
     }
 
@@ -258,6 +259,24 @@ impl Node {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
     }*/
+
+    fn eval_at(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        let node = node.eval_all(env)?;
+        assert!(node.args.len() == 1);
+        let src_stream = try_with!(node, node.args[0].as_stream());
+        if src_stream.length() == Length::Infinite {
+            return Err(StreamError::new("stream is infinite", node));
+        }
+        let Head::Args(head) = node.head else { unreachable!() };
+        let expr = Expr::Eval(Node{
+            head: *head,
+            source: node.source.map(|item| Box::new(item.into())),
+            args: src_stream.iter()
+                .map(|res| res.map(Expr::from))
+                .collect::<Result<Vec<_>, _>>()?
+        });
+        expr.eval_env(env)
+    }
 
     pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {
@@ -418,6 +437,7 @@ pub enum Head {
     Symbol(String),
     Oper(String),
     Block(Box<Expr>),
+    Args(Box<Head>), /// At-sign (source.head@args)
     Lang(LangItem),
     Repl(char, Option<usize>)
 }
@@ -431,13 +451,13 @@ impl Head {
             Head::Oper(_) => Default::default(),
             Head::Repl(chr, None) => chr.to_string(),
             Head::Repl(chr, Some(num)) => format!("{chr}{num}"),
-            Head::Lang(LangItem::Args(head)) => format!("{}@", head.describe()),
+            Head::Args(head) => format!("{}@", head.describe()),
             Head::Lang(_) => Default::default(),
         }
     }
 
-    pub fn args<T>(head: T) -> Head where T: Into<Head> {
-        Head::Lang(LangItem::Args(Box::new(head.into())))
+    pub fn args(head: impl Into<Head>) -> Head {
+        Head::Args(Box::new(head.into()))
     }
 }
 
@@ -490,8 +510,6 @@ pub enum LangItem {
     Part,
     /// Colon (`source:func` ~ `source.$map(func)`)
     Map,
-    /// At-sign (`source.head@args` ~ `source.$args{head}(args)`)
-    Args(Box<Head>)
 }
 
 impl LangItem {
@@ -500,8 +518,7 @@ impl LangItem {
         match self {
             List => "$list",
             Part => "$part",
-            Map => "$map",
-            Args(_) => "$args"
+            Map => "$map"
         }
     }
 }
@@ -1143,6 +1160,18 @@ fn test_block() {
     assert_eq!(parse("1.{2}(3)").unwrap().eval().unwrap().to_string(), "2");
     assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval().unwrap().to_string(), "6");
     assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval().unwrap().to_string(), "4");
+}
+
+#[test]
+fn test_args() {
+    use crate::parser::parse;
+    assert_eq!(parse("range@[3]").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
+    assert_eq!(parse("range@range(3)").unwrap().eval().unwrap().to_string(), "[1]");
+    assert_eq!(parse("range@range(3)").unwrap().eval().unwrap().to_string(), "[1]");
+    assert_eq!(parse("range@[3][2]").unwrap().eval().unwrap().to_string(), "2");
+    assert_eq!(parse("range@range(3)[1]").unwrap().eval().unwrap().to_string(), "1");
+    assert!(parse("range@3").unwrap().eval().is_err());
+    assert!(parse("range@seq").unwrap().eval().is_err());
 }
 
 #[test]

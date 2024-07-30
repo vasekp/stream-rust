@@ -135,7 +135,7 @@ impl Part {
                     match &mut node.head {
                         Head::Lang(LangItem::Part) => return Ok(()), // $part does not enter into args
                         Head::Block(expr) => subs_len(expr, length)?,
-                        Head::Lang(LangItem::Args(head)) => {
+                        Head::Args(head) => {
                             if let Head::Block(ref mut expr) = **head {
                                 subs_len(expr, length)?
                             }
@@ -782,45 +782,10 @@ fn test_join() {
 }
 
 
-fn eval_args(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    if node.args.len() != 1 {
-        return Err(StreamError::new("exactly 1 argument expected", node));
-    }
-    let src_stream = try_with!(node, node.args[0].as_stream());
-    if src_stream.length() == Length::Infinite {
-        return Err(StreamError::new("stream is infinite", node));
-    }
-    let Head::Lang(LangItem::Args(head)) = node.head
-        else { panic!("eval_args() called on something else than $args") };
-    let expr = Expr::Eval(Node{
-        head: *head,
-        source: node.source.map(|item| Box::new(item.into())),
-        args: src_stream.iter()
-            .map(|res| res.map(Expr::from))
-            .collect::<Result<Vec<_>, _>>()?
-    });
-    expr.eval_env(env)
-}
-
-#[test]
-fn test_args() {
-    use crate::parser::parse;
-    assert_eq!(parse("range@[3]").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-    assert_eq!(parse("range@range(3)").unwrap().eval().unwrap().to_string(), "[1]");
-    assert_eq!(parse("range@range(3)").unwrap().eval().unwrap().to_string(), "[1]");
-    assert_eq!(parse("range@[3][2]").unwrap().eval().unwrap().to_string(), "2");
-    assert_eq!(parse("range@range(3)[1]").unwrap().eval().unwrap().to_string(), "1");
-    assert!(parse("range@3").unwrap().eval().is_err());
-    assert!(parse("range@seq").unwrap().eval().is_err());
-}
-
-
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("$list", List::eval);
     keywords.insert("$part", Part::eval);
     keywords.insert("$map", Map::eval);
-    keywords.insert("$args", eval_args);
     keywords.insert("+", MathOp::eval);
     keywords.insert("-", MathOp::eval);
     keywords.insert("*", MathOp::eval);
