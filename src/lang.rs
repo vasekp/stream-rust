@@ -227,9 +227,17 @@ impl Iterator for PartIter<'_> {
         let Ok(part) = part else {
             return Some(part);
         };
-        // TODO: smarter - number tracks increments, stream unfolds?
-        let mut args = self.parent.rest.clone();
-        args.insert(0, Expr::Imm(part));
+        // TODO: smarter - number tracks increments
+        let mut args = match part {
+            Item::Stream(stream) => match stream.iter()
+                .map(|r| r.map(Expr::from))
+                .collect::<Result<Vec<_>, _>>() {
+                    Ok(args) => args,
+                    Err(err) => return Some(Err(err))
+                },
+            item => vec![Expr::from(item)]
+        };
+        args.extend_from_slice(&self.parent.rest);
         let node = Node::new(LangItem::Part, Some(self.parent.source.to_expr()), args);
         Some(Part::eval(node, &self.parent.env))
     }
@@ -265,7 +273,9 @@ fn test_part() {
     assert_eq!(parse("seq:{seq^#}[[1,2],[1,2,3]]").unwrap().eval().unwrap().to_string(), "[[1, 2, 3], [1, 4, 9]]");
     assert!(parse("seq[2,5]").unwrap().eval().is_err());
     assert_eq!(parse("seq[[2,5]]").unwrap().eval().unwrap().to_string(), "[2, 5]");
-    assert_eq!(parse("seq[[[2,5]]]").unwrap().eval().unwrap().to_string(), "[[2, 5]]"); // subject to change
+    assert_eq!(parse("seq[[[2,5]]]").unwrap().eval().unwrap().to_string(), "[<!>");
+    assert_eq!(parse("seq:{#^seq}[[[2,[3,5]],[[3,5],2]]]").unwrap().eval().unwrap().to_string(), "[[8, 32], [9, 25]]");
+    assert_eq!(parse("range(5):{#^range(3)}[[[len,[2,3]],[[3,5],len]]]").unwrap().eval().unwrap().to_string(), "[[25, 125], [27, 125]]"); // TODO breaks
 
     assert_eq!(parse("[1,2,3][len]").unwrap().eval().unwrap().to_string(), "3");
     assert_eq!(parse("[1,2,3][[len]]").unwrap().eval().unwrap().to_string(), "[3]");
