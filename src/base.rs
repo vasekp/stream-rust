@@ -263,7 +263,7 @@ impl Node {
     fn eval_at(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         assert!(node.args.len() == 1);
-        let src_stream = try_with!(node, node.args[0].as_stream());
+        let src_stream = try_with!(node, node.args[0].as_stream()?);
         if src_stream.length() == Length::Infinite {
             return Err(StreamError::new("stream is infinite", node));
         }

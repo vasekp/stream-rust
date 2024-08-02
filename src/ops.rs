@@ -48,14 +48,14 @@ impl Stream for Seq {
 impl Seq {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source());
+        try_with!(node, node.check_no_source()?);
         let (from, step) = try_with!(node, match node.args[..] {
-            [] => Ok((Number::one(), Number::one())),
+            [] => (Number::one(), Number::one()),
             [Item::Number(ref mut from)]
-                => Ok((std::mem::take(from), Number::one())),
+                => (std::mem::take(from), Number::one()),
             [Item::Number(ref mut from), Item::Number(ref mut step)]
-                => Ok((std::mem::take(from), std::mem::take(step))),
-            _ => Err("expected one of: seq(), seq(number), seq(number, number)".into())
+                => (std::mem::take(from), std::mem::take(step)),
+            _ => return Err("expected one of: seq(), seq(number), seq(number, number)".into())
         });
         Ok(Item::new_stream(Seq{from, step}))
     }
@@ -135,29 +135,29 @@ enum RangeType {
 impl Range {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source());
+        try_with!(node, node.check_no_source()?);
         let (from, to, step, rtype) = try_with!(node, match node.args[..] {
             [Item::Number(ref mut to)]
-                => Ok((Number::one(), std::mem::take(to), Number::one(), RangeType::Numeric)),
+                => (Number::one(), std::mem::take(to), Number::one(), RangeType::Numeric),
             [Item::Number(ref mut from), Item::Number(ref mut to)]
-                => Ok((std::mem::take(from), std::mem::take(to), Number::one(), RangeType::Numeric)),
+                => (std::mem::take(from), std::mem::take(to), Number::one(), RangeType::Numeric),
             [Item::Number(ref mut from), Item::Number(ref mut to), Item::Number(ref mut step)]
-                => Ok((std::mem::take(from), std::mem::take(to), std::mem::take(step), RangeType::Numeric)),
+                => (std::mem::take(from), std::mem::take(to), std::mem::take(step), RangeType::Numeric),
             [Item::Char(ref from), Item::Char(ref to)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
                     let (to_ix, _) = abc.ord_case(to)?;
-                    Ok((from_ix.into(), to_ix.into(), Number::one(), RangeType::Character(case)))
+                    (from_ix.into(), to_ix.into(), Number::one(), RangeType::Character(case))
                 },
             [Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
                     let (to_ix, _) = abc.ord_case(to)?;
-                    Ok((from_ix.into(), to_ix.into(), std::mem::take(step), RangeType::Character(case)))
+                    (from_ix.into(), to_ix.into(), std::mem::take(step), RangeType::Character(case))
                 },
-            _ => Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
+            _ => return Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
         });
         if Range::empty_helper(&from, &to, &step) {
             Ok(Item::new_stream(EmptyStream()))
@@ -320,12 +320,12 @@ fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     if !node.args.is_empty() {
         return Err(StreamError::new("no arguments allowed", node));
     }
-    let length = try_with!(node, node.source_checked()?.as_stream()).length();
+    let length = try_with!(node, node.source_checked()?.as_stream()?.length());
     use Length::*;
     match length {
         Exact(len) => Ok(Item::new_number(len)),
         AtMost(_) | UnknownFinite | Unknown => {
-            let len = try_with!(node, node.source_checked()?.as_stream()).iter().count();
+            let len = try_with!(node, node.source_checked()?.as_stream()?.iter().count());
             Ok(Item::new_number(len))
         },
         _ => Err(StreamError::new("stream is infinite", node))
@@ -344,15 +344,15 @@ impl Repeat {
         let mut node = node.eval_all(env)?;
         let (item, count) = try_with!(node, match (&mut node.source, node.args.len(), node.args.get_mut(0)) {
             (Some(ref mut src), 0, None)
-                => Ok((std::mem::take(src), None)),
+                => (std::mem::take(src), None),
             (Some(ref mut src), 1, Some(Item::Number(ref mut count))) => {
                 if count.is_negative() {
-                    Err(format!("expected nonnegative count, found {}", count).into())
+                    return Err(format!("expected nonnegative count, found {}", count).into());
                 } else {
-                    Ok((std::mem::take(src), Some(std::mem::take(count))))
+                    (std::mem::take(src), Some(std::mem::take(count)))
                 }
             },
-            _ => Err("expected one of: source.repeat(), source.repeat(count)".into())
+            _ => return Err("expected one of: source.repeat(), source.repeat(count)".into())
         });
         if let Item::Stream(ref stm) = &item {
             if stm.is_empty() || count.as_ref().map_or(false, Zero::is_zero) {
@@ -591,8 +591,8 @@ struct Shift {
 impl Shift {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
-        try_with!(node, node.source_checked()?.as_string());
-        try_with!(node, node.check_args_nonempty());
+        try_with!(node, node.source_checked()?.as_string()?);
+        try_with!(node, node.check_args_nonempty()?);
         Ok(Item::new_stream(Shift{node, env: Rc::clone(env)}))
     }
 

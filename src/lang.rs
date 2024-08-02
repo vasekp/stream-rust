@@ -12,7 +12,7 @@ pub struct List(Vec<Item>);
 impl List {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source());
+        try_with!(node, node.check_no_source()?);
         Ok(Item::new_stream(List::from(node.args)))
     }
 }
@@ -110,8 +110,8 @@ impl Part {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         use once_cell::unsync::Lazy;
         let mut node = node.eval_source(env)?;
-        let source = try_with!(node, node.source_checked()?.as_item()?.to_stream());
-        try_with!(node, node.check_args_nonempty());
+        let source = try_with!(node, node.source_checked()?.as_item()?.to_stream()?);
+        try_with!(node, node.check_args_nonempty()?);
         let length = Lazy::new(|| match source.length() {
             Length::Exact(len) => Ok(len),
             Length::Infinite => Err(BaseError::from("stream is infinite")),
@@ -147,7 +147,7 @@ impl Part {
                 }
             }
         }
-        try_with!(node, subs_len(node.args.get_mut(0).unwrap(), &length));
+        try_with!(node, subs_len(node.args.get_mut(0).unwrap(), &length)?);
         let first = node.args.remove(0).eval_env(env)?;
         match first {
             Item::Number(index) => {
@@ -157,7 +157,7 @@ impl Part {
                         node
                     } }
                 }
-                try_with!(orig_node!(), index.check_within(Number::one()..));
+                try_with!(orig_node!(), index.check_within(Number::one()..)?);
                 match source.length() {
                     Length::Exact(len) | Length::AtMost(len) if len < index =>
                         return Err(StreamError::new("index past end of stream", orig_node!())),
@@ -295,9 +295,9 @@ struct MapIter<'node> {
 impl Map {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_source(env)?;
-        let source = try_with!(node, node.source_checked()?.as_item()?.to_stream());
+        let source = try_with!(node, node.source_checked()?.as_item()?.to_stream()?);
         let body = match node.args.len() {
-            1 => try_with!(node, node.args[0].to_node()),
+            1 => try_with!(node, node.args[0].to_node()?),
             _ => return Err(StreamError::new("exactly 1 argument required", node))
         };
         if body.source.is_some() {
@@ -386,12 +386,12 @@ impl MathOp {
 
     fn eval_with(node: Node, env: &Rc<Env>, func: MathFunc) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source());
-        try_with!(node, node.check_args_nonempty());
+        try_with!(node, node.check_no_source()?);
+        try_with!(node, node.check_args_nonempty()?);
         if node.args.iter().any(Item::is_stream) {
             Ok(Item::new_stream(MathOp{node, env: Rc::clone(env), func}))
         } else {
-            Ok(try_with!(node, func(&node.args, env)))
+            Ok(try_with!(node, func(&node.args, env)?))
         }
     }
 
@@ -631,8 +631,8 @@ struct Join {
 impl Join {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source());
-        try_with!(node, node.check_args_nonempty());
+        try_with!(node, node.check_no_source()?);
+        try_with!(node, node.check_args_nonempty()?);
 
         #[derive(Clone, Copy)]
         enum Type {

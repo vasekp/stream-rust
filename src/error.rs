@@ -43,7 +43,7 @@ impl Display for StreamError {
 
 macro_rules! try_with {
     ($blame:expr, $expr:expr) => {
-        match (|| -> Result<_, BaseError> { $expr })() {
+        match (|| -> Result<_, BaseError> { Ok($expr) })() {
             Ok(result) => result,
             Err(err) => return Err(StreamError::new(err, $blame))
         }
