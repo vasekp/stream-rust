@@ -1,4 +1,4 @@
-#![allow(clippy::redundant_closure_call, clippy::borrowed_box)]
+#![allow(clippy::redundant_closure_call)]
 use std::fmt::{Display, Formatter, Debug};
 use dyn_clone::DynClone;
 pub use num::*;
@@ -7,6 +7,7 @@ pub use crate::alphabet::Char;
 use crate::keywords::find_keyword;
 use std::cell::Cell;
 use std::rc::Rc;
+use std::ops::Deref;
 use crate::alphabet::*;
 
 /// The type for representing all numbers in Stream. The requirement is that it allows
@@ -594,9 +595,9 @@ impl Item {
         matches!(self, Item::Stream(_))
     }
 
-    pub fn as_stream(&self) -> Result<&Box<dyn Stream>, BaseError> {
+    pub fn as_stream(&self) -> Result<&(dyn Stream + 'static), BaseError> {
         match self {
-            Item::Stream(s) => Ok(s),
+            Item::Stream(s) => Ok(s.deref()),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
@@ -804,7 +805,7 @@ impl dyn Stream {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    pub fn writeout(self: &Box<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    pub fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         if self.is_string() {
@@ -814,7 +815,7 @@ impl dyn Stream {
         }
     }
 
-    fn writeout_stream(self: &Box<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -866,7 +867,7 @@ impl dyn Stream {
         }
     }
 
-    fn writeout_string(self: &Box<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.string_iter();
@@ -919,7 +920,7 @@ impl dyn Stream {
 
     /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
     /// failing for other types. Suitable for iterating over strings ([`Stream::is_string()`]` == true`)
-    pub fn string_iter<'node>(self: &'node Box<Self>) -> StringIterator<'node> {
+    pub fn string_iter(&self) -> StringIterator<'_> {
         StringIterator::new(self)
     }
 }
@@ -1099,11 +1100,11 @@ impl SIterator for Forever<'_> {
 // TODO: cargo doc reference to impl dyn Stream
 pub struct StringIterator<'node> {
     iter: Box<dyn SIterator + 'node>,
-    parent: &'node Box<dyn Stream>
+    parent: &'node (dyn Stream + 'static)
 }
 
 impl<'node> StringIterator<'node> {
-    fn new(item: &'node Box<dyn Stream>) -> Self {
+    fn new(item: &'node (dyn Stream + 'static)) -> Self {
         StringIterator{iter: item.iter(), parent: item}
     }
 
