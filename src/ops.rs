@@ -1,4 +1,3 @@
-#![allow(clippy::redundant_closure_call)]
 use crate::base::*;
 use crate::alphabet::*;
 use crate::utils::{EmptyStream, EmptyString};
@@ -355,13 +354,13 @@ impl Repeat {
             _ => return Err("expected one of: source.repeat(), source.repeat(count)".into())
         });
         if let Item::Stream(ref stm) = &item {
-            if stm.is_empty() || count.as_ref().map_or(false, Zero::is_zero) {
+            if stm.is_empty() || count.as_ref().is_some_and(Zero::is_zero) {
                 return Ok(
                     if stm.is_string() { Item::new_stream(EmptyString()) }
                     else { Item::new_stream(EmptyStream()) }
                 );
             }
-            if count.as_ref().map_or(false, One::is_one) {
+            if count.as_ref().is_some_and(One::is_one) {
                 return Ok(item)
             }
         } else if let Some(ref count) = count {
@@ -618,7 +617,7 @@ impl Describe for Shift {
 }
 
 impl Stream for Shift {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter(&self) -> Box<dyn SIterator + '_> {
         let base = self.node.source.as_ref().unwrap().as_stream().unwrap().string_iter();
         let args = self.node.args.iter()
             .map(|item| match item {

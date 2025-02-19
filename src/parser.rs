@@ -292,7 +292,7 @@ fn test_tokenizer() {
 
 
 fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
-    match slice.split(|c| c == '_').collect::<Vec<_>>()[..] {
+    match slice.split('_').collect::<Vec<_>>()[..] {
         [base_str, value_str] if !value_str.is_empty() => {
             let base = base_str.parse::<u32>()
                 .map_err(|_| ParseError::new("invalid base", base_str))?;

@@ -1,4 +1,3 @@
-#![allow(clippy::redundant_closure_call)]
 use std::fmt::{Display, Formatter, Debug};
 use dyn_clone::DynClone;
 pub use num::*;
@@ -629,7 +628,7 @@ impl Item {
             cell: Cell<Option<StreamError>>
         }
 
-        impl<'item> Display for Stateful<'item> {
+        impl Display for Stateful<'_> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
                 self.item.format_int(f, &self.cell)
             }
@@ -1114,7 +1113,7 @@ impl<'node> StringIterator<'node> {
     }
 }
 
-impl<'node> Iterator for StringIterator<'node> {
+impl Iterator for StringIterator<'_> {
     type Item = Result<Char, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
