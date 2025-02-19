@@ -622,7 +622,7 @@ impl Item {
         }
     }
 
-    pub fn format(&self, max_len: usize) -> (String, Option<StreamError>) {
+    pub fn format(&self, max_len: Option<usize>) -> (String, Option<StreamError>) {
         struct Stateful<'item> {
             item: &'item Item,
             cell: Cell<Option<StreamError>>
@@ -635,7 +635,10 @@ impl Item {
         }
 
         let s = Stateful{item: self, cell: Default::default()};
-        let result = format!("{:.*}", max_len, s);
+        let result = match max_len {
+            Some(width) => format!("{s:.*}", width),
+            None => format!("{s}")
+        };
         (result, s.cell.take())
     }
 
@@ -816,14 +819,14 @@ impl dyn Stream {
     {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
-            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
-            None => (usize::MAX, 3)
+            Some(prec) => (Some(std::cmp::max(prec, 4)), None),
+            None => (None, Some(3))
         };
         let mut s = String::new();
         let mut i = 0;
         s.push('[');
         'a: {
-            while s.len() < prec && i < max {
+            while prec.is_none_or(|prec| s.len() < prec) && max.is_none_or(|max| i < max) {
                 match iter.next() {
                     None => {
                         s.push(']');
@@ -834,7 +837,7 @@ impl dyn Stream {
                         if i > 0 {
                             s += ", ";
                         }
-                        let (string, err) = item.format(prec - plen);
+                        let (string, err) = item.format(prec.map(|prec| prec - plen));
                         s += &string;
                         if err.is_some() {
                             error.set(err);
@@ -857,10 +860,9 @@ impl dyn Stream {
                 Some(_) => ", ..."
             };
         }
-        if s.len() < prec {
-            write!(f, "{}", s)
-        } else {
-            write!(f, "{:.*}...", prec - 3, s)
+        match prec {
+            Some(prec) if prec < s.len() => write!(f, "{:.*}...", prec - 3, s),
+            _ => write!(f, "{}", s)
         }
     }
 
@@ -869,14 +871,14 @@ impl dyn Stream {
     {
         let mut iter = self.string_iter();
         let (prec, max) = match f.precision() {
-            Some(prec) => (std::cmp::max(prec, 4), usize::MAX),
-            None => (usize::MAX, 20)
+            Some(prec) => (Some(std::cmp::max(prec, 4)), None),
+            None => (None, Some(20))
         };
         let mut s = String::new();
         let mut i = 0;
         s.push('"');
         'a: {
-            while s.len() < prec && i < max {
+            while prec.is_none_or(|prec| s.len() < prec) && max.is_none_or(|max| i < max) {
                 if let Some(next) = iter.next() {
                     match next {
                         Ok(ch) => s += &format!("{ch:#}"),
@@ -897,10 +899,9 @@ impl dyn Stream {
                 Some(_) => "..."
             };
         }
-        if s.len() < prec {
-            write!(f, "{}", s)
-        } else {
-            write!(f, "{:.*}...", prec - 3, s)
+        match prec {
+            Some(prec) if prec < s.len() => write!(f, "{:.*}...", prec - 3, s),
+            _ => write!(f, "{}", s)
         }
     }
 
