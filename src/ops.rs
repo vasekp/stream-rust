@@ -472,7 +472,7 @@ impl Iterator for RepeatStreamIter<'_> {
             if count.is_zero() {
                 return None;
             }
-            (*count).dec();
+            count.dec();
         }
         self.iter = self.stream.iter();
         self.iter.next()
@@ -490,7 +490,7 @@ impl SIterator for RepeatStreamIter<'_> {
             if count.is_zero() {
                 return Ok(Some(n));
             }
-            (*count).dec();
+            count.dec();
         }
         self.iter = self.stream.iter();
 
@@ -519,7 +519,7 @@ impl SIterator for RepeatStreamIter<'_> {
             if count.is_zero() {
                 return Ok(Some(n));
             }
-            (*count).dec();
+            count.dec();
         }
         self.iter = self.stream.iter();
         debug_assert!(n < full_length);
@@ -666,7 +666,7 @@ impl Iterator for ShiftIter<'_> {
         }
 
         let rest = self.args.iter_mut()
-            .map(|iter| (*iter).next())
+            .map(Iterator::next)
             .collect::<Option<Result<Vec<_>, _>>>();
         match rest {
             None => Some(Err(StreamError::new("some operand ended earlier than the source", self.node))),

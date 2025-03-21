@@ -537,7 +537,7 @@ impl Iterator for MathOpIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.args.iter_mut()
-            .map(|iter| (*iter).next())
+            .map(Iterator::next)
             .collect::<Option<Result<Vec<_>, _>>>()
         {
             Some(Ok(inputs)) => {
@@ -555,7 +555,7 @@ impl SIterator for MathOpIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         let mut remain = Number::zero();
         for iter in &mut self.args {
-            if let Some(r) = (*iter).skip_n(n)? {
+            if let Some(r) = iter.skip_n(n)? {
                 remain = std::cmp::max(remain, r);
             }
         }
@@ -708,7 +708,7 @@ impl Iterator for JoinIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let next = (*self.cur).next();
+            let next = self.cur.next();
             if next.is_some() {
                 return next;
             } else {

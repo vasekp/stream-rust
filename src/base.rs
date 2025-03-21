@@ -229,7 +229,7 @@ impl Node {
                 Err(e) => Err(StreamError::new(e, self))
             },
             Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env),
-            Head::Block(blk) => (*blk).apply(&self.source, &self.args)?.eval_env(env),
+            Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval_env(env),
             Head::Args(_) => Node::eval_at(self, env),
             Head::Repl(_, _) => Err(StreamError::new("out of context", self))
         }
@@ -237,7 +237,7 @@ impl Node {
 
     pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
         let source = match self.source {
-            Some(source) => Some((*source).eval_env(env)?),
+            Some(source) => Some(source.eval_env(env)?),
             None => None
         };
         let args = self.args.into_iter()
@@ -248,7 +248,7 @@ impl Node {
 
     pub(crate) fn eval_source(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         if let Some(source) = self.source.take() {
-            self.source = Some(Box::new((*source).eval_env(env)?.into()));
+            self.source = Some(Box::new(source.eval_env(env)?.into()));
         }
         Ok(self)
     }
@@ -283,7 +283,7 @@ impl Node {
             head: self.head,
             source: match self.source {
                 None => None,
-                Some(boxed) => Some(Box::new((*boxed).apply(source, args)?))
+                Some(boxed) => Some(Box::new(boxed.apply(source, args)?))
             },
             args: self.args.into_iter()
                 .map(|expr| expr.apply(source, args))
@@ -303,7 +303,7 @@ impl Node {
                 _ => ret.push('.')
             }
         }
-        ret += &(*head).describe();
+        ret += &head.describe();
         if let Head::Oper(o) = head {
             ret.push('(');
             let mut it = args.iter().map(Describe::describe);
