@@ -504,7 +504,7 @@ impl PartialEq<str> for Head {
 /// Special types of [`Head`] for language constructs with special syntax.
 #[derive(Debug, PartialEq, Clone)]
 pub enum LangItem {
-    /// List (`[1, 2, 3]` ~ `$part(1, 2, 3)`)
+    /// List (`[1, 2, 3]` ~ `$list(1, 2, 3)`)
     List,
     /// Parts (`source[1, 2]` ~ `source.$part(1, 2)`)
     Part,
