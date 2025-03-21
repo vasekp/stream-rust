@@ -6,7 +6,7 @@ pub use crate::alphabet::Char;
 pub use crate::utils::TriState;
 use crate::keywords::find_keyword;
 use std::cell::Cell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::ops::Deref;
 use crate::alphabet::*;
 
@@ -1132,7 +1132,9 @@ impl Iterator for StringIterator<'_> {
 /// The environment in which expressions are evaluated. This is passed as an argument to
 /// [`Expr::eval()`]. Currently a placeholder, but in the future to be defined through `env`.
 #[derive(Default, Clone)]
-pub struct Env { }
+pub struct Env {
+    pub(crate) cache: Weak<crate::ops::CacheHistory>
+}
 
 impl Env {
     fn is_trivial(&self) -> bool { true }

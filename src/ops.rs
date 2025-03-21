@@ -1,7 +1,9 @@
 use crate::base::*;
 use crate::alphabet::*;
 use crate::utils::{EmptyStream, EmptyString, TriState};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
+use std::cell::RefCell;
+use std::pin::Pin;
 
 /// An infinite stream returning consecutive numbers, `seq`.
 ///
@@ -733,6 +735,150 @@ fn test_shift() {
 }
 
 
+#[derive(Clone)]
+struct Cached {
+    body: Expr,
+    env: Rc<Env>
+}
+
+pub(crate) type CacheHistory = RefCell<Vec<Item>>;
+
+struct RefIter<'node> {
+    inner: Box<dyn SIterator + 'node>,
+    _stm: Pin<Box<dyn Stream>>,
+    hist: Rc<CacheHistory>
+}
+
+impl Cached {
+    fn eval(mut node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        if node.source.is_some() {
+            return Err(StreamError::new("no source accepted", node));
+        }
+        let body = match node.args.len() {
+            1 => node.args.pop().unwrap(),
+            _ => return Err(StreamError::new("exactly 1 argument required", node))
+        };
+        Ok(Item::Stream(Box::new(Cached{body, env: Rc::clone(env)})))
+    }
+
+    fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {
+        let mut env = (*self.env).clone();
+        let hist = Rc::new(RefCell::new(Vec::new()));
+        env.cache = Rc::downgrade(&hist);
+        let item = self.body.clone().eval_env(&Rc::new(env))?;
+        let stm = try_with!(self.body.clone(), item.to_stream()?);
+        Ok((stm, hist))
+    }
+}
+
+impl Describe for Cached {
+    fn describe(&self) -> String {
+        format!("cached({})", self.body.describe())
+    }
+}
+
+impl Stream for Cached {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        let (stm, hist) = match self.eval_real() {
+            Ok((stm, hist)) => (Box::into_pin(stm), hist),
+            Err(err) => return Box::new(std::iter::once(Err(err)))
+        };
+        let iter = unsafe { std::mem::transmute::<&dyn Stream, &dyn Stream>(&*stm) }.iter();
+        Box::new(RefIter {
+            inner: iter,
+            _stm: stm,
+            hist
+        })
+    }
+
+    fn is_string(&self) -> TriState {
+        match self.eval_real() {
+            Ok((stm, _)) => stm.is_string(),
+            Err(_) => TriState::False
+        }
+    }
+}
+
+impl Iterator for RefIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner.next()? {
+            Ok(item) => {
+                self.hist.borrow_mut().push(item.clone());
+                Some(Ok(item))
+            },
+            Err(err) => Some(Err(err))
+        }
+    }
+}
+
+impl SIterator for RefIter<'_> { }
+
+#[derive(Clone)]
+struct BackRef {
+    parent: Weak<CacheHistory>
+}
+
+struct BackRefIter {
+    vec: Rc<CacheHistory>,
+    pos: usize
+}
+
+impl BackRef {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        if node.source.is_some() {
+            return Err(StreamError::new("no source accepted", node));
+        }
+        if !node.args.is_empty() {
+            return Err(StreamError::new("no arguments accepted", node));
+        }
+        Ok(Item::Stream(Box::new(BackRef{parent: Weak::clone(&env.cache)})))
+    }
+}
+
+impl Describe for BackRef {
+    fn describe(&self) -> String {
+        "backref".to_owned()
+    }
+}
+
+impl Stream for BackRef {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        match Weak::upgrade(&self.parent) {
+            Some(rc) => Box::new(BackRefIter{vec: rc, pos: 0}),
+            None => Box::new(std::iter::once(Err(StreamError::new("backref without cached", 
+                        Node::new("backref", None, vec![])))))
+        }
+    }
+
+    fn is_string(&self) -> TriState {
+        TriState::Either
+    }
+
+    fn length(&self) -> Length {
+        match Weak::upgrade(&self.parent) {
+            Some(rc) => Length::Exact(rc.borrow().len().into()),
+            None => Length::Unknown
+        }
+    }
+}
+
+impl Iterator for BackRefIter {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let opos = self.pos;
+        self.pos += 1;
+        self.vec.borrow().get(opos).cloned().map(Result::Ok)
+    }
+}
+
+impl SIterator for BackRefIter {}
+
+
+
+
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::eval);
     keywords.insert("range", Range::eval);
@@ -740,4 +886,6 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("len", eval_len);
     keywords.insert("repeat", Repeat::eval);
     keywords.insert("shift", Shift::eval);
+    keywords.insert("cached", Cached::eval);
+    keywords.insert("backref", BackRef::eval);
 }
