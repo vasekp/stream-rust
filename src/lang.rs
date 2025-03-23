@@ -1,6 +1,6 @@
 use crate::base::*;
 use crate::alphabet::*;
-use crate::utils::NumWithin;
+use crate::utils::{NumWithin, TriState};
 use std::rc::Rc;
 
 
@@ -70,8 +70,8 @@ impl Stream for LiteralString {
         Box::new(self.0.iter().map(|x| Ok(Item::new_char(x.clone()))))
     }
 
-    fn is_string(&self) -> bool {
-        true
+    fn is_string(&self) -> TriState {
+        TriState::True
     }
 
     fn length(&self) -> Length {
@@ -636,7 +636,7 @@ impl Join {
         use crate::utils::TriState;
         fn is_string(item: &Item) -> TriState {
             match item {
-                Item::Stream(stm) => TriState::from(stm.is_string()),
+                Item::Stream(stm) => stm.is_string(),
                 Item::Char(_) => TriState::Either,
                 _ => TriState::False
             }
@@ -666,8 +666,8 @@ impl Stream for Join {
         Box::new(JoinIter{node: &self.node, index: 0, cur: first})
     }
 
-    fn is_string(&self) -> bool {
-        self.string
+    fn is_string(&self) -> TriState {
+        self.string.into()
     }
 
     fn length(&self) -> Length {

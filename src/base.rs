@@ -3,6 +3,7 @@ use dyn_clone::DynClone;
 pub use num::*;
 pub use crate::error::*;
 pub use crate::alphabet::Char;
+pub use crate::utils::TriState;
 use crate::keywords::find_keyword;
 use std::cell::Cell;
 use std::rc::Rc;
@@ -617,7 +618,7 @@ impl Item {
 
     pub fn as_string(&self) -> Result<&dyn Stream, BaseError> {
         match self {
-            Item::Stream(s) if s.is_string() => Ok(&**s),
+            Item::Stream(s) if s.is_string().can_be_true() => Ok(&**s),
             _ => Err(format!("expected string, found {:?}", &self).into())
         }
     }
@@ -660,7 +661,7 @@ impl Item {
             Number(_) => "number",
             Bool(_) => "bool",
             Char(_) => "char",
-            Stream(s) if s.is_string() => "string",
+            Stream(s) if s.is_string().is_true() => "string",
             Stream(_) => "stream"
         }
     }
@@ -742,13 +743,13 @@ pub trait Stream: DynClone + Describe {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
 
     /// An indication whether this stream should be treated as a string. The implementation should
-    /// only return `true` if it can be sure that the iterator will produce a stream of [`Char`]s.
-    /// If so, this affects the behaviour of [`dyn Stream::writeout()`](trait.Stream.html#impl-dyn+Stream).
+    /// only return [`TriState::True`] if it can be sure that the iterator will produce a stream of 
+    /// [`Char`]s. If so, this affects the behaviour of [`dyn Stream::writeout()`](trait.Stream.html#impl-dyn+Stream).
     ///
-    /// The default implementation returns `false`.
+    /// The default implementation returns [`TriState::False`].
     // TODO link do <dyn Stream>::writeout unsupported?
-    fn is_string(&self) -> bool {
-        false
+    fn is_string(&self) -> TriState {
+        TriState::False
     }
 
     /// Returns the length of this stream, in as much information as available *without* consuming
@@ -807,7 +808,7 @@ impl dyn Stream {
     pub fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
-        if self.is_string() {
+        if self.is_string().is_true() {
             self.writeout_string(f, error)
         } else {
             self.writeout_stream(f, error)
@@ -918,7 +919,7 @@ impl dyn Stream {
     }
 
     /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
-    /// failing for other types. Suitable for iterating over strings ([`Stream::is_string()`]` == true`)
+    /// failing for other types. Suitable for iterating over strings ([`Stream::is_string()`]` == `[`TriState::True`]).
     pub fn string_iter(&self) -> StringIterator<'_> {
         StringIterator::new(self)
     }

@@ -51,8 +51,8 @@ impl Stream for EmptyString {
         Box::new(std::iter::empty())
     }
 
-    fn is_string(&self) -> bool {
-        true
+    fn is_string(&self) -> TriState {
+        TriState::True
     }
 }
 
@@ -73,6 +73,10 @@ pub enum TriState {
 impl TriState {
     pub fn is_true(self) -> bool {
         self == Self::True
+    }
+
+    pub fn can_be_true(self) -> bool {
+        self != Self::False
     }
 
     #[allow(clippy::result_unit_err)]

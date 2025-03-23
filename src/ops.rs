@@ -1,6 +1,6 @@
 use crate::base::*;
 use crate::alphabet::*;
-use crate::utils::{EmptyStream, EmptyString};
+use crate::utils::{EmptyStream, EmptyString, TriState};
 use std::rc::Rc;
 
 /// An infinite stream returning consecutive numbers, `seq`.
@@ -356,7 +356,7 @@ impl Repeat {
         if let Item::Stream(ref stm) = &item {
             if stm.is_empty() || count.as_ref().is_some_and(Zero::is_zero) {
                 return Ok(
-                    if stm.is_string() { Item::new_stream(EmptyString()) }
+                    if stm.is_string().is_true() { Item::new_stream(EmptyString()) }
                     else { Item::new_stream(EmptyStream()) }
                 );
             }
@@ -409,10 +409,11 @@ impl Stream for Repeat {
         }
     }
 
-    fn is_string(&self) -> bool {
+    fn is_string(&self) -> TriState {
         match &self.item {
             Item::Stream(stream) => stream.is_string(),
-            _ => false
+            // TODO Char => True
+            _ => TriState::False
         }
     }
 }
@@ -627,8 +628,8 @@ impl Stream for Shift {
         Box::new(ShiftIter{base, args, node: &self.node, env: &self.env})
     }
 
-    fn is_string(&self) -> bool {
-        true
+    fn is_string(&self) -> TriState {
+        TriState::True
     }
 
     fn length(&self) -> Length {
