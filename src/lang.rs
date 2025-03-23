@@ -760,7 +760,7 @@ fn test_join() {
     test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval().unwrap(), 3);
     test_skip_n(&parse("range(10^10)~range(10^9)").unwrap().eval().unwrap());
     test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval().unwrap());
-    test_skip_n(&parse("('a'..'z').repeat(10^10)~'A'.repeat(10^10)").unwrap().eval().unwrap());
+    test_skip_n(&parse("('a'..'z').repeat(10^10)~['A'].repeat(10^10)").unwrap().eval().unwrap());
 }
 
 
