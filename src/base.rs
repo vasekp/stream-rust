@@ -743,7 +743,7 @@ pub trait Stream: DynClone + Describe {
 
     /// An indication whether this stream should be treated as a string. The implementation should
     /// only return `true` if it can be sure that the iterator will produce a stream of [`Char`]s.
-    /// If so, this affects the behaviour of `Stream::writeout()`.
+    /// If so, this affects the behaviour of [`dyn Stream::writeout()`](trait.Stream.html#impl-dyn+Stream).
     ///
     /// The default implementation returns `false`.
     // TODO link do <dyn Stream>::writeout unsupported?
