@@ -820,12 +820,16 @@ impl dyn Stream {
     {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
-            Some(prec) => (Some(std::cmp::max(prec, 4)), None),
+            Some(prec) => (Some(prec), None),
             None => (None, Some(3))
         };
         let mut s = String::new();
         let mut i = 0;
         s.push('[');
+        if prec.is_some_and(|prec| prec < 4) {
+            s += "...";
+            return write!(f, "{}", s);
+        }
         'a: {
             while prec.is_none_or(|prec| s.len() < prec) && max.is_none_or(|max| i < max) {
                 match iter.next() {
