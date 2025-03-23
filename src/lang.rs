@@ -633,37 +633,20 @@ impl Join {
         try_with!(node, node.check_no_source()?);
         try_with!(node, node.check_args_nonempty()?);
 
-        #[derive(Clone, Copy)]
-        enum Type {
-            Stream,
-            String,
-            Either
-        }
-        impl Type {
-            fn of(item: &Item) -> Type {
-                match item {
-                    Item::Stream(stm) => if stm.is_string() { Type::String } else { Type::Stream },
-                    Item::Char(_) => Type::Either,
-                    _ => Type::Stream
-                }
-            }
-
-            fn common(x: Type, y: Type) -> Result<Type, ()> {
-                use Type::*;
-                match (x, y) {
-                    (Stream, Stream | Either) => Ok(Stream),
-                    (String, String | Either) => Ok(String),
-                    (Either, x) => Ok(x),
-                    _ => Err(())
-                }
+        use crate::utils::TriState;
+        fn is_string(item: &Item) -> TriState {
+            match item {
+                Item::Stream(stm) => TriState::from(stm.is_string()),
+                Item::Char(_) => TriState::Either,
+                _ => TriState::False
             }
         }
 
-        let string = match node.args.iter().map(Type::of).try_fold(Type::Either, Type::common) {
-            Ok(Type::String) => true,
-            Ok(_) => false,
-            Err(_) => return Err(StreamError::new("mixed strings and non-strings", node))
-        };
+        let string = try_with!(node, node.args.iter()
+            .map(is_string)
+            .try_fold(TriState::Either, TriState::join)
+            .map_err(|_| BaseError::from("mixed strings and non-strings"))?)
+            .is_true();
         Ok(Item::new_stream(Join{node, string}))
     }
 }
