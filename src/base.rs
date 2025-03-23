@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Debug};
 use dyn_clone::DynClone;
-pub use num::*;
+pub(crate) use num::*;
 pub use crate::error::*;
 pub use crate::alphabet::Char;
 pub use crate::utils::TriState;
