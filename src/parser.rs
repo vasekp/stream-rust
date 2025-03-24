@@ -55,7 +55,7 @@ struct Token<'str>(TokenClass, &'str str);
 impl Token<'_> {
     fn new(slice: &str) -> Result<Token, ParseError> {
         use TokenClass::*;
-        const OPERS: &[u8] = b"+-*/%^~&|<=>";
+        const OPERS: &[u8] = b"+-*/^~&|<=>";
         let class = match slice.as_bytes() {
             [b'0'..=b'9', ..] => if slice.contains('_') { BaseNum } else { Number },
             b"true" | b"false" => Bool,
@@ -69,7 +69,7 @@ impl Token<'_> {
             [b'(' | b'[' | b'{'] => Open,
             [b')' | b']' | b'}'] => Close,
             [b','] => Comma,
-            [b'#'] | [b'$'] => Special,
+            [b'#' | b'$' | b'%'] => Special,
             _ => return Err(ParseError::new("invalid character", slice))
         };
         Ok(Token(class, slice))
