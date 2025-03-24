@@ -825,7 +825,7 @@ impl dyn Stream {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (Some(prec), None),
-            None => (None, Some(3))
+            None => (Some(256), Some(3))
         };
         let mut s = String::new();
         let mut i = 0;

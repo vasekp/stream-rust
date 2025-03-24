@@ -892,7 +892,24 @@ impl Iterator for BackRefIter {
 
 impl SIterator for BackRefIter {}
 
-
+#[test]
+fn test_selfref() {
+    use crate::parser::parse;
+    assert_eq!(parse("self(%)").unwrap().eval().unwrap().to_string(), "[]");
+    assert_eq!(parse("self(%+1)").unwrap().eval().unwrap().to_string(), "[]");
+    assert_eq!(parse("self(%.repeat)").unwrap().eval().unwrap().to_string(), "[]");
+    assert_eq!(parse("self(1~(%+1))").unwrap().eval().unwrap().to_string(), "[1, 2, 3, ...");
+    assert_eq!(parse("self(0~(1-%))").unwrap().eval().unwrap().to_string(), "[0, 1, 0, ...");
+    assert_eq!(&parse("self(1~[%+1])").unwrap().eval().unwrap().to_string()[0..10], "[1, [2, [3");
+    assert_eq!(&parse("self([%])").unwrap().eval().unwrap().to_string()[0..5], "[[[[[");
+    assert_eq!(parse("self([%]~1)[2]").unwrap().eval().unwrap().to_string(), "1");
+    assert_eq!(parse("self(seq+(5~%))").unwrap().eval().unwrap().to_string(), "[6, 8, 11, ...");
+    assert_eq!(parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap().to_string(), "\"qqblu\"");
+    assert_eq!(parse("self(%[1])").unwrap().eval().unwrap().to_string(), "[<!>");
+    assert_eq!(parse("self(%.len)").unwrap().eval().unwrap().to_string(), "[<!>");
+    test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap(), 5);
+    test_skip_n(&parse("self(1~(%+1))").unwrap().eval().unwrap());
+}
 
 
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
