@@ -5,23 +5,6 @@ use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use std::pin::Pin;
 
-/// An infinite stream returning consecutive numbers, `seq`.
-///
-/// Possible forms:
-/// - `seq`
-/// - `seq(start)`
-/// - `seq(start, step)`.
-///
-/// Default values for both `start` and `step` are 1.
-///
-/// # Examples
-/// ```
-/// use streamlang::parser::parse;
-/// assert_eq!(parse("seq").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
-/// assert_eq!(parse("seq(3)").unwrap().eval().unwrap().to_string(), "[3, 4, 5, 6, 7, ...]");
-/// assert_eq!(parse("seq(1, 3)").unwrap().eval().unwrap().to_string(), "[1, 4, 7, 10, 13, ...]");
-/// assert_eq!(parse("seq(3, 0)").unwrap().eval().unwrap().to_string(), "[3, 3, 3, 3, 3, ...]");
-/// ```
 #[derive(Clone)]
 pub struct Seq {
     from: Number,
@@ -102,22 +85,6 @@ fn test_seq() {
 }
 
 
-/// A range of equidistant numbers, `range`.
-///
-/// Possible inputs:
-/// - `range(end)`
-/// - `range(start, end)`
-/// - `range(start, end, step)`
-///
-/// Default values for both `start` and `step` are 1.
-///
-/// # Examples
-/// ```
-/// use streamlang::parser::parse;
-/// assert_eq!(parse("range(3)").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-/// assert_eq!(parse("range(0, 2)").unwrap().eval().unwrap().to_string(), "[0, 1, 2]");
-/// assert_eq!(parse("range(3, 1, -1)").unwrap().eval().unwrap().to_string(), "[3, 2, 1]");
-/// ```
 #[derive(Clone)]
 pub struct Range {
     from: Number,
