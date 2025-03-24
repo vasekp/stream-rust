@@ -253,14 +253,14 @@ fn test_part() {
     assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval().unwrap().to_string(), "3");
     assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval().unwrap().to_string(), "3");
 
-    assert_eq!(parse("seq(5,2)[100...]").unwrap().eval().unwrap().to_string(), "[203, 203, 203, ...");
-    assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval().unwrap().to_string(), "[9, 13, 17, ...");
-    assert_eq!(parse("seq[seq][seq]").unwrap().eval().unwrap().to_string(), "[1, 2, 3, ...");
+    assert_eq!(parse("seq(5,2)[100...]").unwrap().eval().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
+    assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");
+    assert_eq!(parse("seq[seq][seq]").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
     assert_eq!(parse("seq[seq, seq]").unwrap().eval().unwrap().to_string(), "[<!>");
-    assert_eq!(parse("seq:{seq^#}[seq,4]").unwrap().eval().unwrap().to_string(), "[4, 16, 64, ...");
-    assert_eq!(parse("seq:{seq^#}[seq][4]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, ...");
-    assert_eq!(parse("seq:{seq^#}[4,seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, ...");
-    assert_eq!(parse("seq:{seq^#}[4][seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, ...");
+    assert_eq!(parse("seq:{seq^#}[seq,4]").unwrap().eval().unwrap().to_string(), "[4, 16, 64, 256, 1024, ...]");
+    assert_eq!(parse("seq:{seq^#}[seq][4]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
+    assert_eq!(parse("seq:{seq^#}[4,seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
+    assert_eq!(parse("seq:{seq^#}[4][seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
     assert_eq!(parse("seq:{seq^#}[[1,2],[1,2,3]]").unwrap().eval().unwrap().to_string(), "[[1, 2, 3], [1, 4, 9]]");
     assert!(parse("seq[2,5]").unwrap().eval().is_err());
     assert_eq!(parse("seq[[2,5]]").unwrap().eval().unwrap().to_string(), "[2, 5]");
@@ -358,9 +358,9 @@ impl SIterator for MapIter<'_> {
 fn test_map() {
     use crate::parser::parse;
     assert_eq!(parse("[1,2,3]:{#*10}").unwrap().eval().unwrap().to_string(), "[10, 20, 30]");
-    assert_eq!(parse("seq:{#^2}").unwrap().eval().unwrap().to_string(), "[1, 4, 9, ...");
+    assert_eq!(parse("seq:{#^2}").unwrap().eval().unwrap().to_string(), "[1, 4, 9, 16, 25, ...]");
     assert_eq!(parse("seq:{#1}").unwrap().eval().unwrap().to_string(), "[<!>");
-    assert_eq!(parse("seq:{range(#)}").unwrap().eval().unwrap().to_string(), "[[1], [1, 2], [1, 2, 3], ...");
+    assert_eq!(parse("seq:{range(#)}").unwrap().eval().unwrap().to_string(), "[[1], [1, 2], [1, 2, 3], ...]");
     test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("[]:{#}").unwrap().eval().unwrap(), 0);
     test_skip_n(&parse("range(10^10):{#}").unwrap().eval().unwrap());
@@ -589,7 +589,7 @@ fn test_opers() {
     assert_eq!(parse("1..3+3+seq").unwrap().eval().unwrap().to_string(), "[5, 7, 9]");
     assert_eq!(parse("'A'..'e'+3+[0,10,20]").unwrap().eval().unwrap().to_string(), "['D', 'O', 'Z']");
     assert_eq!(parse("\"AbC\"+3+[0,10,20]").unwrap().eval().unwrap().to_string(), "['D', 'o', 'Z']");
-    assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval().unwrap().to_string(), "['c', 'm', 'q', ...");
+    assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval().unwrap().to_string(), "['c', 'm', 'q', 'o']");
     assert_eq!(parse("(1..5+3+[]).len").unwrap().eval().unwrap().to_string(), "0");
     assert_eq!(parse("(1..5+3+seq).len").unwrap().eval().unwrap().to_string(), "5");
     assert_eq!(parse(r#""abc"+['d',5,true]"#).unwrap().eval().unwrap().to_string(), "['e', 'g', <!>");
@@ -608,7 +608,7 @@ fn test_opers() {
     assert!(parse("1/'a'").unwrap().eval().is_err());
     assert!(parse("'a'/1").unwrap().eval().is_err());
     assert_eq!(parse("[2,'b','b']*[2,2,'b']").unwrap().eval().unwrap().to_string(), "[4, 'd', <!>");
-    assert_eq!(parse("seq^seq").unwrap().eval().unwrap().to_string(), "[1, 4, 27, ...");
+    assert_eq!(parse("seq^seq").unwrap().eval().unwrap().to_string(), "[1, 4, 27, 256, 3125, ...]");
 
     assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval().unwrap().to_string(), "9");
     test_len_exact(&parse("[1,2,3]+seq+5").unwrap().eval().unwrap(), 3);
@@ -728,8 +728,8 @@ impl SIterator for JoinIter<'_> {
 fn test_join() {
     use crate::parser::parse;
 
-    assert_eq!(parse("[10]~seq").unwrap().eval().unwrap().to_string(), "[10, 1, 2, ...");
-    assert_eq!(parse("range(2)~seq").unwrap().eval().unwrap().to_string(), "[1, 2, 1, ...");
+    assert_eq!(parse("[10]~seq").unwrap().eval().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
+    assert_eq!(parse("range(2)~seq").unwrap().eval().unwrap().to_string(), "[1, 2, 1, 2, 3, ...]");
     assert_eq!(parse("range(10^10).{#~#~#}.len").unwrap().eval().unwrap().to_string(), "30000000000");
     assert!(parse("([5]~seq).len").unwrap().eval().is_err());
     assert_eq!(parse("(range(10^10)~seq)[10^11]").unwrap().eval().unwrap().to_string(), "90000000000");
@@ -740,7 +740,7 @@ fn test_join() {
     assert_eq!(parse("[1]~[[2]]").unwrap().eval().unwrap().to_string(), "[1, [2]]");
     assert_eq!(parse("[1]~2~'c'").unwrap().eval().unwrap().to_string(), "[1, 2, 'c']");
     assert_eq!(parse("1~2~3").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-    assert_eq!(parse("0~seq").unwrap().eval().unwrap().to_string(), "[0, 1, 2, ...");
+    assert_eq!(parse("10~seq").unwrap().eval().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
     assert_eq!(parse("(0~1..0~2)").unwrap().eval().unwrap().to_string(), "[0, 2]");
     assert_eq!(parse("(0~1..3~4)[3]").unwrap().eval().unwrap().to_string(), "2");
     assert_eq!(parse("(0~1..3~4)[4]").unwrap().eval().unwrap().to_string(), "3");

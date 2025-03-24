@@ -627,7 +627,7 @@ impl Item {
         }
     }
 
-    pub fn format(&self, max_len: Option<usize>) -> (String, Option<StreamError>) {
+    pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, Option<StreamError>) {
         struct Stateful<'item> {
             item: &'item Item,
             cell: Cell<Option<StreamError>>
@@ -640,9 +640,11 @@ impl Item {
         }
 
         let s = Stateful{item: self, cell: Default::default()};
-        let result = match max_len {
-            Some(width) => format!("{s:.*}", width),
-            None => format!("{s}")
+        let result = match (max_items, max_len) {
+            (Some(width), Some(prec)) => format!("{s:w$.p$}", w = width, p = prec),
+            (Some(width), None) => format!("{s:w$}", w = width),
+            (None, Some(prec)) => format!("{s:.p$}", p = prec),
+            (None, None) => format!("{s}")
         };
         (result, s.cell.take())
     }
@@ -823,9 +825,10 @@ impl dyn Stream {
         -> std::fmt::Result
     {
         let mut iter = self.iter();
-        let (prec, max) = match f.precision() {
-            Some(prec) => (Some(prec), None),
-            None => (Some(256), Some(3))
+        let (prec, max) = match (f.precision(), f.width()) {
+            (Some(prec), width) => (Some(prec), width),
+            (None, Some(width)) => (None, Some(width)),
+            (None, None) => (None, Some(5))
         };
         let mut s = String::new();
         let mut i = 0;
@@ -846,7 +849,7 @@ impl dyn Stream {
                         if i > 0 {
                             s += ", ";
                         }
-                        let (string, err) = item.format(prec.map(|prec| prec - plen));
+                        let (string, err) = item.format(max.map(|max| max - i - 1), prec.map(|prec| prec - plen));
                         s += &string;
                         if err.is_some() {
                             error.set(err);
@@ -864,10 +867,12 @@ impl dyn Stream {
                 };
                 i += 1;
             }
-            s += match iter.next() {
-                None => "]",
-                Some(_) => ", ..."
-            };
+            if iter.next().is_none() {
+                s.push(']');
+            } else {
+                s += if i > 0 { ", ..." } else { "..." };
+                if max.is_some_and(|max| i == max) { s.push(']'); }
+            }
         }
         match prec {
             Some(prec) if prec < s.len() => write!(f, "{:.*}...", prec - 3, s),
