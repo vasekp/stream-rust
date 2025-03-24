@@ -739,6 +739,7 @@ fn test_parser() {
     assert!(parse("a@@c").is_err());
     assert!(parse("1@a").is_err());
     assert!(parse("a@").is_err());
+    assert!(parse("a.b{c}(d)").is_err());
 
     assert_eq!(parse("1..2"), Ok(Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(2)])));
     assert_eq!(parse("1..."), Ok(Expr::new_number(1).chain(Link::new("repeat", vec![]))));

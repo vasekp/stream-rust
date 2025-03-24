@@ -736,29 +736,21 @@ fn test_shift() {
 
 
 #[derive(Clone)]
-struct Cached {
+struct SelfRef {
     body: Expr,
     env: Rc<Env>
 }
 
-pub(crate) type CacheHistory = RefCell<Vec<Item>>;
-
-struct RefIter<'node> {
-    inner: Box<dyn SIterator + 'node>,
-    _stm: Pin<Box<dyn Stream>>,
-    hist: Rc<CacheHistory>
-}
-
-impl Cached {
+impl SelfRef {
     fn eval(mut node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         if node.source.is_some() {
             return Err(StreamError::new("no source accepted", node));
         }
         let body = match node.args.len() {
             1 => node.args.pop().unwrap(),
-            _ => return Err(StreamError::new("exactly 1 argument required", node))
+            _ => return Err(StreamError::new("exactly 1 argument expected", node))
         };
-        Ok(Item::Stream(Box::new(Cached{body, env: Rc::clone(env)})))
+        Ok(Item::Stream(Box::new(SelfRef{body: Self::replace_ref(body), env: Rc::clone(env)})))
     }
 
     fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {
@@ -769,22 +761,38 @@ impl Cached {
         let stm = try_with!(self.body.clone(), item.to_stream()?);
         Ok((stm, hist))
     }
-}
 
-impl Describe for Cached {
-    fn describe(&self) -> String {
-        format!("cached({})", self.body.describe())
+    fn replace_ref(expr: Expr) -> Expr {
+        match expr {
+            Expr::Imm(_) => expr,
+            Expr::Eval(node) => match node.head {
+                Head::Repl('%', None) => Expr::new_node(LangItem::BackRef, vec![]),
+                _ => Expr::Eval(Node {
+                    head: node.head,
+                    source: node.source.map(|expr| Box::new(Self::replace_ref(*expr))),
+                    args: node.args.into_iter()
+                        .map(Self::replace_ref)
+                        .collect()
+                })
+            }
+        }
     }
 }
 
-impl Stream for Cached {
+impl Describe for SelfRef {
+    fn describe(&self) -> String {
+        format!("self{{{}}}", self.body.describe())
+    }
+}
+
+impl Stream for SelfRef {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let (stm, hist) = match self.eval_real() {
             Ok((stm, hist)) => (Box::into_pin(stm), hist),
             Err(err) => return Box::new(std::iter::once(Err(err)))
         };
         let iter = unsafe { std::mem::transmute::<&dyn Stream, &dyn Stream>(&*stm) }.iter();
-        Box::new(RefIter {
+        Box::new(SelfRefIter {
             inner: iter,
             _stm: stm,
             hist
@@ -799,7 +807,15 @@ impl Stream for Cached {
     }
 }
 
-impl Iterator for RefIter<'_> {
+pub(crate) type CacheHistory = RefCell<Vec<Item>>;
+
+struct SelfRefIter<'node> {
+    inner: Box<dyn SIterator + 'node>,
+    _stm: Pin<Box<dyn Stream>>,
+    hist: Rc<CacheHistory>
+}
+
+impl Iterator for SelfRefIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -813,7 +829,7 @@ impl Iterator for RefIter<'_> {
     }
 }
 
-impl SIterator for RefIter<'_> { }
+impl SIterator for SelfRefIter<'_> { }
 
 #[derive(Clone)]
 struct BackRef {
@@ -839,7 +855,7 @@ impl BackRef {
 
 impl Describe for BackRef {
     fn describe(&self) -> String {
-        "backref".to_owned()
+        "%".to_owned()
     }
 }
 
@@ -847,8 +863,8 @@ impl Stream for BackRef {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         match Weak::upgrade(&self.parent) {
             Some(rc) => Box::new(BackRefIter{vec: rc, pos: 0}),
-            None => Box::new(std::iter::once(Err(StreamError::new("backref without cached", 
-                        Node::new("backref", None, vec![])))))
+            None => Box::new(std::iter::once(Err(StreamError::new("back-reference detached from cache", 
+                        Node::new("%", None, vec![])))))
         }
     }
 
@@ -886,6 +902,6 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("len", eval_len);
     keywords.insert("repeat", Repeat::eval);
     keywords.insert("shift", Shift::eval);
-    keywords.insert("cached", Cached::eval);
-    keywords.insert("backref", BackRef::eval);
+    keywords.insert("self", SelfRef::eval);
+    keywords.insert("$backref", BackRef::eval);
 }
