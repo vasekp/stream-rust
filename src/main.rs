@@ -14,7 +14,7 @@ fn main() -> std::io::Result<()> {
                 match expr.eval() {
                     Ok(item) => {
                         println!("Item Describe: {}", item.describe());
-                        let (s, err) = item.format(None, Some(80));
+                        let (s, _, err) = item.format(None, Some(80));
                         println!("Item Format: {s}");
                         if let Some(err) = err {
                             println!("Err: {}", err);

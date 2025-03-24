@@ -261,7 +261,7 @@ fn test_part() {
     assert_eq!(parse("seq:{seq^#}[seq][4]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
     assert_eq!(parse("seq:{seq^#}[4,seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
     assert_eq!(parse("seq:{seq^#}[4][seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
-    assert_eq!(parse("seq:{seq^#}[[1,2],[1,2,3]]").unwrap().eval().unwrap().to_string(), "[[1, 2, 3], [1, 4, 9]]");
+    assert_eq!(parse("seq:{seq^#}[[1,2],[1,2,3]]").unwrap().eval().unwrap().to_string(), "[[1, 2, 3], [...]]");
     assert!(parse("seq[2,5]").unwrap().eval().is_err());
     assert_eq!(parse("seq[[2,5]]").unwrap().eval().unwrap().to_string(), "[2, 5]");
     assert_eq!(parse("seq[[[2,5]]]").unwrap().eval().unwrap().to_string(), "[[2, 5]]"); // subject to change
@@ -360,7 +360,7 @@ fn test_map() {
     assert_eq!(parse("[1,2,3]:{#*10}").unwrap().eval().unwrap().to_string(), "[10, 20, 30]");
     assert_eq!(parse("seq:{#^2}").unwrap().eval().unwrap().to_string(), "[1, 4, 9, 16, 25, ...]");
     assert_eq!(parse("seq:{#1}").unwrap().eval().unwrap().to_string(), "[<!>");
-    assert_eq!(parse("seq:{range(#)}").unwrap().eval().unwrap().to_string(), "[[1], [1, 2], [1, 2, 3], ...]");
+    assert_eq!(parse("seq:{range(#)}").unwrap().eval().unwrap().to_string(), "[[1], [1, 2], ...]");
     test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("[]:{#}").unwrap().eval().unwrap(), 0);
     test_skip_n(&parse("range(10^10):{#}").unwrap().eval().unwrap());

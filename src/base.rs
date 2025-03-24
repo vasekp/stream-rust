@@ -627,37 +627,39 @@ impl Item {
         }
     }
 
-    pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, Option<StreamError>) {
+    pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, usize, Option<StreamError>) {
         struct Stateful<'item> {
             item: &'item Item,
-            cell: Cell<Option<StreamError>>
+            count: Cell<usize>,
+            err: Cell<Option<StreamError>>
         }
 
         impl Display for Stateful<'_> {
             fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-                self.item.format_int(f, &self.cell)
+                self.item.format_int(f, &self.count, &self.err)
             }
         }
 
-        let s = Stateful{item: self, cell: Default::default()};
+        let s = Stateful{item: self, count: Default::default(), err: Default::default()};
         let result = match (max_items, max_len) {
             (Some(width), Some(prec)) => format!("{s:w$.p$}", w = width, p = prec),
             (Some(width), None) => format!("{s:w$}", w = width),
             (None, Some(prec)) => format!("{s:.p$}", p = prec),
             (None, None) => format!("{s}")
         };
-        (result, s.cell.take())
+        (result, s.count.take(), s.err.take())
     }
 
-    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         use Item::*;
+        count.set(count.get() + 1);
         match self {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
             Char(c) => write!(f, "{c}"),
-            Stream(s) => s.writeout(f, error)
+            Stream(s) => s.writeout(f, count, error)
         }
     }
 
@@ -675,7 +677,7 @@ impl Item {
 
 impl Display for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.format_int(f, &Default::default())
+        self.format_int(f, &Default::default(), &Default::default())
     }
 }
 
@@ -688,7 +690,7 @@ impl Default for Item {
 impl Debug for Item {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.type_str())?;
-        self.format_int(f, &Default::default())
+        self.format_int(f, &Default::default(), &Default::default())
     }
 }
 
@@ -811,17 +813,17 @@ impl dyn Stream {
     /// method, the formatting follows that of a string, including character escapes. If no length
     /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
     /// a [`Char`] is treated as a reading error.
-    pub fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    pub fn writeout(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         if self.is_string().is_true() {
             self.writeout_string(f, error)
         } else {
-            self.writeout_stream(f, error)
+            self.writeout_stream(f, count, error)
         }
     }
 
-    fn writeout_stream(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    fn writeout_stream(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -830,15 +832,16 @@ impl dyn Stream {
             (None, Some(width)) => (None, Some(width)),
             (None, None) => (None, Some(5))
         };
+        let max = max.map(|x| x + 1);
         let mut s = String::new();
-        let mut i = 0;
+        let mut comma = false;
         s.push('[');
         if prec.is_some_and(|prec| prec < 4) {
             s += "...";
             return write!(f, "{}", s);
         }
         'a: {
-            while prec.is_none_or(|prec| s.len() < prec) && max.is_none_or(|max| i < max) {
+            while prec.is_none_or(|prec| s.len() < prec) && max.is_none_or(|max| count.get() < max) {
                 match iter.next() {
                     None => {
                         s.push(']');
@@ -846,18 +849,20 @@ impl dyn Stream {
                     },
                     Some(Ok(item)) => {
                         let plen = s.len();
-                        if i > 0 {
+                        if comma {
                             s += ", ";
                         }
-                        let (string, err) = item.format(max.map(|max| max - i - 1), prec.map(|prec| prec - plen));
+                        let (string, cnt, err) = item.format(max.map(|max| max - count.get() - 1), prec.map(|prec| prec - plen));
+                        count.set(count.get() + cnt);
                         s += &string;
                         if err.is_some() {
                             error.set(err);
                             break 'a;
                         }
+                        comma = true;
                     },
                     Some(Err(err)) => {
-                        if i > 0 {
+                        if comma {
                             s += ", ";
                         }
                         s += "<!>";
@@ -865,13 +870,12 @@ impl dyn Stream {
                         break 'a;
                     }
                 };
-                i += 1;
             }
             if iter.next().is_none() {
                 s.push(']');
             } else {
-                s += if i > 0 { ", ..." } else { "..." };
-                if max.is_some_and(|max| i == max) { s.push(']'); }
+                s += if comma { ", ..." } else { "..." };
+                if max.is_some_and(|max| max == count.get()) { s.push(']'); }
             }
         }
         match prec {
@@ -940,7 +944,7 @@ impl dyn Stream {
 
 impl Display for Box<dyn Stream> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.writeout(f, &Default::default())
+        self.writeout(f, &Default::default(), &Default::default())
     }
 }
 

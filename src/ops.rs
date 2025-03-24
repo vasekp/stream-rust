@@ -17,10 +17,10 @@ use std::pin::Pin;
 /// # Examples
 /// ```
 /// use streamlang::parser::parse;
-/// assert_eq!(parse("seq").unwrap().eval().unwrap().to_string(), "[1, 2, 3, ...");
-/// assert_eq!(parse("seq(3)").unwrap().eval().unwrap().to_string(), "[3, 4, 5, ...");
-/// assert_eq!(parse("seq(1, 3)").unwrap().eval().unwrap().to_string(), "[1, 4, 7, ...");
-/// assert_eq!(parse("seq(3, 0)").unwrap().eval().unwrap().to_string(), "[3, 3, 3, ...");
+/// assert_eq!(parse("seq").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
+/// assert_eq!(parse("seq(3)").unwrap().eval().unwrap().to_string(), "[3, 4, 5, 6, 7, ...]");
+/// assert_eq!(parse("seq(1, 3)").unwrap().eval().unwrap().to_string(), "[1, 4, 7, 10, 13, ...]");
+/// assert_eq!(parse("seq(3, 0)").unwrap().eval().unwrap().to_string(), "[3, 3, 3, 3, 3, ...]");
 /// ```
 #[derive(Clone)]
 pub struct Seq {
