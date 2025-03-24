@@ -804,10 +804,9 @@ pub trait Stream: DynClone + Describe {
 impl dyn Stream {
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
-    /// maximum width (using the `"{:.n}"` syntax), in which case the output is truncated using
-    /// ellipsis (the width must be at least 4 to accommodate the string `"[..."`); if no width is
-    /// given, first three items are written out.  If an error happens during reading the stream,
-    /// it is represented as `"<!>"`.
+    /// maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),
+    /// if no constraints are given they default to 5 items. If an error happens during reading the
+    /// stream, it is represented as `"<!>"`.
     ///
     /// If this is `Stream` represents a string, as expressed by its [`Stream::is_string()`]
     /// method, the formatting follows that of a string, including character escapes. If no length
