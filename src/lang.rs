@@ -110,7 +110,6 @@ impl Part {
         use once_cell::unsync::Lazy;
         let mut node = node.eval_source(env)?;
         let source = try_with!(node, node.source_checked()?.as_item()?.to_stream()?);
-        try_with!(node, node.check_args_nonempty()?);
         let length = Lazy::new(|| match source.length() {
             Length::Exact(len) => Ok(len),
             Length::Infinite => Err(BaseError::from("stream is infinite")),
@@ -146,7 +145,7 @@ impl Part {
                 }
             }
         }
-        try_with!(node, subs_len(node.args.get_mut(0).unwrap(), &length)?);
+        try_with!(node, subs_len(node.first_arg_checked_mut()?, &length)?);
         let first = node.args.remove(0).eval_env(env)?;
         match first {
             Item::Number(index) => {
@@ -295,8 +294,8 @@ impl Map {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_source(env)?;
         let source = try_with!(node, node.source_checked()?.as_item()?.to_stream()?);
-        let body = match node.args.len() {
-            1 => try_with!(node, node.args[0].to_node()?),
+        let body = match node.args[..] {
+            [ref expr] => try_with!(node, expr.to_node()?),
             _ => return Err(StreamError::new("exactly 1 argument required", node))
         };
         if body.source.is_some() {
@@ -645,7 +644,7 @@ impl Join {
         let string = try_with!(node, node.args.iter()
             .map(is_string)
             .try_fold(TriState::Either, TriState::join)
-            .map_err(|_| BaseError::from("mixed strings and non-strings"))?)
+            .map_err(|()| BaseError::from("mixed strings and non-strings"))?)
             .is_true();
         Ok(Item::new_stream(Join{node, string}))
     }

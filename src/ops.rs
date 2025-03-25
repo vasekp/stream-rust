@@ -713,8 +713,8 @@ impl SelfRef {
         if node.source.is_some() {
             return Err(StreamError::new("no source accepted", node));
         }
-        let body = match node.args.len() {
-            1 => node.args.pop().unwrap(),
+        let body = match node.args[..] {
+            [ref mut body] => std::mem::take(body),
             _ => return Err(StreamError::new("exactly 1 argument expected", node))
         };
         Ok(Item::Stream(Box::new(SelfRef{body: Self::replace_ref(body), env: Rc::clone(env)})))
