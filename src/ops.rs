@@ -553,18 +553,32 @@ fn test_repeat() {
 }
 
 
-#[derive(Clone)]
 struct Shift {
-    node: ENode,
+    source: Box<dyn Stream>,
+    args: Vec<Item>,
     env: Rc<Env>
+}
+
+impl Clone for Shift {
+    fn clone(&self) -> Self {
+        Shift {
+            source: self.source.clone_box(),
+            args: self.args.clone(),
+            env: Rc::clone(&self.env)
+        }
+    }
 }
 
 impl Shift {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
-        try_with!(node, node.source_checked()?.as_string()?);
         try_with!(node, node.check_args_nonempty()?);
-        Ok(Item::new_stream(Shift{node, env: Rc::clone(env)}))
+        let source = match node.source {
+            Some(Item::Stream(s)) if s.is_string().can_be_true() => s,
+            Some(ref item) => return Err(StreamError::new(format!("expected string, found {:?}", item), node)),
+            None => return Err(StreamError::new("source required", node))
+        };
+        Ok(Item::new_stream(Shift{source, args: node.args, env: Rc::clone(env)}))
     }
 
     fn helper(base: &Char, items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
@@ -584,19 +598,19 @@ impl Shift {
 
 impl Describe for Shift {
     fn describe(&self) -> String {
-        self.env.wrap_describe(self.node.describe())
+        self.env.wrap_describe(Node::describe_helper(&("shift".into()), Some(Item::Stream(self.source.clone_box())).as_ref(), &self.args))
     }
 }
 
 impl Stream for Shift {
     fn iter(&self) -> Box<dyn SIterator + '_> {
-        let base = self.node.source.as_ref().unwrap().as_stream().unwrap().string_iter(); // TODO
-        let args = self.node.args.iter()
+        let base = self.source.string_iter();
+        let args_iter = self.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
                 item => Box::new(Forever{item})
             }).collect();
-        Box::new(ShiftIter{base, args, node: &self.node, env: &self.env})
+        Box::new(ShiftIter{base, source: &*self.source, args: &self.args, args_iter, env: &self.env})
     }
 
     fn is_string(&self) -> TriState {
@@ -604,16 +618,28 @@ impl Stream for Shift {
     }
 
     fn length(&self) -> Length {
-        self.node.source.as_ref().unwrap().as_stream().unwrap().length() // TODO
+        self.source.length()
     }
 }
 
 struct ShiftIter<'node> {
     base: StringIterator<'node>,
-    args: Vec<Box<dyn SIterator + 'node>>,
-    node: &'node ENode,
+    source: &'node (dyn Stream + 'static),
+    args: &'node Vec<Item>,
+    args_iter: Vec<Box<dyn SIterator + 'node>>,
     env: &'node Rc<Env>
 }
+
+impl ShiftIter<'_> {
+    fn node(&self) -> ENode {
+        ENode {
+            head: "shift".into(),
+            source: Some(Item::Stream(self.source.clone_box())),
+            args: self.args.clone()
+        }
+    }
+}
+
 
 impl Iterator for ShiftIter<'_> {
     type Item = Result<Item, StreamError>;
@@ -637,11 +663,11 @@ impl Iterator for ShiftIter<'_> {
             return Some(Ok(Item::Char(ch)));
         }
 
-        let rest = self.args.iter_mut()
+        let rest = self.args_iter.iter_mut()
             .map(Iterator::next)
             .collect::<Option<Result<Vec<_>, _>>>();
         match rest {
-            None => Some(Err(StreamError::new("some operand ended earlier than the source", self.node))),
+            None => Some(Err(StreamError::new("some operand ended earlier than the source", self.node()))),
             Some(Ok(inputs)) => {
                 match Shift::helper(&ch, &inputs, self.env) {
                     Ok(item) => Some(Ok(item)),
@@ -655,7 +681,7 @@ impl Iterator for ShiftIter<'_> {
 
 impl SIterator for ShiftIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        let args_iter = self.args.iter_mut();
+        let args_iter = self.args_iter.iter_mut();
         let mut n = n.to_owned();
         let mut n_chars = Number::zero();
         while n.is_positive() {
@@ -672,7 +698,7 @@ impl SIterator for ShiftIter<'_> {
         }
         for iter in args_iter {
             if iter.skip_n(&n_chars)?.is_some() {
-                return Err(StreamError::new("another operand ended earlier than the first", self.node));
+                return Err(StreamError::new("another operand ended earlier than the first", self.node()));
             }
         }
         Ok(None)
