@@ -553,20 +553,11 @@ fn test_repeat() {
 }
 
 
+#[derive(Clone)]
 struct Shift {
-    source: Box<dyn Stream>,
+    source: BoxedStream,
     args: Vec<Item>,
     env: Rc<Env>
-}
-
-impl Clone for Shift {
-    fn clone(&self) -> Self {
-        Shift {
-            source: self.source.clone_box(),
-            args: self.args.clone(),
-            env: Rc::clone(&self.env)
-        }
-    }
 }
 
 impl Shift {
@@ -574,7 +565,7 @@ impl Shift {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_args_nonempty()?);
         let source = match node.source {
-            Some(Item::Stream(s)) if s.is_string().can_be_true() => s,
+            Some(Item::Stream(s)) if s.is_string().can_be_true() => s.into(),
             Some(ref item) => return Err(StreamError::new(format!("expected string, found {:?}", item), node)),
             None => return Err(StreamError::new("source required", node))
         };
@@ -598,7 +589,7 @@ impl Shift {
 
 impl Describe for Shift {
     fn describe(&self) -> String {
-        self.env.wrap_describe(Node::describe_helper(&("shift".into()), Some(Item::Stream(self.source.clone_box())).as_ref(), &self.args))
+        self.env.wrap_describe(Node::describe_helper(&("shift".into()), Some(&self.source), &self.args))
     }
 }
 

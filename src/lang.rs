@@ -98,9 +98,10 @@ impl From<String> for LiteralString {
 }
 
 
+#[derive(Clone)]
 pub struct Part {
-    source: Box<dyn Stream>,
-    indices: Box<dyn Stream>,
+    source: BoxedStream,
+    indices: BoxedStream,
     rest: Vec<Expr>,
     env: Rc<Env>
 }
@@ -176,7 +177,7 @@ impl Part {
                 }
             },
             Item::Stream(indices) => {
-                Ok(Item::new_stream(Part{source, indices, rest: node.args, env: Rc::clone(env)}))
+                Ok(Item::new_stream(Part{source: source.into(), indices: indices.into(), rest: node.args, env: Rc::clone(env)}))
             },
             item => {
                 node.args.insert(0, item.into());
@@ -198,17 +199,6 @@ impl Describe for Part {
         let source = self.source.to_expr();
         args.insert(0, self.indices.to_expr());
         Node::describe_helper(&Head::Lang(LangItem::Part), Some(&source), &args)
-    }
-}
-
-impl Clone for Part {
-    fn clone(&self) -> Part {
-        Part {
-            source: self.source.clone_box(),
-            indices: self.indices.clone_box(),
-            rest: self.rest.clone(),
-            env: Rc::clone(&self.env)
-        }
     }
 }
 
@@ -279,8 +269,9 @@ fn test_part() {
 }
 
 
+#[derive(Clone)]
 struct Map {
-    source: Box<dyn Stream>,
+    source: BoxedStream,
     body: Node,
     env: Rc<Env>
 }
@@ -301,7 +292,7 @@ impl Map {
         if body.source.is_some() {
             return Err(StreamError::new("body already has source", node));
         }
-        Ok(Item::new_stream(Map{source, body, env: Rc::clone(env)}))
+        Ok(Item::new_stream(Map{source: source.into(), body, env: Rc::clone(env)}))
     }
 }
 
@@ -321,12 +312,6 @@ impl Stream for Map {
 
     fn length(&self) -> Length {
         self.source.length()
-    }
-}
-
-impl Clone for Map {
-    fn clone(&self) -> Map {
-        Map{source: self.source.clone_box(), body: self.body.clone(), env: Rc::clone(&self.env)}
     }
 }
 

@@ -273,8 +273,8 @@ impl Node {
         })
     }
 
-    pub(crate) fn describe_helper<T>(head: &Head, source: Option<&T>, args: &[T]) -> String
-        where T: Describe
+    pub(crate) fn describe_helper<T, U>(head: &Head, source: Option<&T>, args: &[U]) -> String
+        where T: Describe, U: Describe
     {
         let mut ret = String::new();
         if let Some(source) = source {
@@ -955,6 +955,35 @@ impl dyn Stream {
 impl Display for Box<dyn Stream> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.writeout(f, &Default::default(), &Default::default())
+    }
+}
+
+
+pub(crate) struct BoxedStream(Box<dyn Stream>);
+
+impl Clone for BoxedStream {
+    fn clone(&self) -> Self {
+        Self(self.0.clone_box())
+    }
+}
+
+impl Deref for BoxedStream {
+    type Target = dyn Stream;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl From<Box<dyn Stream>> for BoxedStream {
+    fn from(val: Box<dyn Stream>) -> Self {
+        BoxedStream(val)
+    }
+}
+
+impl Describe for BoxedStream {
+    fn describe(&self) -> String {
+        self.0.describe()
     }
 }
 
