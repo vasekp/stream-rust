@@ -207,7 +207,10 @@ impl Node {
                 Ok(func) => func(self, env),
                 Err(e) => Err(StreamError::new(e, self))
             },
-            Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env),
+            Head::Lang(ref lang) => {
+                let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
+                ctor(self, env)
+            },
             Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval_env(env),
             Head::Args(_) => Node::eval_at(self, env),
             Head::Repl(_, _) => Err(StreamError::new("out of context", self))

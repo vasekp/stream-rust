@@ -407,8 +407,7 @@ impl MathOp {
 
     fn plus_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
-        assert!(!items.is_empty());
-        match iter.next().unwrap() {
+        match iter.next().unwrap() { // args checked to be nonempty in eval_with()
             Item::Number(init) => {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a + num));
                 Ok(Item::new_number(ans?))
@@ -453,7 +452,7 @@ impl MathOp {
     fn mul_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
         assert!(!items.is_empty());
-        match iter.next().unwrap() {
+        match iter.next().unwrap() { // args checked to be nonempty in eval_with()
             Item::Number(init) => {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a * num))?;
                 Ok(Item::new_number(ans))
@@ -520,7 +519,9 @@ impl Stream for MathOp {
             .map(|item| match item {
                 Item::Stream(stm) => stm.length(),
                 _ => Length::Infinite
-            }).reduce(|a, e| Length::intersection(&a, &e)).unwrap()
+            })
+            .reduce(|a, e| Length::intersection(&a, &e))
+            .unwrap() // args checked to be nonempty in eval_with()
     }
 }
 
@@ -675,7 +676,7 @@ impl Stream for Join {
                 Item::Stream(stm) => stm.length(),
                 _ => Length::from(1)
             })
-            .reduce(|acc, e| acc + e).unwrap()
+            .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
     }
 }
 

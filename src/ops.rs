@@ -590,7 +590,7 @@ impl Describe for Shift {
 
 impl Stream for Shift {
     fn iter(&self) -> Box<dyn SIterator + '_> {
-        let base = self.node.source.as_ref().unwrap().as_stream().unwrap().string_iter();
+        let base = self.node.source.as_ref().unwrap().as_stream().unwrap().string_iter(); // TODO
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
@@ -604,7 +604,7 @@ impl Stream for Shift {
     }
 
     fn length(&self) -> Length {
-        self.node.source.as_ref().unwrap().as_stream().unwrap().length()
+        self.node.source.as_ref().unwrap().as_stream().unwrap().length() // TODO
     }
 }
 
