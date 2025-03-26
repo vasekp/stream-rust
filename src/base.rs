@@ -263,7 +263,7 @@ impl Node {
 
     fn eval_at(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
-        assert!(node.args.len() == 1);
+        debug_assert!(node.args.len() == 1);
         let src_stream = try_with!(node, node.args[0].as_stream()?);
         if src_stream.length() == Length::Infinite {
             return Err(StreamError::new("stream is infinite", node));
@@ -761,21 +761,12 @@ pub trait Stream: DynClone + Describe {
     }
 
     /// Returns the length of this stream, in as much information as available *without* consuming
-    /// the iterator. See [`Length`] for the possible return values. The default implementation
-    /// relies on [`SIterator::len_remain()`] and [`Iterator::size_hint()`] to return one of
-    /// `Exact`, `AtMost`, or `Unknown`.
+    /// the entire stream. See [`Length`] for the possible return values. The return value must be 
+    /// consistent with the actual behaviour of the stream.
     ///
-    /// The return value must be consistent with the actual behaviour of the stream.
+    /// The default implementation forwards to [`SIterator::len_remain()`].
     fn length(&self) -> Length {
-        use Length::*;
-        let iter = self.iter();
-        if let Some(len) = iter.len_remain() {
-            return Exact(len);
-        }
-        match iter.size_hint() {
-            (_, Some(hi)) => AtMost(hi.into()),
-            _ => Unknown
-        }
+        self.iter().len_remain()
     }
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
@@ -1032,20 +1023,20 @@ impl std::ops::Add for Length {
 /// replicable, so the behaviour of doing so is undefined.
 pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
-    /// current state. If it can't, or is known to be infinite, returns `None`.
+    /// current state. The return value must be consistent with the actual behaviour of the stream.
     ///
-    /// [`SIterator::skip_n`] may use this value for optimization. It is also used by the default
-    /// implementation of [`Stream::length()`]. If you override both methods then you don't need
-    /// to override this one, unless you want to use it for similar purposes.
-    fn len_remain(&self) -> Option<Number> {
+    /// The default implementation relies on [`Iterator::size_hint()`] to return one of 
+    /// [`Length::Exact`], [`Length::AtMost`], or [`Length::Unknown`].
+    fn len_remain(&self) -> Length {
         match self.size_hint() {
-            (lo, Some(hi)) if lo == hi => Some(lo.into()),
-            _ => None
+            (lo, Some(hi)) if lo == hi => Length::Exact(lo.into()),
+            (_, Some(hi)) => Length::AtMost(hi.into()),
+            _ => Length::Unknown
         }
     }
 
     /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
-    /// by `n` elements.
+    /// by `n` elements. The value must be nonnegative.
     ///
     /// The return value is `Ok(None)` if `n` elements were skipped. If the iterator finishes
     /// early, the result is `Ok(Some(k))`, where `k` is the number of remaining elements. This is
@@ -1053,18 +1044,15 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// condition, or after an `Err` is returned, is undefined behaviour.
     ///
     /// It is possible to return `Ok(Some(0))` to indicate that all elements have been skipped
-    /// without remainder, but that `next()` should not be called again. If `None` is returned,
-    /// `next()` may be called and must return `None` for consistency.
+    /// without remainder, but that `next()` should not be called again. If `None` is returned
+    /// in such case, `next()` may be called but must return `None` for consistency.
     ///
     /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
     /// value given by [`SIterator::len_remain()`].
-    ///
-    /// # Panics
-    /// This function may panic if a negative value is passed in `n`.
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        assert!(!n.is_negative());
-        if let Some(len) = self.len_remain() {
+        debug_assert!(!n.is_negative());
+        if let Length::Exact(len) = self.len_remain() {
             if n > &len {
                 return Ok(Some(n - &len));
             }
