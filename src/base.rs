@@ -1092,9 +1092,66 @@ impl Iterator for Forever<'_> {
 }
 
 impl SIterator for Forever<'_> {
+    fn len_remain(&self) -> Length {
+        Length::Infinite
+    }
+
     fn skip_n(&mut self, _n: &Number) -> Result<Option<Number>, StreamError> {
         Ok(None)
     }
+}
+
+#[test]
+fn test_simple_iters() {
+    let mut iter = std::iter::empty();
+    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.next(), None);
+    let mut iter = std::iter::empty();
+    assert_eq!(iter.skip_n(&Number::zero()), Ok(None));
+    assert_eq!(iter.next(), None);
+    let mut iter = std::iter::empty();
+    assert_eq!(iter.skip_n(&Number::one()), Ok(Some(Number::one())));
+
+    let mut iter = std::iter::once(Ok(Item::default()));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::one()));
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.next(), None);
+    let mut iter = std::iter::once(Ok(Item::default()));
+    assert_eq!(iter.skip_n(&Number::one()), Ok(None));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.next(), None);
+    let mut iter = std::iter::once(Ok(Item::default()));
+    assert_eq!(iter.skip_n(&2.into()), Ok(Some(Number::one())));
+
+    let item = &Item::default();
+    let mut iter = Forever { item };
+    assert_eq!(iter.len_remain(), Length::Infinite);
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Infinite);
+    assert_eq!(iter.skip_n(&100.into()), Ok(None));
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Infinite);
+
+    let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+    assert_eq!(iter.len_remain(), Length::Exact(2.into()));
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::one()));
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.next(), None);
+    let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+    assert_eq!(iter.skip_n(&Number::one()), Ok(None));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::one()));
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.next(), None);
+    let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+    assert_eq!(iter.skip_n(&2.into()), Ok(None));
+    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.next(), None);
+    let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+    assert_eq!(iter.skip_n(&3.into()), Ok(Some(Number::one())));
 }
 
 
