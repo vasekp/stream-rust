@@ -352,7 +352,7 @@ impl Stream for Repeat {
             }),
             item => match &self.count {
                 Some(count) => Box::new(RepeatItemIter{item, count_rem: count.to_owned()}),
-                None => Box::new(Forever{item})
+                None => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }
         }
     }
@@ -396,7 +396,7 @@ impl Describe for Repeat {
 
 struct RepeatItemIter<'node> {
     item: &'node Item,
-    count_rem: Number // None covered by stream::Forever
+    count_rem: Number // None covered by std::iter::repeat_with
 }
 
 impl Iterator for RepeatItemIter<'_> {
@@ -594,7 +594,7 @@ impl Stream for Shift {
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
-                item => Box::new(Forever{item})
+                item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
         Box::new(ShiftIter{base, args, node: &self.node, env: &self.env})
     }

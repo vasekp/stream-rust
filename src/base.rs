@@ -1079,19 +1079,19 @@ impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
 
 impl SIterator for std::iter::Empty<Result<Item, StreamError>> { }
 
-pub(crate) struct Forever<'node> {
-    pub item: &'node Item
-}
+impl SIterator for std::iter::Repeat<Result<Item, StreamError>> {
+    fn len_remain(&self) -> Length {
+        Length::Infinite
+    }
 
-impl Iterator for Forever<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Some(Ok(self.item.clone()))
+    fn skip_n(&mut self, _n: &Number) -> Result<Option<Number>, StreamError> {
+        Ok(None)
     }
 }
 
-impl SIterator for Forever<'_> {
+impl<F> SIterator for std::iter::RepeatWith<F>
+where F: FnMut() -> Result<Item, StreamError>
+{
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
@@ -1124,8 +1124,15 @@ fn test_simple_iters() {
     let mut iter = std::iter::once(Ok(Item::default()));
     assert_eq!(iter.skip_n(&2.into()), Ok(Some(Number::one())));
 
-    let item = &Item::default();
-    let mut iter = Forever { item };
+    let mut iter = std::iter::repeat(Ok(Item::default()));
+    assert_eq!(iter.len_remain(), Length::Infinite);
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Infinite);
+    assert_eq!(iter.skip_n(&100.into()), Ok(None));
+    assert_eq!(iter.next(), Some(Ok(Item::default())));
+    assert_eq!(iter.len_remain(), Length::Infinite);
+
+    let mut iter = std::iter::repeat_with(|| Ok(Item::default()));
     assert_eq!(iter.len_remain(), Length::Infinite);
     assert_eq!(iter.next(), Some(Ok(Item::default())));
     assert_eq!(iter.len_remain(), Length::Infinite);

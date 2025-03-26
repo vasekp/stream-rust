@@ -511,7 +511,7 @@ impl Stream for MathOp {
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
-                item => Box::new(Forever{item})
+                item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
         Box::new(MathOpIter{head: &self.node.head, args, env: &self.env, func: self.func})
     }

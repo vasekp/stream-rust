@@ -20,7 +20,7 @@ impl Display for BaseError {
 
 
 /// The runtime error type with an indication of the [`Expr`] whose evaluation caused it.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct StreamError {
     reason: BaseError,
     expr: Expr
