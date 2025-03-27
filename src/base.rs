@@ -747,6 +747,10 @@ impl Clone for Item {
 pub trait Stream: DynClone + Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
+    ///
+    /// This method does not return a `Result` and thus can't fail. Implementors may return 
+    /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
+    /// iterator.
     #[must_use]
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
 
@@ -1162,10 +1166,10 @@ fn test_simple_iters() {
 }
 
 
-/// The iterator returned by `dyn Stream::string_iter`. The semantics of `next()` are the same as
-/// in the case of [`SIterator`], with the difference that the return type in success is [`Char`].
-/// If the conversion can not be done, the error message indicates a malformed string.
-// TODO: cargo doc reference to impl dyn Stream
+/// The iterator returned by [`dyn Stream::string_iter()`](trait.Stream.html#impl-dyn+Stream). The 
+/// semantics of `next()` are the same as in the case of [`SIterator`], with the difference that 
+/// the return type in success is [`Char`]. If the conversion can not be done, the error message 
+/// indicates a malformed string.
 pub struct StringIterator<'node> {
     iter: Box<dyn SIterator + 'node>,
     parent: &'node (dyn Stream + 'static)
