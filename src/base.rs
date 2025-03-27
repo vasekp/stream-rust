@@ -194,28 +194,6 @@ impl Node {
         Node{head: head.into(), source: source.map(Box::new), args}
     }
 
-    /*pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
-        match &self.source {
-            Some(_) => Err("no source accepted".into()),
-            None => Ok(())
-        }
-    }*/
-
-    pub(crate) fn source_checked(&self) -> Result<&Expr, BaseError> {
-        match &self.source {
-            Some(source) => Ok(source),
-            None => Err("source required".into()),
-        }
-    }
-
-    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
-        if self.args.is_empty() {
-            Err("at least 1 argument required".into())
-        } else {
-            Ok(())
-        }
-    }
-
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
     ///
@@ -229,7 +207,10 @@ impl Node {
                 Ok(func) => func(self, env),
                 Err(e) => Err(StreamError::new(e, self))
             },
-            Head::Lang(ref lang) => find_keyword(lang.keyword()).unwrap()(self, env),
+            Head::Lang(ref lang) => {
+                let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
+                ctor(self, env)
+            },
             Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval_env(env),
             Head::Args(_) => Node::eval_at(self, env),
             Head::Repl(_, _) => Err(StreamError::new("out of context", self))
@@ -292,8 +273,8 @@ impl Node {
         })
     }
 
-    pub(crate) fn describe_helper<T>(head: &Head, source: Option<&T>, args: &[T]) -> String
-        where T: Describe
+    pub(crate) fn describe_helper<T, U>(head: &Head, source: Option<&T>, args: &[U]) -> String
+        where T: Describe, U: Describe
     {
         let mut ret = String::new();
         if let Some(source) = source {
@@ -360,30 +341,6 @@ pub(crate) struct ENode {
     pub args: Vec<Item>
 }
 
-impl ENode {
-    pub(crate) fn check_no_source(&self) -> Result<(), BaseError> {
-        match &self.source {
-            Some(_) => Err("no source accepted".into()),
-            None => Ok(())
-        }
-    }
-
-    pub(crate) fn source_checked(&self) -> Result<&Item, BaseError> {
-        match &self.source {
-            Some(source) => Ok(source),
-            None => Err("source required".into()),
-        }
-    }
-
-    pub(crate) fn check_args_nonempty(&self) -> Result<(), BaseError> {
-        if self.args.is_empty() {
-            Err("at least 1 argument required".into())
-        } else {
-            Ok(())
-        }
-    }
-}
-
 impl From<ENode> for Node {
     fn from(enode: ENode) -> Node {
         Node {
@@ -406,6 +363,60 @@ impl Describe for ENode {
     }
 }
 
+
+pub(crate) trait Checks {
+    type Element;
+
+    fn source(&self) -> Option<&Self::Element>;
+    //fn source_mut(&mut self) -> Option<&mut Self::Element>;
+    fn args(&self) -> &Vec<Self::Element>;
+    fn args_mut(&mut self) -> &mut Vec<Self::Element>;
+
+    fn check_no_source(&self) -> Result<(), BaseError> {
+        match &self.source() {
+            Some(_) => Err("no source accepted".into()),
+            None => Ok(())
+        }
+    }
+
+    fn source_checked(&self) -> Result<&Self::Element, BaseError> {
+        self.source().ok_or("source required".into())
+    }
+
+    fn check_args_nonempty(&self) -> Result<(), BaseError> {
+        if self.args().is_empty() {
+            Err("at least 1 argument required".into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /*fn first_arg_checked(&self) -> Result<&Self::Element, BaseError> {
+        self.args().get(0).ok_or("at least 1 argument required".into())
+    }*/
+
+    fn first_arg_checked_mut(&mut self) -> Result<&mut Self::Element, BaseError> {
+        self.args_mut().get_mut(0).ok_or("at least 1 argument required".into())
+    }
+}
+
+impl Checks for Node {
+    type Element = Expr;
+
+    fn source(&self) -> Option<&Expr> { self.source.as_deref() }
+    //fn source_mut(&mut self) -> Option<&mut Expr> { self.source.as_deref_mut() }
+    fn args(&self) -> &Vec<Expr> { &self.args }
+    fn args_mut(&mut self) -> &mut Vec<Expr> { &mut self.args }
+}
+
+impl Checks for ENode {
+    type Element = Item;
+
+    fn source(&self) -> Option<&Item> { self.source.as_ref() }
+    //fn source_mut(&mut self) -> Option<&mut Item> { self.source.as_mut() }
+    fn args(&self) -> &Vec<Item> { &self.args }
+    fn args_mut(&mut self) -> &mut Vec<Item> { &mut self.args }
+}
 
 /// A precursor of [`Node`] which type-guarantees that the source is left empty.
 #[derive(Debug, PartialEq, Clone)]
@@ -939,6 +950,35 @@ impl dyn Stream {
 impl Display for Box<dyn Stream> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.writeout(f, &Default::default(), &Default::default())
+    }
+}
+
+
+pub(crate) struct BoxedStream(Box<dyn Stream>);
+
+impl Clone for BoxedStream {
+    fn clone(&self) -> Self {
+        Self(self.0.clone_box())
+    }
+}
+
+impl Deref for BoxedStream {
+    type Target = dyn Stream;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl From<Box<dyn Stream>> for BoxedStream {
+    fn from(val: Box<dyn Stream>) -> Self {
+        BoxedStream(val)
+    }
+}
+
+impl Describe for BoxedStream {
+    fn describe(&self) -> String {
+        self.0.describe()
     }
 }
 

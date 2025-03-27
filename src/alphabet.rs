@@ -125,7 +125,8 @@ impl Alphabet {
     pub fn chr_case(&self, ord: &Number, case: CharCase) -> Char {
         match self {
             Alphabet::Std26 => {
-                let ord: u8 = ord.rem_euclid(&Number::from(26)).try_into().unwrap();
+                let ord: u8 = ord.rem_euclid(&Number::from(26))
+                    .try_into().unwrap(); // 0..26 well within range of u8
                 let c = char::from(b'a' + (ord + 25u8) % 26u8);
                 Char::from(match case {
                     CharCase::Upper => c.to_ascii_uppercase(),

@@ -37,7 +37,7 @@ impl CharClass {
 enum TokenClass {
     Number,
     BaseNum,
-    Bool,
+    Bool(bool),
     Ident,
     String,
     Char,
@@ -58,7 +58,8 @@ impl Token<'_> {
         const OPERS: &[u8] = b"+-*/^~&|<=>";
         let class = match slice.as_bytes() {
             [b'0'..=b'9', ..] => if slice.contains('_') { BaseNum } else { Number },
-            b"true" | b"false" => Bool,
+            b"true" => Bool(true),
+            b"false" => Bool(false),
             [b'a'..=b'z' | b'A'..=b'Z' | b'_', ..] => Ident,
             [b'"', ..] => String,
             [b'\'', ..] => Char,
@@ -266,7 +267,7 @@ fn test_tokenizer() {
     assert_eq!(it.next(), Some(Ok(Token(Special, "#"))));
     assert_eq!(it.next(), Some(Ok(Token(Number, "4"))));
     assert_eq!(it.next(), Some(Ok(Token(Comma, ","))));
-    assert_eq!(it.next(), Some(Ok(Token(Bool, "true"))));
+    assert_eq!(it.next(), Some(Ok(Token(Bool(true), "true"))));
     assert_eq!(it.next(), Some(Ok(Token(Chain, "@"))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "q"))));
     assert_eq!(it.next(), Some(Ok(Token(Close, ")"))));
@@ -408,7 +409,7 @@ impl<'str> Parser<'str> {
             Token(TC::Number, value) => Ok(Expr::new_number(value.parse::<Number>()
                 .map_err(|_| ParseError::new("invalid number", value))?)),
             Token(TC::BaseNum, value) => Ok(Expr::new_number(parse_basenum(value)?)),
-            Token(TC::Bool, value) => Ok(Expr::new_bool(value.parse().unwrap())),
+            Token(TC::Bool(value), _) => Ok(Expr::new_bool(value)),
             Token(TC::Char, value) => Ok(Expr::new_char(parse_char(value)?)),
             Token(TC::String, value) => Ok(Expr::new_string(parse_string(value)?)),
             Token(TC::Open, bkt @ "[") => Ok(Expr::new_node(LangItem::List, self.read_args(bkt)?)),
@@ -457,7 +458,8 @@ impl<'str> Parser<'str> {
             },
             Some(tok) => {
                 self.tk.unread(tok);
-                self.read_expr_part()?.unwrap()
+                self.read_expr_part()?
+                    .expect("read_expr_part() should return Ok(Some) or Err in all remaining cases")
             }
         };
 

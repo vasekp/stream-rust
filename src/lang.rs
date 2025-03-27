@@ -98,9 +98,10 @@ impl From<String> for LiteralString {
 }
 
 
+#[derive(Clone)]
 pub struct Part {
-    source: Box<dyn Stream>,
-    indices: Box<dyn Stream>,
+    source: BoxedStream,
+    indices: BoxedStream,
     rest: Vec<Expr>,
     env: Rc<Env>
 }
@@ -110,7 +111,6 @@ impl Part {
         use once_cell::unsync::Lazy;
         let mut node = node.eval_source(env)?;
         let source = try_with!(node, node.source_checked()?.as_item()?.to_stream()?);
-        try_with!(node, node.check_args_nonempty()?);
         let length = Lazy::new(|| match source.length() {
             Length::Exact(len) => Ok(len),
             Length::Infinite => Err(BaseError::from("stream is infinite")),
@@ -146,7 +146,7 @@ impl Part {
                 }
             }
         }
-        try_with!(node, subs_len(node.args.get_mut(0).unwrap(), &length)?);
+        try_with!(node, subs_len(node.first_arg_checked_mut()?, &length)?);
         let first = node.args.remove(0).eval_env(env)?;
         match first {
             Item::Number(index) => {
@@ -177,7 +177,7 @@ impl Part {
                 }
             },
             Item::Stream(indices) => {
-                Ok(Item::new_stream(Part{source, indices, rest: node.args, env: Rc::clone(env)}))
+                Ok(Item::new_stream(Part{source: source.into(), indices: indices.into(), rest: node.args, env: Rc::clone(env)}))
             },
             item => {
                 node.args.insert(0, item.into());
@@ -199,17 +199,6 @@ impl Describe for Part {
         let source = self.source.to_expr();
         args.insert(0, self.indices.to_expr());
         Node::describe_helper(&Head::Lang(LangItem::Part), Some(&source), &args)
-    }
-}
-
-impl Clone for Part {
-    fn clone(&self) -> Part {
-        Part {
-            source: self.source.clone_box(),
-            indices: self.indices.clone_box(),
-            rest: self.rest.clone(),
-            env: Rc::clone(&self.env)
-        }
     }
 }
 
@@ -284,8 +273,9 @@ fn test_part() {
 }
 
 
+#[derive(Clone)]
 struct Map {
-    source: Box<dyn Stream>,
+    source: BoxedStream,
     body: Node,
     env: Rc<Env>
 }
@@ -299,14 +289,14 @@ impl Map {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_source(env)?;
         let source = try_with!(node, node.source_checked()?.as_item()?.to_stream()?);
-        let body = match node.args.len() {
-            1 => try_with!(node, node.args[0].to_node()?),
+        let body = match node.args[..] {
+            [ref expr] => try_with!(node, expr.to_node()?),
             _ => return Err(StreamError::new("exactly 1 argument required", node))
         };
         if body.source.is_some() {
             return Err(StreamError::new("body already has source", node));
         }
-        Ok(Item::new_stream(Map{source, body, env: Rc::clone(env)}))
+        Ok(Item::new_stream(Map{source: source.into(), body, env: Rc::clone(env)}))
     }
 }
 
@@ -326,12 +316,6 @@ impl Stream for Map {
 
     fn length(&self) -> Length {
         self.source.length()
-    }
-}
-
-impl Clone for Map {
-    fn clone(&self) -> Map {
-        Map{source: self.source.clone_box(), body: self.body.clone(), env: Rc::clone(&self.env)}
     }
 }
 
@@ -416,8 +400,7 @@ impl MathOp {
 
     fn plus_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
-        assert!(!items.is_empty());
-        match iter.next().unwrap() {
+        match iter.next().unwrap() { // args checked to be nonempty in eval_with()
             Item::Number(init) => {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a + num));
                 Ok(Item::new_number(ans?))
@@ -462,7 +445,7 @@ impl MathOp {
     fn mul_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
         assert!(!items.is_empty());
-        match iter.next().unwrap() {
+        match iter.next().unwrap() { // args checked to be nonempty in eval_with()
             Item::Number(init) => {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a * num))?;
                 Ok(Item::new_number(ans))
@@ -529,7 +512,9 @@ impl Stream for MathOp {
             .map(|item| match item {
                 Item::Stream(stm) => stm.length(),
                 _ => Length::Infinite
-            }).reduce(|a, e| Length::intersection(&a, &e)).unwrap()
+            })
+            .reduce(|a, e| Length::intersection(&a, &e))
+            .unwrap() // args checked to be nonempty in eval_with()
     }
 }
 
@@ -660,7 +645,7 @@ impl Join {
         let string = try_with!(node, node.args.iter()
             .map(is_string)
             .try_fold(TriState::Either, TriState::join)
-            .map_err(|_| BaseError::from("mixed strings and non-strings"))?)
+            .map_err(|()| BaseError::from("mixed strings and non-strings"))?)
             .is_true();
         Ok(Item::new_stream(Join{node, string}))
     }
@@ -691,7 +676,7 @@ impl Stream for Join {
                 Item::Stream(stm) => stm.length(),
                 _ => Length::from(1)
             })
-            .reduce(|acc, e| acc + e).unwrap()
+            .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
     }
 }
 
