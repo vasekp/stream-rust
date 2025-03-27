@@ -62,6 +62,10 @@ impl Iterator for SeqIter<'_> {
 }
 
 impl SIterator for SeqIter<'_> {
+    fn len_remain(&self) -> Length {
+        Length::Infinite
+    }
+
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         debug_assert!(!n.is_negative());
         self.value += n * self.step;
@@ -139,6 +143,9 @@ impl Range {
     }
 
     fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<Number> {
+        if Self::empty_helper(from, to, step) {
+            return Some(Number::zero());
+        }
         match step.to_i32() {
             Some(1) => Some(to - from + 1),
             Some(-1) => Some(from - to + 1),
@@ -214,6 +221,13 @@ impl SIterator for RangeIter<'_> {
             Ok(None)
         } else {
             Ok(Some(n - &max))
+        }
+    }
+
+    fn len_remain(&self) -> Length {
+        match Range::len_helper(&self.value, &self.parent.to, &self.parent.step) {
+            Some(num) => Length::Exact(num),
+            None => Length::Infinite
         }
     }
 }
@@ -347,6 +361,7 @@ impl Stream for Repeat {
             Item::Stream(stream) => Box::new(RepeatStreamIter {
                 stream: &**stream,
                 iter: stream.iter(),
+                len: stream.length(),
                 resets_rem: self.count.as_ref()
                     .map(|count| count - 1)
             }),
@@ -422,11 +437,16 @@ impl SIterator for RepeatItemIter<'_> {
             Ok(None)
         }
     }
+
+    fn len_remain(&self) -> Length {
+        Length::Exact(self.count_rem.to_owned())
+    }
 }
 
 struct RepeatStreamIter<'node> {
     stream: &'node dyn Stream,
     iter: Box<dyn SIterator + 'node>,
+    len: Length,
     resets_rem: Option<Number>
 }
 
@@ -494,6 +514,17 @@ impl SIterator for RepeatStreamIter<'_> {
         self.iter = self.stream.iter();
         debug_assert!(n < full_length);
         self.iter.skip_n(&n)
+    }
+
+    fn len_remain(&self) -> Length {
+        match &self.resets_rem {
+            None => Length::Infinite,
+            Some(count) => match &self.len {
+                Length::Infinite => Length::Infinite,
+                Length::Exact(len) => self.iter.len_remain() + count * len,
+                _ => Length::Unknown
+            }
+        }
     }
 }
 
@@ -676,6 +707,10 @@ impl SIterator for ShiftIter<'_> {
             }
         }
         Ok(None)
+    }
+
+    fn len_remain(&self) -> Length {
+        self.base.len_remain()
     }
 }
 

@@ -238,6 +238,10 @@ impl SIterator for PartIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         self.iter.skip_n(n)
     }
+
+    fn len_remain(&self) -> Length {
+        self.iter.len_remain()
+    }
 }
 
 
@@ -351,6 +355,10 @@ impl Iterator for MapIter<'_> {
 impl SIterator for MapIter<'_> {
     fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
         self.source.skip_n(n)
+    }
+
+    fn len_remain(&self) -> Length {
+        self.source.len_remain()
     }
 }
 
@@ -562,6 +570,13 @@ impl SIterator for MathOpIter<'_> {
         if remain.is_zero() { Ok(None) }
         else { Ok(Some(remain)) }
     }
+
+    fn len_remain(&self) -> Length {
+        self.args.iter()
+            .map(|iter| iter.len_remain())
+            .reduce(|a, b| Length::intersection(&a, &b))
+            .unwrap()
+    }
 }
 
 #[test]
@@ -721,6 +736,20 @@ impl SIterator for JoinIter<'_> {
                 item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
             };
         }
+    }
+
+    fn len_remain(&self) -> Length {
+        let mut len = self.cur.len_remain();
+        if matches!(len, Length::Infinite | Length::Unknown | Length::UnknownFinite) {
+            return len;
+        }
+        for i in (self.index + 1)..self.node.args.len() {
+            match &self.node.args[i] {
+                Item::Stream(stm) => len = len + stm.length(),
+                _ => len += Number::one()
+            }
+        }
+        len
     }
 }
 
