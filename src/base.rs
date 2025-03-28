@@ -1033,6 +1033,17 @@ impl Length {
             (Exact(x) | AtMost(x), Exact(y) | AtMost(y)) => AtMost(std::cmp::min(x, y).to_owned())
         }
     }
+
+    pub fn map<F: FnOnce(&Number) -> Number>(&self, f: F) -> Length {
+        use Length::*;
+        match self {
+            Exact(len) => Exact(f(len)),
+            AtMost(len) => AtMost(f(len)),
+            UnknownFinite => UnknownFinite,
+            Unknown => Unknown,
+            Infinite => Infinite
+        }
+    }
 }
 
 impl<T> From<T> for Length where T: Into<Number> {

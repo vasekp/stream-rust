@@ -931,6 +931,178 @@ fn test_selfref() {
 }
 
 
+#[derive(Clone)]
+struct Riffle {
+    source: BoxedStream,
+    filler: Item
+}
+
+impl Riffle {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        let mut node = node.eval_all(env)?;
+        let filler = match &mut node.args[..] {
+            [f] => f,
+            _ => return Err(StreamError::new("exactly 1 argument required", node))
+        };
+        let source: BoxedStream = match node.source {
+            Some(Item::Stream(s)) => s.into(),
+            Some(ref item) => return Err(StreamError::new(format!("expected stream, found {:?}", item), node)),
+            _ => return Err(StreamError::new("source required", node))
+        };
+        let filler = std::mem::take(filler);
+        if source.is_empty() {
+            if source.is_string().is_true() { Ok(Item::new_stream(EmptyString())) }
+            else { Ok(Item::new_stream(EmptyStream())) }
+        } else {
+            Ok(Item::new_stream(Riffle{source, filler}))
+        }
+    }
+}
+
+impl Describe for Riffle {
+    fn describe(&self) -> String {
+        Node::describe_helper(&("riffle".into()), Some(&self.source), std::slice::from_ref(&self.filler))
+    }
+}
+
+impl Stream for Riffle {
+    fn iter(&self) -> Box<dyn SIterator + '_> {
+        let mut source_iter = self.source.iter();
+        let filler_iter = match &self.filler {
+            Item::Stream(stm) => stm.iter(),
+            item => Box::new(std::iter::repeat(Ok(item.clone())))
+        };
+        let source_next = source_iter.next();
+        Box::new(RiffleIter {
+            source: source_iter,
+            filler: filler_iter,
+            source_next,
+            which: RiffleState::Source
+        })
+    }
+
+    fn is_string(&self) -> TriState {
+        self.source.is_string()
+    }
+
+    fn length(&self) -> Length {
+        use Length::*;
+        let len1 = self.source.length();
+        let len2 = match &self.filler {
+            Item::Stream(stm) => stm.length(),
+            _ => Infinite
+        };
+        Length::intersection(&len1.map(|u| 2 * u - 1), &len2.map(|v| 2 * v + 1))
+    }
+}
+
+struct RiffleIter<'node> {
+    source: Box<dyn SIterator + 'node>,
+    filler: Box<dyn SIterator + 'node>,
+    source_next: Option<Result<Item, StreamError>>,
+    which: RiffleState
+}
+
+#[derive(PartialEq)]
+enum RiffleState {
+    Source,
+    Filler
+}
+
+impl Iterator for RiffleIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use RiffleState::*;
+        match self.which {
+            Source => {
+                let next = self.source_next.take()?;
+                self.source_next = self.source.next();
+                self.which = Filler;
+                Some(next)
+            },
+            Filler => {
+                self.which = Source;
+                if self.source_next.is_none() { None } else { self.filler.next() }
+            }
+        }
+    }
+}
+
+impl SIterator for RiffleIter<'_> {
+    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+        let common = Length::intersection(&self.source.len_remain(), &self.filler.len_remain());
+        let skip = match Length::intersection(&common, &Length::Exact(n / 2)) {
+            Length::Exact(len) => len,
+            _ => Number::zero()
+        };
+        let mut remain = if !skip.is_zero() {
+            self.source.skip_n(&(&skip - 1))?;
+            self.filler.skip_n(&skip)?;
+            self.source_next = self.source.next();
+            n - 2 * skip
+        } else {
+            n.to_owned()
+        };
+        while !remain.is_zero() {
+            if self.next().transpose()?.is_none() {
+                return Ok(Some(remain));
+            }
+            remain.dec();
+        }
+        Ok(None)
+    }
+
+    fn len_remain(&self) -> Length {
+        let len1 = self.source.len_remain();
+        let len2 = self.filler.len_remain();
+        if self.source_next.is_none() {
+            Length::Exact(Number::zero())
+        } else {
+            match self.which {
+                RiffleState::Source => Length::intersection(&len1, &len2).map(|x| 2 * x + 1),
+                RiffleState::Filler => Length::intersection(&(len1 + Number::one()), &len2).map(|x| 2 * x)
+            }
+        }
+    }
+}
+
+#[test]
+fn test_riffle() {
+    use crate::parser::parse;
+    assert_eq!(parse("seq.riffle(seq + 3)").unwrap().eval().unwrap().to_string(), "[1, 4, 2, 5, 3, ...]");
+    assert_eq!(parse("0.repeat.riffle(1)").unwrap().eval().unwrap().to_string(), "[0, 1, 0, 1, 0, ...]");
+    assert_eq!(parse("[1,2,3].riffle('a')").unwrap().eval().unwrap().to_string(), "[1, 'a', 2, 'a', 3]");
+    assert_eq!(parse("seq.riffle(['a'])").unwrap().eval().unwrap().to_string(), "[1, 'a', 2]");
+    assert_eq!(parse("seq.riffle([])").unwrap().eval().unwrap().to_string(), "[1]");
+    assert_eq!(parse("[1,2].riffle(['a', 'b'])").unwrap().eval().unwrap().to_string(), "[1, 'a', 2]");
+    assert_eq!(parse("['a','b'].riffle(seq)").unwrap().eval().unwrap().to_string(), "['a', 1, 'b']");
+    assert_eq!(parse("\"abc\".riffle(',')").unwrap().eval().unwrap().to_string(), "\"a,b,c\"");
+    assert_eq!(parse("\"abc\".riffle(0)").unwrap().eval().unwrap().to_string(), "\"a<!>");
+    assert!(parse("1.riffle(2)").unwrap().eval().is_err());
+    test_len_exact(&parse("[1,2,3].riffle('a')").unwrap().eval().unwrap(), 5);
+    test_len_exact(&parse("[1,2,3].riffle(['a'])").unwrap().eval().unwrap(), 3);
+    test_len_exact(&parse("[1,2,3].riffle([])").unwrap().eval().unwrap(), 1);
+    test_len_exact(&parse("seq.riffle(['a'])").unwrap().eval().unwrap(), 3);
+    test_len_exact(&parse("seq.riffle([])").unwrap().eval().unwrap(), 1);
+    test_skip_n(&parse("seq.riffle(seq)").unwrap().eval().unwrap());
+    test_skip_n(&parse("seq.riffle(range(100))").unwrap().eval().unwrap());
+    test_skip_n(&parse("seq.riffle([])").unwrap().eval().unwrap());
+    test_skip_n(&parse("seq.riffle(0)").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle(seq)").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle(0)").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle(range(50))").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle(range(99))").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle(range(100))").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle(range(101))").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle(range(200))").unwrap().eval().unwrap());
+    test_skip_n(&parse("range(100).riffle([])").unwrap().eval().unwrap());
+    test_skip_n(&parse("[].riffle(range(3))").unwrap().eval().unwrap());
+    test_skip_n(&parse("[].riffle(range(1))").unwrap().eval().unwrap());
+    test_skip_n(&parse("[].riffle([])").unwrap().eval().unwrap());
+}
+
+
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::eval);
     keywords.insert("range", Range::eval);
@@ -939,5 +1111,6 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("repeat", Repeat::eval);
     keywords.insert("shift", Shift::eval);
     keywords.insert("self", SelfRef::eval);
+    keywords.insert("riffle", Riffle::eval);
     keywords.insert("$backref", BackRef::eval);
 }
