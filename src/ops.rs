@@ -892,10 +892,7 @@ impl Stream for BackRef {
     }
 
     fn length(&self) -> Length {
-        match Weak::upgrade(&self.parent) {
-            Some(rc) => Length::Exact(rc.borrow().len().into()),
-            None => Length::Unknown
-        }
+        Length::Unknown
     }
 }
 
@@ -1017,11 +1014,11 @@ impl Iterator for RiffleIter<'_> {
         match self.which {
             Source => {
                 let next = self.source_next.take()?;
-                self.source_next = self.source.next();
                 self.which = Filler;
                 Some(next)
             },
             Filler => {
+                self.source_next = self.source.next();
                 self.which = Source;
                 if self.source_next.is_none() { None } else { self.filler.next() }
             }
@@ -1037,9 +1034,16 @@ impl SIterator for RiffleIter<'_> {
             _ => Number::zero()
         };
         let mut remain = if !skip.is_zero() {
-            self.source.skip_n(&(&skip - 1))?;
             self.filler.skip_n(&skip)?;
-            self.source_next = self.source.next();
+            match self.which {
+                RiffleState::Source => {
+                    self.source.skip_n(&(&skip - 1))?;
+                    self.source_next = self.source.next();
+                },
+                RiffleState::Filler => {
+                    self.source.skip_n(&skip)?;
+                }
+            };
             n - 2 * skip
         } else {
             n.to_owned()
@@ -1056,12 +1060,17 @@ impl SIterator for RiffleIter<'_> {
     fn len_remain(&self) -> Length {
         let len1 = self.source.len_remain();
         let len2 = self.filler.len_remain();
-        if self.source_next.is_none() {
-            Length::Exact(Number::zero())
-        } else {
-            match self.which {
-                RiffleState::Source => Length::intersection(&len1, &len2).map(|x| 2 * x + 1),
-                RiffleState::Filler => Length::intersection(&(len1 + Number::one()), &len2).map(|x| 2 * x)
+        let common = Length::intersection(&len1, &len2);
+        match self.which {
+            RiffleState::Source => {
+                if self.source_next.is_none() {
+                    Length::Exact(Number::zero())
+                } else {
+                    common.map(|x| 2 * x + 1)
+                }
+            },
+            RiffleState::Filler => {
+                common.map(|x| 2 * x)
             }
         }
     }
