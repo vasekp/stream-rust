@@ -786,20 +786,20 @@ pub trait Stream: DynClone + Describe {
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
     /// looking at [`length()`](Stream::length). If the information is insufficient, constructs the
-    /// iterator and tries answering using `Iterator::size_hint()`. As a last resort, the iterator
-    /// is consumed.
+    /// iterator and tries answering using [`SIterator::len_remain()`]. As a last resort, the 
+    /// iterator is consumed.
     ///
     /// This function can't return an error. If the first call to `iter().next()` produces an
     /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
     fn is_empty(&self) -> bool {
         match self.length() {
-            Length::Exact(len) => len.is_zero(),
-            Length::Infinite => false,
+            Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
+            Length::Exact(_) | Length::Infinite => false,
             _ => {
                 let mut iter = self.iter();
-                match iter.size_hint() {
-                    (1.., _) => false,
-                    (0, Some(0)) => true,
+                match iter.len_remain() {
+                    Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
+                    Length::Exact(_) | Length::Infinite => false,
                     _ => iter.next().is_none()
                 }
             }
@@ -1369,6 +1369,7 @@ pub(crate) fn test_len_exact(item: &Item, len: usize) {
     let stm = item.as_stream().unwrap();
     assert_eq!(stm.iter().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.length(), &Length::Exact(len.into())));
+    assert!(Length::possibly_eq(&stm.iter().len_remain(), &Length::Exact(len.into())));
     assert_eq!(len == 0, stm.is_empty());
 }
 

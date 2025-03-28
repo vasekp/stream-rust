@@ -748,6 +748,7 @@ fn test_shift() {
     assert_eq!(parse(r#""abc".shift(['d',5,true])"#).unwrap().eval().unwrap().to_string(), "\"eg<!>");
     test_len_exact(&parse("\"abc\".shift(seq)").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap(), 6);
+    test_len_exact(&parse("\"\".shift(seq)").unwrap().eval().unwrap(), 0);
     test_skip_n(&parse(r#""abcdefghijk".shift(seq, "abcdefghijklmn")"#).unwrap().eval().unwrap());
     test_skip_n(&parse(r#""ab".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
     test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
@@ -923,6 +924,11 @@ fn test_selfref() {
     assert_eq!(parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap().to_string(), "\"qqblu\"");
     assert_eq!(parse("self(%[1])").unwrap().eval().unwrap().to_string(), "[<!>");
     assert_eq!(parse("self(%.len)").unwrap().eval().unwrap().to_string(), "[<!>");
+    test_len_exact(&parse("self(%)").unwrap().eval().unwrap(), 0);
+    test_len_exact(&parse("self(%~%)").unwrap().eval().unwrap(), 0);
+    test_len_exact(&parse("self(%:{#})").unwrap().eval().unwrap(), 0);
+    test_len_exact(&parse("self(%.riffle(%))").unwrap().eval().unwrap(), 0);
+    test_len_exact(&parse("self(%.repeat)").unwrap().eval().unwrap(), 0);
     test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap(), 5);
     test_skip_n(&parse("self(1~(%+1))").unwrap().eval().unwrap());
 }
@@ -990,6 +996,10 @@ impl Stream for Riffle {
             _ => Infinite
         };
         Length::intersection(&len1.map(|u| 2 * u - 1), &len2.map(|v| 2 * v + 1))
+    }
+
+    fn is_empty(&self) -> bool {
+        false
     }
 }
 
@@ -1094,6 +1104,8 @@ fn test_riffle() {
     test_len_exact(&parse("[1,2,3].riffle([])").unwrap().eval().unwrap(), 1);
     test_len_exact(&parse("seq.riffle(['a'])").unwrap().eval().unwrap(), 3);
     test_len_exact(&parse("seq.riffle([])").unwrap().eval().unwrap(), 1);
+    test_len_exact(&parse("[].riffle(0)").unwrap().eval().unwrap(), 0);
+    test_len_exact(&parse("\"\".riffle(0)").unwrap().eval().unwrap(), 0);
     test_skip_n(&parse("seq.riffle(seq)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq.riffle(range(100))").unwrap().eval().unwrap());
     test_skip_n(&parse("seq.riffle([])").unwrap().eval().unwrap());
