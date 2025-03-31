@@ -116,7 +116,7 @@ impl Part {
             Length::Infinite => Err(BaseError::from("stream is infinite")),
             _ => Ok(source.iter().count().into())
         });
-        type R = Result<Number, BaseError>;
+        type R = Result<UNumber, BaseError>;
         fn subs_len(expr: &mut Expr, length: &Lazy<R, impl Fn() -> R>) ->
             Result<(), BaseError>
         {
@@ -157,13 +157,14 @@ impl Part {
                     } }
                 }
                 try_with!(orig_node!(), index.check_within(Number::one()..)?);
+                let index = UNumber::try_from(&index).unwrap(); // checked above
                 match source.length() {
                     Length::Exact(len) | Length::AtMost(len) if len < index =>
                         return Err(StreamError::new("index past end of stream", orig_node!())),
                     _ => ()
                 }
                 let mut iter = source.iter();
-                if iter.skip_n(&(&index - 1))?.is_some() {
+                if iter.skip_n(&(&index - 1u32))?.is_some() {
                     return Err(StreamError::new("index past end of stream", orig_node!()));
                 }
                 let item = match iter.next() {
@@ -224,7 +225,7 @@ impl Iterator for PartIter<'_> {
 }
 
 impl SIterator for PartIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
 
@@ -339,7 +340,7 @@ impl Iterator for MapIter<'_> {
 }
 
 impl SIterator for MapIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         self.source.skip_n(n)
     }
 
@@ -446,7 +447,7 @@ impl MathOp {
 
     fn mul_func(items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
         let mut iter = items.iter();
-        assert!(!items.is_empty());
+        debug_assert!(!items.is_empty());
         match iter.next().unwrap() { // args checked to be nonempty in eval_with()
             Item::Number(init) => {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a * num))?;
@@ -555,8 +556,8 @@ impl Iterator for MathOpIter<'_> {
 }
 
 impl SIterator for MathOpIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        let mut remain = Number::zero();
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+        let mut remain = UNumber::zero();
         for iter in &mut self.args {
             if let Some(r) = iter.skip_n(n)? {
                 remain = std::cmp::max(remain, r);
@@ -685,7 +686,7 @@ impl Stream for Join {
         self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.length(),
-                _ => Length::from(1)
+                _ => Length::Exact(UNumber::one())
             })
             .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
     }
@@ -725,8 +726,7 @@ impl Iterator for JoinIter<'_> {
 }
 
 impl SIterator for JoinIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        assert!(!n.is_negative());
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut n = n.to_owned();
         loop {
             let Some(m) = self.cur.skip_n(&n)?
@@ -750,7 +750,7 @@ impl SIterator for JoinIter<'_> {
         for i in (self.index + 1)..self.node.args.len() {
             match &self.node.args[i] {
                 Item::Stream(stm) => len = len + stm.length(),
-                _ => len += Number::one()
+                _ => len += UNumber::one()
             }
         }
         len

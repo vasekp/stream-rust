@@ -13,11 +13,7 @@ where T: std::fmt::Display + std::fmt::Debug + PartialEq {
     }
 }
 
-pub(crate) trait NumWithin : PartialOrd {
-    fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), BaseError>;
-}
-
-impl NumWithin for Number {
+pub(crate) trait NumWithin: PartialOrd + std::fmt::Display + std::fmt::Debug + Sized {
     fn check_within(&self, range: impl RangeBounds<Self>) -> Result<(), BaseError> {
         match range.contains(self) {
             true => Ok(()),
@@ -25,6 +21,9 @@ impl NumWithin for Number {
         }
     }
 }
+
+impl NumWithin for Number {}
+impl NumWithin for UNumber {}
 
 
 #[derive(Clone)]

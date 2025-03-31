@@ -66,9 +66,8 @@ impl SIterator for SeqIter<'_> {
         Length::Infinite
     }
 
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        debug_assert!(!n.is_negative());
-        self.value += n * self.step;
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.value += self.step * Number::from(n.clone());
         Ok(None)
     }
 }
@@ -142,15 +141,18 @@ impl Range {
         (to > from && step.is_negative()) || (to < from && step.is_positive())
     }
 
-    fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<Number> {
+    fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<UNumber> {
         if Self::empty_helper(from, to, step) {
-            return Some(Number::zero());
+            return Some(UNumber::zero());
         }
         match step.to_i32() {
-            Some(1) => Some(to - from + 1),
-            Some(-1) => Some(from - to + 1),
+            Some(1) => Some(UNumber::try_from(to - from + 1)
+                .expect("expected to > from when step > 0")),
+            Some(-1) => Some(UNumber::try_from(from - to + 1)
+                .expect("expected to < from when step < 0")),
             Some(0) => None,
-            _ => Some((to - from) / step + 1)
+            _ => Some(UNumber::try_from((to - from) / step + 1)
+                .expect("to-from / step sign mismatch")),
         }
     }
 }
@@ -209,15 +211,14 @@ impl Iterator for RangeIter<'_> {
 }
 
 impl SIterator for RangeIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        debug_assert!(!n.is_negative());
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         if Range::empty_helper(&self.value, &self.parent.to, &self.parent.step) {
             return Ok(Some(n.to_owned()))
         };
         let Some(max) = Range::len_helper(&self.value, &self.parent.to, &self.parent.step)
             else { return Ok(None); };
         if n <= &max {
-            self.value += n * &self.parent.step;
+            self.value += &self.parent.step * Number::from(n.clone());
             Ok(None)
         } else {
             Ok(Some(n - &max))
@@ -318,7 +319,7 @@ fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
 #[derive(Clone)]
 pub struct Repeat {
     item: Item,
-    count: Option<Number>
+    count: Option<UNumber>
 }
 
 impl Repeat {
@@ -326,12 +327,14 @@ impl Repeat {
         let mut node = node.eval_all(env)?;
         let (item, count) = try_with!(node, match (&mut node.source, node.args.len(), node.args.get_mut(0)) {
             (Some(ref mut src), 0, None)
-                => (std::mem::take(src), None),
+                => (std::mem::take(src), None::<UNumber>),
             (Some(ref mut src), 1, Some(Item::Number(ref mut count))) => {
                 if count.is_negative() {
                     return Err(format!("expected nonnegative count, found {}", count).into());
                 } else {
-                    (std::mem::take(src), Some(std::mem::take(count)))
+                    (std::mem::take(src), Some(std::mem::take(count)
+                       .try_into()
+                       .unwrap())) // sign already checked
                 }
             },
             _ => return Err("expected one of: source.repeat(), source.repeat(count)".into())
@@ -363,7 +366,7 @@ impl Stream for Repeat {
                 iter: stream.iter(),
                 len: stream.length(),
                 resets_rem: self.count.as_ref()
-                    .map(|count| count - 1)
+                    .map(|count| count - 1u32)
             }),
             item => match &self.count {
                 Some(count) => Box::new(RepeatItemIter{item, count_rem: count.to_owned()}),
@@ -374,10 +377,10 @@ impl Stream for Repeat {
 
     fn length(&self) -> Length {
         use Length::*;
-        if self.count == Some(Number::zero()) { return Exact(Number::zero()); }
+        if self.count == Some(UNumber::zero()) { return Exact(UNumber::zero()); }
         match &self.item {
             Item::Stream(stream) => {
-                if stream.is_empty() { return Exact(Number::zero()); }
+                if stream.is_empty() { return Exact(UNumber::zero()); }
                 match (stream.length(), &self.count) {
                     (_, None) | (Infinite, _) => Infinite,
                     (Exact(len), Some(count)) => Exact(len * count),
@@ -411,7 +414,7 @@ impl Describe for Repeat {
 
 struct RepeatItemIter<'node> {
     item: &'node Item,
-    count_rem: Number // None covered by std::iter::repeat_with
+    count_rem: UNumber // None covered by std::iter::repeat_with
 }
 
 impl Iterator for RepeatItemIter<'_> {
@@ -428,8 +431,7 @@ impl Iterator for RepeatItemIter<'_> {
 }
 
 impl SIterator for RepeatItemIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        assert!(!n.is_negative());
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         if n > &self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
@@ -447,7 +449,7 @@ struct RepeatStreamIter<'node> {
     stream: &'node dyn Stream,
     iter: Box<dyn SIterator + 'node>,
     len: Length,
-    resets_rem: Option<Number>
+    resets_rem: Option<UNumber>
 }
 
 impl Iterator for RepeatStreamIter<'_> {
@@ -470,9 +472,7 @@ impl Iterator for RepeatStreamIter<'_> {
 }
 
 impl SIterator for RepeatStreamIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        assert!(!n.is_negative());
-
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         let Some(n) = self.iter.skip_n(n)? else { return Ok(None); };
 
         // If skip_n returned Some, iter is depleted. Restart.
@@ -702,11 +702,11 @@ impl Iterator for ShiftIter<'_> {
 }
 
 impl SIterator for ShiftIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         let args_iter = self.args_iter.iter_mut();
         let mut n = n.to_owned();
-        let mut n_chars = Number::zero();
-        while n.is_positive() {
+        let mut n_chars = UNumber::zero();
+        while !n.is_zero() {
             match self.base.next() {
                 Some(Ok(ch)) => {
                     if self.env.alphabet().contains(&ch) {
@@ -995,7 +995,7 @@ impl Stream for Riffle {
             Item::Stream(stm) => stm.length(),
             _ => Infinite
         };
-        Length::intersection(&len1.map(|u| 2 * u - 1), &len2.map(|v| 2 * v + 1))
+        Length::intersection(&len1.map(|u| 2u32 * u - 1u32), &len2.map(|v| 2u32 * v + 1u32))
     }
 
     fn is_empty(&self) -> bool {
@@ -1037,24 +1037,24 @@ impl Iterator for RiffleIter<'_> {
 }
 
 impl SIterator for RiffleIter<'_> {
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         let common = Length::intersection(&self.source.len_remain(), &self.filler.len_remain());
-        let skip = match Length::intersection(&common, &Length::Exact(n / 2)) {
+        let skip = match Length::intersection(&common, &Length::Exact(n / 2u32)) {
             Length::Exact(len) => len,
-            _ => Number::zero()
+            _ => UNumber::zero()
         };
         let mut remain = if !skip.is_zero() {
             self.filler.skip_n(&skip)?;
             match self.which {
                 RiffleState::Source => {
-                    self.source.skip_n(&(&skip - 1))?;
+                    self.source.skip_n(&(&skip - 1u32))?;
                     self.source_next = self.source.next();
                 },
                 RiffleState::Filler => {
                     self.source.skip_n(&skip)?;
                 }
             };
-            n - 2 * skip
+            n - 2u32 * skip
         } else {
             n.to_owned()
         };
@@ -1074,13 +1074,13 @@ impl SIterator for RiffleIter<'_> {
         match self.which {
             RiffleState::Source => {
                 if self.source_next.is_none() {
-                    Length::Exact(Number::zero())
+                    Length::Exact(UNumber::zero())
                 } else {
-                    common.map(|x| 2 * x + 1)
+                    common.map(|x| 2u32 * x + 1u32)
                 }
             },
             RiffleState::Filler => {
-                common.map(|x| 2 * x)
+                common.map(|x| 2u32 * x)
             }
         }
     }

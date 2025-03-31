@@ -10,10 +10,13 @@ use std::rc::{Rc, Weak};
 use std::ops::Deref;
 use crate::alphabet::*;
 
-/// The type for representing all numbers in Stream. The requirement is that it allows
+/// The base type for representing all numbers in Stream. The requirement is that it allows
 /// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
 /// BigInt fallback in the future for better performance.
 pub type Number = num::BigInt;
+
+/// The unsigned variant of the [`Number`] type.
+pub type UNumber = num::BigUint;
 
 
 /// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into an input form.
@@ -987,9 +990,9 @@ impl Describe for BoxedStream {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Length {
     /// The length is known exactly, including empty streams.
-    Exact(Number),
+    Exact(UNumber),
     /// The length has a known upper bound.
-    AtMost(Number),
+    AtMost(UNumber),
     /// The stream is known to be infinite.
     Infinite,
     /// The length is not known but promises to be finite.
@@ -1034,7 +1037,7 @@ impl Length {
         }
     }
 
-    pub fn map<F: FnOnce(&Number) -> Number>(&self, f: F) -> Length {
+    pub fn map<F: FnOnce(&UNumber) -> UNumber>(&self, f: F) -> Length {
         use Length::*;
         match self {
             Exact(len) => Exact(f(len)),
@@ -1046,7 +1049,7 @@ impl Length {
     }
 }
 
-impl<T> From<T> for Length where T: Into<Number> {
+impl<T> From<T> for Length where T: Into<UNumber> {
     fn from(value: T) -> Self {
         Length::Exact(value.into())
     }
@@ -1067,21 +1070,21 @@ impl std::ops::Add for Length {
     }
 }
 
-impl std::ops::AddAssign<Number> for Length {
-    fn add_assign(&mut self, rhs: Number) {
+impl<T: std::borrow::Borrow<UNumber>> std::ops::AddAssign<T> for Length {
+    fn add_assign(&mut self, rhs: T) {
         use Length::*;
         match self {
-            Exact(len) | AtMost(len) => *len += rhs,
+            Exact(len) | AtMost(len) => *len += rhs.borrow(),
             _ => ()
         }
     }
 }
 
-impl std::ops::Add<Number> for Length {
+impl<T: std::borrow::Borrow<UNumber>> std::ops::Add<T> for Length {
     type Output = Self;
 
-    fn add(mut self, rhs: Number) -> Self {
-        self += rhs;
+    fn add(mut self, rhs: T) -> Self {
+        self += rhs.borrow();
         self
     }
 }
@@ -1110,7 +1113,7 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     }
 
     /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
-    /// by `n` elements. The value must be nonnegative.
+    /// by `n` elements.
     ///
     /// The return value is `Ok(None)` if `n` elements were skipped. If the iterator finishes
     /// early, the result is `Ok(Some(k))`, where `k` is the number of remaining elements. This is
@@ -1124,8 +1127,7 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
     /// value given by [`SIterator::len_remain()`].
-    fn skip_n(&mut self, n: &Number) -> Result<Option<Number>, StreamError> {
-        debug_assert!(!n.is_negative());
+    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         if let Length::Exact(len) = self.len_remain() {
             if n > &len {
                 return Ok(Some(n - &len));
@@ -1158,7 +1160,7 @@ impl SIterator for std::iter::Repeat<Result<Item, StreamError>> {
         Length::Infinite
     }
 
-    fn skip_n(&mut self, _n: &Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, _n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         Ok(None)
     }
 }
@@ -1170,7 +1172,7 @@ where F: FnMut() -> Result<Item, StreamError>
         Length::Infinite
     }
 
-    fn skip_n(&mut self, _n: &Number) -> Result<Option<Number>, StreamError> {
+    fn skip_n(&mut self, _n: &UNumber) -> Result<Option<UNumber>, StreamError> {
         Ok(None)
     }
 }
@@ -1178,31 +1180,31 @@ where F: FnMut() -> Result<Item, StreamError>
 #[test]
 fn test_simple_iters() {
     let mut iter = std::iter::empty();
-    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
     assert_eq!(iter.next(), None);
     let mut iter = std::iter::empty();
-    assert_eq!(iter.skip_n(&Number::zero()), Ok(None));
+    assert_eq!(iter.skip_n(&UNumber::zero()), Ok(None));
     assert_eq!(iter.next(), None);
     let mut iter = std::iter::empty();
-    assert_eq!(iter.skip_n(&Number::one()), Ok(Some(Number::one())));
+    assert_eq!(iter.skip_n(&UNumber::one()), Ok(Some(UNumber::one())));
 
     let mut iter = std::iter::once(Ok(Item::default()));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::one()));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
     assert_eq!(iter.next(), Some(Ok(Item::default())));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
     assert_eq!(iter.next(), None);
     let mut iter = std::iter::once(Ok(Item::default()));
-    assert_eq!(iter.skip_n(&Number::one()), Ok(None));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.skip_n(&UNumber::one()), Ok(None));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
     assert_eq!(iter.next(), None);
     let mut iter = std::iter::once(Ok(Item::default()));
-    assert_eq!(iter.skip_n(&2.into()), Ok(Some(Number::one())));
+    assert_eq!(iter.skip_n(&2u32.into()), Ok(Some(UNumber::one())));
 
     let mut iter = std::iter::repeat(Ok(Item::default()));
     assert_eq!(iter.len_remain(), Length::Infinite);
     assert_eq!(iter.next(), Some(Ok(Item::default())));
     assert_eq!(iter.len_remain(), Length::Infinite);
-    assert_eq!(iter.skip_n(&100.into()), Ok(None));
+    assert_eq!(iter.skip_n(&100u32.into()), Ok(None));
     assert_eq!(iter.next(), Some(Ok(Item::default())));
     assert_eq!(iter.len_remain(), Length::Infinite);
 
@@ -1210,29 +1212,29 @@ fn test_simple_iters() {
     assert_eq!(iter.len_remain(), Length::Infinite);
     assert_eq!(iter.next(), Some(Ok(Item::default())));
     assert_eq!(iter.len_remain(), Length::Infinite);
-    assert_eq!(iter.skip_n(&100.into()), Ok(None));
+    assert_eq!(iter.skip_n(&100u32.into()), Ok(None));
     assert_eq!(iter.next(), Some(Ok(Item::default())));
     assert_eq!(iter.len_remain(), Length::Infinite);
 
     let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
-    assert_eq!(iter.len_remain(), Length::Exact(2.into()));
+    assert_eq!(iter.len_remain(), Length::Exact(2u32.into()));
     assert_eq!(iter.next(), Some(Ok(Item::default())));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::one()));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
     assert_eq!(iter.next(), Some(Ok(Item::default())));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
     assert_eq!(iter.next(), None);
     let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
-    assert_eq!(iter.skip_n(&Number::one()), Ok(None));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::one()));
+    assert_eq!(iter.skip_n(&UNumber::one()), Ok(None));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
     assert_eq!(iter.next(), Some(Ok(Item::default())));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
     assert_eq!(iter.next(), None);
     let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
-    assert_eq!(iter.skip_n(&2.into()), Ok(None));
-    assert_eq!(iter.len_remain(), Length::Exact(Number::zero()));
+    assert_eq!(iter.skip_n(&2u32.into()), Ok(None));
+    assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
     assert_eq!(iter.next(), None);
     let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
-    assert_eq!(iter.skip_n(&3.into()), Ok(Some(Number::one())));
+    assert_eq!(iter.skip_n(&3u32.into()), Ok(Some(UNumber::one())));
 }
 
 
@@ -1383,7 +1385,7 @@ pub(crate) fn test_skip_n(item: &Item) {
 
     // skip(0) = no-op on fresh iterator
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
-    assert_eq!(i1.next(), match i2.skip_n(&Number::zero()).unwrap() {
+    assert_eq!(i1.next(), match i2.skip_n(&UNumber::zero()).unwrap() {
         Some(_) => None,
         None => i2.next() // same None, same element or same error
     });
@@ -1394,7 +1396,7 @@ pub(crate) fn test_skip_n(item: &Item) {
         // skip(1) = next() on fresh iterator
         let (mut i1, mut i2) = (stm.iter(), stm.iter());
         i1.next();
-        assert_eq!(i1.next(), match i2.skip_n(&Number::one()).unwrap() {
+        assert_eq!(i1.next(), match i2.skip_n(&UNumber::one()).unwrap() {
             Some(_) => None,
             None => i2.next()
         });
@@ -1403,12 +1405,12 @@ pub(crate) fn test_skip_n(item: &Item) {
 
         match stm.length() {
             Length::Exact(len) => {
-                assert!(len.is_positive());
+                assert!(!len.is_zero());
 
                 // skip(len - 1) leaves exactly one element
                 let mut it = stm.iter();
-                assert_eq!(it.skip_n(&(&len - 1)).unwrap(), None);
-                assert_eq!(it.len_remain(), Length::Exact(Number::one()));
+                assert_eq!(it.skip_n(&(&len - 1u32)).unwrap(), None);
+                assert_eq!(it.len_remain(), Length::Exact(UNumber::one()));
                 assert_ne!(it.next().transpose().unwrap(), None);
                 assert_eq!(it.next(), None);
 
@@ -1416,34 +1418,34 @@ pub(crate) fn test_skip_n(item: &Item) {
                 let mut it = stm.iter();
                 match it.skip_n(&len).unwrap() {
                     None => {
-                        assert_eq!(it.len_remain(), Length::Exact(Number::zero()));
+                        assert_eq!(it.len_remain(), Length::Exact(UNumber::zero()));
                         assert_eq!(it.next(), None);
                     },
-                    Some(rem) => assert_eq!(rem, Number::zero())
+                    Some(rem) => assert_eq!(rem, UNumber::zero())
                 }
 
                 // skip(len + N) reports N remaining elements
                 let mut it = stm.iter();
-                assert_eq!(it.skip_n(&(&len + 1)).unwrap(), Some(Number::one()));
+                assert_eq!(it.skip_n(&(&len + 1u32)).unwrap(), Some(UNumber::one()));
                 let mut it = stm.iter();
-                assert_eq!(it.skip_n(&(&len + 100)).unwrap(), Some(100.into()));
+                assert_eq!(it.skip_n(&(&len + 100u32)).unwrap(), Some(100u32.into()));
 
                 // skip() following skip()
-                let mut half = (&len - 1) / 2;
-                let mut rest = &len - 1 - &half;
+                let mut half = (&len - 1u32) / 2u32;
+                let mut rest = &len - 1u32 - &half;
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&half).unwrap(), None);
                 assert_eq!(i1.len_remain(), Length::Exact((&len - &half).to_owned()));
                 assert_eq!(i1.skip_n(&rest).unwrap(), None);
-                assert_eq!(i1.len_remain(), Length::Exact(Number::one()));
-                assert_eq!(i2.skip_n(&(&len - 1)).unwrap(), None);
-                assert_eq!(i2.len_remain(), Length::Exact(Number::one()));
+                assert_eq!(i1.len_remain(), Length::Exact(UNumber::one()));
+                assert_eq!(i2.skip_n(&(&len - 1u32)).unwrap(), None);
+                assert_eq!(i2.len_remain(), Length::Exact(UNumber::one()));
                 assert_eq!(i1.next(), i2.next());
 
                 // skip(0) = no-op later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&half).unwrap(), None);
-                assert_eq!(i1.skip_n(&Number::zero()).unwrap(), None);
+                assert_eq!(i1.skip_n(&UNumber::zero()).unwrap(), None);
                 assert_eq!(i2.skip_n(&half).unwrap(), None);
                 assert_eq!(i1.len_remain(), i2.len_remain());
                 assert_eq!(i1.next(), i2.next());
@@ -1451,7 +1453,7 @@ pub(crate) fn test_skip_n(item: &Item) {
                 // skip(1) = next() later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&half).unwrap(), None);
-                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
+                assert_eq!(i1.skip_n(&UNumber::one()).unwrap(), None);
                 assert_eq!(i2.skip_n(&half).unwrap(), None);
                 assert_ne!(i2.next().transpose().unwrap(), None);
                 assert_eq!(i1.len_remain(), i2.len_remain());
@@ -1462,7 +1464,7 @@ pub(crate) fn test_skip_n(item: &Item) {
                 rest.inc(); // now half + rest = len + 1
                 let mut it = stm.iter();
                 assert_eq!(it.skip_n(&half).unwrap(), None);
-                assert_eq!(it.skip_n(&rest).unwrap(), Some(Number::one()));
+                assert_eq!(it.skip_n(&rest).unwrap(), Some(UNumber::one()));
 
                 // test actually comparing a few elements after a small skip
                 if len > (2 * TEST).into() {
@@ -1477,27 +1479,27 @@ pub(crate) fn test_skip_n(item: &Item) {
                 }
             },
             Length::Infinite => {
-                let many = 10000000000_i64.into();
+                let many = 10000000000u64.into();
 
                 // skip() following skip()
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
                 assert_eq!(i1.len_remain(), Length::Infinite);
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
-                assert_eq!(i2.skip_n(&(&many * 2)).unwrap(), None);
+                assert_eq!(i2.skip_n(&(&many * 2u32)).unwrap(), None);
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
 
                 // skip(0) = no-op later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
-                assert_eq!(i1.skip_n(&Number::zero()).unwrap(), None);
+                assert_eq!(i1.skip_n(&UNumber::zero()).unwrap(), None);
                 assert_eq!(i2.skip_n(&many).unwrap(), None);
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
 
                 // skip(1) = next() later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.skip_n(&many).unwrap(), None);
-                assert_eq!(i1.skip_n(&Number::one()).unwrap(), None);
+                assert_eq!(i1.skip_n(&UNumber::one()).unwrap(), None);
                 assert_eq!(i2.skip_n(&many).unwrap(), None);
                 assert_ne!(i2.next().transpose().unwrap(), None);
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
@@ -1515,8 +1517,8 @@ pub(crate) fn test_skip_n(item: &Item) {
             _ => ()
         }
     } else {
-        assert_eq!(stm.iter().len_remain(), Length::Exact(Number::zero()));
+        assert_eq!(stm.iter().len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(stm.iter().next(), None);
-        assert_eq!(stm.iter().skip_n(&Number::one()).unwrap(), Some(Number::one()));
+        assert_eq!(stm.iter().skip_n(&UNumber::one()).unwrap(), Some(UNumber::one()));
     }
 }
