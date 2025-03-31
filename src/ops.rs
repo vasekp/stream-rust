@@ -66,8 +66,8 @@ impl SIterator for SeqIter<'_> {
         Length::Infinite
     }
 
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.value += self.step * Number::from(n.clone());
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.value += self.step * Number::from(n);
         Ok(None)
     }
 }
@@ -211,14 +211,14 @@ impl Iterator for RangeIter<'_> {
 }
 
 impl SIterator for RangeIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if Range::empty_helper(&self.value, &self.parent.to, &self.parent.step) {
-            return Ok(Some(n.to_owned()))
+            return Ok(Some(n))
         };
         let Some(max) = Range::len_helper(&self.value, &self.parent.to, &self.parent.step)
             else { return Ok(None); };
-        if n <= &max {
-            self.value += &self.parent.step * Number::from(n.clone());
+        if n <= max {
+            self.value += &self.parent.step * Number::from(n);
             Ok(None)
         } else {
             Ok(Some(n - &max))
@@ -431,8 +431,8 @@ impl Iterator for RepeatItemIter<'_> {
 }
 
 impl SIterator for RepeatItemIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
-        if n > &self.count_rem {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        if n > self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
             self.count_rem -= n;
@@ -472,7 +472,7 @@ impl Iterator for RepeatStreamIter<'_> {
 }
 
 impl SIterator for RepeatStreamIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let Some(n) = self.iter.skip_n(n)? else { return Ok(None); };
 
         // If skip_n returned Some, iter is depleted. Restart.
@@ -486,7 +486,7 @@ impl SIterator for RepeatStreamIter<'_> {
 
         // This point is special: we know that iter() is now newly initiated, so we can use it to
         // determine the length regardless of whether it's statically known.
-        let (full_length, mut n) = match self.iter.skip_n(&n)? {
+        let (full_length, mut n) = match self.iter.skip_n(n.clone())? {
             None => return Ok(None),
             Some(remain) => (n - &remain, remain)
         };
@@ -513,7 +513,7 @@ impl SIterator for RepeatStreamIter<'_> {
         }
         self.iter = self.stream.iter();
         debug_assert!(n < full_length);
-        self.iter.skip_n(&n)
+        self.iter.skip_n(n)
     }
 
     fn len_remain(&self) -> Length {
@@ -702,9 +702,8 @@ impl Iterator for ShiftIter<'_> {
 }
 
 impl SIterator for ShiftIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let args_iter = self.args_iter.iter_mut();
-        let mut n = n.to_owned();
         let mut n_chars = UNumber::zero();
         while !n.is_zero() {
             match self.base.next() {
@@ -719,7 +718,7 @@ impl SIterator for ShiftIter<'_> {
             n.dec();
         }
         for iter in args_iter {
-            if iter.skip_n(&n_chars)?.is_some() {
+            if iter.skip_n(n_chars.clone())?.is_some() {
                 return Err(StreamError::new("another operand ended earlier than the first", self.node()));
             }
         }
@@ -1037,26 +1036,27 @@ impl Iterator for RiffleIter<'_> {
 }
 
 impl SIterator for RiffleIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let common = Length::intersection(&self.source.len_remain(), &self.filler.len_remain());
-        let skip = match Length::intersection(&common, &Length::Exact(n / 2u32)) {
+        let skip = match Length::intersection(&common, &Length::Exact(&n / 2u32)) {
             Length::Exact(len) => len,
             _ => UNumber::zero()
         };
         let mut remain = if !skip.is_zero() {
-            self.filler.skip_n(&skip)?;
+            self.filler.skip_n(skip.clone())?;
+            let n_new = n - 2u32 * &skip;
             match self.which {
                 RiffleState::Source => {
-                    self.source.skip_n(&(&skip - 1u32))?;
+                    self.source.skip_n(skip - 1u32)?;
                     self.source_next = self.source.next();
                 },
                 RiffleState::Filler => {
-                    self.source.skip_n(&skip)?;
+                    self.source.skip_n(skip)?;
                 }
             };
-            n - 2u32 * skip
+            n_new
         } else {
-            n.to_owned()
+            n
         };
         while !remain.is_zero() {
             if self.next().transpose()?.is_none() {

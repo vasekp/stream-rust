@@ -164,7 +164,7 @@ impl Part {
                     _ => ()
                 }
                 let mut iter = source.iter();
-                if iter.skip_n(&(&index - 1u32))?.is_some() {
+                if iter.skip_n(index - 1u32)?.is_some() {
                     return Err(StreamError::new("index past end of stream", orig_node!()));
                 }
                 let item = match iter.next() {
@@ -225,7 +225,7 @@ impl Iterator for PartIter<'_> {
 }
 
 impl SIterator for PartIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
 
@@ -340,7 +340,7 @@ impl Iterator for MapIter<'_> {
 }
 
 impl SIterator for MapIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.source.skip_n(n)
     }
 
@@ -556,10 +556,10 @@ impl Iterator for MathOpIter<'_> {
 }
 
 impl SIterator for MathOpIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut remain = UNumber::zero();
         for iter in &mut self.args {
-            if let Some(r) = iter.skip_n(n)? {
+            if let Some(r) = iter.skip_n(n.clone())? {
                 remain = std::cmp::max(remain, r);
             }
         }
@@ -726,10 +726,9 @@ impl Iterator for JoinIter<'_> {
 }
 
 impl SIterator for JoinIter<'_> {
-    fn skip_n(&mut self, n: &UNumber) -> Result<Option<UNumber>, StreamError> {
-        let mut n = n.to_owned();
+    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
-            let Some(m) = self.cur.skip_n(&n)?
+            let Some(m) = self.cur.skip_n(n)?
                 else { return Ok(None); };
             n = m;
             self.index += 1;
