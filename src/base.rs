@@ -28,6 +28,18 @@ pub trait Describe {
     fn describe(&self) -> String;
 }
 
+impl Describe for Number {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl Describe for UNumber {
+    fn describe(&self) -> String {
+        self.to_string()
+    }
+}
+
 
 /// Any Stream language expression. This may be either a directly accessible [`Item`] (including
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
