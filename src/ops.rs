@@ -928,6 +928,18 @@ fn test_selfref() {
     test_len_exact(&parse("self(%.repeat)").unwrap().eval().unwrap(), 0);
     test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap(), 5);
     test_skip_n(&parse("self(1~(%+1))").unwrap().eval().unwrap());
+
+    // Hamming weights
+    assert_eq!(parse("'a'.repeat.shift(self(([0,1]~%.skip(2)).riffle(1+%)))").unwrap().eval().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
+    // Thue-Morse
+    assert_eq!(parse("'a'.repeat.shift(self(([0,1]~%.skip(2)).riffle(1-%)))").unwrap().eval().unwrap().to_string(), "\"abbabaabbaababbabaab...");
+    // Paperfolding sequence
+    assert_eq!(parse("'a'.repeat.shift(self([0,1].repeat.riffle(%)))").unwrap().eval().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
+    // Trailing zeroes
+    assert_eq!(parse("'a'.repeat.shift(self(0.repeat.riffle(%+1)))").unwrap().eval().unwrap().to_string(), "\"abacabadabacabaeabac...");
+    // Binary length
+    assert_eq!(parse("'a'.repeat.shift(self((0~(%+1)).riffle(%+1)))").unwrap().eval().unwrap().to_string(), "\"abbccccddddddddeeeee...");
+
 }
 
 
