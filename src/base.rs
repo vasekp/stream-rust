@@ -18,6 +18,10 @@ pub type Number = num::BigInt;
 /// The unsigned variant of the [`Number`] type.
 pub type UNumber = num::BigUint;
 
+pub(crate) fn unsign(num: Number) -> UNumber {
+    num.into_parts().1
+}
+
 
 /// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into an input form.
 pub trait Describe {

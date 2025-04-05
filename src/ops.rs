@@ -332,9 +332,7 @@ impl Repeat {
                 if count.is_negative() {
                     return Err(format!("expected nonnegative count, found {}", count).into());
                 } else {
-                    (std::mem::take(src), Some(std::mem::take(count)
-                       .try_into()
-                       .unwrap())) // sign already checked
+                    (std::mem::take(src), Some(unsign(std::mem::take(count))))
                 }
             },
             _ => return Err("expected one of: source.repeat(), source.repeat(count)".into())
@@ -1147,7 +1145,7 @@ impl Skip {
             Some(Item::Stream(s)) =>
                 Ok(Item::Stream(Box::new(Skip {
                     source: s.into(),
-                    count: count.map(|c| std::mem::take(c).try_into().unwrap())
+                    count: count.map(|c| unsign(std::mem::take(c)))
                         .unwrap_or_else(UNumber::one)
                 }))),
             _ => Err(StreamError::new("expected: source.skip(count)", node))
