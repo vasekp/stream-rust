@@ -7,6 +7,7 @@ use std::pin::Pin;
 
 #[derive(Clone)]
 pub struct Seq {
+    head: Head,
     from: Option<Number>,
     step: Option<Number>
 }
@@ -44,13 +45,13 @@ impl Seq {
                 => (Some(std::mem::take(from)), Some(std::mem::take(step))),
             _ => return Err("expected one of: seq(), seq(number), seq(number, number)".into())
         });
-        Ok(Item::new_stream(Seq{from, step}))
+        Ok(Item::new_stream(Seq{head: node.head, from, step}))
     }
 }
 
 impl Describe for Seq {
     fn describe(&self) -> String {
-        Node::describe_helper(&"seq".into(), None::<&Item>,
+        Node::describe_helper(&self.head, None::<&Item>,
             [self.from.as_ref(), self.step.as_ref()].into_iter().flatten())
     }
 }
@@ -100,6 +101,7 @@ fn test_seq() {
 
 #[derive(Clone)]
 pub struct Range {
+    head: Head,
     from: Option<Number>,
     to: Number,
     step: Option<Number>,
@@ -143,7 +145,7 @@ impl Range {
         if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
             Ok(Item::new_stream(EmptyStream()))
         } else {
-            Ok(Item::new_stream(Range{from, to, step, rtype, env: Rc::clone(env)}))
+            Ok(Item::new_stream(Range{head: node.head, from, to, step, rtype, env: Rc::clone(env)}))
         }
     }
 
@@ -192,11 +194,11 @@ impl Stream for Range {
 impl Describe for Range {
     fn describe(&self) -> String {
         match self.rtype {
-            RangeType::Numeric => Node::describe_helper(&"range".into(), None::<&Item>,
+            RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
                 [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten()),
             RangeType::Character(case) => {
                 let abc = self.env.alphabet();
-                let base = Node::describe_helper(&"range".into(), None::<&Item>,
+                let base = Node::describe_helper(&self.head, None::<&Item>,
                     [
                         Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
                         Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
@@ -346,6 +348,7 @@ fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
 
 #[derive(Clone)]
 pub struct Repeat {
+    head: Head,
     item: Item,
     count: Option<UNumber>
 }
@@ -380,7 +383,7 @@ impl Repeat {
                 return Ok(Item::new_stream(EmptyStream()));
             }
         }
-        Ok(Item::new_stream(Repeat{item, count}))
+        Ok(Item::new_stream(Repeat{head: node.head, item, count}))
     }
 }
 
@@ -433,7 +436,7 @@ impl Stream for Repeat {
 
 impl Describe for Repeat {
     fn describe(&self) -> String {
-        Node::describe_helper(&Head::Symbol("repeat".into()), Some(&self.item), &self.count)
+        Node::describe_helper(&self.head, Some(&self.item), &self.count)
     }
 }
 
@@ -607,6 +610,7 @@ fn test_repeat() {
 
 #[derive(Clone)]
 struct Shift {
+    head: Head,
     source: BoxedStream,
     args: Vec<Item>,
     env: Rc<Env>
@@ -621,7 +625,7 @@ impl Shift {
             Some(ref item) => return Err(StreamError::new(format!("expected string, found {:?}", item), node)),
             None => return Err(StreamError::new("source required", node))
         };
-        Ok(Item::new_stream(Shift{source, args: node.args, env: Rc::clone(env)}))
+        Ok(Item::new_stream(Shift{head: node.head, source, args: node.args, env: Rc::clone(env)}))
     }
 
     fn helper(base: &Char, items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
@@ -641,7 +645,7 @@ impl Shift {
 
 impl Describe for Shift {
     fn describe(&self) -> String {
-        self.env.wrap_describe(Node::describe_helper(&"shift".into(), Some(&self.source), &self.args))
+        self.env.wrap_describe(Node::describe_helper(&self.head, Some(&self.source), &self.args))
     }
 }
 
@@ -777,6 +781,7 @@ fn test_shift() {
 
 #[derive(Clone)]
 struct SelfRef {
+    head: Head,
     body: Expr,
     env: Rc<Env>
 }
@@ -790,7 +795,7 @@ impl SelfRef {
             [ref mut body] => std::mem::take(body),
             _ => return Err(StreamError::new("exactly 1 argument expected", node))
         };
-        Ok(Item::Stream(Box::new(SelfRef{body: Self::replace_ref(body), env: Rc::clone(env)})))
+        Ok(Item::Stream(Box::new(SelfRef{head: node.head, body: Self::replace_ref(body), env: Rc::clone(env)})))
     }
 
     fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {
@@ -821,7 +826,7 @@ impl SelfRef {
 
 impl Describe for SelfRef {
     fn describe(&self) -> String {
-        Node::describe_helper(&"self".into(), None::<&Item>, [&self.body])
+        Node::describe_helper(&self.head, None::<&Item>, [&self.body])
     }
 }
 
@@ -968,6 +973,7 @@ fn test_selfref() {
 
 #[derive(Clone)]
 struct Riffle {
+    head: Head,
     source: BoxedStream,
     filler: Item
 }
@@ -989,14 +995,14 @@ impl Riffle {
             if source.is_string().is_true() { Ok(Item::new_stream(EmptyString())) }
             else { Ok(Item::new_stream(EmptyStream())) }
         } else {
-            Ok(Item::new_stream(Riffle{source, filler}))
+            Ok(Item::new_stream(Riffle{head: node.head, source, filler}))
         }
     }
 }
 
 impl Describe for Riffle {
     fn describe(&self) -> String {
-        Node::describe_helper(&("riffle".into()), Some(&self.source), [&self.filler])
+        Node::describe_helper(&self.head, Some(&self.source), [&self.filler])
     }
 }
 
@@ -1159,6 +1165,7 @@ fn test_riffle() {
 
 #[derive(Clone)]
 struct Skip {
+    head: Head,
     source: BoxedStream,
     count: UNumber
 }
@@ -1179,6 +1186,7 @@ impl Skip {
         match node.source {
             Some(Item::Stream(s)) =>
                 Ok(Item::Stream(Box::new(Skip {
+                    head: node.head,
                     source: s.into(),
                     count: count.map(|c| unsign(std::mem::take(c)))
                         .unwrap_or_else(UNumber::one)
@@ -1210,7 +1218,7 @@ impl Stream for Skip {
 
 impl Describe for Skip {
     fn describe(&self) -> String {
-        Node::describe_helper(&("skip".into()), Some(&self.source), [&self.count])
+        Node::describe_helper(&self.head, Some(&self.source), [&self.count])
     }
 }
 
