@@ -575,10 +575,6 @@ fn test_repeat() {
     assert_eq!(parse("\"\".repeat(0)").unwrap().eval().unwrap().describe(), "\"\"");
     assert_eq!(parse("\"\".repeat(1)").unwrap().eval().unwrap().describe(), "\"\"");
     assert_eq!(parse("\"\".repeat(10)").unwrap().eval().unwrap().describe(), "\"\"");
-    assert_eq!(parse("1...").unwrap().eval().unwrap().to_string(), "[1, 1, 1, 1, 1, ...]");
-    assert_eq!(parse("\"ab\"...").unwrap().eval().unwrap().to_string(), "\"abababababababababab...");
-    assert_eq!(parse("'a'...").unwrap().eval().unwrap().to_string(), "\"aaaaaaaaaaaaaaaaaaaa...");
-    assert_eq!(parse("['a']...").unwrap().eval().unwrap().to_string(), "['a', 'a', 'a', 'a', 'a', ...]");
 
     assert_eq!(parse("\"abc\".repeat[10^10]").unwrap().eval().unwrap().to_string(), "'a'");
     assert_eq!(parse("[].repeat~1").unwrap().eval().unwrap().to_string(), "[1]");

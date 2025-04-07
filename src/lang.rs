@@ -234,7 +234,7 @@ fn test_part() {
     assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval().unwrap().to_string(), "3");
     assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval().unwrap().to_string(), "3");
 
-    assert_eq!(parse("seq(5,2)[100...]").unwrap().eval().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
+    assert_eq!(parse("seq(5,2)[100.repeat]").unwrap().eval().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
     assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");
     assert_eq!(parse("seq[seq][seq]").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
     assert_eq!(parse("seq[seq, seq]").unwrap().eval().unwrap().to_string(), "[<!>");

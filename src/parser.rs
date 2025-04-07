@@ -64,7 +64,6 @@ impl Token<'_> {
             [b'"', ..] => String,
             [b'\'', ..] => Char,
             b".." => Oper,
-            b"..." => Chain,
             [b'.' | b':' | b'@'] => Chain,
             [c, ..] if OPERS.contains(c) => Oper,
             [b'(' | b'[' | b'{'] => Open,
@@ -149,14 +148,8 @@ impl<'str> Iterator for Tokenizer<'str> {
             },
             Delim => self.skip_until(ch),
             Other => {
-                if ch == '.' {
-                    for _ in 1..=2 {
-                        if matches!(self.iter.peek(), Some(&(_, '.'))) {
-                            self.iter.next();
-                        } else {
-                            break;
-                        }
-                    }
+                if ch == '.' && matches!(self.iter.peek(), Some(&(_, '.'))) {
+                    self.iter.next();
                 }
                 Ok(())
             }
@@ -245,9 +238,9 @@ fn test_tokenizer() {
     assert_eq!(tk.next(), Some(Ok(Token(String, "\"\"")))); // correctly paired
     assert_eq!(tk.next(), None);
 
-    let mut tk = Tokenizer::new("....."); // ., .., ... bunching
-    assert_eq!(tk.next(), Some(Ok(Token(Chain, "...")))); // greedy
-    assert_eq!(tk.next(), Some(Ok(Token(Oper, "..")))); // three are Chain, two are Oper
+    let mut tk = Tokenizer::new("..."); // ., .. bunching
+    assert_eq!(tk.next(), Some(Ok(Token(Oper, "..")))); // greedy
+    assert_eq!(tk.next(), Some(Ok(Token(Chain, "."))));
 
     let mut tk = Tokenizer::new(r#" " " " " "#); // spaces
     // leading space ignored
@@ -480,8 +473,6 @@ impl<'str> Parser<'str> {
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
                     src.chain(Link::new(LangItem::Map, vec![node.into()]))
                 },
-                (src, Token(TC::Chain, "...")) =>
-                    src.chain(Link::new("repeat", vec![])),
                 (src, Token(TC::Open, bkt @ "[")) => {
                     let args = self.read_args(bkt)?;
                     if args.is_empty() {
@@ -744,12 +735,6 @@ fn test_parser() {
     assert!(parse("a.b{c}(d)").is_err());
 
     assert_eq!(parse("1..2"), Ok(Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(2)])));
-    assert_eq!(parse("1..."), Ok(Expr::new_number(1).chain(Link::new("repeat", vec![]))));
-    assert_eq!(parse("1....len"), Ok(Expr::new_number(1)
-            .chain(Link::new("repeat" , vec![])).chain(Link::new("len", vec![]))));
-    assert!(parse("1....").is_err());
-    assert!(parse("1...(2)").is_err());
-    assert!(parse("...").is_err());
 }
 
 #[test]
