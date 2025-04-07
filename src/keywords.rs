@@ -9,7 +9,6 @@ pub(crate) type Keywords = HashMap<&'static str, Constructor>;
 
 static KEYWORDS: Lazy<Keywords> = Lazy::new(|| {
     let mut keywords = Default::default();
-    crate::lang::init(&mut keywords);
     crate::ops::init(&mut keywords);
     keywords
 });

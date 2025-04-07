@@ -26,6 +26,11 @@ impl NumWithin for Number {}
 impl NumWithin for UNumber {}
 
 
+pub(crate) fn unsign(num: Number) -> UNumber {
+    num.into_parts().1
+}
+
+
 #[derive(Clone)]
 pub(crate) struct EmptyStream();
 
