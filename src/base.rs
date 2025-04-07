@@ -292,7 +292,7 @@ impl Node {
         })
     }
 
-    pub(crate) fn describe_helper<'a, T, U>(head: &Head, source: Option<&T>, args: impl IntoIterator<Item = &'a U, IntoIter: ExactSizeIterator>) -> String
+    pub(crate) fn describe_helper<'a, T, U>(head: &Head, source: Option<&T>, args: impl IntoIterator<Item = &'a U>) -> String
         where T: Describe, U: Describe + 'a
     {
         let mut ret = String::new();
@@ -306,40 +306,51 @@ impl Node {
         }
         ret += &head.describe();
         let args = args.into_iter();
-        if let Head::Oper(o) = head {
+        if let Head::Oper(op) = head {
             ret.push('(');
             let mut it = args.map(Describe::describe);
-            if it.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
-                if let Some(s) = it.next() {
-                    ret += &s;
+            let first = it.next().expect("Head::Oper should have at least one arg");
+            // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
+            match it.next() {
+                Some(string) => {
+                    ret += &first;
+                    ret += op;
+                    ret += &string;
+                },
+                None => {
+                    ret += op;
+                    ret += &first;
                 }
             }
-            for s in it {
-                ret += o;
-                ret += &s;
+            for string in it {
+                ret += op;
+                ret += &string;
             }
             ret.push(')');
-        } else if args.len() != 0 {
-            match head {
-                Head::Lang(LangItem::Part | LangItem::List) => ret.push('['),
-                Head::Lang(LangItem::Map) => (),
-                _ => ret.push('(')
-            };
+        } else {
             let mut it = args.map(Describe::describe);
-            if let Some(s) = it.next() {
-                ret += &s;
-                for s in it {
-                    ret += ", ";
-                    ret += &s
+            match it.next() {
+                Some(first) => {
+                    match head {
+                        Head::Lang(LangItem::Part | LangItem::List) => ret.push('['),
+                        Head::Lang(LangItem::Map) => (),
+                        _ => ret.push('(')
+                    }
+                    ret += &first;
+                    for s in it {
+                        ret += ", ";
+                        ret += &s
+                    }
+                    match head {
+                        Head::Lang(LangItem::Part | LangItem::List) => ret.push(']'),
+                        Head::Lang(LangItem::Map) => (),
+                        _ => ret.push(')')
+                    };
+                },
+                None => if head == &Head::Lang(LangItem::List) {
+                    ret += "[]";
                 }
             }
-            match head {
-                Head::Lang(LangItem::Part | LangItem::List) => ret.push(']'),
-                Head::Lang(LangItem::Map) => (),
-                _ => ret.push(')')
-            };
-        } else if head == &Head::Lang(LangItem::List) {
-            ret += "[]";
         }
         ret
     }
@@ -767,6 +778,26 @@ impl Clone for Item {
             Bool(x) => Bool(*x),
             Char(x) => Char(x.clone()),
             Stream(s) => Stream(s.clone_box())
+        }
+    }
+}
+
+pub(crate) enum ProxyItem<'a> {
+    Number(&'a Number),
+    //Bool(bool),
+    Char(&'a Char),
+    //Stream(&'a (dyn Stream + 'static))
+}
+
+impl Describe for ProxyItem<'_> {
+    fn describe(&self) -> String {
+        use ProxyItem::*;
+        match self {
+            Number(n) if n.is_negative() => format!("({n})"),
+            Number(n) => format!("{n}"),
+            //Bool(b) => format!("{b}"),
+            Char(c) => format!("{c}"),
+            //Stream(s) => s.describe()
         }
     }
 }

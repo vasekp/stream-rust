@@ -7,19 +7,22 @@ use std::pin::Pin;
 
 #[derive(Clone)]
 pub struct Seq {
-    from: Number,
-    step: Number
+    from: Option<Number>,
+    step: Option<Number>
 }
 
 struct SeqIter<'node> {
     value: Number,
-    step: &'node Number
+    step: &'node Option<Number>
 }
 
 impl Stream for Seq {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(SeqIter{
-            value: self.from.clone(),
+            value: match &self.from {
+                Some(from) => from.clone(),
+                None => Number::one()
+            },
             step: &self.step
         })
     }
@@ -34,11 +37,11 @@ impl Seq {
         let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source()?);
         let (from, step) = try_with!(node, match node.args[..] {
-            [] => (Number::one(), Number::one()),
+            [] => (None, None),
             [Item::Number(ref mut from)]
-                => (std::mem::take(from), Number::one()),
+                => (Some(std::mem::take(from)), None),
             [Item::Number(ref mut from), Item::Number(ref mut step)]
-                => (std::mem::take(from), std::mem::take(step)),
+                => (Some(std::mem::take(from)), Some(std::mem::take(step))),
             _ => return Err("expected one of: seq(), seq(number), seq(number, number)".into())
         });
         Ok(Item::new_stream(Seq{from, step}))
@@ -47,7 +50,8 @@ impl Seq {
 
 impl Describe for Seq {
     fn describe(&self) -> String {
-        format!("seq({}, {})", self.from, self.step)
+        Node::describe_helper(&"seq".into(), None::<&Item>,
+            [self.from.as_ref(), self.step.as_ref()].into_iter().flatten())
     }
 }
 
@@ -56,7 +60,10 @@ impl Iterator for SeqIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let ret = Item::new_number(self.value.clone());
-        self.value += self.step;
+        match self.step {
+            Some(step) => self.value += step,
+            None => self.value.inc()
+        }
         Some(Ok(ret))
     }
 }
@@ -67,7 +74,10 @@ impl SIterator for SeqIter<'_> {
     }
 
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.value += self.step * Number::from(n);
+        match self.step {
+            Some(step) => self.value += step * Number::from(n),
+            None => self.value += Number::from(n)
+        }
         Ok(None)
     }
 }
@@ -90,9 +100,9 @@ fn test_seq() {
 
 #[derive(Clone)]
 pub struct Range {
-    from: Number,
+    from: Option<Number>,
     to: Number,
-    step: Number,
+    step: Option<Number>,
     rtype: RangeType,
     env: Rc<Env>
 }
@@ -109,49 +119,52 @@ impl Range {
         try_with!(node, node.check_no_source()?);
         let (from, to, step, rtype) = try_with!(node, match node.args[..] {
             [Item::Number(ref mut to)]
-                => (Number::one(), std::mem::take(to), Number::one(), RangeType::Numeric),
+                => (None, std::mem::take(to), None, RangeType::Numeric),
             [Item::Number(ref mut from), Item::Number(ref mut to)]
-                => (std::mem::take(from), std::mem::take(to), Number::one(), RangeType::Numeric),
+                => (Some(std::mem::take(from)), std::mem::take(to), None, RangeType::Numeric),
             [Item::Number(ref mut from), Item::Number(ref mut to), Item::Number(ref mut step)]
-                => (std::mem::take(from), std::mem::take(to), std::mem::take(step), RangeType::Numeric),
+                => (Some(std::mem::take(from)), std::mem::take(to), Some(std::mem::take(step)), RangeType::Numeric),
             [Item::Char(ref from), Item::Char(ref to)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
                     let (to_ix, _) = abc.ord_case(to)?;
-                    (from_ix.into(), to_ix.into(), Number::one(), RangeType::Character(case))
+                    (Some(from_ix.into()), to_ix.into(), None, RangeType::Character(case))
                 },
             [Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)]
                 => {
                     let abc = env.alphabet();
                     let (from_ix, case) = abc.ord_case(from)?;
                     let (to_ix, _) = abc.ord_case(to)?;
-                    (from_ix.into(), to_ix.into(), std::mem::take(step), RangeType::Character(case))
+                    (Some(from_ix.into()), to_ix.into(), Some(std::mem::take(step)), RangeType::Character(case))
                 },
             _ => return Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
         });
-        if Range::empty_helper(&from, &to, &step) {
+        if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
             Ok(Item::new_stream(EmptyStream()))
         } else {
             Ok(Item::new_stream(Range{from, to, step, rtype, env: Rc::clone(env)}))
         }
     }
 
-    fn empty_helper(from: &Number, to: &Number, step: &Number) -> bool {
-        (to > from && step.is_negative()) || (to < from && step.is_positive())
+    fn empty_helper(from: Option<&Number>, to: &Number, step: Option<&Number>) -> bool {
+        (step.is_some_and(Number::is_negative) && to > from.unwrap_or(&Number::one()))
+            || (step.is_none_or(Number::is_positive) && to < from.unwrap_or(&Number::one()))
     }
 
-    fn len_helper(from: &Number, to: &Number, step: &Number) -> Option<UNumber> {
+    fn len_helper(from: Option<&Number>, to: &Number, step: Option<&Number>) -> Option<UNumber> {
         if Self::empty_helper(from, to, step) {
             return Some(UNumber::zero());
         }
-        match step.to_i32() {
-            Some(1) => Some(UNumber::try_from(to - from + 1)
+        match step.map(|step| (step, step.to_i32())) {
+            None | Some((_, Some(1))) => Some(UNumber::try_from(match from {
+                    Some(from) => to - from + 1,
+                    None => to.to_owned() })
                 .expect("expected to > from when step > 0")),
-            Some(-1) => Some(UNumber::try_from(from - to + 1)
+            Some((_, Some(-1))) => Some(UNumber::try_from(from.expect("step should not be Some if from is not") - to + 1)
                 .expect("expected to < from when step < 0")),
-            Some(0) => None,
-            _ => Some(UNumber::try_from((to - from) / step + 1)
+            Some((_, Some(0))) => None,
+            Some((step, _)) => Some(UNumber::try_from((to - from.expect("step should not be Some if from is not")) / step + 1)
                 .expect("to-from / step sign mismatch")),
         }
     }
@@ -161,12 +174,15 @@ impl Stream for Range {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(RangeIter{
             parent: self,
-            value: self.from.clone()
+            value: match &self.from {
+                Some(from) => from.clone(),
+                None => Number::one()
+            }
         })
     }
 
     fn length(&self) -> Length {
-        match Range::len_helper(&self.from, &self.to, &self.step) {
+        match Range::len_helper(self.from.as_ref(), &self.to, self.step.as_ref()) {
             Some(num) => Length::Exact(num),
             None => Length::Infinite
         }
@@ -176,10 +192,16 @@ impl Stream for Range {
 impl Describe for Range {
     fn describe(&self) -> String {
         match self.rtype {
-            RangeType::Numeric => format!("range({}, {}, {})", self.from, self.to, self.step),
+            RangeType::Numeric => Node::describe_helper(&"range".into(), None::<&Item>,
+                [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten()),
             RangeType::Character(case) => {
                 let abc = self.env.alphabet();
-                let base = format!("range({}, {}, {})", abc.chr_case(&self.from, case), abc.chr_case(&self.to, case), self.step);
+                let base = Node::describe_helper(&"range".into(), None::<&Item>,
+                    [
+                        Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
+                        Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
+                        self.step.as_ref().map(ProxyItem::Number).as_ref()
+                    ].into_iter().flatten());
                 self.env.wrap_describe(base)
             }
         }
@@ -195,14 +217,17 @@ impl Iterator for RangeIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.parent.step.is_zero()
-            || (self.parent.step.is_positive() && self.value <= self.parent.to)
-            || (self.parent.step.is_negative() && self.value >= self.parent.to) {
+        if self.parent.step.as_ref().is_some_and(Number::is_zero)
+            || (self.parent.step.as_ref().is_none_or(Number::is_positive) && self.value <= self.parent.to)
+            || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
                 let ret = match self.parent.rtype {
                     RangeType::Numeric => Item::new_number(self.value.clone()),
                     RangeType::Character(case) => Item::new_char(self.parent.env.alphabet().chr_case(&self.value, case))
                 };
-                self.value += &self.parent.step;
+                match &self.parent.step {
+                    Some(step) => self.value += step,
+                    None => self.value.inc()
+                }
                 Some(Ok(ret))
         } else {
             None
@@ -212,13 +237,16 @@ impl Iterator for RangeIter<'_> {
 
 impl SIterator for RangeIter<'_> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        if Range::empty_helper(&self.value, &self.parent.to, &self.parent.step) {
+        if Range::empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             return Ok(Some(n))
         };
-        let Some(max) = Range::len_helper(&self.value, &self.parent.to, &self.parent.step)
+        let Some(max) = Range::len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref())
             else { return Ok(None); };
         if n <= max {
-            self.value += &self.parent.step * Number::from(n);
+            self.value += match &self.parent.step {
+                Some(step) => step * Number::from(n),
+                None => Number::from(n)
+            };
             Ok(None)
         } else {
             Ok(Some(n - &max))
@@ -226,7 +254,7 @@ impl SIterator for RangeIter<'_> {
     }
 
     fn len_remain(&self) -> Length {
-        match Range::len_helper(&self.value, &self.parent.to, &self.parent.step) {
+        match Range::len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             Some(num) => Length::Exact(num),
             None => Length::Infinite
         }
@@ -617,7 +645,7 @@ impl Shift {
 
 impl Describe for Shift {
     fn describe(&self) -> String {
-        self.env.wrap_describe(Node::describe_helper(&("shift".into()), Some(&self.source), &self.args))
+        self.env.wrap_describe(Node::describe_helper(&"shift".into(), Some(&self.source), &self.args))
     }
 }
 
