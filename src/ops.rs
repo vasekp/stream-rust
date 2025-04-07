@@ -405,8 +405,7 @@ impl Stream for Repeat {
 
 impl Describe for Repeat {
     fn describe(&self) -> String {
-        Node::describe_helper(&Head::Symbol("repeat".into()), Some(&self.item),
-            self.clone().count.map(Item::new_number).as_slice())
+        Node::describe_helper(&Head::Symbol("repeat".into()), Some(&self.item), &self.count)
     }
 }
 
@@ -973,7 +972,7 @@ impl Riffle {
 
 impl Describe for Riffle {
     fn describe(&self) -> String {
-        Node::describe_helper(&("riffle".into()), Some(&self.source), std::slice::from_ref(&self.filler))
+        Node::describe_helper(&("riffle".into()), Some(&self.source), [&self.filler])
     }
 }
 
@@ -1187,7 +1186,7 @@ impl Stream for Skip {
 
 impl Describe for Skip {
     fn describe(&self) -> String {
-        Node::describe_helper(&("skip".into()), Some(&self.source), std::slice::from_ref(&self.count))
+        Node::describe_helper(&("skip".into()), Some(&self.source), [&self.count])
     }
 }
 

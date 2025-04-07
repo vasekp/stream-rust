@@ -292,8 +292,8 @@ impl Node {
         })
     }
 
-    pub(crate) fn describe_helper<T, U>(head: &Head, source: Option<&T>, args: &[U]) -> String
-        where T: Describe, U: Describe
+    pub(crate) fn describe_helper<'a, T, U>(head: &Head, source: Option<&T>, args: impl IntoIterator<Item = &'a U, IntoIter: ExactSizeIterator>) -> String
+        where T: Describe, U: Describe + 'a
     {
         let mut ret = String::new();
         if let Some(source) = source {
@@ -305,10 +305,11 @@ impl Node {
             }
         }
         ret += &head.describe();
+        let args = args.into_iter();
         if let Head::Oper(o) = head {
             ret.push('(');
-            let mut it = args.iter().map(Describe::describe);
-            if args.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
+            let mut it = args.map(Describe::describe);
+            if it.len() > 1 { // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
                 if let Some(s) = it.next() {
                     ret += &s;
                 }
@@ -318,13 +319,13 @@ impl Node {
                 ret += &s;
             }
             ret.push(')');
-        } else if !args.is_empty() {
+        } else if args.len() != 0 {
             match head {
                 Head::Lang(LangItem::Part | LangItem::List) => ret.push('['),
                 Head::Lang(LangItem::Map) => (),
                 _ => ret.push('(')
             };
-            let mut it = args.iter().map(Describe::describe);
+            let mut it = args.map(Describe::describe);
             if let Some(s) = it.next() {
                 ret += &s;
                 for s in it {
