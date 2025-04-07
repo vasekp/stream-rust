@@ -28,18 +28,7 @@ impl Stream for List {
 
 impl Describe for List {
     fn describe(&self) -> String {
-        let mut ret = String::new();
-        ret.push('[');
-        let mut it = self.0.iter().map(Describe::describe);
-        if let Some(s) = it.next() {
-            ret += &s;
-        }
-        for s in it {
-            ret += ", ";
-            ret += &s;
-        }
-        ret.push(']');
-        ret
+        Node::describe_helper(&Head::Lang(LangItem::List), None::<&Item>, &self.0)
     }
 }
 
@@ -196,10 +185,8 @@ impl Stream for Part {
 
 impl Describe for Part {
     fn describe(&self) -> String {
-        let mut args = self.rest.clone();
-        let source = self.source.to_expr();
-        args.insert(0, self.indices.to_expr());
-        Node::describe_helper(&Head::Lang(LangItem::Part), Some(&source), &args)
+        Node::describe_helper(&Head::Lang(LangItem::Part), Some(&self.source), 
+            [&self.indices.to_expr()].into_iter().chain(self.rest.iter()))
     }
 }
 
@@ -305,10 +292,8 @@ impl Map {
 
 impl Describe for Map {
     fn describe(&self) -> String {
-        let mut ret = self.source.describe();
-        ret.push(':');
-        ret += &self.body.describe();
-        self.env.wrap_describe(ret)
+        let base = Node::describe_helper(&Head::Lang(LangItem::Map), Some(&self.source), [&self.body]);
+        self.env.wrap_describe(base)
     }
 }
 

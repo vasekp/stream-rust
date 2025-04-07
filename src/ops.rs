@@ -825,7 +825,7 @@ impl SelfRef {
 
 impl Describe for SelfRef {
     fn describe(&self) -> String {
-        format!("self{{{}}}", self.body.describe())
+        Node::describe_helper(&"self".into(), None::<&Item>, [&self.body])
     }
 }
 
