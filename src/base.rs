@@ -34,7 +34,11 @@ pub trait Describe {
 
 impl Describe for Number {
     fn describe(&self) -> String {
-        self.to_string()
+        if self.is_negative() {
+            format!("({})", self)
+        } else {
+            self.to_string()
+        }
     }
 }
 
