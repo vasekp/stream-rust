@@ -48,6 +48,8 @@ fn test_list() {
     test_skip_n(&parse("[1,2,3]").unwrap().eval().unwrap());
     test_skip_n(&parse("[1]").unwrap().eval().unwrap());
     test_skip_n(&parse("[]").unwrap().eval().unwrap());
+    assert_eq!(parse("[1,2,3]").unwrap().eval().unwrap().describe(), "[1, 2, 3]");
+    assert_eq!(parse("[]").unwrap().eval().unwrap().describe(), "[]");
 }
 
 
@@ -260,6 +262,11 @@ fn test_part() {
     assert_eq!(parse("[1,2,3,4][{#1..(#1+1)}(len/2)]").unwrap().eval().unwrap().to_string(), "[2, 3]");
     assert_eq!(parse("[1,2,3][{len}]").unwrap().eval().unwrap().to_string(), "3");
     assert_eq!(parse("[1,2,3][{len}@[]]").unwrap().eval().unwrap().to_string(), "3");
+    assert_eq!(parse("seq[3]").unwrap().eval().unwrap().describe(), "3");
+    assert_eq!(parse("range(5)[len]").unwrap().eval().unwrap().describe(), "5");
+
+    assert_eq!(parse("seq[[3]]").unwrap().eval().unwrap().describe(), "seq[[3]]");
+    assert_eq!(parse("range(5)[[1],len]").unwrap().eval().unwrap().describe(), "range(5)[[1], len]");
 }
 
 
@@ -345,6 +352,7 @@ fn test_map() {
     test_len_exact(&parse("[]:{#}").unwrap().eval().unwrap(), 0);
     test_skip_n(&parse("range(10^10):{#}").unwrap().eval().unwrap());
     test_skip_n(&parse("seq:{#}").unwrap().eval().unwrap());
+    assert_eq!(parse("[1,2,3]:{#}").unwrap().eval().unwrap().describe(), "[1, 2, 3]:{#}");
 }
 
 
@@ -615,6 +623,9 @@ fn test_opers() {
     test_skip_n(&parse("range(10^10)+range(10^11)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq+[]").unwrap().eval().unwrap());
     test_skip_n(&parse("seq*seq").unwrap().eval().unwrap());
+
+    assert_eq!(parse("1+2+3+4-5*6*7/8").unwrap().eval().unwrap().describe(), "(-16)");
+    assert_eq!(parse("[1]+[2]+[3]+[4]-[5]*[6]*[7]/[8]").unwrap().eval().unwrap().describe(), "(([1]+[2]+[3]+[4])-(([5]*[6]*[7])/[8]))");
 }
 
 
@@ -780,6 +791,10 @@ fn test_join() {
     test_skip_n(&parse("range(10^10)~range(10^9)").unwrap().eval().unwrap());
     test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval().unwrap());
     test_skip_n(&parse("('a'..'z').repeat(10^10)~['A'].repeat(10^10)").unwrap().eval().unwrap());
+
+    assert_eq!(parse("1~2").unwrap().eval().unwrap().describe(), "(1~2)");
+    assert_eq!(parse("[1]~[2]").unwrap().eval().unwrap().describe(), "([1]~[2])");
+    assert_eq!(parse("\"ab\"~'c'").unwrap().eval().unwrap().describe(), "(\"ab\"~'c')");
 }
 
 

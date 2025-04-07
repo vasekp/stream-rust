@@ -96,6 +96,9 @@ fn test_seq() {
     assert_eq!(parse("seq(2, 0)[10^10]").unwrap().eval().unwrap().to_string(), "2");
     test_skip_n(&parse("seq(2,0)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq(2,3)").unwrap().eval().unwrap());
+    assert_eq!(parse("seq()").unwrap().eval().unwrap().describe(), "seq");
+    assert_eq!(parse("seq(0)").unwrap().eval().unwrap().describe(), "seq(0)");
+    assert_eq!(parse("seq(1,2)").unwrap().eval().unwrap().describe(), "seq(1, 2)");
 }
 
 
@@ -292,6 +295,7 @@ fn test_range() {
     assert_eq!(parse("1..3").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
     assert_eq!(parse("3..3").unwrap().eval().unwrap().to_string(), "[3]");
     assert_eq!(parse("3..1").unwrap().eval().unwrap().to_string(), "[]");
+    assert_eq!(parse("-1..3").unwrap().eval().unwrap().to_string(), "[-1, -2, -3]");
     assert!(parse("1..2..3").unwrap().eval().is_err());
     assert_eq!(parse("'a'..'z'").unwrap().eval().unwrap().to_string(), "['a', 'b', 'c', 'd', 'e', ...]");
     assert_eq!(parse("'A'..'z'").unwrap().eval().unwrap().to_string(), "['A', 'B', 'C', 'D', 'E', ...]");
@@ -325,6 +329,16 @@ fn test_range() {
     test_skip_n(&parse("range(0,3,0)").unwrap().eval().unwrap());
     test_skip_n(&parse("range(0,3,-2)").unwrap().eval().unwrap());
     test_skip_n(&parse("range(0,-3,-2)").unwrap().eval().unwrap());
+
+    assert_eq!(parse("range(5)").unwrap().eval().unwrap().describe(), "range(5)");
+    assert_eq!(parse("range(0)").unwrap().eval().unwrap().describe(), "[]");
+    assert_eq!(parse("range(1,5)").unwrap().eval().unwrap().describe(), "range(1, 5)");
+    assert_eq!(parse("range(1,5,2)").unwrap().eval().unwrap().describe(), "range(1, 5, 2)");
+    assert_eq!(parse("range('a','Z')").unwrap().eval().unwrap().describe(), "range('a', 'z')");
+    assert_eq!(parse("range('A','z',2)").unwrap().eval().unwrap().describe(), "range('A', 'Z', 2)");
+    assert_eq!(parse("1..5").unwrap().eval().unwrap().describe(), "(1..5)");
+    assert_eq!(parse("(-1)..5").unwrap().eval().unwrap().describe(), "((-1)..5)");
+    assert_eq!(parse("-1..5").unwrap().eval().unwrap().describe(), "(-(1..5))");
 }
 
 
@@ -563,21 +577,21 @@ fn test_repeat() {
     assert_eq!(parse("1.repeat").unwrap().eval().unwrap().to_string(), "[1, 1, 1, 1, 1, ...]");
     assert_eq!(parse("1.repeat(1)").unwrap().eval().unwrap().to_string(), "[1]");
     assert_eq!(parse("1.repeat(3)").unwrap().eval().unwrap().to_string(), "[1, 1, 1]");
-    assert_eq!(parse("1.repeat(0)").unwrap().eval().unwrap().describe(), "[]");
+    assert_eq!(parse("1.repeat(0)").unwrap().eval().unwrap().to_string(), "[]");
     assert!(parse("1.repeat(-1)").unwrap().eval().is_err());
     assert_eq!(parse("(1..2).repeat(2)").unwrap().eval().unwrap().to_string(), "[1, 2, 1, 2]");
-    assert_eq!(parse("[1, 2].repeat(1)").unwrap().eval().unwrap().describe(), "[1, 2]");
+    assert_eq!(parse("[1, 2].repeat(1)").unwrap().eval().unwrap().to_string(), "[1, 2]");
     assert_eq!(parse("\"ab\".repeat").unwrap().eval().unwrap().to_string(), "\"abababababababababab...");
     assert_eq!(parse("\"ab\".repeat(3)").unwrap().eval().unwrap().to_string(), "\"ababab\"");
     assert_eq!(parse("\"ab\".repeat(0)").unwrap().eval().unwrap().to_string(), "\"\"");
-    assert_eq!(parse("\"ab\".repeat(1)").unwrap().eval().unwrap().describe(), "\"ab\"");
+    assert_eq!(parse("\"ab\".repeat(1)").unwrap().eval().unwrap().to_string(), "\"ab\"");
     assert_eq!(parse("seq.repeat(0)").unwrap().eval().unwrap().to_string(), "[]");
-    assert_eq!(parse("[].repeat(0)").unwrap().eval().unwrap().describe(), "[]");
-    assert_eq!(parse("[].repeat(1)").unwrap().eval().unwrap().describe(), "[]");
-    assert_eq!(parse("[].repeat(10)").unwrap().eval().unwrap().describe(), "[]");
-    assert_eq!(parse("\"\".repeat(0)").unwrap().eval().unwrap().describe(), "\"\"");
-    assert_eq!(parse("\"\".repeat(1)").unwrap().eval().unwrap().describe(), "\"\"");
-    assert_eq!(parse("\"\".repeat(10)").unwrap().eval().unwrap().describe(), "\"\"");
+    assert_eq!(parse("[].repeat(0)").unwrap().eval().unwrap().to_string(), "[]");
+    assert_eq!(parse("[].repeat(1)").unwrap().eval().unwrap().to_string(), "[]");
+    assert_eq!(parse("[].repeat(10)").unwrap().eval().unwrap().to_string(), "[]");
+    assert_eq!(parse("\"\".repeat(0)").unwrap().eval().unwrap().to_string(), "\"\"");
+    assert_eq!(parse("\"\".repeat(1)").unwrap().eval().unwrap().to_string(), "\"\"");
+    assert_eq!(parse("\"\".repeat(10)").unwrap().eval().unwrap().to_string(), "\"\"");
 
     assert_eq!(parse("\"abc\".repeat[10^10]").unwrap().eval().unwrap().to_string(), "'a'");
     assert_eq!(parse("[].repeat~1").unwrap().eval().unwrap().to_string(), "[1]");
@@ -605,6 +619,19 @@ fn test_repeat() {
     test_skip_n(&parse("seq.repeat(0)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq.repeat(1)").unwrap().eval().unwrap());
     test_skip_n(&parse("seq.repeat(2)").unwrap().eval().unwrap());
+
+    assert_eq!(parse("1.repeat").unwrap().eval().unwrap().describe(), "1.repeat");
+    assert_eq!(parse("1.repeat(1)").unwrap().eval().unwrap().describe(), "1.repeat(1)");
+    assert_eq!(parse("1.repeat(0)").unwrap().eval().unwrap().describe(), "[]");
+    assert_eq!(parse("[1, 2].repeat(1)").unwrap().eval().unwrap().describe(), "[1, 2]");
+    assert_eq!(parse("\"ab\".repeat(1)").unwrap().eval().unwrap().describe(), "\"ab\"");
+    assert_eq!(parse("seq.repeat(1)").unwrap().eval().unwrap().describe(), "seq");
+    assert_eq!(parse("[].repeat(0)").unwrap().eval().unwrap().describe(), "[]");
+    assert_eq!(parse("[].repeat(1)").unwrap().eval().unwrap().describe(), "[]");
+    assert_eq!(parse("[].repeat(10)").unwrap().eval().unwrap().describe(), "[]");
+    assert_eq!(parse("\"\".repeat(0)").unwrap().eval().unwrap().describe(), "\"\"");
+    assert_eq!(parse("\"\".repeat(1)").unwrap().eval().unwrap().describe(), "\"\"");
+    assert_eq!(parse("\"\".repeat(10)").unwrap().eval().unwrap().describe(), "\"\"");
 }
 
 
@@ -776,6 +803,8 @@ fn test_shift() {
     test_skip_n(&parse(r#""abcdefghijk".shift(seq, "abcdefghijklmn")"#).unwrap().eval().unwrap());
     test_skip_n(&parse(r#""ab".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
     test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
+    assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval().unwrap().describe(), "\"AbC\".shift(3, [0, 10, 20])");
+    assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap().describe(), "\"a b c!\".shift((1..3), 1)");
 }
 
 
@@ -956,6 +985,9 @@ fn test_selfref() {
     test_len_exact(&parse("self(%.repeat)").unwrap().eval().unwrap(), 0);
     test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap(), 5);
     test_skip_n(&parse("self(1~(%+1))").unwrap().eval().unwrap());
+    assert_eq!(parse("self(%)").unwrap().eval().unwrap().describe(), "self(%)");
+    assert_eq!(parse("self([%]~1)").unwrap().eval().unwrap().describe(), "self(([%]~1))");
+    assert_eq!(parse("self([%]~1)[2]").unwrap().eval().unwrap().describe(), "1");
 
     // Hamming weights
     assert_eq!(parse("'a'.repeat.shift(self(([0,1]~%.skip(2)).riffle(1+%)))").unwrap().eval().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
@@ -1160,6 +1192,7 @@ fn test_riffle() {
     test_skip_n(&parse("[].riffle(range(3))").unwrap().eval().unwrap());
     test_skip_n(&parse("[].riffle(range(1))").unwrap().eval().unwrap());
     test_skip_n(&parse("[].riffle([])").unwrap().eval().unwrap());
+    assert_eq!(parse("seq.riffle(['a'])").unwrap().eval().unwrap().describe(), "seq.riffle(['a'])");
 }
 
 
@@ -1234,6 +1267,8 @@ fn test_skip() {
     assert_eq!(parse("(1..3).skip(4)").unwrap().eval().unwrap().to_string(), "[]");
     assert_eq!(parse("(1..3).skip(5)").unwrap().eval().unwrap().to_string(), "[]");
     assert_eq!(parse("(1..3).skip").unwrap().eval().unwrap().to_string(), "[2, 3]");
+    assert_eq!(parse("\"abc\".skip").unwrap().eval().unwrap().to_string(), "\"bc\"");
+    assert_eq!(parse("\"abc\".skip(3)").unwrap().eval().unwrap().to_string(), "\"\"");
     assert!(parse("(1..3).skip(-1)").unwrap().eval().is_err());
     assert_eq!(parse("seq.skip(10^10)").unwrap().eval().unwrap().to_string(), "[10000000001, 10000000002, 10000000003, 10000000004, 10000000005, ...]");
     assert_eq!(parse("seq.skip(10^10).skip(10^10)").unwrap().eval().unwrap().to_string(), "[20000000001, 20000000002, 20000000003, 20000000004, 20000000005, ...]");
@@ -1245,6 +1280,10 @@ fn test_skip() {
     test_len_exact(&parse("(1..3).skip(5)").unwrap().eval().unwrap(), 0);
     test_skip_n(&parse("seq.skip(100)").unwrap().eval().unwrap());
     test_skip_n(&parse("(1..10^10).skip(10^9)").unwrap().eval().unwrap());
+    assert_eq!(parse("(1..3).skip(0)").unwrap().eval().unwrap().describe(), "(1..3).skip(0)");
+    assert_eq!(parse("(1..3).skip(4)").unwrap().eval().unwrap().describe(), "(1..3).skip(4)");
+    assert_eq!(parse("\"abc\".skip").unwrap().eval().unwrap().describe(), "\"abc\".skip");
+    assert_eq!(parse("\"abc\".skip(4)").unwrap().eval().unwrap().describe(), "\"abc\".skip(4)");
 }
 
 pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {

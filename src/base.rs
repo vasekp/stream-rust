@@ -1362,6 +1362,7 @@ fn test_block() {
     assert_eq!(parse("1.{2}(3)").unwrap().eval().unwrap().to_string(), "2");
     assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval().unwrap().to_string(), "6");
     assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval().unwrap().to_string(), "4");
+    assert_eq!(parse("{range(#1,#2)}(3,4)").unwrap().eval().unwrap().describe(), "range(3, 4)");
 }
 
 #[test]
@@ -1374,6 +1375,7 @@ fn test_args() {
     assert_eq!(parse("range@range(3)[1]").unwrap().eval().unwrap().to_string(), "1");
     assert!(parse("range@3").unwrap().eval().is_err());
     assert!(parse("range@seq").unwrap().eval().is_err());
+    assert_eq!(parse("range@[3,4]").unwrap().eval().unwrap().describe(), "range(3, 4)");
 }
 
 #[test]
