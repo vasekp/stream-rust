@@ -12,9 +12,7 @@ struct SelfRef {
 
 impl SelfRef {
     fn eval(mut node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        if node.source.is_some() {
-            return Err(StreamError::new("no source accepted", node));
-        }
+        try_with!(node, node.check_no_source()?);
         let body = match node.args[..] {
             [ref mut body] => std::mem::take(body),
             _ => return Err(StreamError::new("exactly 1 argument expected", node))
@@ -27,8 +25,16 @@ impl SelfRef {
         let hist = Rc::new(RefCell::new(Vec::new()));
         env.cache = Rc::downgrade(&hist);
         let item = self.body.clone().eval_env(&Rc::new(env))?;
-        let stm = try_with!(self.body.clone(), item.to_stream()?);
+        let stm = try_with!(self.aux_node(), item.to_stream()?);
         Ok((stm, hist))
+    }
+
+    fn aux_node(&self) -> Node {
+        Node {
+            head: self.head.clone(),
+            source: None,
+            args: vec![self.body.clone()]
+        }
     }
 
     fn replace_ref(expr: Expr) -> Expr {
