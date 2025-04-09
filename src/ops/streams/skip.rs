@@ -33,7 +33,7 @@ impl Skip {
 impl Stream for Skip {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let mut iter = self.source.iter();
-        match iter.skip_n(self.count.as_ref().cloned().unwrap_or(UNumber::one())) {
+        match iter.skip_n(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
             Ok(None) => iter,
             Ok(Some(_)) => Box::new(std::iter::empty()),
             Err(err) => Box::new(std::iter::once(Err(err)))
@@ -42,9 +42,10 @@ impl Stream for Skip {
 
     fn length(&self) -> Length {
         self.source.length()
-            .map(|x| x.checked_sub(self.count.as_ref()
-                    .unwrap_or(&UNumber::one()))
-                .unwrap_or_default())
+            .map(|x| match &self.count {
+                Some(count) => x.checked_sub(count).unwrap_or_default(),
+                None => if x.is_zero() { x.to_owned() } else { x - 1u32 }
+            })
     }
 
     fn is_string(&self) -> TriState {
