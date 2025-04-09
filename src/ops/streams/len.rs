@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_len(node: Node, env: &std::rc::Rc<Env>) -> Result<Item, StreamError> {
+fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     if !node.args.is_empty() {
         return Err(StreamError::new("no arguments allowed", node));

@@ -1,5 +1,4 @@
 use crate::base::*;
-use crate::utils::TriState;
 
 #[derive(Clone)]
 struct Join {
@@ -8,12 +7,11 @@ struct Join {
 }
 
 impl Join {
-    fn eval(node: Node, env: &std::rc::Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source()?);
         try_with!(node, node.check_args_nonempty()?);
 
-        use crate::utils::TriState;
         fn is_string(item: &Item) -> TriState {
             match item {
                 Item::Stream(stm) => stm.is_string(),

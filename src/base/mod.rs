@@ -10,7 +10,7 @@ mod alphabet;
 pub use expr::*;
 pub use item::*;
 pub use node::*;
-pub use env::Env;
+pub use env::*;
 pub use alphabet::*;
 pub use error::*;
 

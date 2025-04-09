@@ -1,7 +1,5 @@
 use crate::base::*;
 
-use std::rc::Rc;
-
 #[derive(Clone)]
 struct MathOp {
     node: ENode,

@@ -1,5 +1,4 @@
 use crate::base::*;
-use crate::utils::{TriState, EmptyString, EmptyStream};
 
 #[derive(Clone)]
 struct Riffle {
@@ -9,7 +8,7 @@ struct Riffle {
 }
 
 impl Riffle {
-    fn eval(node: Node, env: &std::rc::Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         let filler = match &mut node.args[..] {
             [f] => f,

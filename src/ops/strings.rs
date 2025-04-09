@@ -1,7 +1,4 @@
 use crate::base::*;
-use crate::utils::TriState;
-
-use std::rc::Rc;
 
 #[derive(Clone)]
 struct Shift {

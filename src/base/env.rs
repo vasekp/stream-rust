@@ -1,5 +1,7 @@
 use crate::base::*;
 
+pub use std::rc::{Rc, Weak};
+
 /// The environment in which expressions are evaluated. This is passed as an argument to
 /// [`Expr::eval()`]. Currently a placeholder, but in the future to be defined through `env`.
 #[derive(Default, Clone)]

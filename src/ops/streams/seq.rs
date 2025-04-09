@@ -29,7 +29,7 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn eval(node: Node, env: &std::rc::Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         try_with!(node, node.check_no_source()?);
         let (from, step) = try_with!(node, match node.args[..] {

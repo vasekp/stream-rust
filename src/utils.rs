@@ -31,42 +31,6 @@ pub(crate) fn unsign(num: Number) -> UNumber {
 }
 
 
-#[derive(Clone)]
-pub(crate) struct EmptyStream();
-
-impl Stream for EmptyStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(std::iter::empty())
-    }
-}
-
-impl Describe for EmptyStream {
-    fn describe(&self) -> String {
-        "[]".into()
-    }
-}
-
-
-#[derive(Clone)]
-pub struct EmptyString();
-
-impl Stream for EmptyString {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(std::iter::empty())
-    }
-
-    fn is_string(&self) -> TriState {
-        TriState::True
-    }
-}
-
-impl Describe for EmptyString {
-    fn describe(&self) -> String {
-        "\"\"".into()
-    }
-}
-
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TriState {
     True,

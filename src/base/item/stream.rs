@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::utils::TriState;
+pub use crate::utils::TriState;
 
 use std::fmt::{Display, Formatter};
 use std::cell::Cell;
@@ -233,5 +233,40 @@ impl From<Box<dyn Stream>> for BoxedStream {
 impl Describe for BoxedStream {
     fn describe(&self) -> String {
         self.0.describe()
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct EmptyStream();
+
+impl Stream for EmptyStream {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(std::iter::empty())
+    }
+}
+
+impl Describe for EmptyStream {
+    fn describe(&self) -> String {
+        "[]".into()
+    }
+}
+
+
+#[derive(Clone)]
+pub struct EmptyString();
+
+impl Stream for EmptyString {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(std::iter::empty())
+    }
+
+    fn is_string(&self) -> TriState {
+        TriState::True
+    }
+}
+
+impl Describe for EmptyString {
+    fn describe(&self) -> String {
+        "\"\"".into()
     }
 }

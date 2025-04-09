@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::utils::{TriState, unsign};
+use crate::utils::unsign;
 
 #[derive(Clone)]
 struct Skip {
@@ -9,7 +9,7 @@ struct Skip {
 }
 
 impl Skip {
-    fn eval(node: Node, env: &std::rc::Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         let count = match &mut node.args[..] {
             [Item::Number(ref mut count)] => {

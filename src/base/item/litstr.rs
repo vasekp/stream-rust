@@ -1,5 +1,4 @@
 use crate::base::*;
-use crate::utils::TriState;
 
 #[derive(Clone)]
 pub struct LiteralString(Vec<Char>);

@@ -1,7 +1,6 @@
 use crate::base::*;
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
-use std::rc::Rc;
 
 type Constructor = for<'a> fn(Node, &'a Rc<Env>) -> Result<Item, StreamError>;
 

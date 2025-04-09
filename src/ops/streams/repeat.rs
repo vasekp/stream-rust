@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::utils::{TriState, EmptyString, EmptyStream, unsign};
+use crate::utils::unsign;
 
 #[derive(Clone)]
 pub struct Repeat {
@@ -9,7 +9,7 @@ pub struct Repeat {
 }
 
 impl Repeat {
-    fn eval(node: Node, env: &std::rc::Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let mut node = node.eval_all(env)?;
         let (item, count) = try_with!(node, match (&mut node.source, node.args.len(), node.args.get_mut(0)) {
             (Some(ref mut src), 0, None)

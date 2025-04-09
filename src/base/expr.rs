@@ -1,7 +1,5 @@
 use crate::base::*;
 
-use std::rc::Rc;
-
 /// Any Stream language expression. This may be either a directly accessible [`Item`] (including
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
 #[derive(Debug, PartialEq, Clone)]

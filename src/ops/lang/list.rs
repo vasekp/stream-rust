@@ -4,7 +4,7 @@ use crate::base::*;
 struct List(Vec<Item>);
 
 impl List {
-    fn eval(node: Node, env: &std::rc::Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source()?);
         Ok(Item::new_stream(List::from(node.args)))
