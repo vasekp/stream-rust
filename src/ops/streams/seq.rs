@@ -30,17 +30,14 @@ impl Stream for Seq {
 
 impl Seq {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let mut node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source()?);
-        let (from, step) = try_with!(node, match node.args[..] {
-            [] => (None, None),
-            [Item::Number(ref mut from)]
-                => (Some(std::mem::take(from)), None),
-            [Item::Number(ref mut from), Item::Number(ref mut step)]
-                => (Some(std::mem::take(from)), Some(std::mem::take(step))),
-            _ => return Err("expected one of: seq(), seq(number), seq(number, number)".into())
-        });
-        Ok(Item::new_stream(Seq{head: node.head, from, step}))
+        let rnode = node.eval_all(env)?.resolve_no_source()?;
+        let (from, step) = match rnode.args {
+            RArgs::Zero => (None, None),
+            RArgs::One(Item::Number(from)) => (Some(from), None),
+            RArgs::Two(Item::Number(from), Item::Number(to)) => (Some(from), Some(to)),
+            _ => return Err(StreamError::new("expected one of: seq(), seq(number), seq(number, number)", rnode))
+        };
+        Ok(Item::new_stream(Seq{head: rnode.head, from, step}))
     }
 }
 

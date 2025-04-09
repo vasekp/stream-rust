@@ -1,19 +1,17 @@
 use crate::base::*;
 
 fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    if !node.args.is_empty() {
-        return Err(StreamError::new("no arguments allowed", node));
-    }
-    let length = try_with!(node, node.source_checked()?.as_stream()?.length());
-    use Length::*;
-    match length {
-        Exact(len) => Ok(Item::new_number(len)),
-        AtMost(_) | UnknownFinite | Unknown => {
-            let len = try_with!(node, node.source_checked()?.as_stream()?.iter().count());
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    let RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, .. } = rnode else {
+        return Err(StreamError::new("expected: source.len", rnode));
+    };
+    match stm.length() {
+        Length::Exact(len) => Ok(Item::new_number(len)),
+        Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {
+            let len = stm.iter().count();
             Ok(Item::new_number(len))
         },
-        _ => Err(StreamError::new("stream is infinite", node))
+        Length::Infinite => Err(StreamError::new("stream is infinite", rnode))
     }
 }
 

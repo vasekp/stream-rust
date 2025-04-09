@@ -10,19 +10,14 @@ pub struct Repeat {
 
 impl Repeat {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let mut node = node.eval_all(env)?;
-        let (item, count) = try_with!(node, match (&mut node.source, node.args.len(), node.args.get_mut(0)) {
-            (Some(ref mut src), 0, None)
-                => (std::mem::take(src), None::<UNumber>),
-            (Some(ref mut src), 1, Some(Item::Number(ref mut count))) => {
-                if count.is_negative() {
-                    return Err(format!("expected nonnegative count, found {}", count).into());
-                } else {
-                    (std::mem::take(src), Some(unsign(std::mem::take(count))))
-                }
-            },
-            _ => return Err("expected one of: source.repeat(), source.repeat(count)".into())
-        });
+        let rnode = node.eval_all(env)?.resolve_source()?;
+        let (item, count) = match rnode {
+            RNodeS { source, args: RArgs::Zero, .. }
+                => (source, None),
+            RNodeS { source, args: RArgs::One(Item::Number(count)), .. } if !count.is_negative()
+                => (source, Some(unsign(count))),
+            _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
+        };
         if let Item::Stream(ref stm) = &item {
             if stm.is_empty() || count.as_ref().is_some_and(Zero::is_zero) {
                 return Ok(
@@ -38,7 +33,7 @@ impl Repeat {
                 return Ok(Item::new_stream(EmptyStream()));
             }
         }
-        Ok(Item::new_stream(Repeat{head: node.head, item, count}))
+        Ok(Item::new_stream(Repeat{head: rnode.head, item, count}))
     }
 }
 

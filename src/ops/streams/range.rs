@@ -18,35 +18,34 @@ enum RangeType {
 
 impl Range {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let mut node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source()?);
-        let (from, to, step, rtype) = try_with!(node, match node.args[..] {
-            [Item::Number(ref mut to)]
-                => (None, std::mem::take(to), None, RangeType::Numeric),
-            [Item::Number(ref mut from), Item::Number(ref mut to)]
-                => (Some(std::mem::take(from)), std::mem::take(to), None, RangeType::Numeric),
-            [Item::Number(ref mut from), Item::Number(ref mut to), Item::Number(ref mut step)]
-                => (Some(std::mem::take(from)), std::mem::take(to), Some(std::mem::take(step)), RangeType::Numeric),
-            [Item::Char(ref from), Item::Char(ref to)]
+        let mut rnode = node.eval_all(env)?.resolve_no_source()?;
+        let (from, to, step, rtype) = match rnode {
+            RNodeNS { args: RArgs::One(Item::Number(to)), .. }
+                => (None, to, None, RangeType::Numeric),
+            RNodeNS { args: RArgs::Two(Item::Number(from), Item::Number(to)), .. }
+                => (Some(from), to, None, RangeType::Numeric),
+            RNodeNS { args: RArgs::Three(Item::Number(from), Item::Number(to), Item::Number(step)), .. }
+                => (Some(from), to, Some(step), RangeType::Numeric),
+            RNodeNS { args: RArgs::Two(Item::Char(ref from), Item::Char(ref to)), .. }
                 => {
                     let abc = env.alphabet();
-                    let (from_ix, case) = abc.ord_case(from)?;
-                    let (to_ix, _) = abc.ord_case(to)?;
+                    let (from_ix, case) = try_with!(rnode, abc.ord_case(from)?);
+                    let (to_ix, _) = try_with!(rnode, abc.ord_case(to)?);
                     (Some(from_ix.into()), to_ix.into(), None, RangeType::Character(case))
                 },
-            [Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)]
+            RNodeNS { args: RArgs::Three(Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)), .. }
                 => {
                     let abc = env.alphabet();
-                    let (from_ix, case) = abc.ord_case(from)?;
-                    let (to_ix, _) = abc.ord_case(to)?;
+                    let (from_ix, case) = try_with!(rnode, abc.ord_case(from)?);
+                    let (to_ix, _) = try_with!(rnode, abc.ord_case(to)?);
                     (Some(from_ix.into()), to_ix.into(), Some(std::mem::take(step)), RangeType::Character(case))
                 },
-            _ => return Err("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)".into())
-        });
+            _ => return Err(StreamError::new("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)", rnode))
+        };
         if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
             Ok(Item::new_stream(EmptyStream()))
         } else {
-            Ok(Item::new_stream(Range{head: node.head, from, to, step, rtype, env: Rc::clone(env)}))
+            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, env: Rc::clone(env)}))
         }
     }
 

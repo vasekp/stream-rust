@@ -9,22 +9,17 @@ struct Riffle {
 
 impl Riffle {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let mut node = node.eval_all(env)?;
-        let filler = match &mut node.args[..] {
-            [f] => f,
-            _ => return Err(StreamError::new("exactly 1 argument required", node))
+        let rnode = node.eval_all(env)?.resolve_source()?;
+        let (source, filler) = match rnode {
+            RNodeS { source: Item::Stream(src), args: RArgs::One(filler), .. }
+                => (BoxedStream::from(src), filler),
+            _ => return Err(StreamError::new("exactly 1 argument required", rnode))
         };
-        let source: BoxedStream = match node.source {
-            Some(Item::Stream(s)) => s.into(),
-            Some(ref item) => return Err(StreamError::new(format!("expected stream, found {:?}", item), node)),
-            _ => return Err(StreamError::new("source required", node))
-        };
-        let filler = std::mem::take(filler);
         if source.is_empty() {
             if source.is_string().is_true() { Ok(Item::new_stream(EmptyString())) }
             else { Ok(Item::new_stream(EmptyStream())) }
         } else {
-            Ok(Item::new_stream(Riffle{head: node.head, source, filler}))
+            Ok(Item::new_stream(Riffle{head: rnode.head, source, filler}))
         }
     }
 }

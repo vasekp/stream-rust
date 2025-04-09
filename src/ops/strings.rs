@@ -10,14 +10,21 @@ struct Shift {
 
 impl Shift {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        try_with!(node, node.check_args_nonempty()?);
-        let source = match node.source {
-            Some(Item::Stream(s)) if s.is_string().can_be_true() => s.into(),
-            Some(ref item) => return Err(StreamError::new(format!("expected string, found {:?}", item), node)),
-            None => return Err(StreamError::new("source required", node))
+        let rnode = node.eval_all(env)?.resolve_source()?;
+        let source = match rnode {
+            RNodeS { args: RArgs::Zero, .. }
+                => return Err(StreamError::new("expected at least one argument", rnode)),
+            RNodeS { source: Item::Stream(stm), .. } if stm.is_string().can_be_true()
+                => stm.into(),
+            RNodeS { ref source, .. }
+                => return Err(StreamError::new(format!("expected string, found {:?}", source), rnode))
         };
-        Ok(Item::new_stream(Shift{head: node.head, source, args: node.args, env: Rc::clone(env)}))
+        Ok(Item::new_stream(Shift{
+            head: rnode.head,
+            source,
+            args: rnode.args.into(),
+            env: Rc::clone(env)
+        }))
     }
 
     fn helper(base: &Char, items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {

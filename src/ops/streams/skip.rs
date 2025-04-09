@@ -10,25 +10,22 @@ struct Skip {
 
 impl Skip {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let mut node = node.eval_all(env)?;
-        let count = match &mut node.args[..] {
-            [Item::Number(ref mut count)] => {
-                if count.is_negative() {
-                    return Err(StreamError::new("expected nonnegative count", node));
-                }
-                Some(count)
-            },
-            [] => None,
-            _ => return Err(StreamError::new("expected: source.skip() or source.skip(count)", node))
-        };
-        match node.source {
-            Some(Item::Stream(s)) =>
-                Ok(Item::Stream(Box::new(Skip {
-                    head: node.head,
+        let rnode = node.eval_all(env)?.resolve_source()?;
+        match rnode {
+            RNodeS { head, source: Item::Stream(s), args: RArgs::Zero }
+                => Ok(Item::Stream(Box::new(Skip {
+                    head,
                     source: s.into(),
-                    count: count.map(|c| unsign(std::mem::take(c)))
+                    count: None
                 }))),
-            _ => Err(StreamError::new("expected: source.skip(count)", node))
+            RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
+                    if !count.is_negative()
+                => Ok(Item::Stream(Box::new(Skip {
+                    head,
+                    source: s.into(),
+                    count: Some(unsign(count))
+                }))),
+            _ => Err(StreamError::new("expected: source.skip or source.skip(count)", rnode))
         }
     }
 }
