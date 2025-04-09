@@ -5,11 +5,13 @@ mod enode;
 mod link;
 mod head;
 mod checks;
+mod rnode;
 
 pub(crate) use enode::ENode;
 pub use link::Link;
 pub(crate) use checks::Checks;
 pub use head::{Head, LangItem};
+pub(crate) use rnode::*;
 
 #[cfg(test)]
 mod tests;

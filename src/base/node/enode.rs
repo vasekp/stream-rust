@@ -30,3 +30,27 @@ impl Describe for ENode {
         Node::describe_helper(&self.head, self.source.as_ref(), &self.args)
     }
 }
+
+impl ENode {
+    #[allow(unused)]
+    pub(crate) fn resolve(Self { head, source, args }: Self) -> RNode {
+        match source {
+            Some(source) => RNode::Source(RNodeS { head, source, args: args.into() }),
+            None => RNode::NoSource(RNodeNS { head, args: args.into() }),
+        }
+    }
+
+    pub(crate) fn resolve_source(self) -> Result<RNodeS, StreamError> {
+        match self.source {
+            Some(source) => Ok(RNodeS { head: self.head, source, args: self.args.into() }),
+            None => Err(StreamError::new("source required", self))
+        }
+    }
+
+    pub(crate) fn resolve_no_source(self) -> Result<RNodeNS, StreamError> {
+        match self.source {
+            Some(_) => Err(StreamError::new("no source accepted", self)),
+            None => Ok(RNodeNS { head: self.head, args: self.args.into() })
+        }
+    }
+}
