@@ -54,7 +54,7 @@ impl Stream for Skip {
 }
 
 impl Describe for Skip {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, Some(&self.source), &self.count, prec)
     }
 }
@@ -87,10 +87,10 @@ mod tests {
         test_len_exact(&parse("(1..3).skip(5)").unwrap().eval().unwrap(), 0);
         test_skip_n(&parse("seq.skip(100)").unwrap().eval().unwrap());
         test_skip_n(&parse("(1..10^10).skip(10^9)").unwrap().eval().unwrap());
-        assert_eq!(parse("(1..3).skip(0)").unwrap().eval().unwrap().describe(0), "(1..3).skip(0)");
-        assert_eq!(parse("(1..3).skip(4)").unwrap().eval().unwrap().describe(0), "(1..3).skip(4)");
-        assert_eq!(parse("\"abc\".skip").unwrap().eval().unwrap().describe(0), "\"abc\".skip");
-        assert_eq!(parse("\"abc\".skip(4)").unwrap().eval().unwrap().describe(0), "\"abc\".skip(4)");
+        assert_eq!(parse("(1..3).skip(0)").unwrap().eval().unwrap().describe(), "(1..3).skip(0)");
+        assert_eq!(parse("(1..3).skip(4)").unwrap().eval().unwrap().describe(), "(1..3).skip(4)");
+        assert_eq!(parse("\"abc\".skip").unwrap().eval().unwrap().describe(), "\"abc\".skip");
+        assert_eq!(parse("\"abc\".skip(4)").unwrap().eval().unwrap().describe(), "\"abc\".skip(4)");
     }
 }
 

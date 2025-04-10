@@ -140,10 +140,10 @@ impl<T> From<T> for Expr where T: Into<Node> {
 }
 
 impl Describe for Expr {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         match self {
-            Expr::Imm(item) => item.describe(prec),
-            Expr::Eval(node) => node.describe(prec)
+            Expr::Imm(item) => item.describe_prec(prec),
+            Expr::Eval(node) => node.describe_prec(prec)
         }
     }
 }

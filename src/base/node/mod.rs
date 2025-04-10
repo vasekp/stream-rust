@@ -124,7 +124,7 @@ impl Node {
     {
         let mut ret = String::new();
         if let Some(source) = source {
-            ret += &source.describe(u32::MAX);
+            ret += &source.describe_prec(u32::MAX);
             match head {
                 Head::Lang(LangItem::Map) => ret.push(':'),
                 Head::Lang(LangItem::Part) => (),
@@ -139,7 +139,7 @@ impl Node {
             if parens {
                 ret.push('(');
             }
-            let mut it = args.map(|arg| arg.describe(nprec));
+            let mut it = args.map(|arg| arg.describe_prec(nprec));
             let first = it.next().expect("Head::Oper should have at least one arg");
             // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
             match it.next() {
@@ -161,7 +161,7 @@ impl Node {
                 ret.push(')');
             }
         } else {
-            let mut it = args.map(|arg| arg.describe(0));
+            let mut it = args.map(|arg| arg.describe_prec(0));
             match it.next() {
                 Some(first) => {
                     match head {
@@ -190,7 +190,7 @@ impl Node {
 }
 
 impl Describe for Node {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec)
     }
 }

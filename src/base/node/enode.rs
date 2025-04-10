@@ -26,7 +26,7 @@ impl From<&ENode> for Node {
 }
 
 impl Describe for ENode {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, self.source.as_ref(), &self.args, prec)
     }
 }

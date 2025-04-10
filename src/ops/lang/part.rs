@@ -98,7 +98,7 @@ impl Stream for Part {
 }
 
 impl Describe for Part {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&Head::Lang(LangItem::Part), Some(&self.source), 
             [&self.indices.to_expr()].into_iter().chain(self.rest.iter()), prec)
     }
@@ -177,11 +177,11 @@ mod tests {
         assert_eq!(parse("[1,2,3,4][{#1..(#1+1)}(len/2)]").unwrap().eval().unwrap().to_string(), "[2, 3]");
         assert_eq!(parse("[1,2,3][{len}]").unwrap().eval().unwrap().to_string(), "3");
         assert_eq!(parse("[1,2,3][{len}@[]]").unwrap().eval().unwrap().to_string(), "3");
-        assert_eq!(parse("seq[3]").unwrap().eval().unwrap().describe(0), "3");
-        assert_eq!(parse("range(5)[len]").unwrap().eval().unwrap().describe(0), "5");
+        assert_eq!(parse("seq[3]").unwrap().eval().unwrap().describe(), "3");
+        assert_eq!(parse("range(5)[len]").unwrap().eval().unwrap().describe(), "5");
 
-        assert_eq!(parse("seq[[3]]").unwrap().eval().unwrap().describe(0), "seq[[3]]");
-        assert_eq!(parse("range(5)[[1],len]").unwrap().eval().unwrap().describe(0), "range(5)[[1], len]");
+        assert_eq!(parse("seq[[3]]").unwrap().eval().unwrap().describe(), "seq[[3]]");
+        assert_eq!(parse("range(5)[[1],len]").unwrap().eval().unwrap().describe(), "range(5)[[1], len]");
     }
 }
 

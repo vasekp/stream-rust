@@ -85,7 +85,7 @@ impl Stream for Repeat {
 }
 
 impl Describe for Repeat {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, Some(&self.item), &self.count, prec)
     }
 }
@@ -260,18 +260,18 @@ mod tests {
         test_skip_n(&parse("seq.repeat(1)").unwrap().eval().unwrap());
         test_skip_n(&parse("seq.repeat(2)").unwrap().eval().unwrap());
 
-        assert_eq!(parse("1.repeat").unwrap().eval().unwrap().describe(0), "1.repeat");
-        assert_eq!(parse("1.repeat(1)").unwrap().eval().unwrap().describe(0), "1.repeat(1)");
-        assert_eq!(parse("1.repeat(0)").unwrap().eval().unwrap().describe(0), "[]");
-        assert_eq!(parse("[1, 2].repeat(1)").unwrap().eval().unwrap().describe(0), "[1, 2]");
-        assert_eq!(parse("\"ab\".repeat(1)").unwrap().eval().unwrap().describe(0), "\"ab\"");
-        assert_eq!(parse("seq.repeat(1)").unwrap().eval().unwrap().describe(0), "seq");
-        assert_eq!(parse("[].repeat(0)").unwrap().eval().unwrap().describe(0), "[]");
-        assert_eq!(parse("[].repeat(1)").unwrap().eval().unwrap().describe(0), "[]");
-        assert_eq!(parse("[].repeat(10)").unwrap().eval().unwrap().describe(0), "[]");
-        assert_eq!(parse("\"\".repeat(0)").unwrap().eval().unwrap().describe(0), "\"\"");
-        assert_eq!(parse("\"\".repeat(1)").unwrap().eval().unwrap().describe(0), "\"\"");
-        assert_eq!(parse("\"\".repeat(10)").unwrap().eval().unwrap().describe(0), "\"\"");
+        assert_eq!(parse("1.repeat").unwrap().eval().unwrap().describe(), "1.repeat");
+        assert_eq!(parse("1.repeat(1)").unwrap().eval().unwrap().describe(), "1.repeat(1)");
+        assert_eq!(parse("1.repeat(0)").unwrap().eval().unwrap().describe(), "[]");
+        assert_eq!(parse("[1, 2].repeat(1)").unwrap().eval().unwrap().describe(), "[1, 2]");
+        assert_eq!(parse("\"ab\".repeat(1)").unwrap().eval().unwrap().describe(), "\"ab\"");
+        assert_eq!(parse("seq.repeat(1)").unwrap().eval().unwrap().describe(), "seq");
+        assert_eq!(parse("[].repeat(0)").unwrap().eval().unwrap().describe(), "[]");
+        assert_eq!(parse("[].repeat(1)").unwrap().eval().unwrap().describe(), "[]");
+        assert_eq!(parse("[].repeat(10)").unwrap().eval().unwrap().describe(), "[]");
+        assert_eq!(parse("\"\".repeat(0)").unwrap().eval().unwrap().describe(), "\"\"");
+        assert_eq!(parse("\"\".repeat(1)").unwrap().eval().unwrap().describe(), "\"\"");
+        assert_eq!(parse("\"\".repeat(10)").unwrap().eval().unwrap().describe(), "\"\"");
     }
 }
 

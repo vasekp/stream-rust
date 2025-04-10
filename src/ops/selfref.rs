@@ -55,7 +55,7 @@ impl SelfRef {
 }
 
 impl Describe for SelfRef {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec)
     }
 }
@@ -129,7 +129,7 @@ impl BackRef {
 }
 
 impl Describe for BackRef {
-    fn describe(&self, _: u32) -> String {
+    fn describe_prec(&self, _: u32) -> String {
         "%".to_owned()
     }
 }
@@ -190,9 +190,9 @@ mod tests {
         test_len_exact(&parse("self(%.repeat)").unwrap().eval().unwrap(), 0);
         test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap(), 5);
         test_skip_n(&parse("self(1~(%+1))").unwrap().eval().unwrap());
-        assert_eq!(parse("self(%)").unwrap().eval().unwrap().describe(0), "self(%)");
-        assert_eq!(parse("self([%]~1)").unwrap().eval().unwrap().describe(0), "self([%]~1)");
-        assert_eq!(parse("self([%]~1)[2]").unwrap().eval().unwrap().describe(0), "1");
+        assert_eq!(parse("self(%)").unwrap().eval().unwrap().describe(), "self(%)");
+        assert_eq!(parse("self([%]~1)").unwrap().eval().unwrap().describe(), "self([%]~1)");
+        assert_eq!(parse("self([%]~1)[2]").unwrap().eval().unwrap().describe(), "1");
 
         // Hamming weights
         assert_eq!(parse("'a'.repeat.shift(self(([0,1]~%.skip(2)).riffle(1+%)))").unwrap().eval().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");

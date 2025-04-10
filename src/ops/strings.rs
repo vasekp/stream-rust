@@ -43,7 +43,7 @@ impl Shift {
 }
 
 impl Describe for Shift {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         self.env.wrap_describe(|prec| Node::describe_helper(&self.head, Some(&self.source), &self.args, prec), prec)
     }
 }
@@ -179,8 +179,8 @@ mod tests {
         test_skip_n(&parse(r#""abcdefghijk".shift(seq, "abcdefghijklmn")"#).unwrap().eval().unwrap());
         test_skip_n(&parse(r#""ab".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
         test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
-        assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval().unwrap().describe(0), "\"AbC\".shift(3, [0, 10, 20])");
-        assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap().describe(0), "\"a b c!\".shift(1..3, 1)");
+        assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval().unwrap().describe(), "\"AbC\".shift(3, [0, 10, 20])");
+        assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap().describe(), "\"a b c!\".shift(1..3, 1)");
     }
 }
 

@@ -25,7 +25,7 @@ impl Riffle {
 }
 
 impl Describe for Riffle {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.filler], prec)
     }
 }
@@ -188,7 +188,7 @@ mod tests {
         test_skip_n(&parse("[].riffle(range(3))").unwrap().eval().unwrap());
         test_skip_n(&parse("[].riffle(range(1))").unwrap().eval().unwrap());
         test_skip_n(&parse("[].riffle([])").unwrap().eval().unwrap());
-        assert_eq!(parse("seq.riffle(['a'])").unwrap().eval().unwrap().describe(0), "seq.riffle(['a'])");
+        assert_eq!(parse("seq.riffle(['a'])").unwrap().eval().unwrap().describe(), "seq.riffle(['a'])");
     }
 }
 

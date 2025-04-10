@@ -31,11 +31,15 @@ pub trait Describe {
     /// sessions. The resulting `String` must be a syntactically valid input that reconstruct a
     /// copy of the original object on [`parser::parse()`](crate::parser::parse()) and
     /// [`Expr::eval()`].
-    fn describe(&self, prec: u32) -> String;
+    fn describe(&self) -> String {
+        self.describe_prec(0)
+    }
+
+    fn describe_prec(&self, prec: u32) -> String;
 }
 
 impl Describe for Number {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         if prec > 0 && self.is_negative() {
             format!("({})", self)
         } else {
@@ -45,7 +49,7 @@ impl Describe for Number {
 }
 
 impl Describe for UNumber {
-    fn describe(&self, _: u32) -> String {
+    fn describe_prec(&self, _: u32) -> String {
         self.to_string()
     }
 }

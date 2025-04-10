@@ -10,10 +10,10 @@ fn main() -> std::io::Result<()> {
         match stream::parse(&input) {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");
-                println!("Expr Describe: {}", expr.describe(0));
+                println!("Expr Describe: {}", expr.describe());
                 match expr.eval() {
                     Ok(item) => {
-                        println!("Item Describe: {}", item.describe(0));
+                        println!("Item Describe: {}", item.describe());
                         let (s, _, err) = item.format(None, Some(80));
                         println!("Item Format: {s}");
                         if let Some(err) = err {

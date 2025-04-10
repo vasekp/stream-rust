@@ -231,8 +231,8 @@ impl From<Box<dyn Stream>> for BoxedStream {
 }
 
 impl Describe for BoxedStream {
-    fn describe(&self, prec: u32) -> String {
-        self.0.describe(prec)
+    fn describe_prec(&self, prec: u32) -> String {
+        self.0.describe_prec(prec)
     }
 }
 
@@ -246,7 +246,7 @@ impl Stream for EmptyStream {
 }
 
 impl Describe for EmptyStream {
-    fn describe(&self, _: u32) -> String {
+    fn describe_prec(&self, _: u32) -> String {
         "[]".into()
     }
 }
@@ -266,7 +266,7 @@ impl Stream for EmptyString {
 }
 
 impl Describe for EmptyString {
-    fn describe(&self, _: u32) -> String {
+    fn describe_prec(&self, _: u32) -> String {
         "\"\"".into()
     }
 }

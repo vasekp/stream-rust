@@ -186,13 +186,13 @@ impl Debug for Item {
 }
 
 impl Describe for Item {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         use Item::*;
         match self {
-            Number(n) => n.describe(prec),
+            Number(n) => n.describe_prec(prec),
             Bool(b) => format!("{b}"),
             Char(c) => format!("{c}"),
-            Stream(s) => s.describe(prec)
+            Stream(s) => s.describe_prec(prec)
         }
     }
 }
@@ -238,13 +238,13 @@ pub(crate) enum ProxyItem<'a> {
 }
 
 impl Describe for ProxyItem<'_> {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         use ProxyItem::*;
         match self {
-            Number(n) => n.describe(prec),
+            Number(n) => n.describe_prec(prec),
             //Bool(b) => format!("{b}"),
             Char(c) => format!("{c}"),
-            //Stream(s) => s.describe()
+            //Stream(s) => s.describe_prec()
         }
     }
 }

@@ -92,7 +92,7 @@ impl Stream for Range {
 }
 
 impl Describe for Range {
-    fn describe(&self, prec: u32) -> String {
+    fn describe_prec(&self, prec: u32) -> String {
         match self.rtype {
             RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
                 [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 
@@ -232,15 +232,15 @@ mod tests {
         test_skip_n(&parse("range(0,3,-2)").unwrap().eval().unwrap());
         test_skip_n(&parse("range(0,-3,-2)").unwrap().eval().unwrap());
 
-        assert_eq!(parse("range(5)").unwrap().eval().unwrap().describe(0), "range(5)");
-        assert_eq!(parse("range(0)").unwrap().eval().unwrap().describe(0), "[]");
-        assert_eq!(parse("range(1,5)").unwrap().eval().unwrap().describe(0), "range(1, 5)");
-        assert_eq!(parse("range(1,5,2)").unwrap().eval().unwrap().describe(0), "range(1, 5, 2)");
-        assert_eq!(parse("range('a','Z')").unwrap().eval().unwrap().describe(0), "range('a', 'z')");
-        assert_eq!(parse("range('A','z',2)").unwrap().eval().unwrap().describe(0), "range('A', 'Z', 2)");
-        assert_eq!(parse("1..5").unwrap().eval().unwrap().describe(0), "1..5");
-        assert_eq!(parse("(-1)..5").unwrap().eval().unwrap().describe(0), "(-1)..5");
-        assert_eq!(parse("-(1..5)").unwrap().eval().unwrap().describe(0), "-1..5");
+        assert_eq!(parse("range(5)").unwrap().eval().unwrap().describe(), "range(5)");
+        assert_eq!(parse("range(0)").unwrap().eval().unwrap().describe(), "[]");
+        assert_eq!(parse("range(1,5)").unwrap().eval().unwrap().describe(), "range(1, 5)");
+        assert_eq!(parse("range(1,5,2)").unwrap().eval().unwrap().describe(), "range(1, 5, 2)");
+        assert_eq!(parse("range('a','Z')").unwrap().eval().unwrap().describe(), "range('a', 'z')");
+        assert_eq!(parse("range('A','z',2)").unwrap().eval().unwrap().describe(), "range('A', 'Z', 2)");
+        assert_eq!(parse("1..5").unwrap().eval().unwrap().describe(), "1..5");
+        assert_eq!(parse("(-1)..5").unwrap().eval().unwrap().describe(), "(-1)..5");
+        assert_eq!(parse("-(1..5)").unwrap().eval().unwrap().describe(), "-1..5");
     }
 }
 
