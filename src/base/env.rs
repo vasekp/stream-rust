@@ -21,8 +21,6 @@ impl Env {
 
     /// The alphabet used for ordering characters and arithmetic operations on them.
     pub fn alphabet(&self) -> &Alphabet { &Alphabet::Std26 }
-}
 
-impl Describe for Env {
     fn describe(&self) -> String { todo!() }
 }

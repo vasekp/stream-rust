@@ -36,7 +36,7 @@ impl std::error::Error for StreamError { }
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.expr.describe(), self.reason)
+        write!(f, "{}: {}", self.expr.describe(0), self.reason)
     }
 }
 

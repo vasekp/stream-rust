@@ -28,8 +28,8 @@ impl Map {
 }
 
 impl Describe for Map {
-    fn describe(&self) -> String {
-        let base = Node::describe_helper(&Head::Lang(LangItem::Map), Some(&self.source), [&self.body]);
+    fn describe(&self, prec: u32) -> String {
+        let base = Node::describe_helper(&Head::Lang(LangItem::Map), Some(&self.source), [&self.body], prec);
         self.env.wrap_describe(base)
     }
 }
@@ -86,7 +86,7 @@ mod tests {
         test_len_exact(&parse("[]:{#}").unwrap().eval().unwrap(), 0);
         test_skip_n(&parse("range(10^10):{#}").unwrap().eval().unwrap());
         test_skip_n(&parse("seq:{#}").unwrap().eval().unwrap());
-        assert_eq!(parse("[1,2,3]:{#}").unwrap().eval().unwrap().describe(), "[1, 2, 3]:{#}");
+        assert_eq!(parse("[1,2,3]:{#}").unwrap().eval().unwrap().describe(0), "[1, 2, 3]:{#}");
     }
 }
 

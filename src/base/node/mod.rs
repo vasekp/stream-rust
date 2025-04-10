@@ -114,12 +114,17 @@ impl Node {
         })
     }
 
-    pub(crate) fn describe_helper<'a, T, U>(head: &Head, source: Option<&T>, args: impl IntoIterator<Item = &'a U>) -> String
+    pub(crate) fn describe_helper<'a, T, U>(
+        head: &Head,
+        source: Option<&T>,
+        args: impl IntoIterator<Item = &'a U>,
+        prec: u32)
+    -> String
         where T: Describe, U: Describe + 'a
     {
         let mut ret = String::new();
         if let Some(source) = source {
-            ret += &source.describe();
+            ret += &source.describe(u32::MAX);
             match head {
                 Head::Lang(LangItem::Map) => ret.push(':'),
                 Head::Lang(LangItem::Part) => (),
@@ -130,7 +135,7 @@ impl Node {
         let args = args.into_iter();
         if let Head::Oper(op) = head {
             ret.push('(');
-            let mut it = args.map(Describe::describe);
+            let mut it = args.map(|arg| arg.describe(op_prec(op)));
             let first = it.next().expect("Head::Oper should have at least one arg");
             // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
             match it.next() {
@@ -150,7 +155,7 @@ impl Node {
             }
             ret.push(')');
         } else {
-            let mut it = args.map(Describe::describe);
+            let mut it = args.map(|arg| arg.describe(0));
             match it.next() {
                 Some(first) => {
                     match head {
@@ -179,7 +184,7 @@ impl Node {
 }
 
 impl Describe for Node {
-    fn describe(&self) -> String {
-        Node::describe_helper(&self.head, self.source.as_deref(), &self.args)
+    fn describe(&self, prec: u32) -> String {
+        Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec)
     }
 }

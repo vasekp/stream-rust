@@ -92,10 +92,11 @@ impl Stream for Range {
 }
 
 impl Describe for Range {
-    fn describe(&self) -> String {
+    fn describe(&self, prec: u32) -> String {
         match self.rtype {
             RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
-                [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten()),
+                [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 
+                prec),
             RangeType::Character(case) => {
                 let abc = self.env.alphabet();
                 let base = Node::describe_helper(&self.head, None::<&Item>,
@@ -103,7 +104,7 @@ impl Describe for Range {
                         Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
                         Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
                         self.step.as_ref().map(ProxyItem::Number).as_ref()
-                    ].into_iter().flatten());
+                    ].into_iter().flatten(), prec);
                 self.env.wrap_describe(base)
             }
         }
@@ -231,15 +232,15 @@ mod tests {
         test_skip_n(&parse("range(0,3,-2)").unwrap().eval().unwrap());
         test_skip_n(&parse("range(0,-3,-2)").unwrap().eval().unwrap());
 
-        assert_eq!(parse("range(5)").unwrap().eval().unwrap().describe(), "range(5)");
-        assert_eq!(parse("range(0)").unwrap().eval().unwrap().describe(), "[]");
-        assert_eq!(parse("range(1,5)").unwrap().eval().unwrap().describe(), "range(1, 5)");
-        assert_eq!(parse("range(1,5,2)").unwrap().eval().unwrap().describe(), "range(1, 5, 2)");
-        assert_eq!(parse("range('a','Z')").unwrap().eval().unwrap().describe(), "range('a', 'z')");
-        assert_eq!(parse("range('A','z',2)").unwrap().eval().unwrap().describe(), "range('A', 'Z', 2)");
-        assert_eq!(parse("1..5").unwrap().eval().unwrap().describe(), "(1..5)");
-        assert_eq!(parse("(-1)..5").unwrap().eval().unwrap().describe(), "((-1)..5)");
-        assert_eq!(parse("-1..5").unwrap().eval().unwrap().describe(), "(-(1..5))");
+        assert_eq!(parse("range(5)").unwrap().eval().unwrap().describe(0), "range(5)");
+        assert_eq!(parse("range(0)").unwrap().eval().unwrap().describe(0), "[]");
+        assert_eq!(parse("range(1,5)").unwrap().eval().unwrap().describe(0), "range(1, 5)");
+        assert_eq!(parse("range(1,5,2)").unwrap().eval().unwrap().describe(0), "range(1, 5, 2)");
+        assert_eq!(parse("range('a','Z')").unwrap().eval().unwrap().describe(0), "range('a', 'z')");
+        assert_eq!(parse("range('A','z',2)").unwrap().eval().unwrap().describe(0), "range('A', 'Z', 2)");
+        assert_eq!(parse("1..5").unwrap().eval().unwrap().describe(0), "(1..5)");
+        assert_eq!(parse("(-1)..5").unwrap().eval().unwrap().describe(0), "((-1)..5)");
+        assert_eq!(parse("-1..5").unwrap().eval().unwrap().describe(0), "(-(1..5))");
     }
 }
 

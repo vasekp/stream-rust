@@ -132,8 +132,8 @@ impl MathOp {
 }
 
 impl Describe for MathOp {
-    fn describe(&self) -> String {
-        self.env.wrap_describe(self.node.describe())
+    fn describe(&self, prec: u32) -> String {
+        self.env.wrap_describe(self.node.describe(prec))
     }
 }
 
@@ -272,8 +272,8 @@ mod tests {
         test_skip_n(&parse("seq+[]").unwrap().eval().unwrap());
         test_skip_n(&parse("seq*seq").unwrap().eval().unwrap());
 
-        assert_eq!(parse("1+2+3+4-5*6*7/8").unwrap().eval().unwrap().describe(), "(-16)");
-        assert_eq!(parse("[1]+[2]+[3]+[4]-[5]*[6]*[7]/[8]").unwrap().eval().unwrap().describe(), "(([1]+[2]+[3]+[4])-(([5]*[6]*[7])/[8]))");
+        assert_eq!(parse("1+2+3+4-5*6*7/8").unwrap().eval().unwrap().describe(0), "-16");
+        assert_eq!(parse("[1]+[2]+[3]+[4]-[5]*[6]*[7]/[8]").unwrap().eval().unwrap().describe(0), "(([1]+[2]+[3]+[4])-(([5]*[6]*[7])/[8]))");
     }
 }
 

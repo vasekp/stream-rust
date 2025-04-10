@@ -42,9 +42,9 @@ impl Seq {
 }
 
 impl Describe for Seq {
-    fn describe(&self) -> String {
+    fn describe(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, None::<&Item>,
-            [self.from.as_ref(), self.step.as_ref()].into_iter().flatten())
+            [self.from.as_ref(), self.step.as_ref()].into_iter().flatten(), prec)
     }
 }
 
@@ -92,9 +92,9 @@ mod tests {
         assert_eq!(parse("seq(2, 0)[10^10]").unwrap().eval().unwrap().to_string(), "2");
         test_skip_n(&parse("seq(2,0)").unwrap().eval().unwrap());
         test_skip_n(&parse("seq(2,3)").unwrap().eval().unwrap());
-        assert_eq!(parse("seq()").unwrap().eval().unwrap().describe(), "seq");
-        assert_eq!(parse("seq(0)").unwrap().eval().unwrap().describe(), "seq(0)");
-        assert_eq!(parse("seq(1,2)").unwrap().eval().unwrap().describe(), "seq(1, 2)");
+        assert_eq!(parse("seq()").unwrap().eval().unwrap().describe(0), "seq");
+        assert_eq!(parse("seq(0)").unwrap().eval().unwrap().describe(0), "seq(0)");
+        assert_eq!(parse("seq(1,2)").unwrap().eval().unwrap().describe(0), "seq(1, 2)");
     }
 }
 

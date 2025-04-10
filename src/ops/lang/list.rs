@@ -22,8 +22,8 @@ impl Stream for List {
 }
 
 impl Describe for List {
-    fn describe(&self) -> String {
-        Node::describe_helper(&Head::Lang(LangItem::List), None::<&Item>, &self.0)
+    fn describe(&self, prec: u32) -> String {
+        Node::describe_helper(&Head::Lang(LangItem::List), None::<&Item>, &self.0, prec)
     }
 }
 
@@ -47,8 +47,8 @@ mod tests {
         test_skip_n(&parse("[1,2,3]").unwrap().eval().unwrap());
         test_skip_n(&parse("[1]").unwrap().eval().unwrap());
         test_skip_n(&parse("[]").unwrap().eval().unwrap());
-        assert_eq!(parse("[1,2,3]").unwrap().eval().unwrap().describe(), "[1, 2, 3]");
-        assert_eq!(parse("[]").unwrap().eval().unwrap().describe(), "[]");
+        assert_eq!(parse("[1,2,3]").unwrap().eval().unwrap().describe(0), "[1, 2, 3]");
+        assert_eq!(parse("[]").unwrap().eval().unwrap().describe(0), "[]");
     }
 }
 
