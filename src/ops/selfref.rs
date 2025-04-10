@@ -191,7 +191,7 @@ mod tests {
         test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap(), 5);
         test_skip_n(&parse("self(1~(%+1))").unwrap().eval().unwrap());
         assert_eq!(parse("self(%)").unwrap().eval().unwrap().describe(0), "self(%)");
-        assert_eq!(parse("self([%]~1)").unwrap().eval().unwrap().describe(0), "self(([%]~1))");
+        assert_eq!(parse("self([%]~1)").unwrap().eval().unwrap().describe(0), "self([%]~1)");
         assert_eq!(parse("self([%]~1)[2]").unwrap().eval().unwrap().describe(0), "1");
 
         // Hamming weights

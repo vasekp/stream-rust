@@ -238,9 +238,9 @@ mod tests {
         assert_eq!(parse("range(1,5,2)").unwrap().eval().unwrap().describe(0), "range(1, 5, 2)");
         assert_eq!(parse("range('a','Z')").unwrap().eval().unwrap().describe(0), "range('a', 'z')");
         assert_eq!(parse("range('A','z',2)").unwrap().eval().unwrap().describe(0), "range('A', 'Z', 2)");
-        assert_eq!(parse("1..5").unwrap().eval().unwrap().describe(0), "(1..5)");
-        assert_eq!(parse("(-1)..5").unwrap().eval().unwrap().describe(0), "((-1)..5)");
-        assert_eq!(parse("-1..5").unwrap().eval().unwrap().describe(0), "(-(1..5))");
+        assert_eq!(parse("1..5").unwrap().eval().unwrap().describe(0), "1..5");
+        assert_eq!(parse("(-1)..5").unwrap().eval().unwrap().describe(0), "(-1)..5");
+        assert_eq!(parse("-(1..5)").unwrap().eval().unwrap().describe(0), "-1..5");
     }
 }
 

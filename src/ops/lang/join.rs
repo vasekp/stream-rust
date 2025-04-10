@@ -166,9 +166,9 @@ mod tests {
         test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval().unwrap());
         test_skip_n(&parse("('a'..'z').repeat(10^10)~['A'].repeat(10^10)").unwrap().eval().unwrap());
 
-        assert_eq!(parse("1~2").unwrap().eval().unwrap().describe(0), "(1~2)");
-        assert_eq!(parse("[1]~[2]").unwrap().eval().unwrap().describe(0), "([1]~[2])");
-        assert_eq!(parse("\"ab\"~'c'").unwrap().eval().unwrap().describe(0), "(\"ab\"~'c')");
+        assert_eq!(parse("1~2").unwrap().eval().unwrap().describe(0), "1~2");
+        assert_eq!(parse("[1]~[2]").unwrap().eval().unwrap().describe(0), "[1]~[2]");
+        assert_eq!(parse("\"ab\"~'c'").unwrap().eval().unwrap().describe(0), "\"ab\"~'c'");
     }
 }
 

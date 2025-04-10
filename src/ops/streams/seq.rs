@@ -93,8 +93,8 @@ mod tests {
         test_skip_n(&parse("seq(2,0)").unwrap().eval().unwrap());
         test_skip_n(&parse("seq(2,3)").unwrap().eval().unwrap());
         assert_eq!(parse("seq()").unwrap().eval().unwrap().describe(0), "seq");
-        assert_eq!(parse("seq(0)").unwrap().eval().unwrap().describe(0), "seq(0)");
-        assert_eq!(parse("seq(1,2)").unwrap().eval().unwrap().describe(0), "seq(1, 2)");
+        assert_eq!(parse("seq(-1)").unwrap().eval().unwrap().describe(0), "seq(-1)");
+        assert_eq!(parse("seq(-1,2)").unwrap().eval().unwrap().describe(0), "seq(-1, 2)");
     }
 }
 

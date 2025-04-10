@@ -180,7 +180,7 @@ mod tests {
         test_skip_n(&parse(r#""ab".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
         test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
         assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval().unwrap().describe(0), "\"AbC\".shift(3, [0, 10, 20])");
-        assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap().describe(0), "\"a b c!\".shift((1..3), 1)");
+        assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap().describe(0), "\"a b c!\".shift(1..3, 1)");
     }
 }
 

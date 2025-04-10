@@ -134,8 +134,12 @@ impl Node {
         ret += &head.describe();
         let args = args.into_iter();
         if let Head::Oper(op) = head {
-            ret.push('(');
-            let mut it = args.map(|arg| arg.describe(op_prec(op)));
+            let (nprec, multi) = op_rules(op);
+            let parens = (nprec < prec) || (nprec == prec && !multi);
+            if parens {
+                ret.push('(');
+            }
+            let mut it = args.map(|arg| arg.describe(nprec));
             let first = it.next().expect("Head::Oper should have at least one arg");
             // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
             match it.next() {
@@ -153,7 +157,9 @@ impl Node {
                 ret += op;
                 ret += &string;
             }
-            ret.push(')');
+            if parens {
+                ret.push(')');
+            }
         } else {
             let mut it = args.map(|arg| arg.describe(0));
             match it.next() {
