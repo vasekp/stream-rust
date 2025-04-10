@@ -99,13 +99,13 @@ impl Describe for Range {
                 prec),
             RangeType::Character(case) => {
                 let abc = self.env.alphabet();
-                let base = Node::describe_helper(&self.head, None::<&Item>,
-                    [
+                self.env.wrap_describe(|prec|
+                    Node::describe_helper(&self.head, None::<&Item>, [
                         Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
                         Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
                         self.step.as_ref().map(ProxyItem::Number).as_ref()
-                    ].into_iter().flatten(), prec);
-                self.env.wrap_describe(base)
+                    ].into_iter().flatten(), prec),
+                    prec)
             }
         }
     }

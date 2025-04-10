@@ -133,7 +133,7 @@ impl MathOp {
 
 impl Describe for MathOp {
     fn describe(&self, prec: u32) -> String {
-        self.env.wrap_describe(self.node.describe(prec))
+        self.env.wrap_describe(|prec| self.node.describe(prec), prec)
     }
 }
 

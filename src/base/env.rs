@@ -12,10 +12,10 @@ pub struct Env {
 impl Env {
     fn is_trivial(&self) -> bool { true }
 
-    pub(crate) fn wrap_describe(&self, expr: impl Into<String> + std::fmt::Display) -> String {
+    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32) -> String, prec: u32) -> String {
         match self.is_trivial() {
-            true => expr.into(),
-            false => format!("env({}, {})", self.describe(), expr)
+            true => call(prec),
+            false => format!("env({}, {})", self.describe(), call(0))
         }
     }
 

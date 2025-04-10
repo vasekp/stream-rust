@@ -44,7 +44,7 @@ impl Shift {
 
 impl Describe for Shift {
     fn describe(&self, prec: u32) -> String {
-        self.env.wrap_describe(Node::describe_helper(&self.head, Some(&self.source), &self.args, prec))
+        self.env.wrap_describe(|prec| Node::describe_helper(&self.head, Some(&self.source), &self.args, prec), prec)
     }
 }
 

@@ -29,8 +29,9 @@ impl Map {
 
 impl Describe for Map {
     fn describe(&self, prec: u32) -> String {
-        let base = Node::describe_helper(&Head::Lang(LangItem::Map), Some(&self.source), [&self.body], prec);
-        self.env.wrap_describe(base)
+        self.env.wrap_describe(|prec|
+            Node::describe_helper(&Head::Lang(LangItem::Map), Some(&self.source), [&self.body], prec),
+            prec)
     }
 }
 
