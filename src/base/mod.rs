@@ -1,5 +1,6 @@
 pub(crate) use num::*;
 
+mod rules;
 mod expr;
 mod item;
 mod node;
@@ -7,6 +8,7 @@ mod env;
 mod error;
 mod alphabet;
 
+pub(crate) use rules::*;
 pub use expr::*;
 pub use item::*;
 pub use node::*;

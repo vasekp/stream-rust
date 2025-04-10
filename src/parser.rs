@@ -353,19 +353,6 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     }
 }
 
-fn get_op(op: &str) -> (u32, bool) {
-    match op {
-        "~" => (1, true),
-        "+" => (2, true),
-        "-" => (2, false),
-        "*" => (3, true),
-        "/" => (3, false),
-        "^" => (4, false),
-        ".." => (5, false),
-        _ => todo!()
-    }
-}
-
 
 struct Parser<'str> {
     tk: Tokenizer<'str>
@@ -445,7 +432,7 @@ impl<'str> Parser<'str> {
                 return Ok(None)
             },
             Some(Token(TC::Oper, sign @ ("+" | "-"))) => {
-                stack.push(StackEntry{op: sign, prec: get_op(sign).0, args: vec![]});
+                stack.push(StackEntry{op: sign, prec: op_prec(sign), args: vec![]});
                 self.read_expr_part()?
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(sign)))?
             },
@@ -481,7 +468,7 @@ impl<'str> Parser<'str> {
                     src.chain(Link::new(LangItem::Part, args))
                 },
                 (mut expr, Token(TC::Oper, op)) => {
-                    let (prec, multi) = get_op(op);
+                    let (prec, multi) = op_rules(op);
                     loop {
                         let Some(mut entry) = stack.pop() else {
                             // No stack: start new
