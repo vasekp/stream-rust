@@ -153,7 +153,7 @@ impl Stream for MathOp {
                 Item::Stream(stm) => stm.length(),
                 _ => Length::Infinite
             })
-            .reduce(|a, e| Length::intersection(&a, &e))
+            .reduce(Length::intersection)
             .unwrap() // args checked to be nonempty in eval_with()
     }
 
@@ -207,7 +207,7 @@ impl SIterator for MathOpIter<'_> {
     fn len_remain(&self) -> Length {
         self.args.iter()
             .map(|iter| iter.len_remain())
-            .reduce(|a, b| Length::intersection(&a, &b))
+            .reduce(Length::intersection)
             .unwrap()
     }
 }

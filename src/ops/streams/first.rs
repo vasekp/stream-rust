@@ -45,7 +45,7 @@ impl Stream for First {
     }
 
     fn length(&self) -> Length {
-        Length::intersection(&self.source.length(), &Length::Exact(self.count.to_owned()))
+        Length::intersection(self.source.length(), Length::Exact(self.count.to_owned()))
     }
 
     fn is_string(&self) -> TriState {
@@ -74,7 +74,7 @@ impl Iterator for FirstIter<'_> {
 
 impl SIterator for FirstIter<'_> {
     fn len_remain(&self) -> Length {
-        Length::intersection(&self.source.len_remain(), &Length::Exact(self.count_rem.to_owned()))
+        Length::intersection(self.source.len_remain(), Length::Exact(self.count_rem.to_owned()))
     }
 
     fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {

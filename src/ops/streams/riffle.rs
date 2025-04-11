@@ -57,7 +57,7 @@ impl Stream for Riffle {
             Item::Stream(stm) => stm.length(),
             _ => Infinite
         };
-        Length::intersection(&len1.map(|u| 2u32 * u - 1u32), &len2.map(|v| 2u32 * v + 1u32))
+        Length::intersection(len1.map(|u| 2u32 * u - 1u32), len2.map(|v| 2u32 * v + 1u32))
     }
 
     fn is_empty(&self) -> bool {
@@ -100,8 +100,8 @@ impl Iterator for RiffleIter<'_> {
 
 impl SIterator for RiffleIter<'_> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        let common = Length::intersection(&self.source.len_remain(), &self.filler.len_remain());
-        let skip = match Length::intersection(&common, &Length::Exact(&n / 2u32)) {
+        let common = Length::intersection(self.source.len_remain(), self.filler.len_remain());
+        let skip = match Length::intersection(common, Length::Exact(&n / 2u32)) {
             Length::Exact(len) => len,
             _ => UNumber::zero()
         };
@@ -133,7 +133,7 @@ impl SIterator for RiffleIter<'_> {
     fn len_remain(&self) -> Length {
         let len1 = self.source.len_remain();
         let len2 = self.filler.len_remain();
-        let common = Length::intersection(&len1, &len2);
+        let common = Length::intersection(len1, len2);
         match self.which {
             RiffleState::Source => {
                 if self.source_next.is_none() {

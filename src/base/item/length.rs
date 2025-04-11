@@ -16,11 +16,11 @@ pub enum Length {
 }
 
 impl Length {
-    pub fn at_most(value: &Length) -> Length {
+    pub fn at_most(value: Length) -> Length {
         use Length::*;
         match value {
-            Exact(x) => AtMost(x.to_owned()),
-            AtMost(x) => AtMost(x.to_owned()),
+            Exact(x) => AtMost(x),
+            AtMost(x) => AtMost(x),
             UnknownFinite => UnknownFinite,
             _ => Unknown
         }
@@ -39,15 +39,15 @@ impl Length {
         }
     }
 
-    pub fn intersection(l1: &Length, l2: &Length) -> Length {
+    pub fn intersection(l1: Length, l2: Length) -> Length {
         use Length::*;
         match (l1, l2) {
-            (Infinite, len) | (len, Infinite) => len.to_owned(),
+            (Infinite, len) | (len, Infinite) => len,
             (Unknown, len) | (len, Unknown) => Length::at_most(len),
             // can't be merged with previous, otherwise (UnkFin, Unk) would give at_most(Unk) == Unk
             (UnknownFinite, len) | (len, UnknownFinite) => Length::at_most(len),
-            (Exact(x), Exact(y)) => Exact(std::cmp::min(x, y).to_owned()),
-            (Exact(x) | AtMost(x), Exact(y) | AtMost(y)) => AtMost(std::cmp::min(x, y).to_owned())
+            (Exact(x), Exact(y)) => Exact(std::cmp::min(x, y)),
+            (Exact(x) | AtMost(x), Exact(y) | AtMost(y)) => AtMost(std::cmp::min(x, y))
         }
     }
 
