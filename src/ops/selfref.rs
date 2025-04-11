@@ -204,6 +204,8 @@ mod tests {
         assert_eq!(parse("'a'.repeat.shift(self(0.repeat.riffle(%+1)))").unwrap().eval().unwrap().to_string(), "\"abacabadabacabaeabac...");
         // Binary length
         assert_eq!(parse("'a'.repeat.shift(self((0~(%+1)).riffle(%+1)))").unwrap().eval().unwrap().to_string(), "\"abbccccddddddddeeeee...");
+        // Hanoi towers
+        assert_eq!(parse("self([12,23,31].repeat.riffle([13,32,21].repeat.riffle(%)))").unwrap().eval().unwrap().to_string(), "[12, 13, 23, 12, 31, ...]");
     }
 }
 
