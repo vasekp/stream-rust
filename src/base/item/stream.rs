@@ -230,6 +230,12 @@ impl From<Box<dyn Stream>> for BoxedStream {
     }
 }
 
+impl From<BoxedStream> for Box<dyn Stream> {
+    fn from(val: BoxedStream) -> Self {
+        val.0
+    }
+}
+
 impl Describe for BoxedStream {
     fn describe_prec(&self, prec: u32) -> String {
         self.0.describe_prec(prec)

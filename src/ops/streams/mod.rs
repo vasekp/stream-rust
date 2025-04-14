@@ -5,6 +5,7 @@ mod riffle;
 mod repeat;
 mod skip;
 mod first;
+mod last;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     seq::init(keywords);
@@ -14,4 +15,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     repeat::init(keywords);
     skip::init(keywords);
     first::init(keywords);
+    last::init(keywords);
 }
