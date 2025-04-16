@@ -16,8 +16,7 @@ impl Riffle {
             _ => return Err(StreamError::new("exactly 1 argument required", rnode))
         };
         if source.is_empty() {
-            if source.is_string().is_true() { Ok(Item::new_stream(EmptyString())) }
-            else { Ok(Item::new_stream(EmptyStream())) }
+            Ok(Item::new_stream(EmptyStream::cond_string(source.is_string())))
         } else {
             Ok(Item::new_stream(Riffle{head: rnode.head, source, filler}))
         }

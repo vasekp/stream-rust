@@ -237,36 +237,35 @@ impl Describe for BoxedStream {
 }
 
 #[derive(Clone)]
-pub(crate) struct EmptyStream();
+pub(crate) enum EmptyStream {
+    List,
+    String
+}
+
+impl EmptyStream {
+    pub fn cond_string(is_string: TriState) -> Self {
+        match is_string {
+            TriState::True => Self::String,
+            _ => Self::List,
+        }
+    }
+}
 
 impl Stream for EmptyStream {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(std::iter::empty())
     }
+
+    fn is_string(&self) -> TriState {
+        matches!(self, Self::String).into()
+    }
 }
 
 impl Describe for EmptyStream {
     fn describe_prec(&self, _: u32) -> String {
-        "[]".into()
-    }
-}
-
-
-#[derive(Clone)]
-pub struct EmptyString();
-
-impl Stream for EmptyString {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(std::iter::empty())
-    }
-
-    fn is_string(&self) -> TriState {
-        TriState::True
-    }
-}
-
-impl Describe for EmptyString {
-    fn describe_prec(&self, _: u32) -> String {
-        "\"\"".into()
+        match self {
+            Self::List => "[]".into(),
+            Self::String => "\"\"".into()
+        }
     }
 }

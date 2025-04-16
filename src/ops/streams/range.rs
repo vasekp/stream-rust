@@ -43,7 +43,7 @@ impl Range {
             _ => return Err(StreamError::new("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)", rnode))
         };
         if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
-            Ok(Item::new_stream(EmptyStream()))
+            Ok(Item::new_stream(EmptyStream::List))
         } else {
             Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, env: Rc::clone(env)}))
         }
