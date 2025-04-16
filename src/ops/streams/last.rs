@@ -30,6 +30,8 @@ impl Last {
                             .unwrap_or_else(|| Err(StreamError::new("stream is empty", rnode)))
                 }
             },
+            RNodeS { source: Item::Stream(ref stm), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
+                => Ok(Item::Stream(Box::new(EmptyStream::cond_string(stm.is_string())))),
             RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
                 => Ok(Item::Stream(Box::new(Last {
@@ -122,7 +124,10 @@ mod tests {
         assert_eq!(parse("[].lenUF.last(3)").unwrap().eval().unwrap().to_string(), "[]");
         assert_eq!(parse("[1,2].lenUF.last(3)").unwrap().eval().unwrap().to_string(), "[1, 2]");
         assert_eq!(parse("(1..10).lenUF.last(3)").unwrap().eval().unwrap().to_string(), "[8, 9, 10]");
+        assert_eq!(parse("\"ab\".lenUF.last(3)").unwrap().eval().unwrap().to_string(), "\"ab\"");
         assert_eq!(parse("\"abcde\".lenUF.last(3)").unwrap().eval().unwrap().to_string(), "\"cde\"");
+        assert_eq!(parse("\"abcde\".lenUF.last(1)").unwrap().eval().unwrap().to_string(), "\"e\"");
+        assert_eq!(parse("\"abcde\".lenUF.last(0)").unwrap().eval().unwrap().to_string(), "\"\"");
         assert!(parse("seq.last(10^10)").unwrap().eval().is_err());
         assert_eq!(parse("range(10^9).last(10^10).len").unwrap().eval().unwrap().to_string(), "1000000000");
         assert_eq!(parse("range(10^11).last(10^10).len").unwrap().eval().unwrap().to_string(), "10000000000");
