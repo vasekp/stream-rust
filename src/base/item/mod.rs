@@ -7,13 +7,15 @@ mod chr;
 mod stream;
 mod length;
 mod siter;
+mod list;
 mod litstr;
 
 pub use chr::{Char, CharCase};
 pub use stream::*;
 pub use length::Length;
 pub use siter::{SIterator, StringIterator};
-use litstr::LiteralString;
+pub(crate) use list::List;
+pub(crate) use litstr::LiteralString;
 
 #[cfg(test)]
 mod tests;

@@ -1,36 +1,9 @@
 use crate::base::*;
 
-#[derive(Clone)]
-struct List(Vec<Item>);
-
-impl List {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source()?);
-        Ok(Item::new_stream(List::from(node.args)))
-    }
-}
-
-impl Stream for List {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(self.0.iter().map(|x| Ok(x.clone())))
-    }
-
-    fn length(&self) -> Length {
-        Length::from(self.0.len())
-    }
-}
-
-impl Describe for List {
-    fn describe_prec(&self, prec: u32) -> String {
-        Node::describe_helper(&Head::Lang(LangItem::List), None::<&Item>, &self.0, prec)
-    }
-}
-
-impl From<Vec<Item>> for List {
-    fn from(vec: Vec<Item>) -> List {
-        List(vec)
-    }
+fn eval_list(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source()?);
+    Ok(Item::new_stream(List::from(node.args)))
 }
 
 #[cfg(test)]
@@ -53,5 +26,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("$list", List::eval);
+    keywords.insert("$list", eval_list);
 }
