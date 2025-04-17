@@ -64,7 +64,10 @@ impl Last {
                                 }
                                 vec.push_back(item);
                             }
-                            Ok(Item::Stream(Box::new(List::from(Vec::from(vec)))))
+                            Ok(Item::Stream(Box::new(List {
+                                vec: vec.into(),
+                                is_string: stm.is_string()
+                            })))
                         }
                     }
                 },
@@ -137,8 +140,8 @@ mod tests {
         test_skip_n(&parse("range(10^9).last(10^10)").unwrap().eval().unwrap());
         test_skip_n(&parse("range(10^11).last(10^10)").unwrap().eval().unwrap());
         assert_eq!(parse("(1..3).last").unwrap().eval().unwrap().describe(), "3");
-        assert_eq!(parse("(1..3).last(4)").unwrap().eval().unwrap().describe(), "(1..3).last(4)");
-        assert_eq!(parse("(1..3).take(4)").unwrap().eval().unwrap().describe(), "(1..3).take(4)");
+        assert_eq!(parse("(1..3).last(4)").unwrap().eval().unwrap().describe(), "1..3");
+        assert_eq!(parse("(1..3).last(2)").unwrap().eval().unwrap().describe(), "(1..3).last(2)");
     }
 }
 
