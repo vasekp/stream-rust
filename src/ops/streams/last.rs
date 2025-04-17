@@ -7,7 +7,8 @@ use std::collections::VecDeque;
 struct Last {
     head: Head,
     source: BoxedStream,
-    count: UNumber
+    count: UNumber,
+    skip: UNumber
 }
 
 impl Last {
@@ -32,62 +33,58 @@ impl Last {
             },
             RNodeS { source: Item::Stream(ref stm), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
                 => Ok(Item::Stream(Box::new(EmptyStream::cond_string(stm.is_string())))),
-            RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
+            RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
-                => Ok(Item::Stream(Box::new(Last {
-                    head,
-                    source: s.into(),
-                    count: unsign(count)
-                }))),
+                => {
+                    let count = unsign(count);
+                    match stm.length() {
+                        Length::Exact(len) if &len < &count => Ok(Item::Stream(stm)),
+                        Length::Exact(len) => Ok(Item::Stream(Box::new(Last {
+                                head,
+                                source: stm.into(),
+                                skip: len - &count,
+                                count
+                            }))),
+                        Length::Infinite => Err(StreamError::new("stream is infinite",
+                            RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count.into())) })),
+                        _ => {
+                            let size = match count.to_usize() {
+                                Some(size) => size,
+                                None => return Err(StreamError::new("length too large",
+                                    RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count.into())) }))
+                            };
+                            let mut vec = VecDeque::with_capacity(size);
+                            for res in stm.iter() {
+                                let item = match res {
+                                    Ok(item) => item,
+                                    Err(err) => return Err(err)
+                                };
+                                if vec.len() == size {
+                                    vec.pop_front();
+                                }
+                                vec.push_back(item);
+                            }
+                            Ok(Item::Stream(Box::new(List::from(Vec::from(vec)))))
+                        }
+                    }
+                },
             _ => Err(StreamError::new("expected: source.last or source.last(count)", rnode))
-        }
-    }
-}
-
-impl Last {
-    fn aux_node(&self) -> ENode {
-        ENode {
-            head: self.head.clone(),
-            source: Some(Item::Stream(self.source.clone().into())),
-            args: vec![Item::Number(self.count.clone().into())]
         }
     }
 }
 
 impl Stream for Last {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        match self.source.length() {
-            Length::Exact(len) => {
-                let mut it = self.source.iter();
-                match it.skip_n(len.checked_sub(&self.count).unwrap_or_default()) {
-                    Ok(None) => it,
-                    Ok(Some(_)) => Box::new(std::iter::empty()),
-                    Err(err) => Box::new(std::iter::once(Err(err)))
-                }
-            },
-            _ => {
-                let size = match self.count.to_usize() {
-                    Some(size) => size,
-                    None => return Box::new(std::iter::once(Err(StreamError::new("length too large", self.aux_node()))))
-                };
-                let mut vec = VecDeque::with_capacity(size);
-                for res in self.source.iter() {
-                    let item = match res {
-                        Ok(item) => item,
-                        Err(err) => return Box::new(std::iter::once(Err(err)))
-                    };
-                    if vec.len() == size {
-                        vec.pop_front();
-                    }
-                    vec.push_back(item);
-                }
-                Box::new(vec.into_iter().map(Result::Ok))
-            }
+        let mut it = self.source.iter();
+        match it.skip_n(self.skip.to_owned()) {
+            Ok(None) => it,
+            Ok(Some(_)) => Box::new(std::iter::empty()),
+            Err(err) => Box::new(std::iter::once(Err(err)))
         }
     }
 
     fn length(&self) -> Length {
-        Length::intersection(self.source.length(), Length::Exact(self.count.to_owned()))
+        Length::Exact(self.count.to_owned())
     }
 
     fn is_string(&self) -> TriState {
