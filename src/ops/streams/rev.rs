@@ -1,0 +1,145 @@
+use crate::base::*;
+
+#[derive(Clone)]
+pub struct Rev {
+    head: Head,
+    source: BoxedStream,
+    length: UNumber
+}
+
+const CACHE: usize = 100;
+
+impl Rev {
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        let enode = node.eval_all(env)?;
+        try_with!(enode, enode.check_no_args()?);
+        let rnode = enode.resolve_source()?;
+        let Item::Stream(source) = rnode.source else {
+            return Err(StreamError::new(format!("expected stream, found {:?}", rnode.source), 
+                    rnode));
+        };
+        match source.length() {
+            Length::Infinite
+                => Err(StreamError::new("stream is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::Zero })),
+            Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE) => {
+                Ok(Item::Stream(Box::new(Rev{head: rnode.head, source: source.into(), length: len})))
+            },
+            _ => {
+                let mut vec = source.iter().collect::<Result<Vec<_>, _>>()?;
+                vec.reverse();
+                Ok(Item::Stream(Box::new(List{vec, is_string: source.is_string()})))
+            }
+        }
+    }
+}
+
+impl Stream for Rev {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(RevIter {
+            source: &*self.source,
+            start: self.length.clone(),
+            cached: Vec::new()
+        })
+    }
+
+    fn length(&self) -> Length {
+        Length::Exact(self.length.clone())
+    }
+
+    fn is_string(&self) -> TriState {
+        self.source.is_string()
+    }
+}
+
+impl Describe for Rev {
+    fn describe_prec(&self, prec: u32) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec)
+    }
+}
+
+struct RevIter<'node> {
+    source: &'node (dyn Stream + 'static),
+    start: UNumber,
+    cached: Vec<Item>
+}
+
+impl Iterator for RevIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.cached.pop() {
+            Some(item) => Some(Ok(item)),
+            None => {
+                if self.start.is_zero() {
+                    None
+                } else {
+                    let size_n = CACHE.into();
+                    let (new_start, diff) = match self.start.checked_sub(&size_n) {
+                        Some(res) => (res, CACHE),
+                        None => (UNumber::zero(), self.start.to_usize().expect("start < CACHE should fit into usize"))
+                    };
+                    let mut iter = self.source.iter();
+                    match iter.skip_n(new_start.clone()) {
+                        Err(err) => return Some(Err(err)),
+                        Ok(Some(_)) => unreachable!(),
+                        Ok(None) => ()
+                    }
+                    self.start = new_start;
+                    self.cached = match iter.take(diff).collect() {
+                        Ok(vec) => vec,
+                        Err(err) => return Some(Err(err))
+                    };
+                    Ok(self.cached.pop()).transpose()
+                }
+            }
+        }
+    }
+}
+
+impl SIterator for RevIter<'_> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        let len = self.cached.len();
+        match n.to_usize() {
+            Some(n) if n <= len => {
+                self.cached.truncate(len - n);
+                Ok(None)
+            },
+            _ => {
+                self.cached.clear();
+                let rem = UNumber::from(n - len);
+                if rem > self.start {
+                    Ok(Some(rem - &self.start))
+                } else {
+                    self.start -= rem;
+                    Ok(None)
+                }
+            }
+        }
+    }
+
+    fn len_remain(&self) -> Length {
+        Length::Exact(&self.start + self.cached.len())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rev() {
+        use crate::parser::parse;
+
+        assert_eq!(parse("range(3).rev").unwrap().eval().unwrap().to_string(), "[3, 2, 1]");
+        assert_eq!(parse("\"abc\".rev").unwrap().eval().unwrap().to_string(), "\"cba\"");
+        assert_eq!(parse("[].rev").unwrap().eval().unwrap().to_string(), "[]");
+        assert_eq!(parse("\"\".rev").unwrap().eval().unwrap().to_string(), "\"\"");
+        assert!(parse("seq.rev").unwrap().eval().is_err());
+        test_skip_n(&parse("range(1000).rev").unwrap().eval().unwrap());
+        test_skip_n(&parse("range(10^10).rev").unwrap().eval().unwrap());
+    }
+}
+
+pub fn init(keywords: &mut crate::keywords::Keywords) {
+    keywords.insert("rev", Rev::eval);
+}

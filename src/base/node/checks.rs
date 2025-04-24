@@ -19,6 +19,14 @@ pub(crate) trait Checks {
         self.source().ok_or("source required".into())
     }
 
+    fn check_no_args(&self) -> Result<(), BaseError> {
+        if !self.args().is_empty() {
+            Err("no arguments expected".into())
+        } else {
+            Ok(())
+        }
+    }
+
     fn check_args_nonempty(&self) -> Result<(), BaseError> {
         if self.args().is_empty() {
             Err("at least 1 argument required".into())
