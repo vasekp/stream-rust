@@ -25,6 +25,9 @@ pub type Number = num::BigInt;
 pub type UNumber = num::BigUint;
 
 
+pub(crate) const CACHE_LEN: usize = 100;
+
+
 /// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into an input form.
 pub trait Describe {
     /// Construct a string representation of `self`. This is meant for storing object across

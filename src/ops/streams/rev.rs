@@ -7,8 +7,6 @@ pub struct Rev {
     length: UNumber
 }
 
-const CACHE: usize = 100;
-
 impl Rev {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let enode = node.eval_all(env)?;
@@ -21,7 +19,7 @@ impl Rev {
         match source.length() {
             Length::Infinite
                 => Err(StreamError::new("stream is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::Zero })),
-            Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE) => {
+            Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) => {
                 Ok(Item::Stream(Box::new(Rev{head: rnode.head, source: source.into(), length: len})))
             },
             _ => {
@@ -73,10 +71,10 @@ impl Iterator for RevIter<'_> {
                 if self.start.is_zero() {
                     None
                 } else {
-                    let size_n = CACHE.into();
+                    let size_n = CACHE_LEN.into();
                     let (new_start, diff) = match self.start.checked_sub(&size_n) {
-                        Some(res) => (res, CACHE),
-                        None => (UNumber::zero(), self.start.to_usize().expect("start < CACHE should fit into usize"))
+                        Some(res) => (res, CACHE_LEN),
+                        None => (UNumber::zero(), self.start.to_usize().expect("start < CACHE_LEN should fit into usize"))
                     };
                     let mut iter = self.source.iter();
                     match iter.skip_n(new_start.clone()) {
