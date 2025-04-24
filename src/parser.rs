@@ -378,6 +378,18 @@ impl<'str> Parser<'str> {
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
                 Link::new(Head::args(head), vec![arg])
             },
+            Some(&Token(TC::Open, bkt @ "{")) => {
+                self.tk.next();
+                let body = self.read_arg(bkt)?;
+                let arg = if let Some(&Token(TC::Open, bkt @ "(")) = self.tk.peek()? {
+                    self.tk.next();
+                    let block_args = self.read_args(bkt)?;
+                    Expr::new_node(body, block_args)
+                } else {
+                    Expr::new_node(body, vec![])
+                };
+                Link::new(head, vec![arg])
+            },
             _ => Link::new(head, vec![])
         }))
     }
@@ -719,7 +731,8 @@ fn test_parser() {
     assert!(parse("a@@c").is_err());
     assert!(parse("1@a").is_err());
     assert!(parse("a@").is_err());
-    assert!(parse("a.b{c}(d)").is_err());
+    assert_eq!(parse("a.b{c}(d)"), parse("a.b({c}(d))"));
+    assert!(parse("a.b{c}(d)(e)").is_err());
 
     assert_eq!(parse("1..2"), Ok(Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(2)])));
 }
