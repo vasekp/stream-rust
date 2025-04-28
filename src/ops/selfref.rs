@@ -17,14 +17,14 @@ impl SelfRef {
             [ref mut body] => std::mem::take(body),
             _ => return Err(StreamError::new("exactly 1 argument expected", node))
         };
-        Ok(Item::Stream(Box::new(SelfRef{head: node.head, body: Self::replace_ref(body), env: Rc::clone(env)})))
+        Ok(Item::Stream(Box::new(SelfRef{head: node.head, body, env: Rc::clone(env)})))
     }
 
     fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {
-        let mut env = (*self.env).clone();
         let hist = Rc::new(RefCell::new(Vec::new()));
-        env.cache = Rc::downgrade(&hist);
-        let item = self.body.clone().eval_env(&Rc::new(env))?;
+        let item = self.body.clone().apply(&Some(Box::new(Expr::new_stream(BackRef {
+            parent: Rc::downgrade(&hist)
+        }))), &vec![])?.eval_env(&self.env)?;
         let stm = try_with!(self.aux_node(), item.to_stream()?);
         Ok((stm, hist))
     }
@@ -34,22 +34,6 @@ impl SelfRef {
             head: self.head.clone(),
             source: None,
             args: vec![self.body.clone()]
-        }
-    }
-
-    fn replace_ref(expr: Expr) -> Expr {
-        match expr {
-            Expr::Imm(_) => expr,
-            Expr::Eval(node) => match node.head {
-                Head::Repl('%', None) => Expr::new_node(LangItem::BackRef, vec![]),
-                _ => Expr::Eval(Node {
-                    head: node.head,
-                    source: node.source.map(|expr| Box::new(Self::replace_ref(*expr))),
-                    args: node.args.into_iter()
-                        .map(Self::replace_ref)
-                        .collect()
-                })
-            }
         }
     }
 }
@@ -82,7 +66,7 @@ impl Stream for SelfRef {
     }
 }
 
-pub(crate) type CacheHistory = RefCell<Vec<Item>>;
+type CacheHistory = RefCell<Vec<Item>>;
 
 struct SelfRefIter<'node> {
     inner: Box<dyn SIterator + 'node>,
@@ -116,21 +100,9 @@ struct BackRefIter {
     pos: usize
 }
 
-impl BackRef {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        if node.source.is_some() {
-            return Err(StreamError::new("no source accepted", node));
-        }
-        if !node.args.is_empty() {
-            return Err(StreamError::new("no arguments accepted", node));
-        }
-        Ok(Item::Stream(Box::new(BackRef{parent: Weak::clone(&env.cache)})))
-    }
-}
-
 impl Describe for BackRef {
     fn describe_prec(&self, _: u32) -> String {
-        "%".to_owned()
+        "#".to_owned()
     }
 }
 
@@ -139,7 +111,7 @@ impl Stream for BackRef {
         match Weak::upgrade(&self.parent) {
             Some(rc) => Box::new(BackRefIter{vec: rc, pos: 0}),
             None => Box::new(std::iter::once(Err(StreamError::new("back-reference detached from cache", 
-                        Node::new("%", None, vec![])))))
+                        Node::new("#", None, vec![])))))
         }
     }
 
@@ -171,45 +143,44 @@ mod tests {
     #[test]
     fn test_selfref() {
         use crate::parser::parse;
-        assert_eq!(parse("self(%)").unwrap().eval().unwrap().to_string(), "[]");
-        assert_eq!(parse("self(%+1)").unwrap().eval().unwrap().to_string(), "[]");
-        assert_eq!(parse("self(%.repeat)").unwrap().eval().unwrap().to_string(), "[]");
-        assert_eq!(parse("self(1~(%+1))").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
-        assert_eq!(parse("self(0~(1-%))").unwrap().eval().unwrap().to_string(), "[0, 1, 0, 1, 0, ...]");
-        assert_eq!(parse("self(1~[%+1])").unwrap().eval().unwrap().to_string(), "[1, [2, [3, ...]]]");
-        assert_eq!(parse("self([%])").unwrap().eval().unwrap().to_string(), "[[[[[[...]]]]]]");
-        assert_eq!(parse("self([%]~1)[2]").unwrap().eval().unwrap().to_string(), "1");
-        assert_eq!(parse("self(seq+(5~%))").unwrap().eval().unwrap().to_string(), "[6, 8, 11, 15, 20, ...]");
-        assert_eq!(parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap().to_string(), "\"qqblu\"");
-        assert_eq!(parse("self(%[1])").unwrap().eval().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("self(%.len)").unwrap().eval().unwrap().to_string(), "[<!>");
-        test_len_exact(&parse("self(%)").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(%~%)").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(%:{#})").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(%.riffle(%))").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(%.repeat)").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~%))").unwrap().eval().unwrap(), 5);
-        test_skip_n(&parse("self(1~(%+1))").unwrap().eval().unwrap());
-        assert_eq!(parse("self(%)").unwrap().eval().unwrap().describe(), "self(%)");
-        assert_eq!(parse("self([%]~1)").unwrap().eval().unwrap().describe(), "self([%]~1)");
-        assert_eq!(parse("self([%]~1)[2]").unwrap().eval().unwrap().describe(), "1");
+        assert_eq!(parse("self(#)").unwrap().eval().unwrap().to_string(), "[]");
+        assert_eq!(parse("self(#+1)").unwrap().eval().unwrap().to_string(), "[]");
+        assert_eq!(parse("self(#.repeat)").unwrap().eval().unwrap().to_string(), "[]");
+        assert_eq!(parse("self(1~(#+1))").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
+        assert_eq!(parse("self(0~(1-#))").unwrap().eval().unwrap().to_string(), "[0, 1, 0, 1, 0, ...]");
+        assert_eq!(parse("self(1~[#+1])").unwrap().eval().unwrap().to_string(), "[1, [2, [3, ...]]]");
+        assert_eq!(parse("self([#])").unwrap().eval().unwrap().to_string(), "[[[[[[...]]]]]]");
+        assert_eq!(parse("self([#]~1)[2]").unwrap().eval().unwrap().to_string(), "1");
+        assert_eq!(parse("self(seq+(5~#))").unwrap().eval().unwrap().to_string(), "[6, 8, 11, 15, 20, ...]");
+        assert_eq!(parse("self(\"pokus\".shift(\"ab\"~#))").unwrap().eval().unwrap().to_string(), "\"qqblu\"");
+        assert_eq!(parse("self(#[1])").unwrap().eval().unwrap().to_string(), "[<!>");
+        assert_eq!(parse("self(#.len)").unwrap().eval().unwrap().to_string(), "[<!>");
+        test_len_exact(&parse("self(#)").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self(#~#)").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self(#:{#})").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self(#.riffle(#))").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self(#.repeat)").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~#))").unwrap().eval().unwrap(), 5);
+        test_skip_n(&parse("self(1~(#+1))").unwrap().eval().unwrap());
+        assert_eq!(parse("self(#)").unwrap().eval().unwrap().describe(), "self(#)");
+        assert_eq!(parse("self([#]~1)").unwrap().eval().unwrap().describe(), "self([#]~1)");
+        assert_eq!(parse("self([#]~1)[2]").unwrap().eval().unwrap().describe(), "1");
 
         // Hamming weights
-        assert_eq!(parse("'a'.repeat.shift(self(([0,1]~%.skip(2)).riffle(1+%)))").unwrap().eval().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
+        assert_eq!(parse("'a'.repeat.shift(self(([0,1]~#.skip(2)).riffle(1+#)))").unwrap().eval().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
         // Thue-Morse
-        assert_eq!(parse("'a'.repeat.shift(self(([0,1]~%.skip(2)).riffle(1-%)))").unwrap().eval().unwrap().to_string(), "\"abbabaabbaababbabaab...");
+        assert_eq!(parse("'a'.repeat.shift(self(([0,1]~#.skip(2)).riffle(1-#)))").unwrap().eval().unwrap().to_string(), "\"abbabaabbaababbabaab...");
         // Paperfolding sequence
-        assert_eq!(parse("'a'.repeat.shift(self([0,1].repeat.riffle(%)))").unwrap().eval().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
+        assert_eq!(parse("'a'.repeat.shift(self([0,1].repeat.riffle(#)))").unwrap().eval().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
         // Trailing zeroes
-        assert_eq!(parse("'a'.repeat.shift(self(0.repeat.riffle(%+1)))").unwrap().eval().unwrap().to_string(), "\"abacabadabacabaeabac...");
+        assert_eq!(parse("'a'.repeat.shift(self(0.repeat.riffle(#+1)))").unwrap().eval().unwrap().to_string(), "\"abacabadabacabaeabac...");
         // Binary length
-        assert_eq!(parse("'a'.repeat.shift(self((0~(%+1)).riffle(%+1)))").unwrap().eval().unwrap().to_string(), "\"abbccccddddddddeeeee...");
+        assert_eq!(parse("'a'.repeat.shift(self((0~(#+1)).riffle(#+1)))").unwrap().eval().unwrap().to_string(), "\"abbccccddddddddeeeee...");
         // Hanoi towers
-        assert_eq!(parse("self([12,23,31].repeat.riffle([13,32,21].repeat.riffle(%)))").unwrap().eval().unwrap().to_string(), "[12, 13, 23, 12, 31, ...]");
+        assert_eq!(parse("self([12,23,31].repeat.riffle([13,32,21].repeat.riffle(#)))").unwrap().eval().unwrap().to_string(), "[12, 13, 23, 12, 31, ...]");
     }
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("self", SelfRef::eval);
-    keywords.insert("$backref", BackRef::eval);
 }

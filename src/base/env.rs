@@ -6,7 +6,6 @@ pub use std::rc::{Rc, Weak};
 /// [`Expr::eval()`]. Currently a placeholder, but in the future to be defined through `env`.
 #[derive(Default, Clone)]
 pub struct Env {
-    pub(crate) cache: std::rc::Weak<crate::ops::selfref::CacheHistory>
 }
 
 impl Env {
