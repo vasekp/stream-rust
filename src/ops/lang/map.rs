@@ -53,12 +53,9 @@ impl Iterator for MapIter<'_> {
         let Ok(source) = source else {
             return Some(source)
         };
-        let expr = Expr::Eval(Node{
-            source: Some(Box::new(source.into())),
-            head: self.parent.body.head.clone(),
-            args: self.parent.body.args.clone()
-        });
-        Some(expr.eval_env(&self.parent.env))
+        Some(self.parent.body.clone()
+            .with_source(source.into())
+            .and_then(|node| Expr::from(node).eval_env(&self.parent.env)))
     }
 }
 

@@ -114,6 +114,25 @@ impl Node {
         })
     }
 
+    pub(crate) fn with_source(mut self, source: Expr) -> Result<Node, StreamError> {
+        if self.source.is_some() {
+            Err(StreamError::new("already has source", self))
+        } else {
+            self.source = Some(Box::new(source));
+            Ok(self)
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn with_args(mut self, args: Vec<Expr>) -> Result<Node, StreamError> {
+        if !self.args.is_empty() {
+            Err(StreamError::new("already has arguments", self))
+        } else {
+            self.args = args;
+            Ok(self)
+        }
+    }
+
     pub(crate) fn describe_helper<'a, T, U>(
         head: &Head,
         source: Option<&T>,
