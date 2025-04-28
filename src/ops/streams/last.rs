@@ -38,7 +38,7 @@ impl Last {
                 => {
                     let count = unsign(count);
                     match stm.length() {
-                        Length::Exact(len) if &len < &count => Ok(Item::Stream(stm)),
+                        Length::Exact(len) if len < count => Ok(Item::Stream(stm)),
                         Length::Exact(len) => Ok(Item::Stream(Box::new(Last {
                                 head,
                                 source: stm.into(),
@@ -55,10 +55,7 @@ impl Last {
                             };
                             let mut vec = VecDeque::with_capacity(size);
                             for res in stm.iter() {
-                                let item = match res {
-                                    Ok(item) => item,
-                                    Err(err) => return Err(err)
-                                };
+                                let item = res?;
                                 if vec.len() == size {
                                     vec.pop_front();
                                 }
