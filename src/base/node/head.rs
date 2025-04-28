@@ -23,7 +23,6 @@ impl Head {
             Head::Repl(chr, None) => chr.to_string(),
             Head::Repl(chr, Some(num)) => format!("{chr}{num}"),
             Head::Args(head) => format!("{}@", head.describe()),
-            Head::Lang(LangItem::BackRef) => "%".to_owned(),
             Head::Lang(_) => Default::default(),
         }
     }
@@ -82,8 +81,6 @@ pub enum LangItem {
     Part,
     /// Colon (`source:func` ~ `source.$map(func)`)
     Map,
-    /// Back-reference (`%` within `self{...}`)
-    BackRef,
 }
 
 impl LangItem {
@@ -93,7 +90,6 @@ impl LangItem {
             List => "$list",
             Part => "$part",
             Map => "$map",
-            BackRef => "$backref",
         }
     }
 }
