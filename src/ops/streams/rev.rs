@@ -18,7 +18,7 @@ impl Rev {
         };
         match source.length() {
             Length::Infinite
-                => Err(StreamError::new("stream is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::Zero })),
+                => Err(StreamError::new("stream is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::<Item>::Zero })),
             Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) => {
                 Ok(Item::Stream(Box::new(Rev{head: rnode.head, source: source.into(), length: len})))
             },

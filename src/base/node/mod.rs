@@ -133,6 +133,30 @@ impl Node {
         }
     }
 
+    #[allow(unused)]
+    pub(crate) fn resolve(Self { head, source, args }: Self) -> RNode<Expr> {
+        match source {
+            Some(source) => RNode::Source(RNodeS { head, source: *source, args: args.into() }),
+            None => RNode::NoSource(RNodeNS { head, args: args.into() }),
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn resolve_source(self) -> Result<RNodeS<Expr>, StreamError> {
+        match self.source {
+            Some(source) => Ok(RNodeS { head: self.head, source: *source, args: self.args.into() }),
+            None => Err(StreamError::new("source required", self))
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn resolve_no_source(self) -> Result<RNodeNS<Expr>, StreamError> {
+        match self.source {
+            Some(_) => Err(StreamError::new("no source accepted", self)),
+            None => Ok(RNodeNS { head: self.head, args: self.args.into() })
+        }
+    }
+
     pub(crate) fn describe_helper<'a, T, U>(
         head: &Head,
         source: Option<&T>,

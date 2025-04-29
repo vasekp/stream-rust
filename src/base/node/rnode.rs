@@ -1,32 +1,32 @@
 use crate::base::*;
 
-pub(crate) enum RArgs {
+pub(crate) enum RArgs<T> {
     Zero,
-    One(Item),
-    Two(Item, Item),
-    Three(Item, Item, Item),
-    More(Vec<Item>)
+    One(T),
+    Two(T, T),
+    Three(T, T, T),
+    More(Vec<T>)
 }
 
-pub(crate) struct RNodeS {
+pub(crate) struct RNodeS<S, T=S> {
     pub(crate) head: Head,
-    pub(crate) source: Item,
-    pub(crate) args: RArgs
+    pub(crate) source: S,
+    pub(crate) args: RArgs<T>
 }
 
-pub(crate) struct RNodeNS {
+pub(crate) struct RNodeNS<T> {
     pub(crate) head: Head,
-    pub(crate) args: RArgs
+    pub(crate) args: RArgs<T>
 }
 
 #[allow(unused)]
-pub(crate) enum RNode {
-    Source(RNodeS),
-    NoSource(RNodeNS),
+pub(crate) enum RNode<S, T=S> {
+    Source(RNodeS<S, T>),
+    NoSource(RNodeNS<T>),
 }
 
-impl From<Vec<Item>> for RArgs {
-    fn from(mut vec: Vec<Item>) -> RArgs {
+impl<T: std::default::Default> From<Vec<T>> for RArgs<T> {
+    fn from(mut vec: Vec<T>) -> RArgs<T> {
         match vec[..] {
             [] => RArgs::Zero,
             [ref mut a1] => RArgs::One(std::mem::take(a1)),
@@ -38,8 +38,8 @@ impl From<Vec<Item>> for RArgs {
     }
 }
 
-impl From<RArgs> for Vec<Item> {
-    fn from(args: RArgs) -> Self {
+impl From<RArgs<Item>> for Vec<Item> {
+    fn from(args: RArgs<Item>) -> Self {
         match args {
             RArgs::Zero => vec![],
             RArgs::One(a1) => vec![a1],
@@ -50,20 +50,20 @@ impl From<RArgs> for Vec<Item> {
     }
 }
 
-impl From<RArgs> for Vec<Expr> {
-    fn from(args: RArgs) -> Self {
+impl<T> From<RArgs<T>> for Vec<Expr> where T: Into<Expr> {
+    fn from(args: RArgs<T>) -> Self {
         match args {
             RArgs::Zero => vec![],
             RArgs::One(a1) => vec![a1.into()],
             RArgs::Two(a1, a2) => vec![a1.into(), a2.into()],
             RArgs::Three(a1, a2, a3) => vec![a1.into(), a2.into(), a3.into()],
-            RArgs::More(vec) => vec.into_iter().map(Expr::from).collect()
+            RArgs::More(vec) => vec.into_iter().map(Into::into).collect()
         }
     }
 }
 
-impl From<RNode> for Node {
-    fn from(rnode: RNode) -> Node {
+impl<S, T> From<RNode<S, T>> for Node where S: Into<Expr>, T: Into<Expr> {
+    fn from(rnode: RNode<S, T>) -> Node {
         match rnode {
             RNode::Source(r) => r.into(),
             RNode::NoSource(r) => r.into()
@@ -71,14 +71,14 @@ impl From<RNode> for Node {
     }
 }
 
-impl From<RNodeS> for Node {
-    fn from(RNodeS { head, source, args }: RNodeS) -> Node {
+impl<S, T> From<RNodeS<S, T>> for Node where S: Into<Expr>, T: Into<Expr> {
+    fn from(RNodeS { head, source, args }: RNodeS<S, T>) -> Node {
         Node { head, source: Some(Box::new(source.into())), args: args.into() }
     }
 }
 
-impl From<RNodeNS> for Node {
-    fn from(RNodeNS { head, args }: RNodeNS) -> Node {
+impl<T> From<RNodeNS<T>> for Node where T: Into<Expr> {
+    fn from(RNodeNS { head, args }: RNodeNS<T>) -> Node {
         Node { head, source: None, args: args.into() }
     }
 }
