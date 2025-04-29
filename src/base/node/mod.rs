@@ -76,6 +76,17 @@ impl Node {
         Ok(self)
     }
 
+    pub(crate) fn eval_source_r(self, env: &Rc<Env>) -> Result<RNodeS<Item, Expr>, StreamError> {
+        match self.source {
+            Some(source) => Ok(RNodeS {
+                head: self.head,
+                source: source.eval_env(env)?,
+                args: self.args.into()
+            }),
+            None => Err(StreamError::new("source required", self))
+        }
+    }
+
     /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
             .map(|x| x.eval_env(env).map(Expr::from))

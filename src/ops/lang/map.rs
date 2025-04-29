@@ -14,16 +14,11 @@ struct MapIter<'node> {
 
 impl Map {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let node = node.eval_source(env)?;
-        let source = try_with!(node, node.source_checked()?.as_item()?.to_stream()?);
-        let body = match node.args[..] {
-            [ref expr] => try_with!(node, expr.to_node()?),
-            _ => return Err(StreamError::new("exactly 1 argument required", node))
-        };
-        if body.source.is_some() {
-            return Err(StreamError::new("body already has source", node));
+        match node.eval_source_r(env)? {
+            RNodeS { source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)), .. } =>
+                Ok(Item::new_stream(Map{source: source.into(), body, env: Rc::clone(env)})),
+            node => Err(StreamError::new("expected: source:body", node))
         }
-        Ok(Item::new_stream(Map{source: source.into(), body, env: Rc::clone(env)}))
     }
 }
 
