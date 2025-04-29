@@ -14,7 +14,7 @@ struct MapIter<'node> {
 
 impl Map {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        match node.eval_source_r(env)? {
+        match node.eval_source(env)? {
             RNodeS { source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)), .. } =>
                 Ok(Item::new_stream(Map{source: source.into(), body, env: Rc::clone(env)})),
             node => Err(StreamError::new("expected: source:body", node))

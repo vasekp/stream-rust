@@ -69,14 +69,7 @@ impl Node {
         Ok(ENode{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
-        if let Some(source) = self.source.take() {
-            self.source = Some(Box::new(source.eval_env(env)?.into()));
-        }
-        Ok(self)
-    }
-
-    pub(crate) fn eval_source_r(self, env: &Rc<Env>) -> Result<RNodeS<Item, Expr>, StreamError> {
+    pub(crate) fn eval_source(self, env: &Rc<Env>) -> Result<RNodeS<Item, Expr>, StreamError> {
         match self.source {
             Some(source) => Ok(RNodeS {
                 head: self.head,
