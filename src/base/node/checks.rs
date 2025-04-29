@@ -6,7 +6,7 @@ pub(crate) trait Checks {
     fn source(&self) -> Option<&Self::Element>;
     //fn source_mut(&mut self) -> Option<&mut Self::Element>;
     fn args(&self) -> &Vec<Self::Element>;
-    fn args_mut(&mut self) -> &mut Vec<Self::Element>;
+    //fn args_mut(&mut self) -> &mut Vec<Self::Element>;
 
     fn check_no_source(&self) -> Result<(), BaseError> {
         match &self.source() {
@@ -39,9 +39,9 @@ pub(crate) trait Checks {
         self.args().get(0).ok_or("at least 1 argument required".into())
     }*/
 
-    fn first_arg_checked_mut(&mut self) -> Result<&mut Self::Element, BaseError> {
+    /*fn first_arg_checked_mut(&mut self) -> Result<&mut Self::Element, BaseError> {
         self.args_mut().get_mut(0).ok_or("at least 1 argument required".into())
-    }
+    }*/
 }
 
 impl Checks for Node {
@@ -50,7 +50,7 @@ impl Checks for Node {
     fn source(&self) -> Option<&Expr> { self.source.as_deref() }
     //fn source_mut(&mut self) -> Option<&mut Expr> { self.source.as_deref_mut() }
     fn args(&self) -> &Vec<Expr> { &self.args }
-    fn args_mut(&mut self) -> &mut Vec<Expr> { &mut self.args }
+    //fn args_mut(&mut self) -> &mut Vec<Expr> { &mut self.args }
 }
 
 impl Checks for ENode {
@@ -59,6 +59,6 @@ impl Checks for ENode {
     fn source(&self) -> Option<&Item> { self.source.as_ref() }
     //fn source_mut(&mut self) -> Option<&mut Item> { self.source.as_mut() }
     fn args(&self) -> &Vec<Item> { &self.args }
-    fn args_mut(&mut self) -> &mut Vec<Item> { &mut self.args }
+    //fn args_mut(&mut self) -> &mut Vec<Item> { &mut self.args }
 }
 
