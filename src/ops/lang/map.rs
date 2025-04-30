@@ -4,6 +4,7 @@ use crate::base::*;
 struct Map {
     source: BoxedStream,
     body: Node,
+    head: Head,
     env: Rc<Env>
 }
 
@@ -15,8 +16,8 @@ struct MapIter<'node> {
 impl Map {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         match node.eval_source(env)? {
-            RNodeS { source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)), .. } =>
-                Ok(Item::new_stream(Map{source: source.into(), body, env: Rc::clone(env)})),
+            RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
+                Ok(Item::new_stream(Map{head, source: source.into(), body, env: Rc::clone(env)})),
             node => Err(StreamError::new("expected: source:body", node))
         }
     }
@@ -25,7 +26,7 @@ impl Map {
 impl Describe for Map {
     fn describe_prec(&self, prec: u32) -> String {
         self.env.wrap_describe(|prec|
-            Node::describe_helper(&Head::Lang(LangItem::Map), Some(&self.source), [&self.body], prec),
+            Node::describe_helper(&self.head, Some(&self.source), [&self.body], prec),
             prec)
     }
 }
@@ -75,14 +76,19 @@ mod tests {
         assert_eq!(parse("seq:{#^2}").unwrap().eval().unwrap().to_string(), "[1, 4, 9, 16, 25, ...]");
         assert_eq!(parse("seq:{#1}").unwrap().eval().unwrap().to_string(), "[<!>");
         assert_eq!(parse("seq:{range(#)}").unwrap().eval().unwrap().to_string(), "[[1], [1, 2], ...]");
+        assert_eq!(parse("seq.map{#+#1}(3)").unwrap().eval().unwrap().to_string(), "[4, 5, 6, 7, 8, ...]");
         test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval().unwrap(), 3);
         test_len_exact(&parse("[]:{#}").unwrap().eval().unwrap(), 0);
         test_skip_n(&parse("range(10^10):{#}").unwrap().eval().unwrap());
         test_skip_n(&parse("seq:{#}").unwrap().eval().unwrap());
         assert_eq!(parse("[1,2,3]:{#}").unwrap().eval().unwrap().describe(), "[1, 2, 3]:{#}");
+        assert_eq!(parse("seq:{#}").unwrap().eval().unwrap().describe(), "seq:{#}");
+        assert_eq!(parse("seq.map{#}").unwrap().eval().unwrap().describe(), "seq.map({#})");
+        assert_eq!(parse("seq.map{#+#1}(1)").unwrap().eval().unwrap().describe(), "seq.map({#+#1}(1))");
     }
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("$map", Map::eval);
+    keywords.insert("map", Map::eval);
 }
