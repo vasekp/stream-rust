@@ -91,7 +91,7 @@ impl Expr {
         }
     }
 
-    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
+    pub(in crate::base) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
         match self {
             Expr::Imm(_) => Ok(self),
             Expr::Eval(node) => match node.head {

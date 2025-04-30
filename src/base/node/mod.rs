@@ -105,7 +105,7 @@ impl Node {
         expr.eval_env(env)
     }
 
-    pub(crate) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
+    pub(in crate::base) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {
             head: self.head,
             source: match self.source {
