@@ -11,13 +11,12 @@ struct SelfRef {
 }
 
 impl SelfRef {
-    fn eval(mut node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        try_with!(node, node.check_no_source()?);
-        let body = match node.args[..] {
-            [ref mut body] => std::mem::take(body),
-            _ => return Err(StreamError::new("exactly 1 argument expected", node))
-        };
-        Ok(Item::Stream(Box::new(SelfRef{head: node.head, body, env: Rc::clone(env)})))
+    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+        match node.resolve() {
+            RNode::NoSource(RNodeNS { head, args: RArgs::One(body) }) =>
+                Ok(Item::Stream(Box::new(SelfRef{head, body, env: Rc::clone(env)}))),
+            node => Err(StreamError::new("expected: self({body})", node))
+        }
     }
 
     fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {

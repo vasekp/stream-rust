@@ -138,10 +138,10 @@ impl Node {
     }
 
     #[allow(unused)]
-    pub(crate) fn resolve(Self { head, source, args }: Self) -> RNode<Expr> {
-        match source {
-            Some(source) => RNode::Source(RNodeS { head, source: *source, args: args.into() }),
-            None => RNode::NoSource(RNodeNS { head, args: args.into() }),
+    pub(crate) fn resolve(self) -> RNode<Expr> {
+        match self.source {
+            Some(source) => RNode::Source(RNodeS { head: self.head, source: *source, args: self.args.into() }),
+            None => RNode::NoSource(RNodeNS { head: self.head, args: self.args.into() }),
         }
     }
 
