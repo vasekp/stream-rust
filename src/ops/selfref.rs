@@ -6,14 +6,14 @@ use std::pin::Pin;
 #[derive(Clone)]
 struct SelfRef {
     head: Head,
-    body: Expr,
+    body: Node,
     env: Rc<Env>
 }
 
 impl SelfRef {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         match node.resolve() {
-            RNode::NoSource(RNodeNS { head, args: RArgs::One(body) }) =>
+            RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) =>
                 Ok(Item::Stream(Box::new(SelfRef{head, body, env: Rc::clone(env)}))),
             node => Err(StreamError::new("expected: self({body})", node))
         }
@@ -21,19 +21,13 @@ impl SelfRef {
 
     fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {
         let hist = Rc::new(RefCell::new(Vec::new()));
-        let item = self.body.clone().apply(&Some(Box::new(Expr::new_stream(BackRef {
-            parent: Rc::downgrade(&hist)
-        }))), &vec![])?.eval_env(&self.env)?;
-        let stm = try_with!(self.aux_node(), item.to_stream()?);
+        let item = self.body.clone()
+            .with_source(Expr::new_stream(BackRef {
+                parent: Rc::downgrade(&hist)
+            }))?
+            .eval(&self.env)?;
+        let stm = try_with!(self.body.clone(), item.to_stream()?);
         Ok((stm, hist))
-    }
-
-    fn aux_node(&self) -> Node {
-        Node {
-            head: self.head.clone(),
-            source: None,
-            args: vec![self.body.clone()]
-        }
     }
 }
 
@@ -142,41 +136,42 @@ mod tests {
     #[test]
     fn test_selfref() {
         use crate::parser::parse;
-        assert_eq!(parse("self(#)").unwrap().eval().unwrap().to_string(), "[]");
-        assert_eq!(parse("self(#+1)").unwrap().eval().unwrap().to_string(), "[]");
-        assert_eq!(parse("self(#.repeat)").unwrap().eval().unwrap().to_string(), "[]");
-        assert_eq!(parse("self(1~(#+1))").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
-        assert_eq!(parse("self(0~(1-#))").unwrap().eval().unwrap().to_string(), "[0, 1, 0, 1, 0, ...]");
-        assert_eq!(parse("self(1~[#+1])").unwrap().eval().unwrap().to_string(), "[1, [2, [3, ...]]]");
-        assert_eq!(parse("self([#])").unwrap().eval().unwrap().to_string(), "[[[[[[...]]]]]]");
-        assert_eq!(parse("self([#]~1)[2]").unwrap().eval().unwrap().to_string(), "1");
-        assert_eq!(parse("self(seq+(5~#))").unwrap().eval().unwrap().to_string(), "[6, 8, 11, 15, 20, ...]");
-        assert_eq!(parse("self(\"pokus\".shift(\"ab\"~#))").unwrap().eval().unwrap().to_string(), "\"qqblu\"");
-        assert_eq!(parse("self(#[1])").unwrap().eval().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("self(#.len)").unwrap().eval().unwrap().to_string(), "[<!>");
-        test_len_exact(&parse("self(#)").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(#~#)").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(#:{#})").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(#.riffle(#))").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(#.repeat)").unwrap().eval().unwrap(), 0);
-        test_len_exact(&parse("self(\"pokus\".shift(\"ab\"~#))").unwrap().eval().unwrap(), 5);
-        test_skip_n(&parse("self(1~(#+1))").unwrap().eval().unwrap());
-        assert_eq!(parse("self(#)").unwrap().eval().unwrap().describe(), "self(#)");
-        assert_eq!(parse("self([#]~1)").unwrap().eval().unwrap().describe(), "self([#]~1)");
-        assert_eq!(parse("self([#]~1)[2]").unwrap().eval().unwrap().describe(), "1");
+        assert_eq!(parse("self{#}").unwrap().eval().unwrap().to_string(), "[]");
+        assert_eq!(parse("self{#+1}").unwrap().eval().unwrap().to_string(), "[]");
+        assert_eq!(parse("self{#.repeat}").unwrap().eval().unwrap().to_string(), "[]");
+        assert_eq!(parse("self{1~(#+1)}").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
+        assert_eq!(parse("self{0~(1-#)}").unwrap().eval().unwrap().to_string(), "[0, 1, 0, 1, 0, ...]");
+        assert_eq!(parse("self{1~[#+1]}").unwrap().eval().unwrap().to_string(), "[1, [2, [3, ...]]]");
+        assert_eq!(parse("self{[#]}").unwrap().eval().unwrap().to_string(), "[[[[[[...]]]]]]");
+        assert_eq!(parse("self{[#]~1}[2]").unwrap().eval().unwrap().to_string(), "1");
+        assert_eq!(parse("self{seq+(5~#)}").unwrap().eval().unwrap().to_string(), "[6, 8, 11, 15, 20, ...]");
+        assert_eq!(parse("self{\"pokus\".shift(\"ab\"~#)}").unwrap().eval().unwrap().to_string(), "\"qqblu\"");
+        assert_eq!(parse("self{#[1]}").unwrap().eval().unwrap().to_string(), "[<!>");
+        assert_eq!(parse("self{#.len}").unwrap().eval().unwrap().to_string(), "[<!>");
+        assert_eq!(parse("1.{#~self{0~#}}").unwrap().eval().unwrap().to_string(), "[1, 0, 0, 0, 0, ...]");
+        test_len_exact(&parse("self{#}").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self{#~#}").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self{#:{#}}").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self{#.riffle(#)}").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self{#.repeat}").unwrap().eval().unwrap(), 0);
+        test_len_exact(&parse("self{\"pokus\".shift(\"ab\"~#)}").unwrap().eval().unwrap(), 5);
+        test_skip_n(&parse("self{1~(#+1)}").unwrap().eval().unwrap());
+        assert_eq!(parse("self{#}").unwrap().eval().unwrap().describe(), "self({#})");
+        assert_eq!(parse("self{[#]~1}").unwrap().eval().unwrap().describe(), "self({[#]~1})");
+        assert_eq!(parse("self{[#]~1}[2]").unwrap().eval().unwrap().describe(), "1");
 
         // Hamming weights
-        assert_eq!(parse("'a'.repeat.shift(self(([0,1]~#.skip(2)).riffle(1+#)))").unwrap().eval().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
+        assert_eq!(parse("'a'.repeat.shift(self{([0,1]~#.skip(2)).riffle(1+#)})").unwrap().eval().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
         // Thue-Morse
-        assert_eq!(parse("'a'.repeat.shift(self(([0,1]~#.skip(2)).riffle(1-#)))").unwrap().eval().unwrap().to_string(), "\"abbabaabbaababbabaab...");
+        assert_eq!(parse("'a'.repeat.shift(self{([0,1]~#.skip(2)).riffle(1-#)})").unwrap().eval().unwrap().to_string(), "\"abbabaabbaababbabaab...");
         // Paperfolding sequence
-        assert_eq!(parse("'a'.repeat.shift(self([0,1].repeat.riffle(#)))").unwrap().eval().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
+        assert_eq!(parse("'a'.repeat.shift(self{[0,1].repeat.riffle(#)})").unwrap().eval().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
         // Trailing zeroes
-        assert_eq!(parse("'a'.repeat.shift(self(0.repeat.riffle(#+1)))").unwrap().eval().unwrap().to_string(), "\"abacabadabacabaeabac...");
+        assert_eq!(parse("'a'.repeat.shift(self{0.repeat.riffle(#+1)})").unwrap().eval().unwrap().to_string(), "\"abacabadabacabaeabac...");
         // Binary length
-        assert_eq!(parse("'a'.repeat.shift(self((0~(#+1)).riffle(#+1)))").unwrap().eval().unwrap().to_string(), "\"abbccccddddddddeeeee...");
+        assert_eq!(parse("'a'.repeat.shift(self{(0~(#+1)).riffle(#+1)})").unwrap().eval().unwrap().to_string(), "\"abbccccddddddddeeeee...");
         // Hanoi towers
-        assert_eq!(parse("self([12,23,31].repeat.riffle([13,32,21].repeat.riffle(#)))").unwrap().eval().unwrap().to_string(), "[12, 13, 23, 12, 31, ...]");
+        assert_eq!(parse("self{[12,23,31].repeat.riffle([13,32,21].repeat.riffle(#))}").unwrap().eval().unwrap().to_string(), "[12, 13, 23, 12, 31, ...]");
     }
 }
 
