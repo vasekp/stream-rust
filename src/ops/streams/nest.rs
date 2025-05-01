@@ -1,4 +1,5 @@
 use crate::base::*;
+use std::collections::VecDeque;
 
 #[derive(Clone)]
 struct NestSource {
@@ -17,14 +18,14 @@ struct NestIterSource<'node> {
 #[derive(Clone)]
 struct NestArgs {
     body: Node,
-    args: Vec<Item>,
+    args: VecDeque<Item>,
     head: Head,
     env: Rc<Env>
 }
 
 struct NestIterArgs<'node> {
     body: &'node Node,
-    prev: Vec<Item>,
+    prev: VecDeque<Item>,
     env: &'node Rc<Env>
 }
 
@@ -37,7 +38,7 @@ fn eval_nest(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
             let args = std::mem::take(&mut body.args)
                 .into_iter()
                 .map(|arg| arg.eval_env(env))
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<Result<VecDeque<_>, _>>()?;
             Ok(Item::new_stream(NestArgs{head, body, args, env: Rc::clone(env)}))
         },
         node => Err(StreamError::new("expected: source.nest({body}) or nest({body}(args))", node))
@@ -113,8 +114,8 @@ impl Iterator for NestIterArgs<'_> {
             .with_args(args)
             .and_then(|expr| expr.eval(self.env)) {
                 Ok(item) => {
-                    self.prev.remove(0);
-                    self.prev.push(item.clone());
+                    self.prev.pop_front();
+                    self.prev.push_back(item.clone());
                     Some(Ok(item))
                 },
                 Err(err) => Some(Err(err))
