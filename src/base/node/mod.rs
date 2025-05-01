@@ -127,7 +127,6 @@ impl Node {
         }
     }
 
-    #[allow(unused)]
     pub(crate) fn with_args(mut self, args: Vec<Expr>) -> Result<Node, StreamError> {
         if !self.args.is_empty() {
             Err(StreamError::new("already has arguments", self))

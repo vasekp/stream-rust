@@ -7,6 +7,7 @@ mod skip;
 mod first;
 mod last;
 mod rev;
+mod nest;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     seq::init(keywords);
@@ -18,4 +19,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     first::init(keywords);
     last::init(keywords);
     rev::init(keywords);
+    nest::init(keywords);
 }
