@@ -146,6 +146,15 @@ mod tests {
         assert_eq!(parse("nest{#1+#2}(1)").unwrap().eval().unwrap().to_string(), "[<!>");
         assert_eq!(parse("nest{#}(1,1)").unwrap().eval().unwrap().to_string(), "[<!>");
         assert!(parse("nest({#}())").unwrap().eval().is_err());
+
+        assert_eq!(parse("1.nest{#*2}[64]").unwrap().eval().unwrap().to_string(), "18446744073709551616");
+        assert_eq!(parse("[].nest{[#]}[3]").unwrap().eval().unwrap().to_string(), "[[[[]]]]");
+        assert_eq!(parse("[].nest{[#, #]}[2]").unwrap().eval().unwrap().to_string(), "[[[], []], [[], ...]]");
+        // Von Neumann numerals
+        assert_eq!(parse("[].nest{#~[#]}[3]").unwrap().eval().unwrap().to_string(), "[[], [[]], [[], ...]]");
+        // Binomial coefficients
+        assert_eq!(parse("[1].nest{(0~#)+(#~0)}[4]").unwrap().eval().unwrap().to_string(), "[1, 4, 6, 4, 1]");
+        assert_eq!(parse("\"caesar\".nest{#.shift(1)}").unwrap().eval().unwrap().to_string(), "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
     }
 }
 
