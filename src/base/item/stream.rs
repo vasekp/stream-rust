@@ -275,3 +275,30 @@ impl Describe for EmptyStream {
         }
     }
 }
+
+pub(crate) struct OwnedStreamIter<'node> {
+    iter: Box<dyn SIterator + 'node>,
+    _stream: std::pin::Pin<Box<dyn Stream>>
+}
+
+impl From<Box<dyn Stream>> for OwnedStreamIter<'_> {
+    fn from(stm: Box<dyn Stream>) -> Self {
+        let pin = Box::into_pin(stm);
+        let iter = unsafe { std::mem::transmute::<&dyn Stream, &dyn Stream>(&*pin) }.iter();
+        OwnedStreamIter { iter, _stream: pin }
+    }
+}
+
+impl<'node> std::ops::Deref for OwnedStreamIter<'node> {
+    type Target = dyn SIterator + 'node;
+
+    fn deref(&self) -> &Self::Target {
+        self.iter.deref()
+    }
+}
+
+impl std::ops::DerefMut for OwnedStreamIter<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.iter.deref_mut()
+    }
+}

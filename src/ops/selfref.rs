@@ -1,7 +1,6 @@
 use crate::base::*;
 
 use std::cell::RefCell;
-use std::pin::Pin;
 
 #[derive(Clone)]
 struct SelfRef {
@@ -40,13 +39,11 @@ impl Describe for SelfRef {
 impl Stream for SelfRef {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let (stm, hist) = match self.eval_real() {
-            Ok((stm, hist)) => (Box::into_pin(stm), hist),
+            Ok((stm, hist)) => (stm, hist),
             Err(err) => return Box::new(std::iter::once(Err(err)))
         };
-        let iter = unsafe { std::mem::transmute::<&dyn Stream, &dyn Stream>(&*stm) }.iter();
         Box::new(SelfRefIter {
-            inner: iter,
-            _stm: stm,
+            inner: OwnedStreamIter::from(stm),
             hist
         })
     }
@@ -62,8 +59,7 @@ impl Stream for SelfRef {
 type CacheHistory = RefCell<Vec<Item>>;
 
 struct SelfRefIter<'node> {
-    inner: Box<dyn SIterator + 'node>,
-    _stm: Pin<Box<dyn Stream>>,
+    inner: OwnedStreamIter<'node>,
     hist: Rc<CacheHistory>
 }
 
