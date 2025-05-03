@@ -155,6 +155,7 @@ mod tests {
         // Binomial coefficients
         assert_eq!(parse("[1].nest{(0~#)+(#~0)}[4]").unwrap().eval().unwrap().to_string(), "[1, 4, 6, 4, 1]");
         assert_eq!(parse("\"caesar\".nest{#.shift(1)}").unwrap().eval().unwrap().to_string(), "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
+        assert_eq!(parse("[0,1]~[1].nest{#~(#+1)}.flatten").unwrap().eval().unwrap().to_string(), "[0, 1, 1, 2, 1, ...]");
     }
 }
 
