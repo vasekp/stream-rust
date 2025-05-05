@@ -62,6 +62,16 @@ pub trait Stream: DynClone + Describe {
 }
 
 impl dyn Stream {
+    /// Consume this `Stream` and turn it into a one-time standalone [`SIterator`].
+    ///
+    /// To avoid a large amount of code duplication, a `Stream` only needs to implement [`iter()`], 
+    /// which takes it by reference. This metod creates a self-referential struct which holds the 
+    /// owned instance for the duration of its lifetime.
+    #[allow(clippy::should_implement_trait)]
+    pub fn into_iter(self: Box<Self>) -> OwnedStreamIter {
+        OwnedStreamIter::from(self)
+    }
+
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
     /// maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),
@@ -276,28 +286,28 @@ impl Describe for EmptyStream {
     }
 }
 
-pub(crate) struct OwnedStreamIter<'node> {
-    iter: Box<dyn SIterator + 'node>,
+pub struct OwnedStreamIter {
+    iter: Box<dyn SIterator>,
     _stream: std::pin::Pin<Box<dyn Stream>>
 }
 
-impl From<Box<dyn Stream>> for OwnedStreamIter<'_> {
+impl From<Box<dyn Stream>> for OwnedStreamIter {
     fn from(stm: Box<dyn Stream>) -> Self {
         let pin = Box::into_pin(stm);
-        let iter = unsafe { std::mem::transmute::<&dyn Stream, &dyn Stream>(&*pin) }.iter();
+        let iter = unsafe { std::mem::transmute::<&dyn Stream, &(dyn Stream + 'static)>(&*pin) }.iter();
         OwnedStreamIter { iter, _stream: pin }
     }
 }
 
-impl<'node> std::ops::Deref for OwnedStreamIter<'node> {
-    type Target = dyn SIterator + 'node;
+impl std::ops::Deref for OwnedStreamIter {
+    type Target = dyn SIterator;
 
     fn deref(&self) -> &Self::Target {
         self.iter.deref()
     }
 }
 
-impl std::ops::DerefMut for OwnedStreamIter<'_> {
+impl std::ops::DerefMut for OwnedStreamIter {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.iter.deref_mut()
     }

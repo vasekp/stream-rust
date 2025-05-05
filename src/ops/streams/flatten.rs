@@ -51,7 +51,7 @@ impl Stream for Flatten {
 
 struct FlattenIter<'node> {
     outer: Box<dyn SIterator + 'node>,
-    iters: Vec<OwnedStreamIter<'node>>,
+    iters: Vec<OwnedStreamIter>,
     depth: Option<usize>,
 }
 
@@ -69,7 +69,7 @@ impl Iterator for FlattenIter<'_> {
                     if self.depth.is_some_and(|d| self.iters.len() == d) {
                         return Some(Ok(Item::Stream(stm)));
                     } else {
-                        self.iters.push(OwnedStreamIter::from(stm));
+                        self.iters.push(stm.into_iter());
                     }
                 },
                 Some(res) => return Some(res),
@@ -103,7 +103,7 @@ impl SIterator for FlattenIter<'_> {
                 };
                 match res {
                     Some(Ok(Item::Stream(stm))) => {
-                        self.iters.push(OwnedStreamIter::from(stm));
+                        self.iters.push(stm.into_iter());
                     },
                     Some(Ok(_)) => n.dec(),
                     Some(Err(err)) => return Err(err),

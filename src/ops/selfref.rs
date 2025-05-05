@@ -43,7 +43,7 @@ impl Stream for SelfRef {
             Err(err) => return Box::new(std::iter::once(Err(err)))
         };
         Box::new(SelfRefIter {
-            inner: OwnedStreamIter::from(stm),
+            inner: stm.into_iter(),
             hist
         })
     }
@@ -58,12 +58,12 @@ impl Stream for SelfRef {
 
 type CacheHistory = RefCell<Vec<Item>>;
 
-struct SelfRefIter<'node> {
-    inner: OwnedStreamIter<'node>,
+struct SelfRefIter {
+    inner: OwnedStreamIter,
     hist: Rc<CacheHistory>
 }
 
-impl Iterator for SelfRefIter<'_> {
+impl Iterator for SelfRefIter {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -77,7 +77,7 @@ impl Iterator for SelfRefIter<'_> {
     }
 }
 
-impl SIterator for SelfRefIter<'_> { }
+impl SIterator for SelfRefIter { }
 
 #[derive(Clone)]
 struct BackRef {
