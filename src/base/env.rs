@@ -1,25 +1,41 @@
 use crate::base::*;
 
 pub use std::rc::{Rc, Weak};
+use std::collections::HashMap;
 
-/// The environment in which expressions are evaluated. This is passed as an argument to
-/// [`Expr::eval()`]. Currently a placeholder, but in the future to be defined through `env`.
+/// The environment in which expressions are evaluated (variable assignments made using `with`). 
+/// This is passed as an argument to [`Expr::eval()`].
 #[derive(Default, Clone)]
 pub struct Env {
+    pub vars: HashMap<String, Item>,
 }
 
 impl Env {
-    fn is_trivial(&self) -> bool { true }
+    fn is_trivial(&self) -> bool {
+        self.vars.is_empty()
+    }
 
     pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32) -> String, prec: u32) -> String {
         match self.is_trivial() {
             true => call(prec),
-            false => format!("env({}, {})", self.describe(), call(0))
+            false => format!("with({}, {})", self.describe(), call(0))
         }
     }
 
     /// The alphabet used for ordering characters and arithmetic operations on them.
     pub fn alphabet(&self) -> &Alphabet { &Alphabet::Std26 }
 
-    fn describe(&self) -> String { todo!() }
+    fn describe(&self) -> String {
+        let mut iter = self.vars.iter()
+            .map(|(key, val)| format!("{}={}", key, val.describe_prec(1)));
+        let mut ret = match iter.next() {
+            Some(rec) => rec,
+            None => return String::new()
+        };
+        for rec in iter {
+            ret.push(',');
+            ret += &rec;
+        }
+        ret
+    }
 }
