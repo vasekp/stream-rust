@@ -1,12 +1,15 @@
 use streamlang as stream;
 use stream::base::Describe;
-use std::io;
+use rustyline as rl;
 
-fn main() -> std::io::Result<()> {
-    println!("ready >");
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rl: rl::Editor<(), _> = rl::Editor::with_history(
+    rl::config::Builder::new()
+        .auto_add_history(true)
+        .build(),
+    rl::history::MemHistory::new())?;
 
-    for line in io::stdin().lines() {
-        let input = line?;
+    while let Ok(input) = rl.readline("> ") {
         match stream::parse(&input) {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");
