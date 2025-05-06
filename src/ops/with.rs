@@ -7,7 +7,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     }
     let mut args = node.args;
     let body = args.pop().unwrap(); // just checked len > 2 > 1
-    let mut env = Rc::new((**env).clone());
+    let mut env = Rc::clone(env);
     for arg in args {
         let mut args = match arg {
             Expr::Eval(Node { head: Head::Oper(op), source: None, args })
@@ -19,6 +19,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
             .expect("= should have at least 2 args")
             .eval_env(&env)?;
         let mut new_env = Rc::unwrap_or_clone(env);
+        let last = args.pop();
         for name in args {
             let name = match name {
                 Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
@@ -26,7 +27,16 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
                 => sym,
                 _ => return Err(StreamError::new("expected variable name", name))
             };
-            new_env.vars.insert(name, item.clone()); // TODO Cow
+            new_env.vars.insert(name, item.clone());
+        }
+        if let Some(name) = last {
+            let name = match name {
+                Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
+                    if args.is_empty()
+                => sym,
+                _ => return Err(StreamError::new("expected variable name", name))
+            };
+            new_env.vars.insert(name, item.clone());
         }
         env = Rc::new(new_env);
     };
