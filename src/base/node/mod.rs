@@ -181,8 +181,8 @@ impl Node {
         ret += &head.describe();
         let args = args.into_iter();
         if let Head::Oper(op) = head {
-            let (nprec, multi) = op_rules(op);
-            let parens = (nprec < prec) || (nprec == prec && !multi);
+            let nprec = op_prec(op);
+            let parens = nprec <= prec;
             if parens {
                 ret.push('(');
             }
