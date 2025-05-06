@@ -12,7 +12,6 @@ static KEYWORDS: Lazy<Keywords> = Lazy::new(|| {
     keywords
 });
 
-pub(crate) fn find_keyword(name: &str) -> Result<Constructor, BaseError> {
+pub(crate) fn find_keyword(name: &str) -> Option<Constructor> {
     KEYWORDS.get(name).copied()
-        .ok_or_else(|| format!("symbol '{name}' not found").into())
 }

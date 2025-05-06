@@ -8,6 +8,19 @@ pub(crate) enum RArgs<T> {
     More(Vec<T>)
 }
 
+/*impl<T> RArgs<T> {
+    fn len(&self) -> usize {
+        use RArgs::*;
+        match self {
+            Zero => 0,
+            One(..) => 1,
+            Two(..) => 2,
+            Three(..) => 3,
+            More(vec) => vec.len()
+        }
+    }
+}*/
+
 pub(crate) struct RNodeS<S, T=S> {
     pub(crate) head: Head,
     pub(crate) source: S,

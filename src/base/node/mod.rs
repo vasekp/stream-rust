@@ -44,9 +44,16 @@ impl Node {
     // happen in Expr::apply(Context).
     pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
         match self.head {
-            Head::Symbol(ref sym) | Head::Oper(ref sym) => match find_keyword(sym) {
-                Ok(func) => func(self, env),
-                Err(e) => Err(StreamError::new(e, self))
+            Head::Symbol(ref sym) | Head::Oper(ref sym) => {
+                if let Some(item) = env.vars.get(sym) {
+                    try_with!(self, self.check_no_source()?);
+                    try_with!(self, self.check_no_args()?);
+                    return Ok(item.clone());
+                } else if let Some(func) = find_keyword(sym) {
+                    return func(self, env);
+                } else {
+                    return Err(StreamError::new(format!("symbol '{sym}' not found"), self));
+                }
             },
             Head::Lang(ref lang) => {
                 let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
