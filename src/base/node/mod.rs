@@ -48,11 +48,11 @@ impl Node {
                 if let Some(item) = env.vars.get(sym) {
                     try_with!(self, self.check_no_source()?);
                     try_with!(self, self.check_no_args()?);
-                    return Ok(item.clone());
+                    Ok(item.clone())
                 } else if let Some(func) = find_keyword(sym) {
-                    return func(self, env);
+                    func(self, env)
                 } else {
-                    return Err(StreamError::new(format!("symbol '{sym}' not found"), self));
+                    Err(StreamError::new(format!("symbol '{sym}' not found"), self))
                 }
             },
             Head::Lang(ref lang) => {
