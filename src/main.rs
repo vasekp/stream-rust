@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build(),
     rl::history::MemHistory::new())?;
 
-    let sess = Session::new();
+    let mut sess = Session::new();
 
     while let Ok(input) = rl.readline("> ") {
         match stream::parse(&input) {

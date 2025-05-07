@@ -118,6 +118,17 @@ impl Expr {
             Expr::Repl(_) => Err(StreamError::new("out of context", self))
         }
     }
+
+    pub fn replace(&mut self, func: &impl Fn(Subst) -> Result<Expr, BaseError>) -> Result<(), StreamError> {
+        match self {
+            Expr::Repl(subst) => {
+                *self = try_with!(Expr::Repl(*subst), func(*subst)?);
+                Ok(())
+            },
+            Expr::Eval(node) => node.replace(func),
+            Expr::Imm(_) => Ok(())
+        }
+    }
 }
 
 impl Default for Expr {
