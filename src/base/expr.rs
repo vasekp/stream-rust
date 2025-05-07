@@ -5,7 +5,8 @@ use crate::base::*;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Imm(Item),
-    Eval(Node)
+    Eval(Node),
+    Repl(Subst),
 }
 
 impl Expr {
@@ -40,11 +41,7 @@ impl Expr {
 
     /// Creates a special expression `#(n)` or `$(n)`.
     pub fn new_repl(chr: char, ix: Option<usize>) -> Expr {
-        Expr::Eval(Node{
-            head: Head::Repl(chr, ix),
-            source: None,
-            args: vec![]
-        })
+        Expr::Repl(Subst::new(chr, ix))
     }
 
     /// Makes the output of this expression an input to a [`Link`].
@@ -59,50 +56,51 @@ impl Expr {
     pub fn as_item(&self) -> Result<&Item, BaseError> {
         match self {
             Expr::Imm(ref item) => Ok(item),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+            _ => Err(format!("expected value, found {:?}", self).into()),
         }
     }
 
     pub fn as_item_mut(&mut self) -> Result<&mut Item, BaseError> {
         match self {
             Expr::Imm(ref mut item) => Ok(item),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+            _ => Err(format!("expected value, found {:?}", self).into()),
         }
     }
 
     pub fn to_item(&self) -> Result<Item, BaseError> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+            _ => Err(format!("expected value, found {:?}", self).into()),
         }
     }
 
     pub fn into_item(self) -> Result<Item, BaseError> {
         match self {
             Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => Err(format!("expected value, found {:?}", node).into()),
+            _ => Err(format!("expected value, found {:?}", self).into()),
         }
     }
 
     pub fn to_node(&self) -> Result<Node, BaseError> {
         match self {
             Expr::Eval(node) => Ok(node.to_owned()),
-            Expr::Imm(imm) => Err(format!("expected node, found {:?}", imm).into()),
+            _ => Err(format!("expected node, found {:?}", self).into()),
         }
     }
 
     pub(in crate::base) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
         match self {
-            Expr::Imm(_) => Ok(self),
-            Expr::Eval(node) => match node.head {
-                Head::Repl('#', None) => source.as_ref()
-                        .ok_or(StreamError::new("no source provided", node))
+            Expr::Eval(node) => Ok(Expr::Eval(node.apply(source, args)?)),
+            Expr::Repl(subst) if subst.kind == SubstKind::Input =>
+                match subst.index {
+                    None => source.as_ref()
+                        .ok_or(StreamError::new("no source provided", self))
                         .map(|boxed| (**boxed).clone()),
-                Head::Repl('#', Some(ix)) => args.get(ix - 1)
-                    .ok_or(StreamError::new("no such input", node))
-                    .cloned(),
-                _ => Ok(Expr::Eval(node.apply(source, args)?))
-            }
+                    Some(ix) => args.get(ix - 1)
+                        .ok_or(StreamError::new("no such input", self))
+                        .cloned(),
+                },
+            _ => Ok(self)
         }
     }
 
@@ -116,7 +114,8 @@ impl Expr {
     pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
-            Expr::Eval(node) => node.eval(env)
+            Expr::Eval(node) => node.eval(env),
+            Expr::Repl(_) => Err(StreamError::new("out of context", self))
         }
     }
 }
@@ -143,7 +142,52 @@ impl Describe for Expr {
     fn describe_prec(&self, prec: u32) -> String {
         match self {
             Expr::Imm(item) => item.describe_prec(prec),
-            Expr::Eval(node) => node.describe_prec(prec)
+            Expr::Eval(node) => node.describe_prec(prec),
+            Expr::Repl(subs) => subs.to_string(),
+        }
+    }
+}
+
+
+/// The expression type for placeholder symbols like `#1`, `%`, etc.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Subst {
+    pub kind: SubstKind,
+    pub index: Option<usize>
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SubstKind {
+    /// Input slot (`#`, `#ix`)
+    Input,
+    /// Global variable (TODO)
+    Global,
+    /// History item (`%`, `%ix`)
+    History
+}
+
+impl Subst {
+    fn new(chr: char, ix: Option<usize>) -> Self {
+        let kind = match chr {
+            '#' => SubstKind::Input,
+            '$' => SubstKind::Global,
+            '%' => SubstKind::History,
+            _ => panic!("unhandled special character '{chr}' in Subst::new()")
+        };
+        Subst { kind, index: ix }
+    }
+}
+
+impl ToString for Subst {
+    fn to_string(&self) -> String {
+        let chr = match self.kind {
+            SubstKind::Input => '#',
+            SubstKind::Global => '$',
+            SubstKind::History => '%',
+        };
+        match self.index {
+            Some(ix) => format!("{chr}{ix}"),
+            None => chr.to_string()
         }
     }
 }

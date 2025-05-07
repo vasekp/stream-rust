@@ -61,7 +61,6 @@ impl Node {
             },
             Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval(env),
             Head::Args(_) => Node::eval_at(self, env),
-            Head::Repl(_, _) => Err(StreamError::new("out of context", self))
         }
     }
 

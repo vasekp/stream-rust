@@ -9,8 +9,7 @@ pub enum Head {
     Oper(String),
     Block(Box<Expr>),
     Args(Box<Head>), /// At-sign (source.head@args)
-    Lang(LangItem),
-    Repl(char, Option<usize>)
+    Lang(LangItem)
 }
 
 // Only for private use in Node::describe_helper.
@@ -20,8 +19,6 @@ impl Head {
             Head::Symbol(s) => s.to_owned(),
             Head::Block(b) => format!("{{{}}}", b.describe_prec(0)),
             Head::Oper(_) => Default::default(),
-            Head::Repl(chr, None) => chr.to_string(),
-            Head::Repl(chr, Some(num)) => format!("{chr}{num}"),
             Head::Args(head) => format!("{}@", head.describe()),
             Head::Lang(_) => Default::default(),
         }
