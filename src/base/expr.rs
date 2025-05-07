@@ -40,8 +40,8 @@ impl Expr {
     }
 
     /// Creates a special expression `#(n)` or `$(n)`.
-    pub fn new_repl(chr: char, ix: Option<usize>) -> Expr {
-        Expr::Repl(Subst::new(chr, ix))
+    pub fn new_repl(kind: SubstKind, index: Option<usize>) -> Expr {
+        Expr::Repl(Subst { kind, index })
     }
 
     /// Makes the output of this expression an input to a [`Link`].
@@ -136,22 +136,8 @@ pub struct Subst {
 pub enum SubstKind {
     /// Input slot (`#`, `#ix`)
     Input,
-    /// Global variable (TODO)
-    Global,
     /// History item (`%`, `%ix`)
     History
-}
-
-impl Subst {
-    fn new(chr: char, ix: Option<usize>) -> Self {
-        let kind = match chr {
-            '#' => SubstKind::Input,
-            '$' => SubstKind::Global,
-            '%' => SubstKind::History,
-            _ => panic!("unhandled special character '{chr}' in Subst::new()")
-        };
-        Subst { kind, index: ix }
-    }
 }
 
 #[allow(clippy::to_string_trait_impl)]
@@ -159,7 +145,6 @@ impl ToString for Subst {
     fn to_string(&self) -> String {
         let chr = match self.kind {
             SubstKind::Input => '#',
-            SubstKind::Global => '$',
             SubstKind::History => '%',
         };
         match self.index {
