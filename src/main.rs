@@ -19,10 +19,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Expr Debug: {expr:?}");
                 println!("Expr Describe: {}", expr.describe());
                 match sess.process(expr) {
-                    Ok(item) => {
+                    Ok((index, item)) => {
                         println!("Item Describe: {}", item.describe());
                         let (s, _, err) = item.format(None, Some(80));
-                        println!("Item Format: {s}");
+                        println!("%{index}: {s}");
                         if let Some(err) = err {
                             println!("Err: {}", err);
                         }

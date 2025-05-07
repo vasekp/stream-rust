@@ -16,7 +16,7 @@ impl Session {
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn process(&mut self, mut expr: Expr) -> Result<Item, StreamError> {
+    pub fn process(&mut self, mut expr: Expr) -> Result<(usize, &Item), StreamError> {
         expr.replace(&|subs| {
             if subs.kind == SubstKind::History {
                 match subs.index {
@@ -37,8 +37,8 @@ impl Session {
             }
         })?;
         let item = expr.eval_default()?;
-        self.hist.push(item.clone());
-        Ok(item)
+        self.hist.push(item);
+        Ok((self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
     }
 }
 
