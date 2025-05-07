@@ -154,6 +154,7 @@ impl Subst {
     }
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for Subst {
     fn to_string(&self) -> String {
         let chr = match self.kind {

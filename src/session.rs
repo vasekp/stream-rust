@@ -30,7 +30,7 @@ impl Session {
                         self.hist.last()
                             .cloned()
                             .map(Expr::from)
-                            .ok_or(format!("history is empty").into())
+                            .ok_or("history is empty".into())
                 }
             } else {
                 Ok(Expr::Repl(subs))
