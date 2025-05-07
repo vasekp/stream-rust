@@ -59,35 +59,6 @@ impl Item {
         }
     }
 
-    pub fn as_num_mut(&mut self) -> Result<&mut Number, BaseError> {
-        match self {
-            Item::Number(ref mut x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
-        }
-    }
-
-    /*pub fn to_num(&self) -> Result<Number, BaseError> {
-        self.as_num().map(ToOwned::to_owned)
-    }*/
-
-    pub fn check_num(&self) -> Result<(), BaseError> {
-        self.as_num().map(|_| ())
-    }
-
-    /*pub fn into_num(self) -> Result<Number, BaseError> {
-        match self {
-            Item::Number(x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
-        }
-    }*/
-
-    pub fn as_char(&self) -> Result<&Char, BaseError> {
-        match self {
-            Item::Char(c) => Ok(c),
-            _ => Err(format!("expected char, found {:?}", &self).into())
-        }
-    }
-
     pub fn is_stream(&self) -> bool {
         matches!(self, Item::Stream(_))
     }
@@ -99,24 +70,10 @@ impl Item {
         }
     }
 
-    pub fn into_stream(self) -> Result<Box<dyn Stream>, BaseError> {
-        match self {
-            Item::Stream(s) => Ok(s),
-            _ => Err(format!("expected stream, found {:?}", &self).into())
-        }
-    }
-
     pub fn to_stream(&self) -> Result<Box<dyn Stream>, BaseError> {
         match self {
             Item::Stream(s) => Ok(s.clone_box()),
             _ => Err(format!("expected stream, found {:?}", &self).into())
-        }
-    }
-
-    pub fn as_string(&self) -> Result<&dyn Stream, BaseError> {
-        match self {
-            Item::Stream(s) if s.is_string().can_be_true() => Ok(&**s),
-            _ => Err(format!("expected string, found {:?}", &self).into())
         }
     }
 
