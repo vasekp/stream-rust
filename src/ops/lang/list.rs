@@ -26,5 +26,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("$list", eval_list);
+    keywords.insert("*list", eval_list);
 }

@@ -722,7 +722,7 @@ fn test_parser() {
     assert!(parse("##").is_err());
     assert!(parse("#a").is_err());
     assert!(parse("#%").is_err());
-    assert_eq!(parse("$list"), Ok(Expr::new_node("$list", vec![])));
+    assert_eq!(parse("$name"), Ok(Expr::new_node("$name", vec![])));
     assert!(parse("$").is_err());
     assert!(parse("$1").is_err());
     assert!(parse("$$").is_err());

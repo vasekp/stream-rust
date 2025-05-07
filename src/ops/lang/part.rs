@@ -132,5 +132,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("$part", Part::eval);
+    keywords.insert("*part", Part::eval);
 }
