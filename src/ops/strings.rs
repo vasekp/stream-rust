@@ -161,26 +161,26 @@ mod tests {
     #[test]
     fn test_shift() {
         use crate::parser::parse;
-        assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval().unwrap().to_string(), "\"DoZ\"");
-        assert_eq!(parse("\"Test\".shift(13,13)").unwrap().eval().unwrap().to_string(), "\"Test\"");
-        assert_eq!(parse(r#""ahoj".shift("bebe")"#).unwrap().eval().unwrap().to_string(), "\"cmqo\"");
-        assert_eq!(parse(r#""Hello world!".shift(seq)"#).unwrap().eval().unwrap().to_string(), r#""Igopt cvzun!""#);
-        assert_eq!(parse(r#""Hello world!".shift("ab")"#).unwrap().eval().unwrap().to_string(), r#""Ig<!>"#);
-        assert_eq!(parse(r#"("Hello world!".shift("ab"))[2]"#).unwrap().eval().unwrap().to_string(), "'g'");
-        assert!(parse(r#"("Hello world!".shift("ab"))[3]"#).unwrap().eval().is_err());
-        assert_eq!(parse(r#""Hello world!".shift([])"#).unwrap().eval().unwrap().to_string(), r#""<!>"#);
-        assert_eq!(parse(r#""Hello world!".shift("ab".repeat)"#).unwrap().eval().unwrap().to_string(), r#""Igmnp yptmf!""#);
-        assert_eq!(parse(r#""ab".repeat.shift(seq)"#).unwrap().eval().unwrap().to_string(), r#""bddffhhjjllnnpprrttv..."#);
-        assert_eq!(parse(r#"("ab".repeat.shift(seq))[20]"#).unwrap().eval().unwrap().to_string(), "'v'");
-        assert_eq!(parse(r#""abc".shift(['d',5,true])"#).unwrap().eval().unwrap().to_string(), "\"eg<!>");
-        test_len_exact(&parse("\"abc\".shift(seq)").unwrap().eval().unwrap(), 3);
-        test_len_exact(&parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap(), 6);
-        test_len_exact(&parse("\"\".shift(seq)").unwrap().eval().unwrap(), 0);
-        test_skip_n(&parse(r#""abcdefghijk".shift(seq, "abcdefghijklmn")"#).unwrap().eval().unwrap());
-        test_skip_n(&parse(r#""ab".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
-        test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval().unwrap());
-        assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval().unwrap().describe(), "\"AbC\".shift(3, [0, 10, 20])");
-        assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval().unwrap().describe(), "\"a b c!\".shift(1..3, 1)");
+        assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval_default().unwrap().to_string(), "\"DoZ\"");
+        assert_eq!(parse("\"Test\".shift(13,13)").unwrap().eval_default().unwrap().to_string(), "\"Test\"");
+        assert_eq!(parse(r#""ahoj".shift("bebe")"#).unwrap().eval_default().unwrap().to_string(), "\"cmqo\"");
+        assert_eq!(parse(r#""Hello world!".shift(seq)"#).unwrap().eval_default().unwrap().to_string(), r#""Igopt cvzun!""#);
+        assert_eq!(parse(r#""Hello world!".shift("ab")"#).unwrap().eval_default().unwrap().to_string(), r#""Ig<!>"#);
+        assert_eq!(parse(r#"("Hello world!".shift("ab"))[2]"#).unwrap().eval_default().unwrap().to_string(), "'g'");
+        assert!(parse(r#"("Hello world!".shift("ab"))[3]"#).unwrap().eval_default().is_err());
+        assert_eq!(parse(r#""Hello world!".shift([])"#).unwrap().eval_default().unwrap().to_string(), r#""<!>"#);
+        assert_eq!(parse(r#""Hello world!".shift("ab".repeat)"#).unwrap().eval_default().unwrap().to_string(), r#""Igmnp yptmf!""#);
+        assert_eq!(parse(r#""ab".repeat.shift(seq)"#).unwrap().eval_default().unwrap().to_string(), r#""bddffhhjjllnnpprrttv..."#);
+        assert_eq!(parse(r#"("ab".repeat.shift(seq))[20]"#).unwrap().eval_default().unwrap().to_string(), "'v'");
+        assert_eq!(parse(r#""abc".shift(['d',5,true])"#).unwrap().eval_default().unwrap().to_string(), "\"eg<!>");
+        test_len_exact(&parse("\"abc\".shift(seq)").unwrap().eval_default().unwrap(), 3);
+        test_len_exact(&parse("\"a b c!\".shift(1..3, 1)").unwrap().eval_default().unwrap(), 6);
+        test_len_exact(&parse("\"\".shift(seq)").unwrap().eval_default().unwrap(), 0);
+        test_skip_n(&parse(r#""abcdefghijk".shift(seq, "abcdefghijklmn")"#).unwrap().eval_default().unwrap());
+        test_skip_n(&parse(r#""ab".repeat(10).shift(seq)"#).unwrap().eval_default().unwrap());
+        test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval_default().unwrap());
+        assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval_default().unwrap().describe(), "\"AbC\".shift(3, [0, 10, 20])");
+        assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval_default().unwrap().describe(), "\"a b c!\".shift(1..3, 1)");
     }
 }
 

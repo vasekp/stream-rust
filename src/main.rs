@@ -11,7 +11,7 @@ fn main() -> std::io::Result<()> {
             Ok(expr) => {
                 println!("Expr Debug: {expr:?}");
                 println!("Expr Describe: {}", expr.describe());
-                match expr.eval() {
+                match expr.eval_default() {
                     Ok(item) => {
                         println!("Item Describe: {}", item.describe());
                         let (s, _, err) = item.format(None, Some(80));

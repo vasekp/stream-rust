@@ -13,15 +13,15 @@ mod tests {
     #[test]
     fn test_list() {
         use crate::parser::parse;
-        assert_eq!(parse("[1,2,3]").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-        test_len_exact(&parse("[1,2,3]").unwrap().eval().unwrap(), 3);
-        test_len_exact(&parse("[1]").unwrap().eval().unwrap(), 1);
-        test_len_exact(&parse("[]").unwrap().eval().unwrap(), 0);
-        test_skip_n(&parse("[1,2,3]").unwrap().eval().unwrap());
-        test_skip_n(&parse("[1]").unwrap().eval().unwrap());
-        test_skip_n(&parse("[]").unwrap().eval().unwrap());
-        assert_eq!(parse("[1,2,3]").unwrap().eval().unwrap().describe(), "[1, 2, 3]");
-        assert_eq!(parse("[]").unwrap().eval().unwrap().describe(), "[]");
+        assert_eq!(parse("[1,2,3]").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
+        test_len_exact(&parse("[1,2,3]").unwrap().eval_default().unwrap(), 3);
+        test_len_exact(&parse("[1]").unwrap().eval_default().unwrap(), 1);
+        test_len_exact(&parse("[]").unwrap().eval_default().unwrap(), 0);
+        test_skip_n(&parse("[1,2,3]").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("[1]").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("[]").unwrap().eval_default().unwrap());
+        assert_eq!(parse("[1,2,3]").unwrap().eval_default().unwrap().describe(), "[1, 2, 3]");
+        assert_eq!(parse("[]").unwrap().eval_default().unwrap().describe(), "[]");
     }
 }
 

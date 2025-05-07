@@ -17,7 +17,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         };
         let item = args.pop()
             .expect("= should have at least 2 args")
-            .eval_env(&env)?;
+            .eval(&env)?;
         let mut new_env = Rc::unwrap_or_clone(env);
         let last = args.pop();
         for name in args {
@@ -40,7 +40,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         }
         env = Rc::new(new_env);
     };
-    body.eval_env(&env)
+    body.eval(&env)
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
@@ -52,17 +52,17 @@ mod tests {
     #[test]
     fn test_with() {
         use crate::parser::parse;
-        assert_eq!(parse("with(a=1, a)").unwrap().eval().unwrap().to_string(), "1");
-        assert!(parse("with(1)").unwrap().eval().is_err());
-        assert!(parse("with(a=1, b)").unwrap().eval().is_err());
-        assert!(parse("with(a=a, a)").unwrap().eval().is_err());
-        assert!(parse("with(a, a)").unwrap().eval().is_err());
-        assert!(parse("with(1=2, 1)").unwrap().eval().is_err());
-        assert_eq!(parse("with(a=b=1, a+b)").unwrap().eval().unwrap().to_string(), "2");
-        assert!(parse("with(a=(b=1), 1)").unwrap().eval().is_err());
-        assert_eq!(parse("with(a=1, with(a=a+1, a))").unwrap().eval().unwrap().to_string(), "2");
+        assert_eq!(parse("with(a=1, a)").unwrap().eval_default().unwrap().to_string(), "1");
+        assert!(parse("with(1)").unwrap().eval_default().is_err());
+        assert!(parse("with(a=1, b)").unwrap().eval_default().is_err());
+        assert!(parse("with(a=a, a)").unwrap().eval_default().is_err());
+        assert!(parse("with(a, a)").unwrap().eval_default().is_err());
+        assert!(parse("with(1=2, 1)").unwrap().eval_default().is_err());
+        assert_eq!(parse("with(a=b=1, a+b)").unwrap().eval_default().unwrap().to_string(), "2");
+        assert!(parse("with(a=(b=1), 1)").unwrap().eval_default().is_err());
+        assert_eq!(parse("with(a=1, with(a=a+1, a))").unwrap().eval_default().unwrap().to_string(), "2");
         // Rewrite existing symbols
-        assert_eq!(parse("with(seq=2, seq)").unwrap().eval().unwrap().to_string(), "2");
-        assert!(parse("with(len=2, seq.len)").unwrap().eval().is_err());
+        assert_eq!(parse("with(seq=2, seq)").unwrap().eval_default().unwrap().to_string(), "2");
+        assert!(parse("with(len=2, seq.len)").unwrap().eval_default().is_err());
     }
 }

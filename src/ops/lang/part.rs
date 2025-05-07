@@ -103,31 +103,31 @@ mod tests {
     #[test]
     fn test_part() {
         use crate::parser::parse;
-        assert_eq!(parse("range(3)[1]").unwrap().eval().unwrap().to_string(), "1");
-        assert_eq!(parse("range(3)[3]").unwrap().eval().unwrap().to_string(), "3");
-        assert!(parse("range(3)[4]").unwrap().eval().is_err());
-        assert!(parse("range(3)[10]").unwrap().eval().is_err());
-        assert!(parse("range(3)[0]").unwrap().eval().is_err());
-        assert!(parse("range(3)[-1]").unwrap().eval().is_err());
-        assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval().unwrap().to_string(), "3");
-        assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval().unwrap().to_string(), "3");
+        assert_eq!(parse("range(3)[1]").unwrap().eval_default().unwrap().to_string(), "1");
+        assert_eq!(parse("range(3)[3]").unwrap().eval_default().unwrap().to_string(), "3");
+        assert!(parse("range(3)[4]").unwrap().eval_default().is_err());
+        assert!(parse("range(3)[10]").unwrap().eval_default().is_err());
+        assert!(parse("range(3)[0]").unwrap().eval_default().is_err());
+        assert!(parse("range(3)[-1]").unwrap().eval_default().is_err());
+        assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval_default().unwrap().to_string(), "3");
+        assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval_default().unwrap().to_string(), "3");
 
-        assert_eq!(parse("seq(5,2)[100.repeat]").unwrap().eval().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
-        assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");
-        assert_eq!(parse("seq[seq][seq]").unwrap().eval().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
-        assert_eq!(parse("seq[seq, seq]").unwrap().eval().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("seq:{seq^#}[seq,4]").unwrap().eval().unwrap().to_string(), "[4, 16, 64, 256, 1024, ...]");
-        assert_eq!(parse("seq:{seq^#}[seq][4]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
-        assert_eq!(parse("seq:{seq^#}[4,seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
-        assert_eq!(parse("seq:{seq^#}[4][seq]").unwrap().eval().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
-        assert_eq!(parse("seq:{seq^#}[[1,2],[1,2,3]]").unwrap().eval().unwrap().to_string(), "[[1, 2, 3], [...]]");
-        assert!(parse("seq[2,5]").unwrap().eval().is_err());
-        assert_eq!(parse("seq[[2,5]]").unwrap().eval().unwrap().to_string(), "[2, 5]");
-        assert_eq!(parse("seq[[[2,5]]]").unwrap().eval().unwrap().to_string(), "[[2, 5]]"); // subject to change
-        test_len_exact(&parse("seq[[2,5]]").unwrap().eval().unwrap(), 2);
-        test_len_exact(&parse("seq[[]]").unwrap().eval().unwrap(), 0);
+        assert_eq!(parse("seq(5,2)[100.repeat]").unwrap().eval_default().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
+        assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval_default().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");
+        assert_eq!(parse("seq[seq][seq]").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
+        assert_eq!(parse("seq[seq, seq]").unwrap().eval_default().unwrap().to_string(), "[<!>");
+        assert_eq!(parse("seq:{seq^#}[seq,4]").unwrap().eval_default().unwrap().to_string(), "[4, 16, 64, 256, 1024, ...]");
+        assert_eq!(parse("seq:{seq^#}[seq][4]").unwrap().eval_default().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
+        assert_eq!(parse("seq:{seq^#}[4,seq]").unwrap().eval_default().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
+        assert_eq!(parse("seq:{seq^#}[4][seq]").unwrap().eval_default().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
+        assert_eq!(parse("seq:{seq^#}[[1,2],[1,2,3]]").unwrap().eval_default().unwrap().to_string(), "[[1, 2, 3], [...]]");
+        assert!(parse("seq[2,5]").unwrap().eval_default().is_err());
+        assert_eq!(parse("seq[[2,5]]").unwrap().eval_default().unwrap().to_string(), "[2, 5]");
+        assert_eq!(parse("seq[[[2,5]]]").unwrap().eval_default().unwrap().to_string(), "[[2, 5]]"); // subject to change
+        test_len_exact(&parse("seq[[2,5]]").unwrap().eval_default().unwrap(), 2);
+        test_len_exact(&parse("seq[[]]").unwrap().eval_default().unwrap(), 0);
 
-        assert_eq!(parse("seq[[3]]").unwrap().eval().unwrap().describe(), "seq[[3]]");
+        assert_eq!(parse("seq[[3]]").unwrap().eval_default().unwrap().describe(), "seq[[3]]");
     }
 }
 

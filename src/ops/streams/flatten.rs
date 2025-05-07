@@ -132,16 +132,16 @@ mod tests {
     fn test_flatten() {
         use crate::parser::parse;
 
-        assert_eq!(parse("[1, [2, [3]]].flatten").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("[1, [2, [3]]].flatten(1)").unwrap().eval().unwrap().to_string(), "[1, 2, [3]]");
-        assert_eq!(parse("[0].nest{[#]}.flatten").unwrap().eval().unwrap().to_string(), "[0, 0, 0, 0, 0, ...]");
-        assert_eq!(parse("[0].nest{[#]}.flatten(3)").unwrap().eval().unwrap().to_string(), "[0, 0, [0], [...], ...]");
-        assert_eq!(parse("[0].nest{[#]}.flatten(10^10)").unwrap().eval().unwrap().to_string(), "[0, 0, 0, 0, 0, ...]");
-        test_skip_n(&parse("[1,range(3)].repeat(10).flatten").unwrap().eval().unwrap());
-        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten").unwrap().eval().unwrap());
-        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten(1)").unwrap().eval().unwrap());
-        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten(2)").unwrap().eval().unwrap());
-        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten(10)").unwrap().eval().unwrap());
+        assert_eq!(parse("[1, [2, [3]]].flatten").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
+        assert_eq!(parse("[1, [2, [3]]].flatten(1)").unwrap().eval_default().unwrap().to_string(), "[1, 2, [3]]");
+        assert_eq!(parse("[0].nest{[#]}.flatten").unwrap().eval_default().unwrap().to_string(), "[0, 0, 0, 0, 0, ...]");
+        assert_eq!(parse("[0].nest{[#]}.flatten(3)").unwrap().eval_default().unwrap().to_string(), "[0, 0, [0], [...], ...]");
+        assert_eq!(parse("[0].nest{[#]}.flatten(10^10)").unwrap().eval_default().unwrap().to_string(), "[0, 0, 0, 0, 0, ...]");
+        test_skip_n(&parse("[1,range(3)].repeat(10).flatten").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten(1)").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten(2)").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten(10)").unwrap().eval_default().unwrap());
     }
 }
 

@@ -14,7 +14,7 @@ impl Session {
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
     pub fn process(&self, expr: Expr) -> Result<Item, StreamError> {
-        expr.eval()
+        expr.eval_default()
     }
 }
 

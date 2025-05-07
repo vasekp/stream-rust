@@ -130,45 +130,45 @@ mod tests {
     fn test_join() {
         use crate::parser::parse;
 
-        assert_eq!(parse("[10]~seq").unwrap().eval().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
-        assert_eq!(parse("range(2)~seq").unwrap().eval().unwrap().to_string(), "[1, 2, 1, 2, 3, ...]");
-        assert_eq!(parse("range(10^10).{#~#~#}.len").unwrap().eval().unwrap().to_string(), "30000000000");
-        assert!(parse("([5]~seq).len").unwrap().eval().is_err());
-        assert_eq!(parse("(range(10^10)~seq)[10^11]").unwrap().eval().unwrap().to_string(), "90000000000");
+        assert_eq!(parse("[10]~seq").unwrap().eval_default().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
+        assert_eq!(parse("range(2)~seq").unwrap().eval_default().unwrap().to_string(), "[1, 2, 1, 2, 3, ...]");
+        assert_eq!(parse("range(10^10).{#~#~#}.len").unwrap().eval_default().unwrap().to_string(), "30000000000");
+        assert!(parse("([5]~seq).len").unwrap().eval_default().is_err());
+        assert_eq!(parse("(range(10^10)~seq)[10^11]").unwrap().eval_default().unwrap().to_string(), "90000000000");
 
-        assert_eq!(parse("(\"ab\"~\"cd\").len").unwrap().eval().unwrap().to_string(), "4");
+        assert_eq!(parse("(\"ab\"~\"cd\").len").unwrap().eval_default().unwrap().to_string(), "4");
 
-        assert_eq!(parse("[1]~[2]").unwrap().eval().unwrap().to_string(), "[1, 2]");
-        assert_eq!(parse("[1]~[[2]]").unwrap().eval().unwrap().to_string(), "[1, [2]]");
-        assert_eq!(parse("[1]~2~'c'").unwrap().eval().unwrap().to_string(), "[1, 2, 'c']");
-        assert_eq!(parse("1~2~3").unwrap().eval().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("10~seq").unwrap().eval().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
-        assert_eq!(parse("(0~1..0~2)").unwrap().eval().unwrap().to_string(), "[0, 2]");
-        assert_eq!(parse("(0~1..3~4)[3]").unwrap().eval().unwrap().to_string(), "2");
-        assert_eq!(parse("(0~1..3~4)[4]").unwrap().eval().unwrap().to_string(), "3");
-        assert_eq!(parse("\"ab\"~\"cd\"").unwrap().eval().unwrap().to_string(), "\"abcd\"");
-        assert_eq!(parse("\"ab\"~'c'").unwrap().eval().unwrap().to_string(), "\"abc\"");
-        assert_eq!(parse("'a'~\"b\"~'c'").unwrap().eval().unwrap().to_string(), "\"abc\"");
-        assert!(parse("\"a\"~1").unwrap().eval().is_err());
-        assert!(parse("\"a\"~[1]").unwrap().eval().is_err());
-        assert!(parse("\"a\"~['b']").unwrap().eval().is_err());
-        assert!(parse("[1]~\"a\"").unwrap().eval().is_err());
+        assert_eq!(parse("[1]~[2]").unwrap().eval_default().unwrap().to_string(), "[1, 2]");
+        assert_eq!(parse("[1]~[[2]]").unwrap().eval_default().unwrap().to_string(), "[1, [2]]");
+        assert_eq!(parse("[1]~2~'c'").unwrap().eval_default().unwrap().to_string(), "[1, 2, 'c']");
+        assert_eq!(parse("1~2~3").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
+        assert_eq!(parse("10~seq").unwrap().eval_default().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
+        assert_eq!(parse("(0~1..0~2)").unwrap().eval_default().unwrap().to_string(), "[0, 2]");
+        assert_eq!(parse("(0~1..3~4)[3]").unwrap().eval_default().unwrap().to_string(), "2");
+        assert_eq!(parse("(0~1..3~4)[4]").unwrap().eval_default().unwrap().to_string(), "3");
+        assert_eq!(parse("\"ab\"~\"cd\"").unwrap().eval_default().unwrap().to_string(), "\"abcd\"");
+        assert_eq!(parse("\"ab\"~'c'").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
+        assert_eq!(parse("'a'~\"b\"~'c'").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
+        assert!(parse("\"a\"~1").unwrap().eval_default().is_err());
+        assert!(parse("\"a\"~[1]").unwrap().eval_default().is_err());
+        assert!(parse("\"a\"~['b']").unwrap().eval_default().is_err());
+        assert!(parse("[1]~\"a\"").unwrap().eval_default().is_err());
 
-        test_len_exact(&parse("[1,2,3]~4~[5]~[[5,6]]").unwrap().eval().unwrap(), 6);
-        test_len_exact(&parse("1~2~3").unwrap().eval().unwrap(), 3);
-        test_len_exact(&parse("0~1..2~3").unwrap().eval().unwrap(), 4);
-        test_len_exact(&parse("0~1..0~3").unwrap().eval().unwrap(), 2);
-        test_len_exact(&parse("\"ab\"~\"cd\"").unwrap().eval().unwrap(), 4);
-        test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval().unwrap(), 3);
-        test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval().unwrap(), 3);
-        test_len_exact(&parse("\"\"~\"\"").unwrap().eval().unwrap(), 0);
-        test_skip_n(&parse("range(10^10)~range(10^9)").unwrap().eval().unwrap());
-        test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval().unwrap());
-        test_skip_n(&parse("('a'..'z').repeat(10^10)~['A'].repeat(10^10)").unwrap().eval().unwrap());
+        test_len_exact(&parse("[1,2,3]~4~[5]~[[5,6]]").unwrap().eval_default().unwrap(), 6);
+        test_len_exact(&parse("1~2~3").unwrap().eval_default().unwrap(), 3);
+        test_len_exact(&parse("0~1..2~3").unwrap().eval_default().unwrap(), 4);
+        test_len_exact(&parse("0~1..0~3").unwrap().eval_default().unwrap(), 2);
+        test_len_exact(&parse("\"ab\"~\"cd\"").unwrap().eval_default().unwrap(), 4);
+        test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval_default().unwrap(), 3);
+        test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval_default().unwrap(), 3);
+        test_len_exact(&parse("\"\"~\"\"").unwrap().eval_default().unwrap(), 0);
+        test_skip_n(&parse("range(10^10)~range(10^9)").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("('a'..'z').repeat(10^10)~['A'].repeat(10^10)").unwrap().eval_default().unwrap());
 
-        assert_eq!(parse("1~2").unwrap().eval().unwrap().describe(), "1~2");
-        assert_eq!(parse("[1]~[2]").unwrap().eval().unwrap().describe(), "[1]~[2]");
-        assert_eq!(parse("\"ab\"~'c'").unwrap().eval().unwrap().describe(), "\"ab\"~'c'");
+        assert_eq!(parse("1~2").unwrap().eval_default().unwrap().describe(), "1~2");
+        assert_eq!(parse("[1]~[2]").unwrap().eval_default().unwrap().describe(), "[1]~[2]");
+        assert_eq!(parse("\"ab\"~'c'").unwrap().eval_default().unwrap().describe(), "\"ab\"~'c'");
     }
 }
 

@@ -128,13 +128,13 @@ mod tests {
     fn test_rev() {
         use crate::parser::parse;
 
-        assert_eq!(parse("range(3).rev").unwrap().eval().unwrap().to_string(), "[3, 2, 1]");
-        assert_eq!(parse("\"abc\".rev").unwrap().eval().unwrap().to_string(), "\"cba\"");
-        assert_eq!(parse("[].rev").unwrap().eval().unwrap().to_string(), "[]");
-        assert_eq!(parse("\"\".rev").unwrap().eval().unwrap().to_string(), "\"\"");
-        assert!(parse("seq.rev").unwrap().eval().is_err());
-        test_skip_n(&parse("range(1000).rev").unwrap().eval().unwrap());
-        test_skip_n(&parse("range(10^10).rev").unwrap().eval().unwrap());
+        assert_eq!(parse("range(3).rev").unwrap().eval_default().unwrap().to_string(), "[3, 2, 1]");
+        assert_eq!(parse("\"abc\".rev").unwrap().eval_default().unwrap().to_string(), "\"cba\"");
+        assert_eq!(parse("[].rev").unwrap().eval_default().unwrap().to_string(), "[]");
+        assert_eq!(parse("\"\".rev").unwrap().eval_default().unwrap().to_string(), "\"\"");
+        assert!(parse("seq.rev").unwrap().eval_default().is_err());
+        test_skip_n(&parse("range(1000).rev").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("range(10^10).rev").unwrap().eval_default().unwrap());
     }
 }
 

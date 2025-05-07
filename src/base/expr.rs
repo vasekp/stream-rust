@@ -107,13 +107,13 @@ impl Expr {
     }
 
     /// Evaluates this `Expr` in a default environment.
-    pub fn eval(self) -> Result<Item, StreamError> {
-        self.eval_env(&Default::default())
+    pub fn eval_default(self) -> Result<Item, StreamError> {
+        self.eval(&Default::default())
     }
 
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
-    /// `Node::eval_env()`.
-    pub fn eval_env(self, env: &Rc<Env>) -> Result<Item, StreamError> {
+    /// `Node::eval()`.
+    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
             Expr::Eval(node) => node.eval(env)

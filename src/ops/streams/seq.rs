@@ -83,18 +83,18 @@ mod tests {
     fn test_seq() {
         use crate::parser::parse;
         // in addition to doc tests
-        assert!(parse("1.seq").unwrap().eval().is_err());
-        assert_eq!(parse("seq(0)").unwrap().eval().unwrap().to_string(), "[0, 1, 2, 3, 4, ...]");
-        assert_eq!(parse("seq(2, 3)").unwrap().eval().unwrap().to_string(), "[2, 5, 8, 11, 14, ...]");
-        assert_eq!(parse("seq(2, 0)").unwrap().eval().unwrap().to_string(), "[2, 2, 2, 2, 2, ...]");
-        assert_eq!(parse("seq(2, -3)").unwrap().eval().unwrap().to_string(), "[2, -1, -4, -7, -10, ...]");
-        assert_eq!(parse("seq(2, 3)[10^10]").unwrap().eval().unwrap().to_string(), "29999999999");
-        assert_eq!(parse("seq(2, 0)[10^10]").unwrap().eval().unwrap().to_string(), "2");
-        test_skip_n(&parse("seq(2,0)").unwrap().eval().unwrap());
-        test_skip_n(&parse("seq(2,3)").unwrap().eval().unwrap());
-        assert_eq!(parse("seq()").unwrap().eval().unwrap().describe(), "seq");
-        assert_eq!(parse("seq(-1)").unwrap().eval().unwrap().describe(), "seq(-1)");
-        assert_eq!(parse("seq(-1,2)").unwrap().eval().unwrap().describe(), "seq(-1, 2)");
+        assert!(parse("1.seq").unwrap().eval_default().is_err());
+        assert_eq!(parse("seq(0)").unwrap().eval_default().unwrap().to_string(), "[0, 1, 2, 3, 4, ...]");
+        assert_eq!(parse("seq(2, 3)").unwrap().eval_default().unwrap().to_string(), "[2, 5, 8, 11, 14, ...]");
+        assert_eq!(parse("seq(2, 0)").unwrap().eval_default().unwrap().to_string(), "[2, 2, 2, 2, 2, ...]");
+        assert_eq!(parse("seq(2, -3)").unwrap().eval_default().unwrap().to_string(), "[2, -1, -4, -7, -10, ...]");
+        assert_eq!(parse("seq(2, 3)[10^10]").unwrap().eval_default().unwrap().to_string(), "29999999999");
+        assert_eq!(parse("seq(2, 0)[10^10]").unwrap().eval_default().unwrap().to_string(), "2");
+        test_skip_n(&parse("seq(2,0)").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("seq(2,3)").unwrap().eval_default().unwrap());
+        assert_eq!(parse("seq()").unwrap().eval_default().unwrap().describe(), "seq");
+        assert_eq!(parse("seq(-1)").unwrap().eval_default().unwrap().describe(), "seq(-1)");
+        assert_eq!(parse("seq(-1,2)").unwrap().eval_default().unwrap().describe(), "seq(-1, 2)");
     }
 }
 

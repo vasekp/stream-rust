@@ -51,7 +51,7 @@ impl Iterator for MapIter<'_> {
         };
         Some(self.parent.body.clone()
             .with_source(source.into())
-            .and_then(|node| Expr::from(node).eval_env(&self.parent.env)))
+            .and_then(|node| Expr::from(node).eval(&self.parent.env)))
     }
 }
 
@@ -72,19 +72,19 @@ mod tests {
     #[test]
     fn test_map() {
         use crate::parser::parse;
-        assert_eq!(parse("[1,2,3]:{#*10}").unwrap().eval().unwrap().to_string(), "[10, 20, 30]");
-        assert_eq!(parse("seq:{#^2}").unwrap().eval().unwrap().to_string(), "[1, 4, 9, 16, 25, ...]");
-        assert_eq!(parse("seq:{#1}").unwrap().eval().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("seq:{range(#)}").unwrap().eval().unwrap().to_string(), "[[1], [1, 2], ...]");
-        assert_eq!(parse("seq.map{#+#1}(3)").unwrap().eval().unwrap().to_string(), "[4, 5, 6, 7, 8, ...]");
-        test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval().unwrap(), 3);
-        test_len_exact(&parse("[]:{#}").unwrap().eval().unwrap(), 0);
-        test_skip_n(&parse("range(10^10):{#}").unwrap().eval().unwrap());
-        test_skip_n(&parse("seq:{#}").unwrap().eval().unwrap());
-        assert_eq!(parse("[1,2,3]:{#}").unwrap().eval().unwrap().describe(), "[1, 2, 3]:{#}");
-        assert_eq!(parse("seq:{#}").unwrap().eval().unwrap().describe(), "seq:{#}");
-        assert_eq!(parse("seq.map{#}").unwrap().eval().unwrap().describe(), "seq.map({#})");
-        assert_eq!(parse("seq.map{#+#1}(1)").unwrap().eval().unwrap().describe(), "seq.map({#+#1}(1))");
+        assert_eq!(parse("[1,2,3]:{#*10}").unwrap().eval_default().unwrap().to_string(), "[10, 20, 30]");
+        assert_eq!(parse("seq:{#^2}").unwrap().eval_default().unwrap().to_string(), "[1, 4, 9, 16, 25, ...]");
+        assert_eq!(parse("seq:{#1}").unwrap().eval_default().unwrap().to_string(), "[<!>");
+        assert_eq!(parse("seq:{range(#)}").unwrap().eval_default().unwrap().to_string(), "[[1], [1, 2], ...]");
+        assert_eq!(parse("seq.map{#+#1}(3)").unwrap().eval_default().unwrap().to_string(), "[4, 5, 6, 7, 8, ...]");
+        test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval_default().unwrap(), 3);
+        test_len_exact(&parse("[]:{#}").unwrap().eval_default().unwrap(), 0);
+        test_skip_n(&parse("range(10^10):{#}").unwrap().eval_default().unwrap());
+        test_skip_n(&parse("seq:{#}").unwrap().eval_default().unwrap());
+        assert_eq!(parse("[1,2,3]:{#}").unwrap().eval_default().unwrap().describe(), "[1, 2, 3]:{#}");
+        assert_eq!(parse("seq:{#}").unwrap().eval_default().unwrap().describe(), "seq:{#}");
+        assert_eq!(parse("seq.map{#}").unwrap().eval_default().unwrap().describe(), "seq.map({#})");
+        assert_eq!(parse("seq.map{#+#1}(1)").unwrap().eval_default().unwrap().describe(), "seq.map({#+#1}(1))");
     }
 }
 

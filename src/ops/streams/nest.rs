@@ -32,12 +32,12 @@ struct NestIterArgs<'node> {
 fn eval_nest(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     match node.resolve() {
         RNode::Source(RNodeS { head, source, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && body.args.is_empty() => {
-            Ok(Item::new_stream(NestSource{head, source: source.eval_env(env)?, body, env: Rc::clone(env)}))
+            Ok(Item::new_stream(NestSource{head, source: source.eval(env)?, body, env: Rc::clone(env)}))
         },
         RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(mut body)) }) if body.source.is_none() && !body.args.is_empty() => {
             let args = std::mem::take(&mut body.args)
                 .into_iter()
-                .map(|arg| arg.eval_env(env))
+                .map(|arg| arg.eval(env))
                 .collect::<Result<VecDeque<_>, _>>()?;
             Ok(Item::new_stream(NestArgs{head, body, args, env: Rc::clone(env)}))
         },
@@ -136,26 +136,26 @@ mod tests {
     #[test]
     fn test_map() {
         use crate::parser::parse;
-        assert_eq!(parse("1.nest{#+1}").unwrap().eval().unwrap().to_string(), "[2, 3, 4, 5, 6, ...]");
-        assert_eq!(parse("1.nest({#})").unwrap().eval().unwrap().to_string(), "[1, 1, 1, 1, 1, ...]");
-        assert_eq!(parse("'T'.nest{#+2}").unwrap().eval().unwrap().to_string(), "['V', 'X', 'Z', 'B', 'D', ...]");
-        assert_eq!(parse("1.nest{#1}").unwrap().eval().unwrap().to_string(), "[<!>");
-        assert!(parse("1.nest(2.{#})").unwrap().eval().is_err());
-        assert!(parse("1.nest{#}(1)").unwrap().eval().is_err());
-        assert_eq!(parse("nest{#1+#2}(1,1)").unwrap().eval().unwrap().to_string(), "[2, 3, 5, 8, 13, ...]");
-        assert_eq!(parse("nest{#1+#2}(1)").unwrap().eval().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("nest{#}(1,1)").unwrap().eval().unwrap().to_string(), "[<!>");
-        assert!(parse("nest({#}())").unwrap().eval().is_err());
+        assert_eq!(parse("1.nest{#+1}").unwrap().eval_default().unwrap().to_string(), "[2, 3, 4, 5, 6, ...]");
+        assert_eq!(parse("1.nest({#})").unwrap().eval_default().unwrap().to_string(), "[1, 1, 1, 1, 1, ...]");
+        assert_eq!(parse("'T'.nest{#+2}").unwrap().eval_default().unwrap().to_string(), "['V', 'X', 'Z', 'B', 'D', ...]");
+        assert_eq!(parse("1.nest{#1}").unwrap().eval_default().unwrap().to_string(), "[<!>");
+        assert!(parse("1.nest(2.{#})").unwrap().eval_default().is_err());
+        assert!(parse("1.nest{#}(1)").unwrap().eval_default().is_err());
+        assert_eq!(parse("nest{#1+#2}(1,1)").unwrap().eval_default().unwrap().to_string(), "[2, 3, 5, 8, 13, ...]");
+        assert_eq!(parse("nest{#1+#2}(1)").unwrap().eval_default().unwrap().to_string(), "[<!>");
+        assert_eq!(parse("nest{#}(1,1)").unwrap().eval_default().unwrap().to_string(), "[<!>");
+        assert!(parse("nest({#}())").unwrap().eval_default().is_err());
 
-        assert_eq!(parse("1.nest{#*2}[64]").unwrap().eval().unwrap().to_string(), "18446744073709551616");
-        assert_eq!(parse("[].nest{[#]}[3]").unwrap().eval().unwrap().to_string(), "[[[[]]]]");
-        assert_eq!(parse("[].nest{[#, #]}[2]").unwrap().eval().unwrap().to_string(), "[[[], []], [[], ...]]");
+        assert_eq!(parse("1.nest{#*2}[64]").unwrap().eval_default().unwrap().to_string(), "18446744073709551616");
+        assert_eq!(parse("[].nest{[#]}[3]").unwrap().eval_default().unwrap().to_string(), "[[[[]]]]");
+        assert_eq!(parse("[].nest{[#, #]}[2]").unwrap().eval_default().unwrap().to_string(), "[[[], []], [[], ...]]");
         // Von Neumann numerals
-        assert_eq!(parse("[].nest{#~[#]}[3]").unwrap().eval().unwrap().to_string(), "[[], [[]], [[], ...]]");
+        assert_eq!(parse("[].nest{#~[#]}[3]").unwrap().eval_default().unwrap().to_string(), "[[], [[]], [[], ...]]");
         // Binomial coefficients
-        assert_eq!(parse("[1].nest{(0~#)+(#~0)}[4]").unwrap().eval().unwrap().to_string(), "[1, 4, 6, 4, 1]");
-        assert_eq!(parse("\"caesar\".nest{#.shift(1)}").unwrap().eval().unwrap().to_string(), "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
-        assert_eq!(parse("[0,1]~[1].nest{#~(#+1)}.flatten").unwrap().eval().unwrap().to_string(), "[0, 1, 1, 2, 1, ...]");
+        assert_eq!(parse("[1].nest{(0~#)+(#~0)}[4]").unwrap().eval_default().unwrap().to_string(), "[1, 4, 6, 4, 1]");
+        assert_eq!(parse("\"caesar\".nest{#.shift(1)}").unwrap().eval_default().unwrap().to_string(), "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
+        assert_eq!(parse("[0,1]~[1].nest{#~(#+1)}.flatten").unwrap().eval_default().unwrap().to_string(), "[0, 1, 1, 2, 1, ...]");
     }
 }
 

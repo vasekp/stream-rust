@@ -59,7 +59,7 @@ impl Node {
                 let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
                 ctor(self, env)
             },
-            Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval_env(env),
+            Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval(env),
             Head::Args(_) => Node::eval_at(self, env),
             Head::Repl(_, _) => Err(StreamError::new("out of context", self))
         }
@@ -67,11 +67,11 @@ impl Node {
 
     pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
         let source = match self.source {
-            Some(source) => Some(source.eval_env(env)?),
+            Some(source) => Some(source.eval(env)?),
             None => None
         };
         let args = self.args.into_iter()
-            .map(|x| x.eval_env(env))
+            .map(|x| x.eval(env))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(ENode{head: self.head, source, args})
     }
@@ -80,7 +80,7 @@ impl Node {
         match self.source {
             Some(source) => Ok(RNodeS {
                 head: self.head,
-                source: source.eval_env(env)?,
+                source: source.eval(env)?,
                 args: self.args.into()
             }),
             None => Err(StreamError::new("source required", self))
@@ -89,7 +89,7 @@ impl Node {
 
     /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
-            .map(|x| x.eval_env(env).map(Expr::from))
+            .map(|x| x.eval(env).map(Expr::from))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
     }*/
@@ -109,7 +109,7 @@ impl Node {
                 .map(|res| res.map(Expr::from))
                 .collect::<Result<Vec<_>, _>>()?
         });
-        expr.eval_env(env)
+        expr.eval(env)
     }
 
     pub(in crate::base) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
