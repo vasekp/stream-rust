@@ -1,5 +1,4 @@
 use streamlang as stream;
-use stream::base::*;
 use stream::Session;
 
 use rustyline as rl;
@@ -16,15 +15,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Ok(input) = rl.readline("> ") {
         match stream::parse(&input) {
             Ok(expr) => {
-                println!("Expr Debug: {expr:?}");
-                println!("Expr Describe: {}", expr.describe());
+                //println!("Expr Debug: {expr:?}");
+                //println!("Expr Describe: {}", expr.describe());
                 match sess.process(expr) {
                     Ok((index, item)) => {
-                        println!("Item Describe: {}", item.describe());
+                        //println!("Item Describe: {}", item.describe());
                         let (s, _, err) = item.format(None, Some(80));
                         println!("%{index}: {s}");
                         if let Some(err) = err {
-                            println!("Err: {}", err);
+                            println!("{err}");
                         }
                     },
                     Err(err) => println!("{err}")
@@ -35,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("{err}");
             }
         }
-        println!();
+        //println!();
     }
     Ok(())
 }
