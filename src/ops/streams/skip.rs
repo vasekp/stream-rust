@@ -13,18 +13,18 @@ impl Skip {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(s), args: RArgs::Zero }
-                => Ok(Item::Stream(Box::new(Skip {
+                => Ok(Item::new_stream(Skip {
                     head,
                     source: s.into(),
                     count: None
-                }))),
+                })),
             RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
-                => Ok(Item::Stream(Box::new(Skip {
+                => Ok(Item::new_stream(Skip {
                     head,
                     source: s.into(),
                     count: Some(unsign(count))
-                }))),
+                })),
             _ => Err(StreamError::new("expected: source.skip or source.skip(count)", rnode))
         }
     }

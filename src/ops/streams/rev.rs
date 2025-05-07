@@ -20,12 +20,12 @@ impl Rev {
             Length::Infinite
                 => Err(StreamError::new("stream is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::<Item>::Zero })),
             Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) => {
-                Ok(Item::Stream(Box::new(Rev{head: rnode.head, source: source.into(), length: len})))
+                Ok(Item::new_stream(Rev{head: rnode.head, source: source.into(), length: len}))
             },
             _ => {
                 let mut vec = source.iter().collect::<Result<Vec<_>, _>>()?;
                 vec.reverse();
-                Ok(Item::Stream(Box::new(List{vec, is_string: source.is_string()})))
+                Ok(Item::new_stream(List{vec, is_string: source.is_string()}))
             }
         }
     }

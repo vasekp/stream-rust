@@ -29,11 +29,11 @@ impl First {
             },
             RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
-                => Ok(Item::Stream(Box::new(First {
+                => Ok(Item::new_stream(First {
                     head,
                     source: s.into(),
                     count: unsign(count)
-                }))),
+                })),
             _ => Err(StreamError::new("expected: source.first or source.first(count)", rnode))
         }
     }

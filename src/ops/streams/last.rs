@@ -32,19 +32,19 @@ impl Last {
                 }
             },
             RNodeS { source: Item::Stream(ref stm), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
-                => Ok(Item::Stream(Box::new(EmptyStream::cond_string(stm.is_string())))),
+                => Ok(Item::new_stream(EmptyStream::cond_string(stm.is_string()))),
             RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
                 => {
                     let count = unsign(count);
                     match stm.length() {
                         Length::Exact(len) if len < count => Ok(Item::Stream(stm)),
-                        Length::Exact(len) => Ok(Item::Stream(Box::new(Last {
+                        Length::Exact(len) => Ok(Item::new_stream(Last {
                                 head,
                                 source: stm.into(),
                                 skip: len - &count,
                                 count
-                            }))),
+                            })),
                         Length::Infinite => Err(StreamError::new("stream is infinite",
                             RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count.into())) })),
                         _ => {
@@ -61,10 +61,10 @@ impl Last {
                                 }
                                 vec.push_back(item);
                             }
-                            Ok(Item::Stream(Box::new(List {
+                            Ok(Item::new_stream(List {
                                 vec: vec.into(),
                                 is_string: stm.is_string()
-                            })))
+                            }))
                         }
                     }
                 },

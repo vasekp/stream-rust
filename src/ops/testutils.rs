@@ -11,7 +11,7 @@ impl LenAM {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::Stream(Box::new(LenAM { head, src: stm.into() }))),
+            => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
             _ => panic!()
         }
     }
@@ -70,7 +70,7 @@ impl LenUF {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::Stream(Box::new(LenUF { head, src: stm.into() }))),
+            => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
             _ => panic!()
         }
     }
@@ -129,7 +129,7 @@ impl LenUU {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::Stream(Box::new(LenUU { head, src: stm.into() }))),
+            => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
             _ => panic!()
         }
     }

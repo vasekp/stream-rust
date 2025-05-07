@@ -13,7 +13,7 @@ impl SelfRef {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         match node.resolve() {
             RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) =>
-                Ok(Item::Stream(Box::new(SelfRef{head, body, env: Rc::clone(env)}))),
+                Ok(Item::new_stream(SelfRef{head, body, env: Rc::clone(env)})),
             node => Err(StreamError::new("expected: self({body})", node))
         }
     }
