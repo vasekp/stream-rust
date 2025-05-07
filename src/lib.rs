@@ -1,8 +1,9 @@
 pub mod base;
-pub mod parser;
-
+mod parser;
 mod keywords;
 mod utils;
 mod ops;
+mod session;
 
 pub use parser::parse;
+pub use session::Session;

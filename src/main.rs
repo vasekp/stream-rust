@@ -1,5 +1,6 @@
 use streamlang as stream;
-use stream::base::Describe;
+use stream::base::*;
+
 use rustyline as rl;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

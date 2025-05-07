@@ -585,9 +585,9 @@ impl<'str> Parser<'str> {
 ///
 /// # Examples
 /// ```
-/// use streamlang::base::*;
-/// use streamlang::parser::parse;
-/// assert_eq!(parse("a.b(3,4)"),
+/// use streamlang as stream;
+/// use stream::base::*;
+/// assert_eq!(stream::parse("a.b(3,4)"),
 ///     Ok(Expr::new_node("a", vec![])
 ///         .chain(Link::new("b", vec![Expr::new_number(3), Expr::new_number(4)]))));
 /// ```
