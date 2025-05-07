@@ -364,6 +364,12 @@ impl<'str> Parser<'str> {
         use TokenClass as TC;
         let head = match tok {
             Token(TC::Ident, name) => Head::Symbol(name.into()),
+            Token(TC::Special, tk @ "$") => {
+                let Some(Token(TC::Ident, name)) = self.tk.next_tr()? else {
+                    return Err(ParseError::new("requires name: $name", tk));
+                };
+                Head::Symbol(format!("{tk}{name}"))
+            },
             Token(TC::Open, bkt @ "{") => return Ok(Some(self.read_block_link(bkt)?)),
             Token(_, tok) => return Err(ParseError::new("cannot appear here", tok))
         };
@@ -416,9 +422,12 @@ impl<'str> Parser<'str> {
             Token(TC::Char, value) => Ok(Expr::new_char(parse_char(value)?)),
             Token(TC::String, value) => Ok(Expr::new_string(parse_string(value)?)),
             Token(TC::Open, bkt @ "[") => Ok(Expr::new_node(LangItem::List, self.read_args(bkt)?)),
-            Token(TC::Ident, _) | Token(TC::Open, "{") => {
+            Token(TC::Ident, _) | Token(TC::Special, "$") => {
                 self.tk.unread(tok);
                 Ok(self.read_link()?.unwrap().into()) // cannot be None after unread()
+            },
+            Token(TC::Open, bkt @ "{") => {
+                Ok(self.read_block_link(bkt)?.into())
             },
             Token(TC::Open, bkt @ "(") => Ok(self.read_arg(bkt)?),
             Token(TC::Special, chr) => {
@@ -707,11 +716,15 @@ fn test_parser() {
     assert!(parse("#18446744073709551616").is_err());
     assert!(parse("##").is_err());
     assert!(parse("#a").is_err());
-    assert!(parse("#$").is_err());
-    assert!(parse("$list").is_err()); // internal keyword
+    assert!(parse("#%").is_err());
+    assert_eq!(parse("$list"), Ok(Expr::new_node("$list", vec![])));
+    assert!(parse("$").is_err());
+    assert!(parse("$1").is_err());
+    assert!(parse("$$").is_err());
+    assert!(parse("$a$").is_err());
     assert!(parse("#(1)").is_err());
-    assert_eq!(parse("#+$"), Ok(Expr::new_op("+",
-        vec![Expr::new_repl('#', None), Expr::new_repl('$', None)])));
+    assert_eq!(parse("#+%"), Ok(Expr::new_op("+",
+        vec![Expr::new_repl('#', None), Expr::new_repl('%', None)])));
     assert!(parse("1.#").is_err());
     assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_number(1)
         .chain(Link::new(Expr::new_repl('#', None), vec![Expr::new_number(2)]))));
