@@ -364,7 +364,7 @@ impl<'str> Parser<'str> {
         use TokenClass as TC;
         let head = match tok {
             Token(TC::Ident, name) => Head::Symbol(name.into()),
-            Token(TC::Open, bkt @ "{") => Head::Block(Box::new(self.read_arg(bkt)?)),
+            Token(TC::Open, bkt @ "{") => return Ok(Some(self.read_block_link(bkt)?)),
             Token(_, tok) => return Err(ParseError::new("cannot appear here", tok))
         };
         Ok(Some(match self.tk.peek()? {
@@ -380,18 +380,29 @@ impl<'str> Parser<'str> {
             },
             Some(&Token(TC::Open, bkt @ "{")) => {
                 self.tk.next();
-                let body = self.read_arg(bkt)?;
-                let arg = if let Some(&Token(TC::Open, bkt @ "(")) = self.tk.peek()? {
-                    self.tk.next();
-                    let block_args = self.read_args(bkt)?;
-                    Expr::new_node(body, block_args)
-                } else {
-                    Expr::new_node(body, vec![])
-                };
-                Link::new(head, vec![arg])
+                let arg = self.read_block_link(bkt)?;
+                Link::new(head, vec![arg.into()])
             },
             _ => Link::new(head, vec![])
         }))
+    }
+
+    fn read_block_link(&mut self, open: &'str str) -> Result<Link, ParseError<'str>> {
+        use TokenClass as TC;
+        let head = Head::Block(Box::new(self.read_arg(open)?));
+        Ok(match self.tk.peek()? {
+            Some(&Token(TC::Open, bkt @ "(")) => {
+                self.tk.next();
+                Link::new(head, self.read_args(bkt)?)
+            },
+            Some(&Token(TC::Chain, tok @ "@")) => {
+                self.tk.next();
+                let arg = self.read_expr_part()?
+                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
+                Link::new(Head::args(head), vec![arg])
+            },
+            _ => Link::new(head, vec![])
+        })
     }
 
     fn read_expr_part(&mut self) -> Result<Option<Expr>, ParseError<'str>> {
@@ -733,6 +744,8 @@ fn test_parser() {
     assert!(parse("a@").is_err());
     assert_eq!(parse("a.b{c}(d)"), parse("a.b({c}(d))"));
     assert!(parse("a.b{c}(d)(e)").is_err());
+    assert_eq!(parse("a.b{c}@d"), parse("a.b({c}@d)"));
+    assert!(parse("{a}{b}").is_err());
 
     assert_eq!(parse("1..2"), Ok(Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(2)])));
 }
