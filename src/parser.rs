@@ -723,6 +723,8 @@ fn test_parser() {
     assert!(parse("#a").is_err());
     assert!(parse("#%").is_err());
     assert_eq!(parse("$name"), Ok(Expr::new_node("$name", vec![])));
+    assert_eq!(parse("a.$b@$c(1)"), Ok(Expr::new_node("a", vec![])
+            .chain(Link::new(Head::args("$b"), vec![Expr::new_node("$c", vec![Expr::new_number(1)])]))));
     assert!(parse("$").is_err());
     assert!(parse("$1").is_err());
     assert!(parse("$$").is_err());
