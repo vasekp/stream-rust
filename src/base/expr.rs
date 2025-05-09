@@ -84,14 +84,19 @@ impl Expr {
         }
     }
 
-    pub fn replace(&mut self, func: &impl Fn(Subst) -> Result<Expr, BaseError>) -> Result<(), StreamError> {
-        match self {
-            Expr::Repl(subst) => {
-                *self = try_with!(Expr::Repl(*subst), func(*subst)?);
-                Ok(())
+    pub fn replace(self, func: &impl Fn(Expr) -> Result<Expr, StreamError>) -> Result<Expr, StreamError> {
+        match func(self)? {
+            Expr::Eval(mut node) => {
+                if let Some(expr) = node.source.take() {
+                    node.source = Some(Box::new((*expr).replace(func)?));
+                }
+                node.args = std::mem::take(&mut node.args)
+                    .into_iter()
+                    .map(|expr| expr.replace(func))
+                    .collect::<Result<_, _>>()?;
+                Ok(Expr::Eval(node))
             },
-            Expr::Eval(node) => node.replace(func),
-            Expr::Imm(_) => Ok(())
+            expr => Ok(expr)
         }
     }
 }

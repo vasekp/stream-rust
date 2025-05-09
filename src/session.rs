@@ -20,24 +20,35 @@ impl Session {
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn process(&mut self, mut expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
-        expr.replace(&|subs| {
-            if subs.kind == SubstKind::History {
-                match subs.index {
-                    Some(ix @ 1..) =>
+    pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
+        let expr = expr.replace(&|sub_expr| {
+            match sub_expr {
+                Expr::Repl(Subst { kind: SubstKind::History, index }) => match index {
+                    Some(ix @ 1..) => Ok(try_with!(sub_expr,
                         self.hist.get(ix - 1)
                             .cloned()
                             .map(Expr::from)
-                            .ok_or(format!("history item %{ix} does not exist").into()),
-                    Some(0) => Err(BaseError::from("invalid history index")),
-                    None =>
+                            .ok_or(format!("history item %{ix} does not exist"))?)),
+                    Some(0) => Err(StreamError::new("invalid history index", sub_expr)),
+                    None => Ok(try_with!(sub_expr,
                         self.hist.last()
                             .cloned()
                             .map(Expr::from)
-                            .ok_or("history is empty".into())
-                }
-            } else {
-                Ok(Expr::Repl(subs))
+                            .ok_or("history is empty")?))
+                },
+                Expr::Eval(node) => match node {
+                    Node { head: Head::Symbol(ref sym), ref source, ref args } if sym.starts_with('$') => {
+                        if source.is_some() || !args.is_empty() {
+                            return Err(StreamError::new("no source or arguments allowed", node));
+                        }
+                        match self.vars.get(sym) {
+                            Some(item) => Ok(Expr::Imm(item.clone())),
+                            None => Err(StreamError::new(format!("variable {sym} not defined"), node))
+                        }
+                    },
+                    _ => Ok(node.into())
+                },
+                _ => Ok(sub_expr)
             }
         })?;
         match expr {

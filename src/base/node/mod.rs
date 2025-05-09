@@ -142,12 +142,6 @@ impl Node {
         }
     }
 
-     pub(in crate::base) fn replace(&mut self, func: &impl Fn(Subst) -> Result<Expr, BaseError>) -> Result<(), StreamError> {
-         if let Some(ref mut expr) = self.source { expr.replace(func)? };
-         self.args.iter_mut()
-             .try_for_each(|expr| expr.replace(func))
-     }
-
     #[allow(unused)]
     pub(crate) fn resolve(self) -> RNode<Expr> {
         match self.source {
