@@ -113,7 +113,29 @@ impl Default for Session {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum SessionUpdate<'a> {
     History(usize, &'a Item),
     Globals(Vec<String>),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::parse;
+
+    #[test]
+    fn test_session() {
+        let mut sess = Session::new();
+        assert_eq!(sess.process(parse("$a=$b=10").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into(), "$b".into()]));
+        assert_eq!(sess.process(parse("$a=$a+$b").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("clear($b)").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$b".into()]));
+        assert_eq!(sess.process(parse("$a").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(20)));
+        assert!(sess.process(parse("$b").unwrap()).is_err());
+
+        let mut sess = Session::new();
+        assert_eq!(sess.process(parse("100").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(100)));
+        assert_eq!(sess.process(parse("% * %1").unwrap()).unwrap(), SessionUpdate::History(2, &Item::new_number(10000)));
+        assert_eq!(sess.process(parse("% + %1").unwrap()).unwrap(), SessionUpdate::History(3, &Item::new_number(10100)));
+    }
 }
