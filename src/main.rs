@@ -1,5 +1,6 @@
 use streamlang as stream;
-use stream::Session;
+use stream::base::*;
+use stream::session::*;
 
 use rustyline as rl;
 
@@ -18,13 +19,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 //println!("Expr Debug: {expr:?}");
                 //println!("Expr Describe: {}", expr.describe());
                 match sess.process(expr) {
-                    Ok((index, item)) => {
-                        //println!("Item Describe: {}", item.describe());
+                    Ok(SessionUpdate::History(index, item)) => {
+                        println!("Item Describe: {}", item.describe());
                         let (s, _, err) = item.format(None, Some(80));
                         println!("%{index}: {s}");
                         if let Some(err) = err {
                             println!("{err}");
                         }
+                    },
+                    Ok(SessionUpdate::Globals(list)) => {
+                        print!("Globals updates: ");
+                        let mut iter = list.into_iter();
+                        if let Some(first) = iter.next() {
+                            print!("{first}");
+                        }
+                        for name in iter {
+                            print!(", {name}");
+                        }
+                        println!();
                     },
                     Err(err) => println!("{err}")
                 }
