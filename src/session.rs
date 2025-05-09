@@ -21,41 +21,10 @@ impl Session {
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
     pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
-        let expr = expr.replace(&|sub_expr| {
-            match sub_expr {
-                Expr::Repl(Subst { kind: SubstKind::History, index }) => match index {
-                    Some(ix @ 1..) => Ok(try_with!(sub_expr,
-                        self.hist.get(ix - 1)
-                            .cloned()
-                            .map(Expr::from)
-                            .ok_or(format!("history item %{ix} does not exist"))?)),
-                    Some(0) => Err(StreamError::new("invalid history index", sub_expr)),
-                    None => Ok(try_with!(sub_expr,
-                        self.hist.last()
-                            .cloned()
-                            .map(Expr::from)
-                            .ok_or("history is empty")?))
-                },
-                Expr::Eval(node) => match node {
-                    Node { head: Head::Symbol(ref sym), ref source, ref args } if sym.starts_with('$') => {
-                        if source.is_some() || !args.is_empty() {
-                            return Err(StreamError::new("no source or arguments allowed", node));
-                        }
-                        match self.vars.get(sym) {
-                            Some(item) => Ok(Expr::Imm(item.clone())),
-                            None => Err(StreamError::new(format!("variable {sym} not defined"), node))
-                        }
-                    },
-                    _ => Ok(node.into())
-                },
-                _ => Ok(sub_expr)
-            }
-        })?;
         match expr {
             Expr::Eval(Node { head: Head::Oper(op), source: None, mut args }) if op == "=" => {
-                let item = args.pop()
-                    .expect("= should have at least 2 args")
-                    .eval_default()?;
+                let val_expr = args.pop().expect("= should have at least 2 args");
+                let item = self.replace_eval(val_expr)?;
                 let mut names = Vec::with_capacity(args.len());
                 for arg in args {
                     let name = match arg {
@@ -96,11 +65,45 @@ impl Session {
                 Ok(SessionUpdate::Globals(updated))
             },
             _ => {
-                let item = expr.eval_default()?;
+                let item = self.replace_eval(expr)?;
                 self.hist.push(item);
                 Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
             }
         }
+    }
+
+    fn replace_eval(&mut self, expr: Expr) -> Result<Item, StreamError> {
+        let expr = expr.replace(&|sub_expr| {
+            match sub_expr {
+                Expr::Repl(Subst { kind: SubstKind::History, index }) => match index {
+                    Some(ix @ 1..) => Ok(try_with!(sub_expr,
+                        self.hist.get(ix - 1)
+                            .cloned()
+                            .map(Expr::from)
+                            .ok_or(format!("history item %{ix} does not exist"))?)),
+                    Some(0) => Err(StreamError::new("invalid history index", sub_expr)),
+                    None => Ok(try_with!(sub_expr,
+                        self.hist.last()
+                            .cloned()
+                            .map(Expr::from)
+                            .ok_or("history is empty")?))
+                },
+                Expr::Eval(node) => match node {
+                    Node { head: Head::Symbol(ref sym), ref source, ref args } if sym.starts_with('$') => {
+                        if source.is_some() || !args.is_empty() {
+                            return Err(StreamError::new("no source or arguments allowed", node));
+                        }
+                        match self.vars.get(sym) {
+                            Some(item) => Ok(Expr::Imm(item.clone())),
+                            None => Err(StreamError::new(format!("variable {sym} not defined"), node))
+                        }
+                    },
+                    _ => Ok(node.into())
+                },
+                _ => Ok(sub_expr)
+            }
+        })?;
+        expr.eval_default()
     }
 }
 
