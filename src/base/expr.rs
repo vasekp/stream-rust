@@ -87,6 +87,10 @@ impl Expr {
     pub fn replace(self, func: &impl Fn(Expr) -> Result<Expr, StreamError>) -> Result<Expr, StreamError> {
         match func(self)? {
             Expr::Eval(mut node) => {
+                match node.head {
+                    Head::Block(ref mut expr) => *expr = Box::new(std::mem::take(expr).replace(func)?),
+                    _ => ()
+                }
                 if let Some(expr) = node.source.take() {
                     node.source = Some(Box::new((*expr).replace(func)?));
                 }

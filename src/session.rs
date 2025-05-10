@@ -6,7 +6,7 @@ use std::collections::HashMap;
 /// register of defined symbols.
 pub struct Session {
     hist: Vec<Item>,
-    vars: HashMap<String, Item>,
+    vars: HashMap<String, Assignment>,
 }
 
 impl Session {
@@ -23,8 +23,13 @@ impl Session {
     pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
         match expr {
             Expr::Eval(Node { head: Head::Oper(op), source: None, mut args }) if op == "=" => {
-                let val_expr = args.pop().expect("= should have at least 2 args");
-                let item = self.replace_eval(val_expr)?;
+                let rhs = args.pop().expect("= should have at least 2 args");
+                let rhs = match self.apply_context(rhs)? {
+                    Expr::Eval(Node { head: Head::Block(block), source: None, args })
+                        if args.is_empty()
+                        => Assignment::Function(*block),
+                    expr => Assignment::Value(expr.eval_default()?)
+                };
                 let mut names = Vec::with_capacity(args.len());
                 for arg in args {
                     let name = match arg {
@@ -37,10 +42,10 @@ impl Session {
                 }
                 let last = names.pop();
                 for name in &names {
-                    self.vars.insert(name.to_owned(), item.clone());
+                    self.vars.insert(name.to_owned(), rhs.clone());
                 }
                 if let Some(name) = last {
-                    self.vars.insert(name.to_owned(), item);
+                    self.vars.insert(name.to_owned(), rhs);
                     names.push(name);
                 }
                 Ok(SessionUpdate::Globals(names))
@@ -65,15 +70,15 @@ impl Session {
                 Ok(SessionUpdate::Globals(updated))
             },
             _ => {
-                let item = self.replace_eval(expr)?;
+                let item = self.apply_context(expr)?.eval_default()?;
                 self.hist.push(item);
                 Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
             }
         }
     }
 
-    fn replace_eval(&mut self, expr: Expr) -> Result<Item, StreamError> {
-        let expr = expr.replace(&|sub_expr| {
+    fn apply_context(&mut self, expr: Expr) -> Result<Expr, StreamError> {
+        expr.replace(&|sub_expr| {
             match sub_expr {
                 Expr::Repl(Subst { kind: SubstKind::History, index }) => match index {
                     Some(ix @ 1..) => Ok(try_with!(sub_expr,
@@ -88,22 +93,33 @@ impl Session {
                             .map(Expr::from)
                             .ok_or("history is empty")?))
                 },
-                Expr::Eval(node) => match node {
-                    Node { head: Head::Symbol(ref sym), ref source, ref args } if sym.starts_with('$') => {
-                        if source.is_some() || !args.is_empty() {
-                            return Err(StreamError::new("no source or arguments allowed", node));
-                        }
-                        match self.vars.get(sym) {
-                            Some(item) => Ok(Expr::Imm(item.clone())),
-                            None => Err(StreamError::new(format!("variable {sym} not defined"), node))
-                        }
-                    },
-                    _ => Ok(node.into())
+                Expr::Eval(mut node) => {
+                    match node {
+                        Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } if sym.starts_with('$') => {
+                            match self.vars.get(sym) {
+                                Some(Assignment::Value(item)) => {
+                                    if source.is_some() || !args.is_empty() {
+                                        Err(StreamError::new("no source or arguments allowed", node))
+                                    } else {
+                                        Ok(Expr::Imm(item.clone()))
+                                    }
+                                },
+                                Some(Assignment::Function(block)) => {
+                                    Ok(Expr::Eval(Node {
+                                        head: block.clone().into(),
+                                        source: source.take(),
+                                        args: std::mem::take(args)
+                                    }))
+                                },
+                                None => Err(StreamError::new(format!("variable not defined"), node))
+                            }
+                        },
+                        _ => Ok(node.into())
+                    }
                 },
                 _ => Ok(sub_expr)
             }
-        })?;
-        expr.eval_default()
+        })
     }
 }
 
@@ -117,6 +133,12 @@ impl Default for Session {
 pub enum SessionUpdate<'a> {
     History(usize, &'a Item),
     Globals(Vec<String>),
+}
+
+#[derive(Clone)]
+enum Assignment {
+    Value(Item),
+    Function(Expr)
 }
 
 #[cfg(test)]
@@ -137,5 +159,12 @@ mod tests {
         assert_eq!(sess.process(parse("100").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(100)));
         assert_eq!(sess.process(parse("% * %1").unwrap()).unwrap(), SessionUpdate::History(2, &Item::new_number(10000)));
         assert_eq!(sess.process(parse("% + %1").unwrap()).unwrap(), SessionUpdate::History(3, &Item::new_number(10100)));
+
+        let mut sess = Session::new();
+        assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("5.$a(6,7)").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(47)));
+        assert_eq!(sess.process(parse("{5.$a(6,7)}").unwrap()).unwrap(), SessionUpdate::History(2, &Item::new_number(47)));
+        //assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(47)));
+        //assert_eq!(sess.process(parse("5.{$a}@[6,7]").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(47)));
     }
 }
