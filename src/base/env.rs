@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// This is passed as an argument to [`Expr::eval()`].
 #[derive(Default, Clone)]
 pub struct Env {
-    pub vars: HashMap<String, Item>,
+    pub vars: HashMap<String, Rhs>,
 }
 
 impl Env {
@@ -27,7 +27,10 @@ impl Env {
 
     fn describe(&self) -> String {
         let mut iter = self.vars.iter()
-            .map(|(key, val)| format!("{}={}", key, val.describe_prec(1)));
+            .map(|(key, val)| match val {
+                Rhs::Value(item) => format!("{}={}", key, item.describe_prec(1)),
+                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_prec(0))
+            });
         let mut ret = match iter.next() {
             Some(rec) => rec,
             None => return String::new()
@@ -38,4 +41,10 @@ impl Env {
         }
         ret
     }
+}
+
+#[derive(Clone)]
+pub enum Rhs {
+    Value(Item),
+    Function(Expr)
 }

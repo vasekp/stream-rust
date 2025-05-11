@@ -6,7 +6,7 @@ use std::collections::HashMap;
 /// register of defined symbols.
 pub struct Session {
     hist: Vec<Item>,
-    vars: HashMap<String, Assignment>,
+    vars: HashMap<String, Rhs>,
 }
 
 impl Session {
@@ -27,8 +27,8 @@ impl Session {
                 let rhs = match self.apply_context(rhs)? {
                     Expr::Eval(Node { head: Head::Block(block), source: None, args })
                         if args.is_empty()
-                        => Assignment::Function(*block),
-                    expr => Assignment::Value(expr.eval_default()?)
+                        => Rhs::Function(*block),
+                    expr => Rhs::Value(expr.eval_default()?)
                 };
                 let mut names = Vec::with_capacity(args.len());
                 for arg in args {
@@ -97,14 +97,14 @@ impl Session {
                     match node {
                         Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } if sym.starts_with('$') => {
                             match self.vars.get(sym) {
-                                Some(Assignment::Value(item)) => {
+                                Some(Rhs::Value(item)) => {
                                     if source.is_some() || !args.is_empty() {
                                         Err(StreamError::new("no source or arguments allowed", node))
                                     } else {
                                         Ok(Expr::Imm(item.clone()))
                                     }
                                 },
-                                Some(Assignment::Function(block)) => {
+                                Some(Rhs::Function(block)) => {
                                     Ok(Expr::Eval(Node {
                                         head: block.clone().into(),
                                         source: source.take(),
@@ -133,12 +133,6 @@ impl Default for Session {
 pub enum SessionUpdate<'a> {
     History(usize, &'a Item),
     Globals(Vec<String>),
-}
-
-#[derive(Clone)]
-enum Assignment {
-    Value(Item),
-    Function(Expr)
 }
 
 #[cfg(test)]

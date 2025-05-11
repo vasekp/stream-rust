@@ -45,10 +45,21 @@ impl Node {
     pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
         match self.head {
             Head::Symbol(ref sym) | Head::Oper(ref sym) => {
-                if let Some(item) = env.vars.get(sym) {
-                    try_with!(self, self.check_no_source()?);
-                    try_with!(self, self.check_no_args()?);
-                    Ok(item.clone())
+                if let Some(rhs) = env.vars.get(sym) {
+                    match rhs {
+                        Rhs::Value(item) => {
+                            try_with!(self, self.check_no_source()?);
+                            try_with!(self, self.check_no_args()?);
+                            Ok(item.clone())
+                        },
+                        Rhs::Function(block) => {
+                            Expr::Eval(Node {
+                                head: block.clone().into(),
+                                source: self.source,
+                                args: self.args
+                            }).eval(env)
+                        }
+                    }
                 } else if let Some(func) = find_keyword(sym) {
                     func(self, env)
                 } else {
