@@ -14,19 +14,6 @@ fn test_block() {
 }
 
 #[test]
-fn test_args() {
-    use crate::parser::parse;
-    assert_eq!(parse("range@[3]").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-    assert_eq!(parse("range@range(3)").unwrap().eval_default().unwrap().to_string(), "[1]");
-    assert_eq!(parse("range@range(3)").unwrap().eval_default().unwrap().to_string(), "[1]");
-    assert_eq!(parse("range@[3][2]").unwrap().eval_default().unwrap().to_string(), "2");
-    assert_eq!(parse("range@range(3)[1]").unwrap().eval_default().unwrap().to_string(), "1");
-    assert!(parse("range@3").unwrap().eval_default().is_err());
-    assert!(parse("range@seq").unwrap().eval_default().is_err());
-    assert_eq!(parse("range@[3,4]").unwrap().eval_default().unwrap().describe(), "range(3, 4)");
-}
-
-#[test]
 fn test_describe() {
     use crate::parser::parse;
 
@@ -62,6 +49,10 @@ fn test_describe() {
 
     // args
     let orig = parse("a@b@c(d)[e]").unwrap();
+    let copy = parse(&orig.describe()).unwrap();
+    assert_eq!(orig, copy);
+
+    let orig = parse("a@b.c@(d.e)").unwrap();
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
 }

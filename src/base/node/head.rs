@@ -8,7 +8,6 @@ pub enum Head {
     Symbol(String),
     Oper(String),
     Block(Box<Expr>),
-    Args(Box<Head>), /// At-sign (source.head@args)
     Lang(LangItem)
 }
 
@@ -18,14 +17,8 @@ impl Head {
         match self {
             Head::Symbol(s) => s.to_owned(),
             Head::Block(b) => format!("{{{}}}", b.describe_prec(0)),
-            Head::Oper(_) => Default::default(),
-            Head::Args(head) => format!("{}@", head.describe()),
-            Head::Lang(_) => Default::default(),
+            Head::Oper(_) | Head::Lang(_) => Default::default(),
         }
-    }
-
-    pub fn args(head: impl Into<Head>) -> Head {
-        Head::Args(Box::new(head.into()))
     }
 }
 
@@ -78,6 +71,8 @@ pub enum LangItem {
     Part,
     /// Colon (`source:func` ~ `source.*map(func)`)
     Map,
+    /// Args (`source.head@args`)
+    Args,
 }
 
 impl LangItem {
@@ -87,6 +82,7 @@ impl LangItem {
             List => "*list",
             Part => "*part",
             Map => "*map",
+            Args => "*args",
         }
     }
 }

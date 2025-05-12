@@ -158,7 +158,8 @@ mod tests {
         assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
         assert_eq!(sess.process(parse("5.$a(6,7)").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(47)));
         assert_eq!(sess.process(parse("{5.$a(6,7)}").unwrap()).unwrap(), SessionUpdate::History(2, &Item::new_number(47)));
-        //assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(47)));
-        //assert_eq!(sess.process(parse("5.{$a}@[6,7]").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(47)));
+        assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap(), SessionUpdate::History(3, &Item::new_number(47)));
+        assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}(6,7)").unwrap()).unwrap(), SessionUpdate::History(4, &Item::new_number(47)));
+        assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}@[6,7]").unwrap()).unwrap(), SessionUpdate::History(5, &Item::new_number(47)));
     }
 }

@@ -70,8 +70,7 @@ impl Node {
                 let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
                 ctor(self, env)
             },
-            Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval(env),
-            Head::Args(_) => Node::eval_at(self, env),
+            Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval(env)
         }
     }
 
@@ -103,24 +102,6 @@ impl Node {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
     }*/
-
-    fn eval_at(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        debug_assert!(node.args.len() == 1);
-        let src_stream = try_with!(node, node.args[0].as_stream()?);
-        if src_stream.length() == Length::Infinite {
-            return Err(StreamError::new("stream is infinite", node));
-        }
-        let Head::Args(head) = node.head else { unreachable!() };
-        let expr = Expr::Eval(Node{
-            head: *head,
-            source: node.source.map(|item| Box::new(item.into())),
-            args: src_stream.iter()
-                .map(|res| res.map(Expr::from))
-                .collect::<Result<Vec<_>, _>>()?
-        });
-        expr.eval(env)
-    }
 
     pub(in crate::base) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
         Ok(Node {
@@ -254,6 +235,20 @@ impl Node {
 
 impl Describe for Node {
     fn describe_prec(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec)
+        if self.head == Head::Lang(LangItem::Args) {
+            let mut ret = String::new();
+            if let Some(source) = &self.source {
+                ret += &source.describe_prec(u32::MAX);
+                ret.push('.');
+            }
+            let [head, args] = &self.args[0..2] else { panic!("Head::Lang(Args) should have exactly 2 arguments") };
+            ret += &head.describe_prec(u32::MAX);
+            ret += "@(";
+            ret += &args.describe_prec(u32::MAX);
+            ret.push(')');
+            ret
+        } else {
+            Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec)
+        }
     }
 }

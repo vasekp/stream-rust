@@ -382,7 +382,7 @@ impl<'str> Parser<'str> {
                 self.tk.next();
                 let arg = self.read_expr_part()?
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
-                Link::new(Head::args(head), vec![arg])
+                Link::new(LangItem::Args, vec![Expr::new_node(head, vec![]), arg])
             },
             Some(&Token(TC::Open, bkt @ "{")) => {
                 self.tk.next();
@@ -405,7 +405,7 @@ impl<'str> Parser<'str> {
                 self.tk.next();
                 let arg = self.read_expr_part()?
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
-                Link::new(Head::args(head), vec![arg])
+                Link::new(LangItem::Args, vec![Expr::new_node(head, vec![]), arg])
             },
             _ => Link::new(head, vec![])
         })
@@ -724,7 +724,9 @@ fn test_parser() {
     assert!(parse("#%").is_err());
     assert_eq!(parse("$name"), Ok(Expr::new_node("$name", vec![])));
     assert_eq!(parse("a.$b@$c(1)"), Ok(Expr::new_node("a", vec![])
-            .chain(Link::new(Head::args("$b"), vec![Expr::new_node("$c", vec![Expr::new_number(1)])]))));
+            .chain(Link::new(LangItem::Args, vec![
+                    Expr::new_node("$b", vec![]),
+                    Expr::new_node("$c", vec![Expr::new_number(1)])]))));
     assert!(parse("$").is_err());
     assert!(parse("$1").is_err());
     assert!(parse("$$").is_err());
@@ -738,25 +740,30 @@ fn test_parser() {
         .chain(Link::new(Expr::new_repl(SubstKind::Input, None), vec![Expr::new_number(2)]))));
 
     assert_eq!(parse("a.b@c@d[1]"), Ok(Expr::new_node("a", vec![])
-        .chain(Link::new(Head::args("b"),
-            vec![Expr::new_node(Head::args("c"), vec![Expr::new_node("d", vec![])])]))
+        .chain(Link::new(LangItem::Args,
+            vec![Expr::new_node("b", vec![]), Expr::new_node(LangItem::Args,
+                vec![Expr::new_node("c", vec![]), Expr::new_node("d", vec![])])]))
         .chain(Link::new(LangItem::Part, vec![Expr::new_number(1)]))));
     // literals, list, #, (x) may follow @
-    assert_eq!(parse("a@1"), Ok(Expr::new_node(Head::args("a"),
-        vec![Expr::new_number(1)])));
-    assert_eq!(parse("a@[1,2]"), Ok(Expr::new_node(Head::args("a"),
-        vec![Expr::new_node(LangItem::List, vec![Expr::new_number(1), Expr::new_number(2)])])));
-    assert_eq!(parse("a@(b.c@#)"), Ok(Expr::new_node(Head::args("a"),
-        vec![Expr::new_node("b", vec![])
-            .chain(Link::new(Head::args("c"), vec![Expr::new_repl(SubstKind::Input, None)]))])));
+    assert_eq!(parse("a@1"), Ok(Expr::new_node(LangItem::Args,
+        vec![Expr::new_node("a", vec![]), Expr::new_number(1)])));
+    assert_eq!(parse("a@[1,2]"), Ok(Expr::new_node(LangItem::Args,
+        vec![Expr::new_node("a", vec![]), Expr::new_node(LangItem::List,
+            vec![Expr::new_number(1), Expr::new_number(2)])])));
+    assert_eq!(parse("a@(b.c@#)"), Ok(Expr::new_node(LangItem::Args,
+        vec![Expr::new_node("a", vec![]), Expr::new_node("b", vec![])
+            .chain(Link::new(LangItem::Args,
+                    vec![Expr::new_node("c", vec![]), Expr::new_repl(SubstKind::Input, None)]))])));
     // but not (x,y)
     assert!(parse("a@(b.c@#,d)").is_err());
     // blocks allowed both before and after
-    assert_eq!(parse("{a}@{b}"), Ok(Expr::new_node(Head::args(Expr::new_node("a", vec![])),
-        vec![Expr::new_node(Expr::new_node("b", vec![]), vec![])])));
+    assert_eq!(parse("{a}@{b}"), Ok(Expr::new_node(LangItem::Args, vec![
+        Expr::new_node(Expr::new_node("a", vec![]), vec![]),
+        Expr::new_node(Expr::new_node("b", vec![]), vec![])])));
     // (c) binds to b but [d] to entire expression
-    assert_eq!(parse("a@b(c)[d]"), Ok(Expr::new_node(Head::args("a"),
-            vec![Expr::new_node("b", vec![Expr::new_node("c", vec![])])])
+    assert_eq!(parse("a@b(c)[d]"), Ok(Expr::new_node(LangItem::Args, vec![
+            Expr::new_node("a", vec![]),
+            Expr::new_node("b", vec![Expr::new_node("c", vec![])])])
         .chain(Link::new(LangItem::Part, vec![Expr::new_node("d", vec![])]))));
     // no @ after arguments
     assert!(parse("a(b)@c").is_err());
