@@ -10,7 +10,7 @@ fn eval_args(mut node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     };
     let arg_stream = match args_arg.eval(env)? {
         Item::Stream(stream) if stream.length() != Length::Infinite => stream,
-        arg @ Item::Stream(..) => return Err(StreamError::new(format!("stream is infinite"),
+        arg @ Item::Stream(..) => return Err(StreamError::new("stream is infinite",
             Node { head: node.head, source: node.source, args: vec![head_arg, arg.into()] })),
         arg => return Err(StreamError::new(format!("expected stream, found {arg:?}"),
             Node { head: node.head, source: node.source, args: vec![head_arg, arg.into()] }))

@@ -111,7 +111,7 @@ impl Session {
                                         args: std::mem::take(args)
                                     }))
                                 },
-                                None => Err(StreamError::new(format!("variable not defined"), node))
+                                None => Err(StreamError::new("variable not defined", node))
                             }
                         },
                         _ => Ok(node.into())
