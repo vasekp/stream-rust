@@ -70,7 +70,13 @@ impl Node {
                 let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
                 ctor(self, env)
             },
-            Head::Block(blk) => blk.apply(&self.source, &self.args)?.eval(env)
+            Head::Block(blk) => {
+                let source = self.source.map(|expr| expr.eval(env)).transpose()?;
+                let args = self.args.into_iter()
+                    .map(|expr| expr.eval(env))
+                    .collect::<Result<_, _>>()?;
+                blk.apply(&source, &args)?.eval(env)
+            }
         }
     }
 
@@ -103,7 +109,7 @@ impl Node {
         Ok(self)
     }*/
 
-    pub(in crate::base) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Node, StreamError> {
+    pub(in crate::base) fn apply(self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
         Ok(Node {
             head: self.head,
             source: match self.source {

@@ -53,17 +53,17 @@ impl Expr {
         })
     }
 
-    pub(in crate::base) fn apply(self, source: &Option<Box<Expr>>, args: &Vec<Expr>) -> Result<Expr, StreamError> {
+    pub(in crate::base) fn apply(self, source: &Option<Item>, args: &Vec<Item>) -> Result<Expr, StreamError> {
         match self {
             Expr::Eval(node) => Ok(Expr::Eval(node.apply(source, args)?)),
             Expr::Repl(subst) if subst.kind == SubstKind::Input =>
                 match subst.index {
                     None => source.as_ref()
                         .ok_or(StreamError::new("no source provided", self))
-                        .map(|boxed| (**boxed).clone()),
+                        .map(|item| item.clone().into()),
                     Some(ix) => args.get(ix - 1)
                         .ok_or(StreamError::new("no such input", self))
-                        .cloned(),
+                        .map(|item| item.clone().into()),
                 },
             _ => Ok(self)
         }
