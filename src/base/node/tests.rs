@@ -6,7 +6,12 @@ fn test_block() {
     assert_eq!(parse("{#1}(3,4)").unwrap().eval_default().unwrap().to_string(), "3");
     assert_eq!(parse("{#2}(3,4)").unwrap().eval_default().unwrap().to_string(), "4");
     assert!(parse("{#3}(3,4)").unwrap().eval_default().is_err());
+    assert_eq!(parse("{##}(3,4)").unwrap().eval_default().unwrap().to_string(), "[3, 4]");
+    assert_eq!(parse("{##}(3)").unwrap().eval_default().unwrap().to_string(), "[3]");
+    assert_eq!(parse("{##}()").unwrap().eval_default().unwrap().to_string(), "[]");
+    assert_eq!(parse("{##}").unwrap().eval_default().unwrap().to_string(), "[]");
     assert!(parse("#1").unwrap().eval_default().is_err());
+    assert!(parse("##").unwrap().eval_default().is_err());
     assert_eq!(parse("1.{2}(3)").unwrap().eval_default().unwrap().to_string(), "2");
     assert_eq!(parse("{#1+{#1}(2,3)}(4,5)").unwrap().eval_default().unwrap().to_string(), "6");
     assert_eq!(parse("{#1}({#2}(3,4),5)").unwrap().eval_default().unwrap().to_string(), "4");

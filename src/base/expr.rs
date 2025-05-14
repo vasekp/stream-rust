@@ -39,11 +39,6 @@ impl Expr {
         Expr::Eval(Node{head: Head::Oper(op.into()), source: None, args})
     }
 
-    /// Creates a special expression `#(n)` or `$(n)`.
-    pub fn new_repl(kind: SubstKind, index: Option<usize>) -> Expr {
-        Expr::Repl(Subst { kind, index })
-    }
-
     /// Makes the output of this expression an input to a [`Link`].
     pub fn chain(self, next: Link) -> Expr {
         Expr::Eval(Node{
@@ -56,8 +51,8 @@ impl Expr {
     pub(in crate::base) fn apply(self, source: &Option<Item>, args: &Vec<Item>) -> Result<Expr, StreamError> {
         match self {
             Expr::Eval(node) => Ok(Expr::Eval(node.apply(source, args)?)),
-            Expr::Repl(subst) if subst.kind == SubstKind::Input =>
-                match subst.index {
+            Expr::Repl(Subst::Input(index)) =>
+                match index {
                     None => source.as_ref()
                         .ok_or(StreamError::new("no source provided", self))
                         .map(|item| item.clone().into()),
@@ -65,6 +60,8 @@ impl Expr {
                         .ok_or(StreamError::new("no such input", self))
                         .map(|item| item.clone().into()),
                 },
+            Expr::Repl(Subst::InputList) =>
+                Ok(Expr::new_stream(List::from(args.to_owned()))),
             _ => Ok(self)
         }
     }
@@ -135,29 +132,24 @@ impl Describe for Expr {
 
 /// The expression type for placeholder symbols like `#1`, `%`, etc.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Subst {
-    pub kind: SubstKind,
-    pub index: Option<usize>
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum SubstKind {
+pub enum Subst {
     /// Input slot (`#`, `#ix`)
-    Input,
+    Input(Option<usize>),
+    /// Argument list slot (`##`)
+    InputList,
     /// History item (`%`, `%ix`)
-    History
+    History(Option<usize>),
 }
 
 #[allow(clippy::to_string_trait_impl)]
 impl ToString for Subst {
     fn to_string(&self) -> String {
-        let chr = match self.kind {
-            SubstKind::Input => '#',
-            SubstKind::History => '%',
-        };
-        match self.index {
-            Some(ix) => format!("{chr}{ix}"),
-            None => chr.to_string()
+        match self {
+            Subst::Input(Some(ix)) => format!("#{ix}"),
+            Subst::Input(None) => "#".into(),
+            Subst::InputList => "##".into(),
+            Subst::History(Some(ix)) => format!("%{ix}"),
+            Subst::History(None) => "%".into(),
         }
     }
 }

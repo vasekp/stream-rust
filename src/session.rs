@@ -80,7 +80,7 @@ impl Session {
     fn apply_context(&mut self, expr: Expr) -> Result<Expr, StreamError> {
         expr.replace(&|sub_expr| {
             match sub_expr {
-                Expr::Repl(Subst { kind: SubstKind::History, index }) => match index {
+                Expr::Repl(Subst::History(index)) => match index {
                     Some(ix @ 1..) => Ok(try_with!(sub_expr,
                         self.hist.get(ix - 1)
                             .cloned()

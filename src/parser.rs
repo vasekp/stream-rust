@@ -431,21 +431,25 @@ impl<'str> Parser<'str> {
             },
             Token(TC::Open, bkt @ "(") => Ok(self.read_arg(bkt)?),
             Token(TC::Special, chr) => {
-                let kind = match chr {
-                    "#" => SubstKind::Input,
-                    "%" => SubstKind::History,
+                let subst = match chr {
+                    "#" => Subst::Input,
+                    "%" => Subst::History,
                     _ => panic!("unhandled special character '{chr}'")
                 };
                 match self.tk.peek()? {
                     Some(&Token(TC::Number, value)) => {
                         self.tk.next();
                         match value.parse::<usize>() {
-                            Ok(ix @ 1..) => Ok(Expr::new_repl(kind, Some(ix))),
+                            Ok(ix @ 1..) => Ok(Expr::Repl(subst(Some(ix)))),
                             Ok(0) => Err(ParseError::new("index can't be zero", self.tk.slice_from(chr))),
                             Err(_) => Err(ParseError::new("index too large", self.tk.slice_from(chr))),
                         }
                     },
-                    _ => Ok(Expr::new_repl(kind, None))
+                    Some(&Token(TC::Special, "#")) if chr == "#" => {
+                        self.tk.next();
+                        Ok(Expr::Repl(Subst::InputList))
+                    },
+                    _ => Ok(Expr::Repl(subst(None)))
                 }
             },
             Token(_, tok) => Err(ParseError::new("cannot appear here", tok))
@@ -715,11 +719,12 @@ fn test_parser() {
     assert_eq!(parse(r#""'\'\"""#), Ok(Expr::new_string("''\"")));
     assert!(parse(r#"""""#).is_err());
 
-    assert_eq!(parse("#"), Ok(Expr::new_repl(SubstKind::Input, None)));
-    assert_eq!(parse("#1"), Ok(Expr::new_repl(SubstKind::Input, Some(1))));
+    assert_eq!(parse("#"), Ok(Expr::Repl(Subst::Input(None))));
+    assert_eq!(parse("#1"), Ok(Expr::Repl(Subst::Input(Some(1)))));
     assert!(parse("#0").is_err());
     assert!(parse("#18446744073709551616").is_err());
-    assert!(parse("##").is_err());
+    assert_eq!(parse("##"), Ok(Expr::Repl(Subst::InputList)));
+    assert!(parse("###").is_err());
     assert!(parse("#a").is_err());
     assert!(parse("#%").is_err());
     assert_eq!(parse("$name"), Ok(Expr::new_node("$name", vec![])));
@@ -733,11 +738,11 @@ fn test_parser() {
     assert!(parse("$a$").is_err());
     assert!(parse("#(1)").is_err());
     assert_eq!(parse("#+%"), Ok(Expr::new_op("+", vec![
-        Expr::new_repl(SubstKind::Input, None),
-        Expr::new_repl(SubstKind::History, None)])));
+        Expr::Repl(Subst::Input(None)),
+        Expr::Repl(Subst::History(None))])));
     assert!(parse("1.#").is_err());
     assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_number(1)
-        .chain(Link::new(Expr::new_repl(SubstKind::Input, None), vec![Expr::new_number(2)]))));
+        .chain(Link::new(Expr::Repl(Subst::Input(None)), vec![Expr::new_number(2)]))));
 
     assert_eq!(parse("a.b@c@d[1]"), Ok(Expr::new_node("a", vec![])
         .chain(Link::new(LangItem::Args,
@@ -753,7 +758,7 @@ fn test_parser() {
     assert_eq!(parse("a@(b.c@#)"), Ok(Expr::new_node(LangItem::Args,
         vec![Expr::new_node("a", vec![]), Expr::new_node("b", vec![])
             .chain(Link::new(LangItem::Args,
-                    vec![Expr::new_node("c", vec![]), Expr::new_repl(SubstKind::Input, None)]))])));
+                    vec![Expr::new_node("c", vec![]), Expr::Repl(Subst::Input(None))]))])));
     // but not (x,y)
     assert!(parse("a@(b.c@#,d)").is_err());
     // blocks allowed both before and after
