@@ -149,6 +149,8 @@ mod tests {
         assert_eq!(parse("\"ab\"~\"cd\"").unwrap().eval_default().unwrap().to_string(), "\"abcd\"");
         assert_eq!(parse("\"ab\"~'c'").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
         assert_eq!(parse("'a'~\"b\"~'c'").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
+        assert_eq!(parse("join([1],[2])").unwrap().eval_default().unwrap().to_string(), "[1, 2]");
+        assert!(parse("[1].join([1],[2])").unwrap().eval_default().is_err());
         assert!(parse("\"a\"~1").unwrap().eval_default().is_err());
         assert!(parse("\"a\"~[1]").unwrap().eval_default().is_err());
         assert!(parse("\"a\"~['b']").unwrap().eval_default().is_err());
@@ -168,10 +170,12 @@ mod tests {
 
         assert_eq!(parse("1~2").unwrap().eval_default().unwrap().describe(), "1~2");
         assert_eq!(parse("[1]~[2]").unwrap().eval_default().unwrap().describe(), "[1]~[2]");
+        assert_eq!(parse("join([1],[2])").unwrap().eval_default().unwrap().describe(), "join([1], [2])");
         assert_eq!(parse("\"ab\"~'c'").unwrap().eval_default().unwrap().describe(), "\"ab\"~'c'");
     }
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("~", Join::eval);
+    keywords.insert("join", Join::eval);
 }

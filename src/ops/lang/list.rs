@@ -14,6 +14,9 @@ mod tests {
     fn test_list() {
         use crate::parser::parse;
         assert_eq!(parse("[1,2,3]").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
+        assert_eq!(parse("list(1,2,3)").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
+        assert_eq!(parse("list()").unwrap().eval_default().unwrap().to_string(), "[]");
+        assert!(parse("[1].list(1,2,3)").unwrap().eval_default().is_err());
         test_len_exact(&parse("[1,2,3]").unwrap().eval_default().unwrap(), 3);
         test_len_exact(&parse("[1]").unwrap().eval_default().unwrap(), 1);
         test_len_exact(&parse("[]").unwrap().eval_default().unwrap(), 0);
@@ -22,9 +25,11 @@ mod tests {
         test_skip_n(&parse("[]").unwrap().eval_default().unwrap());
         assert_eq!(parse("[1,2,3]").unwrap().eval_default().unwrap().describe(), "[1, 2, 3]");
         assert_eq!(parse("[]").unwrap().eval_default().unwrap().describe(), "[]");
+        assert_eq!(parse("list(1)").unwrap().eval_default().unwrap().describe(), "[1]");
     }
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("*list", eval_list);
+    keywords.insert("list", eval_list);
 }

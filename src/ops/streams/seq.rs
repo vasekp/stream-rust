@@ -95,9 +95,11 @@ mod tests {
         assert_eq!(parse("seq()").unwrap().eval_default().unwrap().describe(), "seq");
         assert_eq!(parse("seq(-1)").unwrap().eval_default().unwrap().describe(), "seq(-1)");
         assert_eq!(parse("seq(-1,2)").unwrap().eval_default().unwrap().describe(), "seq(-1, 2)");
+        assert_eq!(parse("iota(-1,2)").unwrap().eval_default().unwrap().describe(), "iota(-1, 2)");
     }
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("seq", Seq::eval);
+    keywords.insert("iota", Seq::eval);
 }

@@ -6,7 +6,8 @@ struct Part {
     source: BoxedStream,
     indices: BoxedStream,
     rest: Vec<Item>,
-    env: Rc<Env>
+    env: Rc<Env>,
+    head: Head
 }
 
 impl Part {
@@ -43,7 +44,7 @@ impl Part {
             },
             Some(Item::Stream(_)) => {
                 let indices = node.args.remove(0).to_stream().unwrap();
-                Ok(Item::new_stream(Part{source: source.into(), indices: indices.into(), rest: node.args, env: Rc::clone(env)}))
+                Ok(Item::new_stream(Part{source: source.into(), indices: indices.into(), rest: node.args, env: Rc::clone(env), head: node.head}))
             },
             Some(first) => {
                 Err(StreamError::new(format!("expected number or stream, found {:?}", first), node))
@@ -60,7 +61,7 @@ impl Stream for Part {
 
 impl Describe for Part {
     fn describe_prec(&self, prec: u32) -> String {
-        Node::describe_helper(&Head::Lang(LangItem::Part), Some(&self.source),
+        Node::describe_helper(&self.head, Some(&self.source),
             [self.indices.to_item()].iter().chain(self.rest.iter()), prec)
     }
 }
@@ -111,6 +112,7 @@ mod tests {
         assert!(parse("range(3)[-1]").unwrap().eval_default().is_err());
         assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval_default().unwrap().to_string(), "3");
         assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval_default().unwrap().to_string(), "3");
+        assert_eq!(parse("[[1,2],[3,4]].part(2,1)").unwrap().eval_default().unwrap().to_string(), "3");
 
         assert_eq!(parse("seq(5,2)[100.repeat]").unwrap().eval_default().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
         assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval_default().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");
@@ -128,9 +130,11 @@ mod tests {
         test_len_exact(&parse("seq[[]]").unwrap().eval_default().unwrap(), 0);
 
         assert_eq!(parse("seq[[3]]").unwrap().eval_default().unwrap().describe(), "seq[[3]]");
+        assert_eq!(parse("seq.part([3])").unwrap().eval_default().unwrap().describe(), "seq.part([3])");
     }
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("*part", Part::eval);
+    keywords.insert("part", Part::eval);
 }

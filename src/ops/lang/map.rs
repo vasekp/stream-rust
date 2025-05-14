@@ -91,4 +91,5 @@ mod tests {
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("*map", Map::eval);
     keywords.insert("map", Map::eval);
+    keywords.insert("foreach", Map::eval);
 }
