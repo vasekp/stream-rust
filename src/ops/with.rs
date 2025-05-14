@@ -72,5 +72,6 @@ mod tests {
         assert_eq!(parse("with(a={5*#1}, b={a(#+1)}, 3.b)").unwrap().eval_default().unwrap().to_string(), "20");
         // This fails because the second expression has to be stored unevaluated.
         assert!(parse("with(a={5*#1}, a={a(#+1)}, 3.a)").unwrap().eval_default().is_err());
+        assert_eq!(parse("with(df={times@range(#1,1,-2)}, df(10))").unwrap().eval_default().unwrap().to_string(), "3840");
     }
 }
