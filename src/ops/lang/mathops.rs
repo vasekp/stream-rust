@@ -27,14 +27,23 @@ impl MathOp {
     }
 
     fn find_fn(head: &Head) -> MathFunc {
-        let Head::Oper(op) = head else { unreachable!() };
-        match op.as_str() {
-            "+" => Self::plus_func,
-            "-" => Self::minus_func,
-            "*" => Self::mul_func,
-            "/" => Self::div_func,
-            "^" => Self::pow_func,
-            _ => todo!()
+        match head {
+            Head::Oper(op) =>
+                match op.as_str() {
+                    "+" => Self::plus_func,
+                    "-" => Self::minus_func,
+                    "*" => Self::mul_func,
+                    "/" => Self::div_func,
+                    "^" => Self::pow_func,
+                    _ => todo!()
+                },
+            Head::Symbol(sym) =>
+                match sym.as_str() {
+                    "plus" => Self::plus_func,
+                    "times" => Self::mul_func,
+                    _ => todo!()
+                },
+            _ => unreachable!()
         }
     }
 
@@ -261,6 +270,10 @@ mod tests {
         assert!(parse("'a'/1").unwrap().eval_default().is_err());
         assert_eq!(parse("[2,'b','b']*[2,2,'b']").unwrap().eval_default().unwrap().to_string(), "[4, 'd', <!>");
         assert_eq!(parse("seq^seq").unwrap().eval_default().unwrap().to_string(), "[1, 4, 27, 256, 3125, ...]");
+        assert_eq!(parse("plus@range(10)").unwrap().eval_default().unwrap().to_string(), "55");
+        assert_eq!(parse("times@range(10)").unwrap().eval_default().unwrap().to_string(), "3628800");
+        assert_eq!(parse("plus@range(1)").unwrap().eval_default().unwrap().to_string(), "1");
+        assert!(parse("plus@range(0)").unwrap().eval_default().is_err());
 
         assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval_default().unwrap().to_string(), "9");
         test_len_exact(&parse("[1,2,3]+seq+5").unwrap().eval_default().unwrap(), 3);
@@ -280,8 +293,10 @@ mod tests {
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("+", MathOp::eval);
+    keywords.insert("plus", MathOp::eval);
     keywords.insert("-", MathOp::eval);
     keywords.insert("*", MathOp::eval);
+    keywords.insert("times", MathOp::eval);
     keywords.insert("/", MathOp::eval);
     keywords.insert("^", MathOp::eval);
 }
