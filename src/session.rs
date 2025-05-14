@@ -135,6 +135,16 @@ pub enum SessionUpdate<'a> {
     Globals(Vec<String>),
 }
 
+impl<'a> SessionUpdate<'a> {
+    #[allow(unused)]
+    fn unwrap(self) -> &'a Item {
+        match self {
+            Self::History(_, item) => item,
+            _ => panic!("SessionUpdate::unwrap on non-History")
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,10 +166,10 @@ mod tests {
 
         let mut sess = Session::new();
         assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
-        assert_eq!(sess.process(parse("5.$a(6,7)").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(47)));
-        assert_eq!(sess.process(parse("{5.$a(6,7)}").unwrap()).unwrap(), SessionUpdate::History(2, &Item::new_number(47)));
-        assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap(), SessionUpdate::History(3, &Item::new_number(47)));
-        assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}(6,7)").unwrap()).unwrap(), SessionUpdate::History(4, &Item::new_number(47)));
-        assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}@[6,7]").unwrap()).unwrap(), SessionUpdate::History(5, &Item::new_number(47)));
+        assert_eq!(sess.process(parse("5.$a(6,7)").unwrap()).unwrap().unwrap(), &Item::new_number(47));
+        assert_eq!(sess.process(parse("{5.$a(6,7)}").unwrap()).unwrap().unwrap(), &Item::new_number(47));
+        assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
+        assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}(6,7)").unwrap()).unwrap().unwrap(), &Item::new_number(47));
+        assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
     }
 }
