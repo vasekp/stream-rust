@@ -8,7 +8,13 @@ pub(crate) fn op_rules(op: &str) -> (u32, bool) {
         "/" => (4, false),
         "^" => (5, false),
         ".." => (6, false),
-        _ => todo!()
+        "==" => (7, true),
+        "<>" => (7, true),
+        ">" => (7, true),
+        "<" => (7, true),
+        ">=" => (7, true),
+        "<=" => (7, true),
+        _ => todo!("operator '{op}' prec")
     }
 }
 

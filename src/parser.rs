@@ -462,6 +462,7 @@ impl<'str> Parser<'str> {
         struct StackEntry<'str> {
             op: &'str str,
             prec: u32,
+            multi: bool,
             args: Vec<Expr>
         }
         let mut stack: Vec<StackEntry> = vec![];
@@ -472,10 +473,11 @@ impl<'str> Parser<'str> {
                 self.tk.unread(tok);
                 return Ok(None)
             },
-            Some(Token(TC::Oper, sign @ ("+" | "-"))) => {
-                stack.push(StackEntry{op: sign, prec: op_prec(sign), args: vec![]});
+            Some(Token(TC::Oper, op @ ("+" | "-"))) => {
+                let (prec, multi) = op_rules(op);
+                stack.push(StackEntry{op, prec, multi, args: vec![]});
                 self.read_expr_part()?
-                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(sign)))?
+                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?
             },
             Some(tok) => {
                 self.tk.unread(tok);
@@ -513,7 +515,7 @@ impl<'str> Parser<'str> {
                     loop {
                         let Some(mut entry) = stack.pop() else {
                             // No stack: start new
-                            stack.push(StackEntry{op, prec, args: vec![expr]});
+                            stack.push(StackEntry{op, prec, multi, args: vec![expr]});
                             break;
                         };
                         if entry.prec > prec {
@@ -527,17 +529,19 @@ impl<'str> Parser<'str> {
                             entry.args.push(expr);
                             stack.push(entry);
                             break;
-                        } else if entry.prec == prec {
+                        } else if entry.prec == prec && !(entry.multi && multi) {
                             // Same precedence but no bunching: finish old operation and
                             // replace stack top by the new one
                             entry.args.push(expr);
                             expr = Expr::new_op(entry.op, entry.args);
-                            stack.push(StackEntry{op, prec, args: vec![expr]});
+                            stack.push(StackEntry{op, prec, multi, args: vec![expr]});
                             break;
+                        } else if entry.prec == prec {
+                            return Err(ParseError::new(format!("cannot mix with '{}', please rewrite separately", entry.op), op));
                         } else {
                             // Lower precedence: keep the previous stack and add new op on top
                             stack.push(entry);
-                            stack.push(StackEntry{op, prec, args: vec![expr]});
+                            stack.push(StackEntry{op, prec, multi, args: vec![expr]});
                             break;
                         }
                     }
@@ -828,4 +832,16 @@ fn test_prec() {
         vec![Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(1)])])));
     assert!(parse("--1").is_err());
     assert!(parse("*1*2").is_err());
+    // relations and parentheses
+    assert_eq!(parse("(1==2)==(3==4==5)"), Ok(Expr::new_op("==", vec![
+        Expr::new_op("==", vec![Expr::new_number(1), Expr::new_number(2)]),
+        Expr::new_op("==", vec![Expr::new_number(3), Expr::new_number(4), Expr::new_number(5)])])));
+    assert_eq!(parse("1<=2<=3"), Ok(Expr::new_op("<=", vec![
+        Expr::new_number(1), Expr::new_number(2), Expr::new_number(3)])));
+    // This parses but gives a runtime error
+    assert_eq!(parse("1<>2<>3"), Ok(Expr::new_op("<>", vec![
+        Expr::new_number(1), Expr::new_number(2), Expr::new_number(3)])));
+    // Different operations can't be chained
+    assert!(parse("1<2<=3").is_err());
+    // TODO: === etc.
 }

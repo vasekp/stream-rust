@@ -35,13 +35,13 @@ impl MathOp {
                     "*" => Self::mul_func,
                     "/" => Self::div_func,
                     "^" => Self::pow_func,
-                    _ => todo!()
+                    _ => todo!("math op '{op}'")
                 },
             Head::Symbol(sym) =>
                 match sym.as_str() {
                     "plus" => Self::plus_func,
                     "times" => Self::mul_func,
-                    _ => todo!()
+                    _ => todo!("math op '{sym}'")
                 },
             _ => unreachable!()
         }
@@ -119,7 +119,7 @@ impl MathOp {
                     Ok(Item::new_number(lhs / rhs))
                 }
             },
-            _ => Err("exactly 2 argument required".into())
+            _ => Err("exactly 2 arguments required".into())
         }
     }
 
@@ -135,7 +135,7 @@ impl MathOp {
                 };
                 Ok(Item::new_number(base.pow(exp)))
             },
-            _ => Err("exactly 2 argument required".into())
+            _ => Err("exactly 2 arguments required".into())
         }
     }
 }
