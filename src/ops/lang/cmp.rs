@@ -25,12 +25,12 @@ impl CmpOp {
                     ">" => Self::gt_func,
                     "<=" => Self::le_func,
                     ">=" => Self::ge_func,
-                    _ => todo!("cmp op '{op}'")
+                    _ => unreachable!("cmp op '{op}'")
                 },
             Head::Symbol(sym) =>
                 match sym.as_str() {
                     "equal" => Self::eq_func,
-                    _ => todo!("cmp op '{sym}'")
+                    _ => unreachable!("cmp op '{sym}'")
                 },
             _ => unreachable!()
         }

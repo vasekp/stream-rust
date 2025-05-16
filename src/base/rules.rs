@@ -1,26 +1,28 @@
-pub(crate) fn op_rules(op: &str) -> (u32, bool) {
+use crate::base::ParseError;
+
+pub(crate) fn op_rules(op: &str) -> Result<(u32, bool), ParseError> {
     match op {
-        "=" => (1, true),
-        "|" => (2, true),
-        "&" => (3, true),
-        "!" => (4, true),
-        "==" => (5, true),
-        "<>" => (5, true),
-        ">" => (5, true),
-        "<" => (5, true),
-        ">=" => (5, true),
-        "<=" => (5, true),
-        "~" => (6, true),
-        "+" => (7, true),
-        "-" => (7, false),
-        "*" => (8, true),
-        "/" => (8, false),
-        "^" => (9, false),
-        ".." => (10, false),
-        _ => todo!("operator '{op}' prec")
+        "=" => Ok((1, true)),
+        "|" => Ok((2, true)),
+        "&" => Ok((3, true)),
+        "!" => Ok((4, true)),
+        "==" => Ok((5, true)),
+        "<>" => Ok((5, true)),
+        ">" => Ok((5, true)),
+        "<" => Ok((5, true)),
+        ">=" => Ok((5, true)),
+        "<=" => Ok((5, true)),
+        "~" => Ok((6, true)),
+        "+" => Ok((7, true)),
+        "-" => Ok((7, false)),
+        "*" => Ok((8, true)),
+        "/" => Ok((8, false)),
+        "^" => Ok((9, false)),
+        ".." => Ok((10, false)),
+        _ => Err(ParseError::new("undefined operator", op))
     }
 }
 
-pub(crate) fn op_prec(op: &str) -> u32 {
-    op_rules(op).0
+pub(crate) fn op_prec(op: &str) -> Result<u32, ParseError> {
+    op_rules(op).map(|(prec, _multi)| prec)
 }

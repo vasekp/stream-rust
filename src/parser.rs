@@ -474,7 +474,7 @@ impl<'str> Parser<'str> {
                 return Ok(None)
             },
             Some(Token(TC::Oper, op @ ("+" | "-" | "!"))) => {
-                let (prec, multi) = op_rules(op);
+                let (prec, multi) = op_rules(op)?;
                 stack.push(StackEntry{op, prec, multi, args: vec![]});
                 self.read_expr_part()?
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?
@@ -511,7 +511,7 @@ impl<'str> Parser<'str> {
                     src.chain(Link::new(LangItem::Part, args))
                 },
                 (mut expr, Token(TC::Oper, op)) => {
-                    let (prec, multi) = op_rules(op);
+                    let (prec, multi) = op_rules(op)?;
                     loop {
                         let Some(mut entry) = stack.pop() else {
                             // No stack: start new
@@ -846,5 +846,5 @@ fn test_prec() {
         Expr::new_number(1), Expr::new_number(2), Expr::new_number(3)])));
     // Different operations can't be chained
     assert!(parse("1<2<=3").is_err());
-    // TODO: === etc.
+    assert!(parse("1===3").is_err());
 }

@@ -35,13 +35,13 @@ impl MathOp {
                     "*" => Self::mul_func,
                     "/" => Self::div_func,
                     "^" => Self::pow_func,
-                    _ => todo!("math op '{op}'")
+                    _ => unreachable!("math op '{op}'")
                 },
             Head::Symbol(sym) =>
                 match sym.as_str() {
                     "plus" => Self::plus_func,
                     "times" => Self::mul_func,
-                    _ => todo!("math op '{sym}'")
+                    _ => unreachable!("math op '{sym}'")
                 },
             _ => unreachable!()
         }
