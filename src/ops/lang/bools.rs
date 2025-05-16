@@ -45,6 +45,7 @@ mod tests {
         assert_eq!(parse("(false&true)==false").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("1==2|2==2").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("true&false|false&true|true&true").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("with(a=1==2,a)").unwrap().eval_default().unwrap().to_string(), "false");
     }
 }
 
