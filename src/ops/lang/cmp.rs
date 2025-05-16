@@ -112,6 +112,7 @@ mod tests {
         assert_eq!(parse("12>=11>=11").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("12>=11>=12").unwrap().eval_default().unwrap().to_string(), "false");
         assert!(parse("[1]<[2]").unwrap().eval_default().is_err());
+        assert_eq!(parse("1+2==3").unwrap().eval_default().unwrap().to_string(), "true");
     }
 }
 
