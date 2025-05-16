@@ -5,6 +5,7 @@ mod mathops;
 mod join;
 mod args;
 mod cmp;
+mod bools;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     list::init(keywords);
@@ -14,4 +15,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     join::init(keywords);
     args::init(keywords);
     cmp::init(keywords);
+    bools::init(keywords);
 }

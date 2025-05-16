@@ -59,6 +59,13 @@ impl Item {
         }
     }
 
+    pub fn to_bool(&self) -> Result<bool, BaseError> {
+        match self {
+            Item::Bool(x) => Ok(*x),
+            _ => Err(format!("expected boolean value, found {:?}", &self).into())
+        }
+    }
+
     pub fn is_stream(&self) -> bool {
         matches!(self, Item::Stream(_))
     }
