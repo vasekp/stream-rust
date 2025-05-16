@@ -55,7 +55,7 @@ struct Token<'str>(TokenClass, &'str str);
 impl Token<'_> {
     fn new(slice: &str) -> Result<Token, ParseError> {
         use TokenClass::*;
-        const OPERS: &[u8] = b"+-*/^~&|<=>";
+        const OPERS: &[u8] = b"+-*/^~&|!<=>";
         let class = match slice.as_bytes() {
             [b'0'..=b'9', ..] => if slice.contains('_') { BaseNum } else { Number },
             b"true" => Bool(true),
@@ -473,7 +473,7 @@ impl<'str> Parser<'str> {
                 self.tk.unread(tok);
                 return Ok(None)
             },
-            Some(Token(TC::Oper, op @ ("+" | "-"))) => {
+            Some(Token(TC::Oper, op @ ("+" | "-" | "!"))) => {
                 let (prec, multi) = op_rules(op);
                 stack.push(StackEntry{op, prec, multi, args: vec![]});
                 self.read_expr_part()?
@@ -526,6 +526,9 @@ impl<'str> Parser<'str> {
                         } else if entry.prec == prec && entry.op == op && multi {
                             // We have the same operator, and it allows multiple parameters:
                             // add current expr to them and put entry back
+                            if entry.args.len() == 0 && op == "!" { // special case: !x is not but x!y is xor; mixing the two is ambiguous
+                                return Err(ParseError::new("cannot mix prefix and infix", op));
+                            }
                             entry.args.push(expr);
                             stack.push(entry);
                             break;
