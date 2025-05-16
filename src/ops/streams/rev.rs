@@ -23,7 +23,7 @@ impl Rev {
                 Ok(Item::new_stream(Rev{head: rnode.head, source: source.into(), length: len}))
             },
             _ => {
-                let mut vec = source.iter().collect::<Result<Vec<_>, _>>()?;
+                let mut vec = source.listout()?;
                 vec.reverse();
                 Ok(Item::new_stream(List{vec, is_string: source.is_string()}))
             }

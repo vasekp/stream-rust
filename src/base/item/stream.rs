@@ -72,6 +72,23 @@ impl dyn Stream {
         OwnedStreamIter::from(self)
     }
 
+    pub(crate) fn listout(&self) -> Result<Vec<Item>, StreamError> {
+        let mut vec = Vec::new();
+        match self.length() {
+            Length::Exact(len) | Length::AtMost(len) => {
+                if let Some(len) = len.to_usize() {
+                    vec.reserve(len);
+                }
+            },
+            _ => ()
+        };
+        for res in self.iter() {
+            check_stop!();
+            vec.push(res?);
+        }
+        Ok(vec)
+    }
+
     /// Write the contents of the stream (i.e., the items returned by its iterator) in a
     /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
     /// maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),

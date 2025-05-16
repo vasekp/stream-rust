@@ -21,14 +21,14 @@ impl Display for BaseError {
 
 /// The runtime error type with an indication of the [`Expr`] whose evaluation caused it.
 #[derive(PartialEq, Debug, Clone)]
-pub struct StreamError {
-    reason: BaseError,
-    expr: Expr
+pub enum StreamError {
+    ExprError { reason: BaseError, expr: Expr },
+    Interrupt
 }
 
 impl StreamError {
     pub fn new(reason: impl Into<BaseError>, expr: impl Into<Expr>) -> StreamError {
-        StreamError{reason: reason.into(), expr: expr.into()}
+        StreamError::ExprError{reason: reason.into(), expr: expr.into()}
     }
 }
 
@@ -36,7 +36,10 @@ impl std::error::Error for StreamError { }
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.expr.describe(), self.reason)
+        match self {
+            Self::ExprError { reason, expr } => write!(f, "{}: {}", expr.describe(), reason),
+            Self::Interrupt => write!(f, "interrupted")
+        }
     }
 }
 
@@ -51,6 +54,21 @@ macro_rules! try_with {
 }
 
 pub(crate) use try_with;
+
+macro_rules! check_stop {
+    () => {
+        if stop::should_stop() {
+            return Err(StreamError::Interrupt);
+        }
+    };
+    (iter) => {
+        if stop::should_stop() {
+            return Some(Err(StreamError::Interrupt));
+        }
+    }
+}
+
+pub(crate) use check_stop;
 
 
 /// The error type returned by [`parser::parse`](crate::parser::parse). Contains the description of

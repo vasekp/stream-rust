@@ -44,6 +44,7 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
             }
         }
         while !n.is_zero() {
+            check_stop!();
             match self.next() {
                 Some(Ok(_)) => (),
                 Some(Err(err)) => return Err(err),

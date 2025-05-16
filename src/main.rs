@@ -11,6 +11,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build(),
     rl::history::MemHistory::new())?;
 
+    ctrlc::set_handler(stream::base::stop::send_stop)
+        .expect("Error setting Ctrl-C handler");
+
     let mut sess = Session::new();
 
     while let Ok(input) = rl.readline("> ") {

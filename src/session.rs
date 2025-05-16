@@ -21,6 +21,7 @@ impl Session {
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
     pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
+        stop::reset_stop();
         match expr {
             Expr::Eval(Node { head: Head::Oper(op), source: None, mut args }) if op == "=" => {
                 let rhs = args.pop().expect("= should have at least 2 args");

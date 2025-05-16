@@ -26,9 +26,22 @@ impl Last {
                         it.next().expect("1 item should remain after skip(len - 1)")
                     },
                     Length::Infinite => Err(StreamError::new("stream is infinite", rnode)),
-                    _ => stm.iter()
-                            .last()
-                            .unwrap_or_else(|| Err(StreamError::new("stream is empty", rnode)))
+                    _ => {
+                        let mut iter = stm.iter();
+                        let mut last = match iter.next() {
+                            Some(Ok(item)) => item,
+                            Some(Err(err)) => return Err(err),
+                            None => {
+                                drop(iter);
+                                return Err(StreamError::new("stream is empty", rnode))
+                            }
+                        };
+                        for res in iter {
+                            check_stop!();
+                            last = res?;
+                        }
+                        Ok(last)
+                    }
                 }
             },
             RNodeS { source: Item::Stream(ref stm), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
@@ -55,6 +68,7 @@ impl Last {
                             };
                             let mut vec = VecDeque::with_capacity(size);
                             for res in stm.iter() {
+                                check_stop!();
                                 let item = res?;
                                 if vec.len() == size {
                                     vec.pop_front();

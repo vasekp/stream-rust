@@ -60,6 +60,7 @@ impl Iterator for FlattenIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
+            check_stop!(iter);
             let res = match self.iters.last_mut() {
                 Some(iter) => iter.next(),
                 None => self.outer.next()
@@ -88,6 +89,7 @@ impl Iterator for FlattenIter<'_> {
 impl SIterator for FlattenIter<'_> {
     fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
+            check_stop!();
             if n.is_zero() {
                 return Ok(None);
             }
