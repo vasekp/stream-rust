@@ -130,6 +130,29 @@ impl Item {
             Stream(_) => "stream"
         }
     }
+
+    pub(crate) fn try_eq(&self, other: &Self) -> Result<bool, BaseError> {
+        use Item::*;
+        Ok(match (self, other) {
+            (Number(x1), Number(x2)) => x1 == x2,
+            (Bool(x1), Bool(x2)) => x1 == x2,
+            (Char(x1), Char(x2)) => x1 == x2,
+            (Stream(x1), Stream(x2)) => {
+                let l1 = x1.length();
+                let l2 = x2.length();
+                if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
+                for (x, y) in x1.iter().zip(x2.iter()) {
+                    check_stop!();
+                    match (x, y) {
+                        (Err(_), _) | (_, Err(_)) => return Ok(false),
+                        (Ok(x), Ok(y)) => if !x.try_eq(&y)? { return Ok(false); }
+                    }
+                }
+                true
+            },
+            _ => false
+        })
+    }
 }
 
 impl Default for Item {
@@ -164,8 +187,9 @@ impl Describe for Item {
 }
 
 impl PartialEq for Item {
-    /// `PartialEq::eq()` must be used with caution because if asked of two infinite streams it
-    /// will never return.
+    /// `PartialEq::eq()` must be used with caution because if asked to compare two infinite streams it
+    /// will never return. User-facing code should use [`Item::try_eq()`] which is prepared to handle
+    /// interruptions.
     fn eq(&self, other: &Self) -> bool {
         use Item::*;
         match (self, other) {

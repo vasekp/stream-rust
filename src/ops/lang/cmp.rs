@@ -40,7 +40,7 @@ impl CmpOp {
         let mut iter = items.iter();
         let first = iter.next().unwrap(); // args checked to be nonempty in eval()
         for item in iter {
-            if item != first {
+            if !item.try_eq(first)? {
                 return Ok(false)
             }
         }
@@ -49,7 +49,7 @@ impl CmpOp {
 
     fn ineq_func(items: &[Item]) -> Result<bool, BaseError> {
         match items {
-            [lhs, rhs] => Ok(lhs != rhs),
+            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
             _ => Err("exactly 2 arguments required".into())
         }
     }

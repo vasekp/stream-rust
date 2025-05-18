@@ -1,20 +1,40 @@
 use crate::base::*;
 use std::fmt::{Display, Formatter, Debug};
 
+pub(crate) struct Interrupt;
+
 /// The base error returned by helper functions. In most situations this is intended to be
 /// turned into [`StreamError`] by supplementing a [`Expr`].
 #[derive(Debug, PartialEq, Clone)]
-pub struct BaseError(String);
+pub enum BaseError {
+    String(String),
+    Interrupt
+}
 
-impl<T> From<T> for BaseError where T: Into<String> {
-    fn from(string: T) -> BaseError {
-        BaseError(string.into())
+impl From<String> for BaseError {
+    fn from(string: String) -> BaseError {
+        BaseError::String(string)
+    }
+}
+
+impl From<&str> for BaseError {
+    fn from(string: &str) -> BaseError {
+        BaseError::String(string.to_string())
+    }
+}
+
+impl From<Interrupt> for BaseError {
+    fn from(_: Interrupt) -> BaseError {
+        BaseError::Interrupt
     }
 }
 
 impl Display for BaseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        match self {
+            Self::String(s) => write!(f, "{s}"),
+            Self::Interrupt => write!(f, "interrupted")
+        }
     }
 }
 
@@ -22,17 +42,26 @@ impl Display for BaseError {
 /// The runtime error type with an indication of the [`Expr`] whose evaluation caused it.
 #[derive(PartialEq, Debug, Clone)]
 pub enum StreamError {
-    ExprError { reason: BaseError, expr: Expr },
+    ExprError { reason: String, expr: Expr },
     Interrupt
 }
 
 impl StreamError {
-    pub fn new(reason: impl Into<BaseError>, expr: impl Into<Expr>) -> StreamError {
-        StreamError::ExprError{reason: reason.into(), expr: expr.into()}
+    pub fn new(base: impl Into<BaseError>, expr: impl Into<Expr>) -> StreamError {
+        match base.into() {
+            BaseError::String(reason) => StreamError::ExprError{reason, expr: expr.into()},
+            BaseError::Interrupt => StreamError::Interrupt
+        }
     }
 }
 
 impl std::error::Error for StreamError { }
+
+impl From<Interrupt> for StreamError {
+    fn from(_: Interrupt) -> StreamError {
+        StreamError::Interrupt
+    }
+}
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -58,7 +87,7 @@ pub(crate) use try_with;
 macro_rules! check_stop {
     () => {
         if stop::should_stop() {
-            return Err(StreamError::Interrupt);
+            Err(Interrupt)?;
         }
     };
     (iter) => {
