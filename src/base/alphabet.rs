@@ -63,6 +63,12 @@ impl Alphabet {
         let (index2, _) = self.ord_case(rhs)?;
         Ok(self.chr_case(&Number::from(index1 + index2), case))
     }
+
+    /// Compares two characters
+    pub fn cmp(&self, x: &Char, y: &Char) -> Result<std::cmp::Ordering, BaseError> {
+        let ((ox, _), (oy, _)) = (self.ord_case(x)?, self.ord_case(y)?);
+        Ok(ox.cmp(&oy))
+    }
 }
 
 #[cfg(test)]

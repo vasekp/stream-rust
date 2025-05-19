@@ -150,6 +150,36 @@ impl Item {
             _ => false
         })
     }
+
+    pub(crate) fn lex_cmp(&self, other: &Self, env: &Rc<Env>) -> Result<std::cmp::Ordering, BaseError> {
+        use Item::*;
+        use std::cmp::Ordering;
+        Ok(match (self, other) {
+            (Number(x), Number(y)) => x.cmp(&y),
+            (Bool(x), Bool(y)) => x.cmp(&y),
+            (Char(x), Char(y)) => env.alphabet().cmp(&x, &y)?,
+            (Stream(x), Stream(y)) => {
+                let mut xi = x.iter();
+                let mut yi = y.iter();
+                loop {
+                    check_stop!();
+                    let lhs = xi.next().transpose()?;
+                    let rhs = yi.next().transpose()?;
+                    match (lhs, rhs) {
+                        (None, None) => break Ordering::Equal,
+                        (Some(_), None) => break Ordering::Greater,
+                        (None, Some(_)) => break Ordering::Less,
+                        (Some(lhs), Some(rhs)) => match lhs.lex_cmp(&rhs, env)? {
+                            Ordering::Less => break Ordering::Less,
+                            Ordering::Greater => break Ordering::Greater,
+                            Ordering::Equal => continue
+                        }
+                    }
+                }
+            },
+            (x, y) => return Err(format!("can't compare {x:?} with {y:?}").into())
+        })
+    }
 }
 
 impl Default for Item {

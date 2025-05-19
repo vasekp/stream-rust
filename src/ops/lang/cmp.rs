@@ -74,14 +74,13 @@ impl CmpOp {
         let mut iter = items.iter();
         let mut prev = iter.next()
             .unwrap() // args checked to be nonempty in eval()
-            .as_num()?
-            .to_owned();
+            .as_num()?;
         for item in iter {
             let next = item.as_num()?;
-            if !cmp(&prev, next) {
+            if !cmp(prev, next) {
                 return Ok(false);
             }
-            prev = next.to_owned();
+            prev = next;
         }
         Ok(true)
     }
@@ -111,6 +110,14 @@ mod tests {
         assert_eq!(parse("12>=11>=10").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("12>=11>=11").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("12>=11>=12").unwrap().eval_default().unwrap().to_string(), "false");
+        assert!(parse("1<[1]").unwrap().eval_default().is_err());
+        assert!(parse("1<'a'").unwrap().eval_default().is_err());
+        assert_eq!(parse("'a'=='a'").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("'a'=='A'").unwrap().eval_default().unwrap().to_string(), "false");
+        assert_eq!(parse("\"abc\"==\"abc\"").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("\"abc\"==['a','b','c']").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("\"abc\"==\"ABC\"").unwrap().eval_default().unwrap().to_string(), "false");
+        assert!(parse("1<\"a\"").unwrap().eval_default().is_err());
         assert!(parse("[1]<[2]").unwrap().eval_default().is_err());
         assert_eq!(parse("1+2==3").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("[1,2,'a']:{1+#}==[2,3]").unwrap().eval_default().unwrap().to_string(), "false");
