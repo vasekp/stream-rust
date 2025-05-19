@@ -143,10 +143,7 @@ impl Item {
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
                 for (x, y) in x1.iter().zip(x2.iter()) {
                     check_stop!();
-                    match (x, y) {
-                        (Err(_), _) | (_, Err(_)) => return Ok(false),
-                        (Ok(x), Ok(y)) => if !x.try_eq(&y)? { return Ok(false); }
-                    }
+                    if !x?.try_eq(&y?)? { return Ok(false); }
                 }
                 true
             },
