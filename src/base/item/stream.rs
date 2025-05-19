@@ -64,9 +64,10 @@ pub trait Stream: DynClone + Describe {
 impl dyn Stream {
     /// Consume this `Stream` and turn it into a one-time standalone [`SIterator`].
     ///
-    /// To avoid a large amount of code duplication, a `Stream` only needs to implement [`iter()`], 
-    /// which takes it by reference. This metod creates a self-referential struct which holds the 
-    /// owned instance for the duration of its lifetime.
+    /// To avoid a large amount of code duplication, a `Stream` only needs to implement
+    /// [`iter()`](Stream::iter), which takes it by reference. This metod creates
+    /// a self-referential struct which holds the owned instance for the duration
+    /// of its lifetime.
     #[allow(clippy::should_implement_trait)]
     pub fn into_iter(self: Box<Self>) -> OwnedStreamIter {
         OwnedStreamIter::from(self)
