@@ -114,8 +114,11 @@ mod tests {
         assert!(parse("1<'a'").unwrap().eval_default().is_err());
         assert_eq!(parse("'a'=='a'").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("'a'=='A'").unwrap().eval_default().unwrap().to_string(), "false");
+        assert_eq!(parse("[]==[]").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("\"\"==\"\"").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("\"\"==[]").unwrap().eval_default().unwrap().to_string(), "false");
         assert_eq!(parse("\"abc\"==\"abc\"").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("\"abc\"==['a','b','c']").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("\"abc\"==['a','b','c']").unwrap().eval_default().unwrap().to_string(), "false");
         assert_eq!(parse("\"abc\"==\"ABC\"").unwrap().eval_default().unwrap().to_string(), "false");
         assert!(parse("1<\"a\"").unwrap().eval_default().is_err());
         assert!(parse("[1]<[2]").unwrap().eval_default().is_err());

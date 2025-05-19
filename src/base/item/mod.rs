@@ -138,6 +138,7 @@ impl Item {
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
             (Stream(x1), Stream(x2)) => {
+                if x1.is_string().is_true() != x2.is_string().is_true() { return Ok(false); }
                 let l1 = x1.length();
                 let l2 = x2.length();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
@@ -158,7 +159,9 @@ impl Item {
             (Number(x), Number(y)) => x.cmp(&y),
             (Bool(x), Bool(y)) => x.cmp(&y),
             (Char(x), Char(y)) => env.alphabet().cmp(&x, &y)?,
-            (Stream(x), Stream(y)) => {
+            (Stream(x), Stream(y))
+                if x.is_string().is_true() == y.is_string().is_true()
+            => {
                 let mut xi = x.iter();
                 let mut yi = y.iter();
                 loop {

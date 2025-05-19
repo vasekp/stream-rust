@@ -59,7 +59,7 @@ mod tests {
         assert_eq!(parse("[1,[2,[3]]]<<[1,[2,[4]]]").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("[1,[2,[3]]]<<=[1,[2,[3]]]").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("[1,[2,[3]]]<<=[1,[2,[2]]]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("\"ab\"<<=['a','b']").unwrap().eval_default().unwrap().to_string(), "true");
+        assert!(parse("\"ab\"<<=['a','b']").unwrap().eval_default().is_err());
         assert_eq!(parse(r#""ab"<<="abc"<<="abc"<<="abd"<<="ac""#).unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse(r#""ab"<<"abc"<<"abc"<<"abd"<<"ac""#).unwrap().eval_default().unwrap().to_string(), "false");
         assert_eq!(parse(r#""ab"<<"abc"<<"abd"<<"ac""#).unwrap().eval_default().unwrap().to_string(), "true");
