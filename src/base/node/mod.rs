@@ -20,7 +20,8 @@ mod tests;
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
 /// happens in [`Expr::eval()`].
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Node {
     pub head: Head,
     pub source: Option<Box<Expr>>,
@@ -230,7 +231,7 @@ impl Node {
                         _ => ret.push(')')
                     };
                 },
-                None => if head == &Head::Lang(LangItem::List) {
+                None => if matches!(head, Head::Lang(LangItem::List)) {
                     ret += "[]";
                 }
             }
@@ -241,7 +242,7 @@ impl Node {
 
 impl Describe for Node {
     fn describe_prec(&self, prec: u32) -> String {
-        if self.head == Head::Lang(LangItem::Args) {
+        if matches!(self.head, Head::Lang(LangItem::Args)) {
             let mut ret = String::new();
             if let Some(source) = &self.source {
                 ret += &source.describe_prec(u32::MAX);

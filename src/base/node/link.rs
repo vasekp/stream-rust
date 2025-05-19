@@ -1,7 +1,8 @@
 use crate::base::*;
 
 /// A precursor of [`Node`] which type-guarantees that the source is left empty.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Link {
     pub head: Head,
     pub args: Vec<Expr>

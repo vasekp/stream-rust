@@ -2,7 +2,8 @@ use crate::base::*;
 
 /// A variant of [`Node`] in which all the arguments and source are type-guaranteed to be evaluated.
 /// This is achieved by using [`Item`] instead of [`Expr`], avoiding the possibility of [`Expr::Eval`].
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct ENode {
     pub head: Head,
     pub source: Option<Item>,

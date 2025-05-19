@@ -130,7 +130,7 @@ impl Default for Session {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub enum SessionUpdate<'a> {
     History(usize, &'a Item),
     Globals(Vec<String>),

@@ -183,10 +183,12 @@ impl Describe for Item {
     }
 }
 
+// `PartialEq::eq()` must be used with caution because if asked of two infinite streams it
+// will never return. This implementation is appropriate for tests only where predictable streams
+// are being compared, and as such is only available for #[cfg(test)]. For user-facing use
+// `Item::try_eq()` which can handle interruption.
+#[cfg(test)]
 impl PartialEq for Item {
-    /// `PartialEq::eq()` must be used with caution because if asked to compare two infinite streams it
-    /// will never return. User-facing code should use [`Item::try_eq()`] which is prepared to handle
-    /// interruptions.
     fn eq(&self, other: &Self) -> bool {
         use Item::*;
         match (self, other) {

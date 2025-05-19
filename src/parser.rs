@@ -623,9 +623,15 @@ impl<'str> Parser<'str> {
 /// ```
 /// use streamlang as stream;
 /// use stream::base::*;
-/// assert_eq!(stream::parse("a.b(3,4)"),
-///     Ok(Expr::new_node("a", vec![])
-///         .chain(Link::new("b", vec![Expr::new_number(3), Expr::new_number(4)]))));
+///
+/// let s1 = stream::parse("range(3):{#^2}").unwrap();
+/// assert_eq!(s1.describe(), "range(3):{#^2}");
+///
+/// // Manual creation
+/// let block = Expr::new_op("^", vec![Expr::Repl(Subst::Input(None)), Expr::new_number(2)]);
+/// let s2 = Expr::new_node("range", vec![Expr::new_number(3)])
+///     .chain(Link::new(LangItem::Map, vec![Expr::new_node(block, vec![])]));
+/// assert_eq!(s2.describe(), "range(3):{#^2}");
 /// ```
 pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
     Parser::parse(input)

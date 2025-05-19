@@ -3,7 +3,8 @@ use std::fmt::{Display, Formatter, Debug};
 
 /// The base error returned by helper functions. In most situations this is intended to be
 /// turned into [`StreamError`] by supplementing a [`Expr`].
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum BaseError {
     String(String),
     StreamError(Box<StreamError>)
@@ -38,7 +39,8 @@ impl Display for BaseError {
 
 
 /// The runtime error type with an indication of the [`Expr`] whose evaluation caused it.
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum StreamError {
     ExprError { reason: String, expr: Expr },
     Interrupt

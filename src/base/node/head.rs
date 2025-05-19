@@ -3,7 +3,8 @@ use crate::base::*;
 /// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
 /// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Head {
     Symbol(String),
     Oper(String),
