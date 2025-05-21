@@ -57,7 +57,11 @@ impl Alphabet {
                 let ix: usize = ord.rem_euclid(&Number::from(vec.len()))
                     .try_into().unwrap(); // rem_euclid(vec.len()) < vec.len() <= usize::MAX
                 let c = &vec[ix];
-                if case == CharCase::Upper { c.to_uppercase() } else { c.to_owned() }
+                match case {
+                    CharCase::Upper => c.to_uppercase(),
+                    CharCase::Lower => c.to_lowercase(),
+                    CharCase::Indeterminate => c.to_owned()
+                }
             }
         }
     }
