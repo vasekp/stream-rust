@@ -3,6 +3,7 @@ mod streams;
 mod strings;
 pub(crate) mod selfref;
 mod with;
+mod alpha;
 
 #[cfg(test)]
 mod testutils;
@@ -13,6 +14,7 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     strings::init(keywords);
     selfref::init(keywords);
     with::init(keywords);
+    alpha::init(keywords);
 
     #[cfg(test)]
     testutils::init(keywords);

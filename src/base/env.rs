@@ -8,6 +8,7 @@ use std::collections::HashMap;
 #[derive(Default, Clone)]
 pub struct Env {
     pub vars: HashMap<String, Rhs>,
+    pub alpha: Alphabet,
 }
 
 impl Env {
@@ -23,7 +24,7 @@ impl Env {
     }
 
     /// The alphabet used for ordering characters and arithmetic operations on them.
-    pub fn alphabet(&self) -> &Alphabet { &Alphabet::Std26 }
+    pub fn alphabet(&self) -> &Alphabet { &self.alpha }
 
     fn describe(&self) -> String {
         let mut iter = self.vars.iter()
