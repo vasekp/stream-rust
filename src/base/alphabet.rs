@@ -27,15 +27,13 @@ impl Alphabet {
                     _ => Err(format!("{chr}: not in alphabet").into())
                 }
             },
-            Alphabet::Listed{vec, map} => {
+            Alphabet::Listed{map, ..} => {
                 if let Some(rec) = map.get(chr) {
                     Ok(*rec)
+                } else if let Some((ix, _)) = map.get(&chr.to_lowercase()) {
+                    Ok((*ix, CharCase::Indeterminate))
                 } else {
-                    let chr = chr.to_lowercase();
-                    match vec.iter().position(|x| x == &chr) {
-                        Some(ix) => Ok(((ix + 1) as isize, CharCase::Indeterminate)),
-                        None => Err(format!("{chr}: not in alphabet").into())
-                    }
+                    Err(format!("{chr}: not in alphabet").into())
                 }
             }
         }
@@ -54,7 +52,7 @@ impl Alphabet {
                 })
             },
             Alphabet::Listed{vec, ..} => {
-                let ix: usize = ord.rem_euclid(&Number::from(vec.len()))
+                let ix: usize = (ord - 1i32).rem_euclid(&Number::from(vec.len()))
                     .try_into().unwrap(); // rem_euclid(vec.len()) < vec.len() <= usize::MAX
                 let c = &vec[ix];
                 match case {
@@ -152,15 +150,16 @@ mod tests {
 
     #[test]
     fn test_custom_alpha() {
-        let abc = Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("ch"), Item::new_char('a')]).unwrap();
+        let abc = Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap();
         assert_eq!(abc.ord_case(&Char::from('a')), Ok((4isize, CharCase::Lower)));
         assert_eq!(abc.ord_case(&Char::from('Á')), Ok((2isize, CharCase::Upper)));
         assert_eq!(abc.ord_case(&Char::from("CH")), Ok((3isize, CharCase::Upper)));
         assert_eq!(abc.ord_case(&Char::from("Ch")), Ok((3isize, CharCase::Indeterminate)));
         assert!(abc.ord_case(&Char::from('c')).is_err());
-        assert_eq!(abc.chr_case(&Number::from(97), CharCase::Upper), Char::from('Á'));
-        assert_eq!(abc.chr_case(&Number::from(98), CharCase::Upper), Char::from("CH"));
-        assert_eq!(abc.chr_case(&Number::from(98), CharCase::Indeterminate), Char::from("ch"));
+        assert_eq!(abc.chr_case(&Number::from(3), CharCase::Lower), Char::from("ch"));
+        assert_eq!(abc.chr_case(&Number::from(98), CharCase::Upper), Char::from('Á'));
+        assert_eq!(abc.chr_case(&Number::from(99), CharCase::Upper), Char::from("CH"));
+        assert_eq!(abc.chr_case(&Number::from(99), CharCase::Indeterminate), Char::from("Ch"));
 
         let abc = Alphabet::try_from(vec![Item::new_char('❤')]).unwrap();
         assert_eq!(abc.ord_case(&Char::from("❤")), Ok((1isize, CharCase::Indeterminate)));
