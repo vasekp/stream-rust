@@ -9,7 +9,7 @@ pub enum Char {
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum CharCase {
-    Undefined,
+    Indeterminate,
     Lower,
     Upper
 }
@@ -20,11 +20,11 @@ impl Char {
             Char::Single(ch) =>
                 if ch.is_lowercase() { CharCase::Lower }
                 else if ch.is_uppercase() { CharCase::Upper }
-                else { CharCase::Undefined },
+                else { CharCase::Indeterminate },
             Char::Multi(ch) =>
                 if ch == &ch.to_lowercase() { CharCase::Lower }
                 else if ch == &ch.to_uppercase() { CharCase::Upper }
-                else { CharCase::Undefined }
+                else { CharCase::Indeterminate }
         }
     }
 

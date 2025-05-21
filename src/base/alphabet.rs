@@ -110,7 +110,7 @@ mod tests {
         assert!(abc.ord_case(&Char::from("ch")).is_err());
 
         assert_eq!(abc.chr_case(&Number::from(1), CharCase::Lower), Char::from('a'));
-        assert_eq!(abc.chr_case(&Number::from(0), CharCase::Undefined), Char::from('z'));
+        assert_eq!(abc.chr_case(&Number::from(0), CharCase::Indeterminate), Char::from('z'));
         assert_eq!(abc.chr_case(&Number::from(26), CharCase::Upper), Char::from('Z'));
         assert_eq!(abc.chr_case(&Number::from(100), CharCase::Lower), Char::from('v'));
         assert_eq!(abc.chr_case(&Number::from(-1), CharCase::Lower), Char::from('y'));
@@ -124,7 +124,7 @@ mod tests {
         assert_eq!(abc.ord_case(&Char::from('a')), Ok((4isize, CharCase::Lower)));
         assert_eq!(abc.ord_case(&Char::from('Á')), Ok((2isize, CharCase::Upper)));
         assert_eq!(abc.ord_case(&Char::from("CH")), Ok((3isize, CharCase::Upper)));
-        assert_eq!(abc.ord_case(&Char::from("Ch")), Ok((3isize, CharCase::Undefined)));
+        assert_eq!(abc.ord_case(&Char::from("Ch")), Ok((3isize, CharCase::Indeterminate)));
         assert!(abc.ord_case(&Char::from('c')).is_err());
     }
 }
