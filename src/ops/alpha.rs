@@ -10,9 +10,6 @@ fn eval_alpha(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let alpha = try_with!(errnode,
         alpha.to_stream()?
             .listout()?
-            .into_iter()
-            .map(|item| item.into_char())
-            .collect::<Result<Vec<Char>, _>>()?
             .try_into()?);
     let mut new_env = (**env).clone();
     new_env.alpha = alpha;
@@ -29,6 +26,8 @@ mod tests {
     fn test_alpha() {
         use crate::parser::parse;
         assert_eq!(parse("alpha(\"bác\"~'ch', 'b' << 'á' << 'c' << 'ch')").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("alpha(\"bác\", 'B' << 'Á' << 'C')").unwrap().eval_default().unwrap().to_string(), "true");
+        assert_eq!(parse("alpha(\"bác\", \"b á c d\".shift(1))").unwrap().eval_default().unwrap().to_string(), "\"c b á d\"");
+        assert_eq!(parse("alpha(['b', 'á', 'c'], 'B' << 'Á' << 'C')").unwrap().eval_default().unwrap().to_string(), "true");
+        assert!(parse("alpha(['a','b', 1], 0)").unwrap().eval_default().is_err());
     }
 }

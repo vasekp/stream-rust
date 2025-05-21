@@ -89,15 +89,20 @@ impl Alphabet {
     }
 }
 
-impl TryFrom<Vec<Char>> for Alphabet {
+impl TryFrom<Vec<Item>> for Alphabet {
     type Error = BaseError;
 
-    fn try_from(vec: Vec<Char>) -> Result<Alphabet, BaseError> {
+    fn try_from(vec: Vec<Item>) -> Result<Alphabet, BaseError> {
         let mut map = HashMap::new();
         if vec.is_empty() {
             return Err("alphabet is empty".into());
         }
-        for (ix, chr) in vec.iter().enumerate() {
+        let mut char_vec = Vec::with_capacity(vec.len());
+        for (ix, item) in vec.into_iter().enumerate() {
+            let chr = match item {
+                Item::Char(chr) => chr,
+                _ => return Err(format!("expected character, found {item:?}").into())
+            };
             let ix = (ix + 1) as isize;
             let lcase = chr.to_lowercase();
             let ucase = chr.to_uppercase();
@@ -110,8 +115,9 @@ impl TryFrom<Vec<Char>> for Alphabet {
             if prev.is_some() {
                 return Err(format!("duplicate character {chr}").into());
             }
+            char_vec.push(chr);
         }
-        Ok(Alphabet::Listed{vec, map})
+        Ok(Alphabet::Listed{vec: char_vec, map})
     }
 }
 
@@ -142,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_custom_alpha() {
-        let abc = Alphabet::try_from(vec![Char::from('b'), Char::from('á'), Char::from("ch"), Char::from('a')]).unwrap();
+        let abc = Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("ch"), Item::new_char('a')]).unwrap();
         assert_eq!(abc.ord_case(&Char::from('a')), Ok((4isize, CharCase::Lower)));
         assert_eq!(abc.ord_case(&Char::from('Á')), Ok((2isize, CharCase::Upper)));
         assert_eq!(abc.ord_case(&Char::from("CH")), Ok((3isize, CharCase::Upper)));
@@ -152,12 +158,12 @@ mod tests {
         assert_eq!(abc.chr_case(&Number::from(98), CharCase::Upper), Char::from("CH"));
         assert_eq!(abc.chr_case(&Number::from(98), CharCase::Indeterminate), Char::from("ch"));
 
-        let abc = Alphabet::try_from(vec![Char::from('❤')]).unwrap();
+        let abc = Alphabet::try_from(vec![Item::new_char('❤')]).unwrap();
         assert_eq!(abc.ord_case(&Char::from("❤")), Ok((1isize, CharCase::Indeterminate)));
 
-        assert!(Alphabet::try_from(vec![Char::from('a'), Char::from('A')]).is_err());
-        assert!(Alphabet::try_from(vec![Char::from('İ'), Char::from("i\u{307}")]).is_err());
-        assert!(Alphabet::try_from(vec![Char::from("ch"), Char::from("Ch")]).is_err());
+        assert!(Alphabet::try_from(vec![Item::new_char('a'), Item::new_char('A')]).is_err());
+        assert!(Alphabet::try_from(vec![Item::new_char('İ'), Item::new_char("i\u{307}")]).is_err());
+        assert!(Alphabet::try_from(vec![Item::new_char("ch"), Item::new_char("Ch")]).is_err());
         assert!(Alphabet::try_from(vec![]).is_err());
     }
 }
