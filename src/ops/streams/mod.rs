@@ -9,6 +9,7 @@ mod last;
 mod rev;
 mod nest;
 mod flatten;
+mod sort;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     seq::init(keywords);
@@ -22,4 +23,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     rev::init(keywords);
     nest::init(keywords);
     flatten::init(keywords);
+    sort::init(keywords);
 }
