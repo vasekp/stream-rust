@@ -27,6 +27,24 @@ impl Char {
                 else { CharCase::Undefined }
         }
     }
+
+    pub fn to_lowercase(&self) -> Char {
+        match self {
+            Char::Single(ch) => {
+                if ch.is_lowercase() {
+                    Char::Single(*ch)
+                } else {
+                    let mut lcase = ch.to_lowercase();
+                    if lcase.len() == 1 {
+                        Char::Single(lcase.next().unwrap())
+                    } else {
+                        Char::Multi(lcase.to_string())
+                    }
+                }
+            },
+            Char::Multi(ch) => Char::Multi(ch.to_lowercase())
+        }
+    }
 }
 
 impl From<char> for Char {

@@ -2,11 +2,12 @@ use crate::base::*;
 use num::traits::Euclid;
 
 /// The notion of alphabet ordering in Stream.
+#[derive(Clone)]
 pub enum Alphabet {
     /// Plain English 26-letter alphabet.
     Std26,
     /// An alphabet ordering created by explicitly listing the letters in order.
-    _Listed(Vec<Char>)
+    Listed(Vec<Char>)
 }
 
 impl Alphabet {
@@ -24,7 +25,14 @@ impl Alphabet {
                     _ => Err(format!("{chr}: not in alphabet").into())
                 }
             },
-            _ => todo!()
+            Alphabet::Listed(vec) => {
+                let case = chr.case();
+                let chr = chr.to_lowercase();
+                match vec.iter().position(|x| x == &chr) {
+                    Some(ix) => Ok(((ix + 1) as isize, case)),
+                    None => Err(format!("{chr}: not in alphabet").into())
+                }
+            }
         }
     }
 
@@ -40,7 +48,11 @@ impl Alphabet {
                     _ => c
                 })
             },
-            _ => todo!()
+            Alphabet::Listed(vec) => {
+                let ix: usize = ord.rem_euclid(&Number::from(vec.len()))
+                    .try_into().unwrap(); // rem_euclid(vec.len()) < vec.len() <= usize::MAX
+                vec[ix].clone()
+            }
         }
     }
 
@@ -53,7 +65,10 @@ impl Alphabet {
                 };
                 matches!(ch.to_ascii_lowercase().try_into(), Ok(b'a'..=b'z'))
             },
-            _ => todo!()
+            Alphabet::Listed(vec) => {
+                let chr = chr.to_lowercase();
+                vec.iter().any(|x| x == &chr)
+            }
         }
     }
 
@@ -71,6 +86,21 @@ impl Alphabet {
     }
 }
 
+impl From<Vec<Char>> for Alphabet {
+    fn from(vec: Vec<Char>) -> Alphabet {
+        // TODO lowercase
+        // TODO check uniq
+        // TODO check nonempty
+        Alphabet::Listed(vec)
+    }
+}
+
+impl Default for Alphabet {
+    fn default() -> Alphabet {
+        Alphabet::Std26
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,7 +112,7 @@ mod tests {
         assert_eq!(abc.ord_case(&Char::from('Z')), Ok((26isize, CharCase::Upper)));
         assert!(abc.ord_case(&Char::from('@')).is_err());
         assert!(abc.ord_case(&Char::from('á')).is_err());
-        assert!(abc.ord_case(&Char::Multi("ch".into())).is_err());
+        assert!(abc.ord_case(&Char::from("ch")).is_err());
 
         assert_eq!(abc.chr_case(&Number::from(1), CharCase::Lower), Char::from('a'));
         assert_eq!(abc.chr_case(&Number::from(0), CharCase::Undefined), Char::from('z'));
@@ -94,5 +124,12 @@ mod tests {
         assert_eq!(abc.c_plus_c(&Char::from('C'), &Char::from('e')), Ok(Char::from('H')));
         assert_eq!(abc.c_plus_c(&Char::from('x'), &Char::from('Y')), Ok(Char::from('w')));
         assert!(abc.c_plus_c(&Char::from('a'), &Char::from('á')).is_err());
+
+        let abc = Alphabet::from(vec![Char::from('b'), Char::from('á'), Char::from("ch"), Char::from('a')]);
+        assert_eq!(abc.ord_case(&Char::from('a')), Ok((4isize, CharCase::Lower)));
+        assert_eq!(abc.ord_case(&Char::from('Á')), Ok((2isize, CharCase::Upper)));
+        assert_eq!(abc.ord_case(&Char::from("CH")), Ok((3isize, CharCase::Upper)));
+        assert_eq!(abc.ord_case(&Char::from("Ch")), Ok((3isize, CharCase::Undefined)));
+        assert!(abc.ord_case(&Char::from('c')).is_err());
     }
 }
