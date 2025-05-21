@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 /// A 'character' in Stream may represent a single code point or a multigraph (such as 'dz').
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Char {
     Single(char),
     Multi(String)
@@ -43,6 +43,24 @@ impl Char {
                 }
             },
             Char::Multi(ch) => Char::Multi(ch.to_lowercase())
+        }
+    }
+
+    pub fn to_uppercase(&self) -> Char {
+        match self {
+            Char::Single(ch) => {
+                if ch.is_uppercase() {
+                    Char::Single(*ch)
+                } else {
+                    let mut ucase = ch.to_uppercase();
+                    if ucase.len() == 1 {
+                        Char::Single(ucase.next().unwrap())
+                    } else {
+                        Char::Multi(ucase.to_string())
+                    }
+                }
+            },
+            Char::Multi(ch) => Char::Multi(ch.to_uppercase())
         }
     }
 }
