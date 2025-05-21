@@ -156,9 +156,9 @@ impl Item {
         use Item::*;
         use std::cmp::Ordering;
         Ok(match (self, other) {
-            (Number(x), Number(y)) => x.cmp(&y),
-            (Bool(x), Bool(y)) => x.cmp(&y),
-            (Char(x), Char(y)) => env.alphabet().cmp(&x, &y)?,
+            (Number(x), Number(y)) => x.cmp(y),
+            (Bool(x), Bool(y)) => x.cmp(y),
+            (Char(x), Char(y)) => env.alphabet().cmp(x, y)?,
             (Stream(x), Stream(y))
                 if x.is_string().is_true() == y.is_string().is_true()
             => {

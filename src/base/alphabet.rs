@@ -2,9 +2,10 @@ use crate::base::*;
 use num::traits::Euclid;
 
 /// The notion of alphabet ordering in Stream.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub enum Alphabet {
     /// Plain English 26-letter alphabet.
+    #[default]
     Std26,
     /// An alphabet ordering created by explicitly listing the letters in order.
     Listed(Vec<Char>)
@@ -92,12 +93,6 @@ impl From<Vec<Char>> for Alphabet {
         // TODO check uniq
         // TODO check nonempty
         Alphabet::Listed(vec)
-    }
-}
-
-impl Default for Alphabet {
-    fn default() -> Alphabet {
-        Alphabet::Std26
     }
 }
 
