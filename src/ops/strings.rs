@@ -5,7 +5,7 @@ struct Shift {
     head: Head,
     source: BoxedStream,
     args: Vec<Item>,
-    env: Rc<Env>
+    alpha: Rc<Alphabet>
 }
 
 impl Shift {
@@ -23,28 +23,27 @@ impl Shift {
             head: rnode.head,
             source,
             args: rnode.args.into(),
-            env: Rc::clone(env)
+            alpha: Rc::clone(env.alphabet())
         }))
     }
 
-    fn helper(base: &Char, items: &[Item], env: &Rc<Env>) -> Result<Item, BaseError> {
-        let abc = env.alphabet();
-        let (index, case) = abc.ord_case(base)?;
+    fn helper(base: &Char, items: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
+        let (index, case) = alpha.ord_case(base)?;
         let ans = items.iter().try_fold(index.into(),
             |a, e| {
                 match e {
                     Item::Number(ref num) => Ok(a + num),
-                    Item::Char(ref ch) => Ok(a + abc.ord_case(ch)?.0),
+                    Item::Char(ref ch) => Ok(a + alpha.ord_case(ch)?.0),
                     _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
                 }
             })?;
-        Ok(Item::new_char(abc.chr_case(&ans, case)))
+        Ok(Item::new_char(alpha.chr_case(&ans, case)))
     }
 }
 
 impl Describe for Shift {
     fn describe_prec(&self, prec: u32) -> String {
-        self.env.wrap_describe(|prec| Node::describe_helper(&self.head, Some(&self.source), &self.args, prec), prec)
+        self.alpha.wrap_describe(|prec| Node::describe_helper(&self.head, Some(&self.source), &self.args, prec), prec)
     }
 }
 
@@ -56,7 +55,7 @@ impl Stream for Shift {
                 Item::Stream(stm) => stm.iter(),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
-        Box::new(ShiftIter{base, source: &*self.source, args: &self.args, args_iter, env: &self.env})
+        Box::new(ShiftIter{base, source: &*self.source, args: &self.args, args_iter, alpha: &self.alpha})
     }
 
     fn is_string(&self) -> TriState {
@@ -73,7 +72,7 @@ struct ShiftIter<'node> {
     source: &'node (dyn Stream + 'static),
     args: &'node Vec<Item>,
     args_iter: Vec<Box<dyn SIterator + 'node>>,
-    env: &'node Rc<Env>
+    alpha: &'node Rc<Alphabet>
 }
 
 impl ShiftIter<'_> {
@@ -105,7 +104,7 @@ impl Iterator for ShiftIter<'_> {
             Some(Ok(ch)) => ch,
             Some(Err(err)) => return Some(Err(err))
         };
-        if !self.env.alphabet().contains(&ch) {
+        if !self.alpha.contains(&ch) {
             return Some(Ok(Item::Char(ch)));
         }
 
@@ -115,7 +114,7 @@ impl Iterator for ShiftIter<'_> {
         match rest {
             None => Some(Err(StreamError::new("some operand ended earlier than the source", self.node()))),
             Some(Ok(inputs)) => {
-                match Shift::helper(&ch, &inputs, self.env) {
+                match Shift::helper(&ch, &inputs, self.alpha) {
                     Ok(item) => Some(Ok(item)),
                     Err(err) => Some(Err(StreamError::new(err, aux_node(ch, inputs))))
                 }
@@ -132,7 +131,7 @@ impl SIterator for ShiftIter<'_> {
         while !n.is_zero() {
             match self.base.next() {
                 Some(Ok(ch)) => {
-                    if self.env.alphabet().contains(&ch) {
+                    if self.alpha.contains(&ch) {
                         n_chars.inc();
                     }
                 },

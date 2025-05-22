@@ -97,7 +97,7 @@ impl Alphabet {
         }
     }
 
-    fn format(vec: &Vec<Char>) -> String {
+    fn format(vec: &[Char]) -> String {
         let mut iter = vec.iter();
         let first = iter.next().unwrap(); // nonemptiness checked in try_from
         let mut ret = '['.to_string();

@@ -7,7 +7,7 @@ pub struct Range {
     to: Number,
     step: Option<Number>,
     rtype: RangeType,
-    env: Rc<Env>
+    alpha: Rc<Alphabet>
 }
 
 #[derive(Clone, Copy)]
@@ -45,7 +45,7 @@ impl Range {
         if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
             Ok(Item::new_stream(EmptyStream::List))
         } else {
-            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, env: Rc::clone(env)}))
+            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, alpha: Rc::clone(env.alphabet())}))
         }
     }
 
@@ -98,8 +98,8 @@ impl Describe for Range {
                 [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 
                 prec),
             RangeType::Character(case) => {
-                let abc = self.env.alphabet();
-                self.env.wrap_describe(|prec|
+                let abc = &self.alpha;
+                abc.wrap_describe(|prec|
                     Node::describe_helper(&self.head, None::<&Item>, [
                         Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
                         Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
@@ -125,7 +125,7 @@ impl Iterator for RangeIter<'_> {
             || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
                 let ret = match self.parent.rtype {
                     RangeType::Numeric => Item::new_number(self.value.clone()),
-                    RangeType::Character(case) => Item::new_char(self.parent.env.alphabet().chr_case(&self.value, case))
+                    RangeType::Character(case) => Item::new_char(self.parent.alpha.chr_case(&self.value, case))
                 };
                 match &self.parent.step {
                     Some(step) => self.value += step,
