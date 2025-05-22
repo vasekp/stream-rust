@@ -128,7 +128,8 @@ impl Item {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
             Char(c) => write!(f, "{c}"),
-            Stream(s) | String(s) => s.writeout(f, count, error)
+            Stream(s) => s.writeout_stream(f, count, error),
+            String(s) => s.writeout_string(f, error),
         }
     }
 
@@ -201,12 +202,20 @@ impl Default for Item {
 }
 
 impl Display for Item {
+    /// Format this `Item` in human-readable form. For streams and strings, the formatter may specify
+    /// a maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),
+    /// if no constraints are given they default to 5 items (total, including sub-streams), or 20
+    /// characters for strings. If an error happens during reading the stream, or a non-character
+    /// value is encountered in a string, it is represented as `"<!>"` and no further output is
+    /// printed.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.format_int(f, &Default::default(), &Default::default())
     }
 }
 
 impl Debug for Item {
+    /// This works exactly the same as the `Display` trait, but prepends the type of the item to
+    /// its value.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.type_str())?;
         self.format_int(f, &Default::default(), &Default::default())

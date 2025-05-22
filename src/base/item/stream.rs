@@ -1,7 +1,7 @@
 use crate::base::*;
 pub use crate::utils::TriState;
 
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
 use std::cell::Cell;
 
 use dyn_clone::DynClone;
@@ -90,27 +90,7 @@ impl dyn Stream {
         Ok(vec)
     }
 
-    /// Write the contents of the stream (i.e., the items returned by its iterator) in a
-    /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
-    /// maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),
-    /// if no constraints are given they default to 5 items. If an error happens during reading the
-    /// stream, it is represented as `"<!>"`.
-    ///
-    /// If this is `Stream` represents a string, as expressed by its [`Stream::is_string()`]
-    /// method, the formatting follows that of a string, including character escapes. If no length
-    /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
-    /// a [`Char`] is treated as a reading error.
-    pub fn writeout(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
-        -> std::fmt::Result
-    {
-        if self.is_string().is_true() {
-            self.writeout_string(f, error)
-        } else {
-            self.writeout_stream(f, count, error)
-        }
-    }
-
-    fn writeout_stream(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
+    pub(crate) fn writeout_stream(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -171,7 +151,7 @@ impl dyn Stream {
         }
     }
 
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    pub(crate) fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.string_iter();
@@ -226,12 +206,6 @@ impl dyn Stream {
     /// failing for other types. Suitable for iterating over strings ([`Stream::is_string()`]` == `[`TriState::True`]).
     pub fn string_iter(&self) -> StringIterator<'_> {
         StringIterator::new(self)
-    }
-}
-
-impl Display for Box<dyn Stream> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.writeout(f, &Default::default(), &Default::default())
     }
 }
 
