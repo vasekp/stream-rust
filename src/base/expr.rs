@@ -27,7 +27,7 @@ impl Expr {
         Item::new_stream(value).into()
     }
 
-    pub fn new_string(value: impl Into<String>) -> Expr {
+    pub fn new_string(value: &str) -> Expr {
         Item::new_string(value).into()
     }
 

@@ -29,8 +29,8 @@ impl Describe for LiteralString {
     }
 }
 
-impl From<String> for LiteralString {
-    fn from(s: String) -> Self {
+impl From<&str> for LiteralString {
+    fn from(s: &str) -> Self {
         LiteralString(s.chars().map(Char::from).collect())
     }
 }

@@ -20,14 +20,14 @@ impl Repeat {
         };
         if let Item::Stream(ref stm) = &item {
             if stm.is_empty() || count.as_ref().is_some_and(Zero::is_zero) {
-                return Ok(Item::new_stream(EmptyStream::cond_string(stm.is_string())))
+                return Ok(Item::empty_stream_or_string(stm.is_string()));
             }
             if count.as_ref().is_some_and(One::is_one) {
-                return Ok(item)
+                return Ok(item);
             }
         } else if let Some(ref count) = count {
             if count.is_zero() {
-                return Ok(Item::new_stream(EmptyStream::List));
+                return Ok(Item::empty_stream());
             }
         }
         Ok(Item::new_stream(Repeat{head: rnode.head, item, count}))

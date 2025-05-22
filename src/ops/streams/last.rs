@@ -45,7 +45,7 @@ impl Last {
                 }
             },
             RNodeS { source: Item::Stream(ref stm), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
-                => Ok(Item::new_stream(EmptyStream::cond_string(stm.is_string()))),
+                => Ok(Item::empty_stream_or_string(stm.is_string())),
             RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
                 => {

@@ -49,8 +49,20 @@ impl Item {
         Item::Stream(Box::new(value))
     }
 
-    pub fn new_string(value: impl Into<String>) -> Item {
-        Item::String(Box::new(LiteralString::from(value.into())))
+    pub fn new_string(value: &str) -> Item {
+        Item::String(Box::new(LiteralString::from(value)))
+    }
+
+    pub fn empty_stream() -> Item {
+        Item::Stream(Box::new(EmptyStream))
+    }
+
+    pub fn empty_stream_or_string(is_string: TriState) -> Item {
+        if is_string.is_true() {
+            Item::String(Box::new(LiteralString::from("")))
+        } else {
+            Item::empty_stream()
+        }
     }
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {
