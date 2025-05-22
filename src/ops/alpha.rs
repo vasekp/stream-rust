@@ -12,7 +12,7 @@ fn eval_alpha(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
             .listout()?
             .try_into()?);
     let mut new_env = (**env).clone();
-    new_env.alpha = alpha;
+    new_env.alpha = Rc::new(alpha);
     body.eval(&Rc::new(new_env))
 }
 

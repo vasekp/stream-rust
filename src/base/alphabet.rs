@@ -89,6 +89,26 @@ impl Alphabet {
         let ((ox, _), (oy, _)) = (self.ord_case(x)?, self.ord_case(y)?);
         Ok(ox.cmp(&oy))
     }
+
+    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32) -> String, prec: u32) -> String {
+        match self {
+            Alphabet::Std26 => call(prec),
+            Alphabet::Listed{vec, ..} => format!("alpha({}, {})", Self::format(vec), call(0))
+        }
+    }
+
+    fn format(vec: &Vec<Char>) -> String {
+        let mut iter = vec.iter();
+        let first = iter.next().unwrap(); // nonemptiness checked in try_from
+        let mut ret = '['.to_string();
+        ret += &first.to_string();
+        for chr in iter {
+            ret += ", ";
+            ret += &chr.to_string();
+        }
+        ret.push(']');
+        ret
+    }
 }
 
 impl TryFrom<Vec<Item>> for Alphabet {
@@ -146,6 +166,9 @@ mod tests {
         assert_eq!(abc.c_plus_c(&Char::from('C'), &Char::from('e')), Ok(Char::from('H')));
         assert_eq!(abc.c_plus_c(&Char::from('x'), &Char::from('Y')), Ok(Char::from('w')));
         assert!(abc.c_plus_c(&Char::from('a'), &Char::from('á')).is_err());
+
+        let plus = crate::parser::parse("1+2").unwrap();
+        assert_eq!(abc.wrap_describe(|prec| plus.describe_prec(prec), u32::MAX), "(1+2)");
     }
 
     #[test]
@@ -168,5 +191,9 @@ mod tests {
         assert!(Alphabet::try_from(vec![Item::new_char('İ'), Item::new_char("i\u{307}")]).is_err());
         assert!(Alphabet::try_from(vec![Item::new_char("ch"), Item::new_char("Ch")]).is_err());
         assert!(Alphabet::try_from(vec![]).is_err());
+
+        let abc = Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap();
+        let plus = crate::parser::parse("1+2").unwrap();
+        assert_eq!(abc.wrap_describe(|prec| plus.describe_prec(prec), u32::MAX), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
     }
 }

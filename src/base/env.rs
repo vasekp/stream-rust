@@ -8,23 +8,21 @@ use std::collections::HashMap;
 #[derive(Default, Clone)]
 pub struct Env {
     pub vars: HashMap<String, Rhs>,
-    pub alpha: Alphabet,
+    pub alpha: Rc<Alphabet>,
 }
 
 impl Env {
-    fn is_trivial(&self) -> bool {
-        self.vars.is_empty()
-    }
-
     pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32) -> String, prec: u32) -> String {
-        match self.is_trivial() {
-            true => call(prec),
-            false => format!("with({}, {})", self.describe(), call(0))
-        }
+        self.alpha.wrap_describe(|prec|
+            match self.vars.is_empty() {
+                true => call(prec),
+                false => format!("with({}, {})", self.describe(), call(0))
+            },
+            prec)
     }
 
     /// The alphabet used for ordering characters and arithmetic operations on them.
-    pub fn alphabet(&self) -> &Alphabet { &self.alpha }
+    pub fn alphabet(&self) -> &Rc<Alphabet> { &self.alpha }
 
     fn describe(&self) -> String {
         let mut iter = self.vars.iter()

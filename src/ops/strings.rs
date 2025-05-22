@@ -181,6 +181,8 @@ mod tests {
         test_skip_n(&parse(r#""a b".repeat(10).shift(seq)"#).unwrap().eval_default().unwrap());
         assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval_default().unwrap().describe(), "\"AbC\".shift(3, [0, 10, 20])");
         assert_eq!(parse("\"a b c!\".shift(1..3, 1)").unwrap().eval_default().unwrap().describe(), "\"a b c!\".shift(1..3, 1)");
+        assert_eq!(parse("alpha(\"bac\", \"abc\".shift(1))").unwrap().eval_default().unwrap().to_string(), "\"cab\"");
+        assert_eq!(parse("alpha(\"bac\", \"abc\".shift(1))").unwrap().eval_default().unwrap().describe(), "alpha(['b', 'a', 'c'], \"abc\".shift(1))");
     }
 }
 
