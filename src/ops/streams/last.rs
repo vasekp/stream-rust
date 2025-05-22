@@ -14,11 +14,11 @@ struct Last {
 impl Last {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode {
-            RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), .. }
+        match &rnode {
+            RNodeS { source: Item::Stream(stm) | Item::String(stm), .. }
                     if stm.length() == Length::Infinite
                 => Err(StreamError::new(format!("{} is infinite", rnode.source.type_str()), rnode)),
-            RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), args: RArgs::Zero, .. } => {
+            RNodeS { source: Item::Stream(stm) | Item::String(stm), args: RArgs::Zero, .. } => {
                 match stm.length() {
                     Length::Exact(len) if !len.is_zero() => {
                         let mut it = stm.iter();
@@ -44,27 +44,32 @@ impl Last {
                     }
                 }
             },
-            RNodeS { source: Item::Stream(_) | Item::String(_), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
+            RNodeS { source: Item::Stream(_) | Item::String(_), args: RArgs::One(Item::Number(count)), .. } if count.is_zero()
                 => Ok(Item::empty_stream_or_string(rnode.source.is_string())),
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
+            RNodeS { source: Item::Stream(stm) | Item::String(stm), args: RArgs::One(Item::Number(count)), .. }
                     if !count.is_negative()
                 => {
-                    let count = unsign(count);
+                    let count = unsign(count.to_owned());
                     match stm.length() {
-                        Length::Exact(len) if len < count => Ok(Item::Stream(stm)),
-                        Length::Exact(len) => Ok(Item::new_stream(Last {
-                                head,
+                        Length::Exact(len) if len < count => Ok(rnode.source),
+                        Length::Exact(len) => {
+                            let (stm, is_string) = match rnode.source {
+                                Item::Stream(stm) => (stm, false),
+                                Item::String(stm) => (stm, true),
+                                _ => unreachable!()
+                            };
+                            Ok(Item::new_stream_or_string(Last {
+                                head: rnode.head,
                                 source: stm.into(),
                                 skip: len - &count,
                                 count
-                            })),
-                        Length::Infinite => Err(StreamError::new("stream is infinite",
-                            RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count.into())) })),
+                            }, is_string))
+                        },
+                        Length::Infinite => Err(StreamError::new("stream is infinite", rnode)),
                         _ => {
                             let size = match count.to_usize() {
                                 Some(size) => size,
-                                None => return Err(StreamError::new("length too large",
-                                    RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count.into())) }))
+                                None => return Err(StreamError::new("length too large", rnode))
                             };
                             let mut vec = VecDeque::with_capacity(size);
                             for res in stm.iter() {
@@ -75,7 +80,8 @@ impl Last {
                                 }
                                 vec.push_back(item);
                             }
-                            Ok(Item::new_stream(List::from(Vec::from(vec)))) // TODO String
+                            let is_string = rnode.source.is_string();
+                            Ok(Item::new_stream_or_string(List::from(Vec::from(vec)), is_string))
                         }
                     }
                 },
