@@ -18,7 +18,7 @@ impl Repeat {
                 => (source, Some(unsign(count))),
             _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
         };
-        if let Item::Stream(ref stm) = &item {
+        if let Item::Stream(ref stm) | Item::String(ref stm) = &item {
             if stm.is_empty() || count.as_ref().is_some_and(UNumber::is_zero) {
                 return Ok(Item::empty_stream_or_string(item.is_string()));
             }
@@ -38,7 +38,7 @@ impl Repeat {
 impl Stream for Repeat {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         match &self.item {
-            Item::Stream(stream) => Box::new(RepeatStreamIter {
+            Item::Stream(stream) | Item::String(stream) => Box::new(RepeatStreamIter {
                 stream: &**stream,
                 iter: stream.iter(),
                 len: stream.length(),
@@ -56,7 +56,7 @@ impl Stream for Repeat {
         use Length::*;
         if self.count == Some(UNumber::zero()) { return Exact(UNumber::zero()); }
         match &self.item {
-            Item::Stream(stream) => {
+            Item::Stream(stream) | Item::String(stream) => {
                 if stream.is_empty() { return Exact(UNumber::zero()); }
                 match (stream.length(), &self.count) {
                     (_, None) | (Infinite, _) => Infinite,
@@ -211,6 +211,7 @@ mod tests {
         assert!(parse("1.repeat(-1)").unwrap().eval_default().is_err());
         assert_eq!(parse("(1..2).repeat(2)").unwrap().eval_default().unwrap().to_string(), "[1, 2, 1, 2]");
         assert_eq!(parse("[1, 2].repeat(1)").unwrap().eval_default().unwrap().to_string(), "[1, 2]");
+        assert_eq!(parse("'a'.repeat").unwrap().eval_default().unwrap().to_string(), "\"aaaaaaaaaaaaaaaaaaaa...");
         assert_eq!(parse("\"ab\".repeat").unwrap().eval_default().unwrap().to_string(), "\"abababababababababab...");
         assert_eq!(parse("\"ab\".repeat(3)").unwrap().eval_default().unwrap().to_string(), "\"ababab\"");
         assert_eq!(parse("\"ab\".repeat(0)").unwrap().eval_default().unwrap().to_string(), "\"\"");
@@ -222,8 +223,6 @@ mod tests {
         assert_eq!(parse("\"\".repeat(0)").unwrap().eval_default().unwrap().to_string(), "\"\"");
         assert_eq!(parse("\"\".repeat(1)").unwrap().eval_default().unwrap().to_string(), "\"\"");
         assert_eq!(parse("\"\".repeat(10)").unwrap().eval_default().unwrap().to_string(), "\"\"");
-
-        // TODO 'a'.repeat
 
         assert_eq!(parse("\"abc\".repeat[10^10]").unwrap().eval_default().unwrap().to_string(), "'a'");
         assert_eq!(parse("[].repeat~1").unwrap().eval_default().unwrap().to_string(), "[1]");

@@ -57,6 +57,14 @@ impl Item {
         Item::String(Box::new(value))
     }
 
+    pub fn new_stream_or_string(value: impl Stream + 'static, is_string: bool) -> Item {
+        if is_string {
+            Item::String(Box::new(value))
+        } else {
+            Item::Stream(Box::new(value))
+        }
+    }
+
     pub fn empty_stream() -> Item {
         Item::Stream(Box::new(EmptyStream))
     }

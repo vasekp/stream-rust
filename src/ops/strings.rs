@@ -49,7 +49,7 @@ impl Stream for Shift {
         let base = self.source.string_iter();
         let args_iter = self.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) => stm.iter(),
+                Item::Stream(stm) | Item::String(stm) => stm.iter(),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
         Box::new(ShiftIter{base, source: &*self.source, args: &self.args, args_iter, alpha: &self.alpha})
@@ -73,7 +73,7 @@ impl ShiftIter<'_> {
         ENode {
             head: "shift".into(),
             source: Some(Item::Stream(self.source.clone_box())),
-            args: self.args.clone()
+            args: self.args.clone() // TODO
         }
     }
 }

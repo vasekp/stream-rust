@@ -11,20 +11,21 @@ struct Skip {
 impl Skip {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
+        let is_string = rnode.source.is_string();
         match rnode {
-            RNodeS { head, source: Item::Stream(s), args: RArgs::Zero }
-                => Ok(Item::new_stream(Skip {
+            RNodeS { head, source: Item::Stream(s) | Item::String(s), args: RArgs::Zero }
+                => Ok(Item::new_stream_or_string(Skip {
                     head,
                     source: s.into(),
                     count: None
-                })),
-            RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
+                }, is_string)),
+            RNodeS { head, source: Item::Stream(s) | Item::String(s), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
-                => Ok(Item::new_stream(Skip {
+                => Ok(Item::new_stream_or_string(Skip {
                     head,
                     source: s.into(),
                     count: Some(unsign(count))
-                })),
+                }, is_string)),
             _ => Err(StreamError::new("expected: source.skip or source.skip(count)", rnode))
         }
     }

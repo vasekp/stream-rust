@@ -11,12 +11,12 @@ impl Riffle {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         let (source, filler) = match rnode {
-            RNodeS { source: Item::Stream(ref src) | Item::String(ref src), args: RArgs::One(_), .. }
+            RNodeS { source: Item::Stream(ref src), args: RArgs::One(_), .. }
             if src.is_empty()
                 => return Ok(Item::empty_stream_or_string(rnode.source.is_string())),
             RNodeS { source: Item::Stream(src), args: RArgs::One(filler), .. }
                 => (BoxedStream::from(src), filler),
-            _ => return Err(StreamError::new("exactly 1 argument required", rnode))
+            _ => return Err(StreamError::new("expected: stream.riffle(item or stream)", rnode))
         };
         Ok(Item::new_stream(Riffle{head: rnode.head, source, filler}))
     }
@@ -157,8 +157,8 @@ mod tests {
         assert_eq!(parse("seq.riffle([])").unwrap().eval_default().unwrap().to_string(), "[1]");
         assert_eq!(parse("[1,2].riffle(['a', 'b'])").unwrap().eval_default().unwrap().to_string(), "[1, 'a', 2]");
         assert_eq!(parse("['a','b'].riffle(seq)").unwrap().eval_default().unwrap().to_string(), "['a', 1, 'b']");
-        assert_eq!(parse("\"abc\".riffle(',')").unwrap().eval_default().unwrap().to_string(), "\"a,b,c\"");
-        assert_eq!(parse("\"abc\".riffle(0)").unwrap().eval_default().unwrap().to_string(), "\"a<!>");
+        assert!(parse("\"abc\".riffle(',')").unwrap().eval_default().is_err());
+        // TODO assert!(parse("\"abc\".chars.riffle(',').string").unwrap().eval_default().unwrap().to_string(), "\"a,b,c\"");
         assert!(parse("1.riffle(2)").unwrap().eval_default().is_err());
         test_len_exact(&parse("[1,2,3].riffle('a')").unwrap().eval_default().unwrap(), 5);
         test_len_exact(&parse("[1,2,3].riffle(['a'])").unwrap().eval_default().unwrap(), 3);
@@ -166,7 +166,6 @@ mod tests {
         test_len_exact(&parse("seq.riffle(['a'])").unwrap().eval_default().unwrap(), 3);
         test_len_exact(&parse("seq.riffle([])").unwrap().eval_default().unwrap(), 1);
         test_len_exact(&parse("[].riffle(0)").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("\"\".riffle(0)").unwrap().eval_default().unwrap(), 0);
         test_skip_n(&parse("seq.riffle(seq)").unwrap().eval_default().unwrap());
         test_skip_n(&parse("seq.riffle(range(100))").unwrap().eval_default().unwrap());
         test_skip_n(&parse("seq.riffle([])").unwrap().eval_default().unwrap());

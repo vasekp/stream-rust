@@ -12,19 +12,16 @@ impl Join {
         try_with!(node, node.check_no_source()?);
         try_with!(node, node.check_args_nonempty()?);
 
-        fn is_string(item: &Item) -> TriState {
-            match item {
+        let string = try_with!(node, node.args.iter()
+            .map(|item| match item {
                 Item::String(_) => TriState::True,
                 Item::Char(_) => TriState::Either,
                 _ => TriState::False
-            }
-        }
-
-        let string = try_with!(node, node.args.iter()
-            .map(is_string)
+            })
             .try_fold(TriState::Either, TriState::join)
             .map_err(|()| BaseError::from("mixed strings and non-strings"))?)
             .is_true();
+
         if string {
             Ok(Item::new_string2(Join{node}))
         } else {
@@ -42,7 +39,7 @@ impl Describe for Join {
 impl Stream for Join {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let first = match &self.node.args[0] {
-            Item::Stream(stm) => stm.iter(),
+            Item::Stream(stm) | Item::String(stm) => stm.iter(),
             item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
         };
         Box::new(JoinIter{node: &self.node, index: 0, cur: first})
@@ -51,7 +48,7 @@ impl Stream for Join {
     fn length(&self) -> Length {
         self.node.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) => stm.length(),
+                Item::Stream(stm) | Item::String(stm) => stm.length(),
                 _ => Length::Exact(UNumber::one())
             })
             .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
@@ -60,7 +57,7 @@ impl Stream for Join {
     fn is_empty(&self) -> bool {
         self.node.args.iter()
             .all(|item| match item {
-                Item::Stream(stm) => stm.is_empty(),
+                Item::Stream(stm) | Item::String(stm) => stm.is_empty(),
                 _ => false
             })
     }
@@ -83,7 +80,7 @@ impl Iterator for JoinIter<'_> {
             } else {
                 self.index += 1;
                 self.cur = match self.node.args.get(self.index)? {
-                    Item::Stream(stm) => stm.iter(),
+                    Item::Stream(stm) | Item::String(stm) => stm.iter(),
                     item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
                 };
             }
@@ -101,7 +98,7 @@ impl SIterator for JoinIter<'_> {
             let Some(next) = self.node.args.get(self.index)
                 else { return Ok(Some(n)); };
             self.cur = match next {
-                Item::Stream(stm) => stm.iter(),
+                Item::Stream(stm) | Item::String(stm) => stm.iter(),
                 item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
             };
         }
@@ -114,7 +111,7 @@ impl SIterator for JoinIter<'_> {
         }
         for i in (self.index + 1)..self.node.args.len() {
             match &self.node.args[i] {
-                Item::Stream(stm) => len = len + stm.length(),
+                Item::Stream(stm) | Item::String(stm) => len = len + stm.length(),
                 _ => len += UNumber::one()
             }
         }

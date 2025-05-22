@@ -16,8 +16,9 @@ struct FirstIter<'node> {
 impl First {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
+        let is_string = rnode.source.is_string();
         match rnode {
-            RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, .. } => {
+            RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), args: RArgs::Zero, .. } => {
                 let mut it = stm.iter();
                 match it.next() {
                     Some(result) => result,
@@ -27,13 +28,13 @@ impl First {
                     }
                 }
             },
-            RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
+            RNodeS { head, source: Item::Stream(s) | Item::String(s), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
-                => Ok(Item::new_stream(First {
+                => Ok(Item::new_stream_or_string(First {
                     head,
                     source: s.into(),
                     count: unsign(count)
-                })),
+                }, is_string)),
             _ => Err(StreamError::new("expected: source.first or source.first(count)", rnode))
         }
     }
