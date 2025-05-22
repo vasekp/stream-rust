@@ -31,10 +31,6 @@ impl Stream for LenAM {
     fn length(&self) -> Length {
         Length::at_most(self.src.length())
     }
-
-    fn is_string(&self) -> TriState {
-        self.src.is_string()
-    }
 }
 
 struct LenAMIter<'node> {
@@ -90,10 +86,6 @@ impl Stream for LenUF {
     fn length(&self) -> Length {
         Length::UnknownFinite
     }
-
-    fn is_string(&self) -> TriState {
-        self.src.is_string()
-    }
 }
 
 struct LenUFIter<'node> {
@@ -148,10 +140,6 @@ impl Stream for LenUU {
 
     fn length(&self) -> Length {
         Length::Unknown
-    }
-
-    fn is_string(&self) -> TriState {
-        self.src.is_string()
     }
 }
 

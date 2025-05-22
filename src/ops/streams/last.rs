@@ -15,17 +15,17 @@ impl Last {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
-            RNodeS { source: Item::Stream(ref stm), .. }
+            RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), .. }
                     if stm.length() == Length::Infinite
-                => Err(StreamError::new("stream is infinite", rnode)),
-            RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, .. } => {
+                => Err(StreamError::new(format!("{} is infinite", rnode.source.type_str()), rnode)),
+            RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), args: RArgs::Zero, .. } => {
                 match stm.length() {
                     Length::Exact(len) if !len.is_zero() => {
                         let mut it = stm.iter();
                         it.skip_n(len - 1u32)?;
                         it.next().expect("1 item should remain after skip(len - 1)")
                     },
-                    Length::Infinite => Err(StreamError::new("stream is infinite", rnode)),
+                    Length::Infinite => Err(StreamError::new(format!("{} is infinite", rnode.source.type_str()), rnode)),
                     _ => {
                         let mut iter = stm.iter();
                         let mut last = match iter.next() {
@@ -33,7 +33,7 @@ impl Last {
                             Some(Err(err)) => return Err(err),
                             None => {
                                 drop(iter);
-                                return Err(StreamError::new("stream is empty", rnode))
+                                return Err(StreamError::new(format!("{} is empty", rnode.source.type_str()), rnode))
                             }
                         };
                         for res in iter {
@@ -44,8 +44,8 @@ impl Last {
                     }
                 }
             },
-            RNodeS { source: Item::Stream(ref stm), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
-                => Ok(Item::empty_stream_or_string(stm.is_string())),
+            RNodeS { source: Item::Stream(_) | Item::String(_), args: RArgs::One(Item::Number(ref count)), .. } if count.is_zero()
+                => Ok(Item::empty_stream_or_string(rnode.source.is_string())),
             RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
                     if !count.is_negative()
                 => {
@@ -75,10 +75,7 @@ impl Last {
                                 }
                                 vec.push_back(item);
                             }
-                            Ok(Item::new_stream(List {
-                                vec: vec.into(),
-                                is_string: stm.is_string()
-                            }))
+                            Ok(Item::new_stream(List::from(Vec::from(vec)))) // TODO String
                         }
                     }
                 },
@@ -99,10 +96,6 @@ impl Stream for Last {
 
     fn length(&self) -> Length {
         Length::Exact(self.count.to_owned())
-    }
-
-    fn is_string(&self) -> TriState {
-        self.source.is_string()
     }
 }
 

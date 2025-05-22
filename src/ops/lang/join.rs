@@ -1,9 +1,9 @@
 use crate::base::*;
+use crate::utils::TriState;
 
 #[derive(Clone)]
 struct Join {
     node: ENode,
-    string: bool
 }
 
 impl Join {
@@ -14,7 +14,7 @@ impl Join {
 
         fn is_string(item: &Item) -> TriState {
             match item {
-                Item::Stream(stm) => stm.is_string(),
+                Item::String(_) => TriState::True,
                 Item::Char(_) => TriState::Either,
                 _ => TriState::False
             }
@@ -25,7 +25,11 @@ impl Join {
             .try_fold(TriState::Either, TriState::join)
             .map_err(|()| BaseError::from("mixed strings and non-strings"))?)
             .is_true();
-        Ok(Item::new_stream(Join{node, string}))
+        if string {
+            Ok(Item::new_string2(Join{node}))
+        } else {
+            Ok(Item::new_stream(Join{node}))
+        }
     }
 }
 
@@ -42,10 +46,6 @@ impl Stream for Join {
             item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
         };
         Box::new(JoinIter{node: &self.node, index: 0, cur: first})
-    }
-
-    fn is_string(&self) -> TriState {
-        self.string.into()
     }
 
     fn length(&self) -> Length {

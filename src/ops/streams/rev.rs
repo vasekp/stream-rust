@@ -25,7 +25,7 @@ impl Rev {
             _ => {
                 let mut vec = source.listout()?;
                 vec.reverse();
-                Ok(Item::new_stream(List{vec, is_string: source.is_string()}))
+                Ok(Item::new_stream(List::from(vec)))
             }
         }
     }
@@ -42,10 +42,6 @@ impl Stream for Rev {
 
     fn length(&self) -> Length {
         Length::Exact(self.length.clone())
-    }
-
-    fn is_string(&self) -> TriState {
-        self.source.is_string()
     }
 }
 

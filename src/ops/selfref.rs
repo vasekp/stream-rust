@@ -47,13 +47,6 @@ impl Stream for SelfRef {
             hist
         })
     }
-
-    fn is_string(&self) -> TriState {
-        match self.eval_real() {
-            Ok((stm, _)) => stm.is_string(),
-            Err(_) => TriState::False
-        }
-    }
 }
 
 type CacheHistory = RefCell<Vec<Item>>;
@@ -102,10 +95,6 @@ impl Stream for BackRef {
             None => Box::new(std::iter::once(Err(StreamError::new("back-reference detached from cache", 
                         Node::new("#", None, vec![])))))
         }
-    }
-
-    fn is_string(&self) -> TriState {
-        TriState::Either
     }
 
     fn length(&self) -> Length {

@@ -47,10 +47,6 @@ impl Stream for First {
     fn length(&self) -> Length {
         Length::intersection(self.source.length(), Length::Exact(self.count.to_owned()))
     }
-
-    fn is_string(&self) -> TriState {
-        self.source.is_string()
-    }
 }
 
 impl Describe for First {

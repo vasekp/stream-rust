@@ -12,14 +12,11 @@ impl Shift {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         let source = match rnode {
-            RNodeS { args: RArgs::Zero, .. }
-                => return Err(StreamError::new("expected at least one argument", rnode)),
-            RNodeS { source: Item::Stream(stm), .. } if stm.is_string().can_be_true()
-                => stm.into(),
-            RNodeS { ref source, .. }
-                => return Err(StreamError::new(format!("expected string, found {:?}", source), rnode))
+            RNodeS { args: RArgs::Zero, .. } => return Err(StreamError::new("expected at least one argument", rnode)),
+            RNodeS { source: Item::String(stm), .. } => stm.into(),
+            _ => return Err(StreamError::new(format!("expected string, found {:?}", rnode.source), rnode))
         };
-        Ok(Item::new_stream(Shift{
+        Ok(Item::new_string2(Shift{
             head: rnode.head,
             source,
             args: rnode.args.into(),
@@ -56,10 +53,6 @@ impl Stream for Shift {
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
         Box::new(ShiftIter{base, source: &*self.source, args: &self.args, args_iter, alpha: &self.alpha})
-    }
-
-    fn is_string(&self) -> TriState {
-        TriState::True
     }
 
     fn length(&self) -> Length {

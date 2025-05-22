@@ -43,6 +43,7 @@ impl TriState {
         self == Self::True
     }
 
+    #[allow(dead_code)]
     pub fn can_be_true(self) -> bool {
         self != Self::False
     }

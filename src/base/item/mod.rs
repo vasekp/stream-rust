@@ -53,12 +53,16 @@ impl Item {
         Item::String(Box::new(LiteralString::from(value)))
     }
 
+    pub fn new_string2(value: impl Stream + 'static) -> Item {
+        Item::String(Box::new(value))
+    }
+
     pub fn empty_stream() -> Item {
         Item::Stream(Box::new(EmptyStream))
     }
 
-    pub fn empty_stream_or_string(is_string: TriState) -> Item {
-        if is_string.is_true() {
+    pub fn empty_stream_or_string(is_string: bool) -> Item {
+        if is_string {
             Item::String(Box::new(LiteralString::from("")))
         } else {
             Item::empty_stream()

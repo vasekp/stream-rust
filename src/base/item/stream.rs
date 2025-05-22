@@ -1,5 +1,4 @@
 use crate::base::*;
-pub use crate::utils::TriState;
 
 use std::fmt::Formatter;
 use std::cell::Cell;
@@ -18,16 +17,6 @@ pub trait Stream: DynClone + Describe {
     /// iterator.
     #[must_use]
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
-
-    /// An indication whether this stream should be treated as a string. The implementation should
-    /// only return [`TriState::True`] if it can be sure that the iterator will produce a stream of 
-    /// [`Char`]s. If so, this affects the behaviour of [`dyn Stream::writeout()`](trait.Stream.html#impl-dyn+Stream).
-    ///
-    /// The default implementation returns [`TriState::False`].
-    // TODO link do <dyn Stream>::writeout unsupported?
-    fn is_string(&self) -> TriState {
-        TriState::False
-    }
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -203,7 +192,7 @@ impl dyn Stream {
     }
 
     /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
-    /// failing for other types. Suitable for iterating over strings ([`Stream::is_string()`]` == `[`TriState::True`]).
+    /// failing for other types.
     pub fn string_iter(&self) -> StringIterator<'_> {
         StringIterator::new(self)
     }

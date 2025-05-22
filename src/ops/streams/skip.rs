@@ -47,10 +47,6 @@ impl Stream for Skip {
                 None => if x.is_zero() { x.to_owned() } else { x - 1u32 }
             })
     }
-
-    fn is_string(&self) -> TriState {
-        self.source.is_string()
-    }
 }
 
 impl Describe for Skip {

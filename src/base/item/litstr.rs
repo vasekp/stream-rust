@@ -8,10 +8,6 @@ impl Stream for LiteralString {
         Box::new(self.0.iter().map(|x| Ok(Item::new_char(x.clone()))))
     }
 
-    fn is_string(&self) -> TriState {
-        TriState::True
-    }
-
     fn length(&self) -> Length {
         Length::from(self.0.len())
     }

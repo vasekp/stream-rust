@@ -19,18 +19,19 @@ impl Repeat {
             _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
         };
         if let Item::Stream(ref stm) = &item {
-            if stm.is_empty() || count.as_ref().is_some_and(Zero::is_zero) {
-                return Ok(Item::empty_stream_or_string(stm.is_string()));
+            if stm.is_empty() || count.as_ref().is_some_and(UNumber::is_zero) {
+                return Ok(Item::empty_stream_or_string(item.is_string()));
             }
             if count.as_ref().is_some_and(One::is_one) {
                 return Ok(item);
             }
-        } else if let Some(ref count) = count {
-            if count.is_zero() {
-                return Ok(Item::empty_stream());
-            }
+        } else if count.as_ref().is_some_and(UNumber::is_zero) {
+            return Ok(Item::empty_stream());
         }
-        Ok(Item::new_stream(Repeat{head: rnode.head, item, count}))
+        match item {
+            Item::Char(_) | Item::String(_) => Ok(Item::new_string2(Repeat{head: rnode.head, item, count})),
+            _ => Ok(Item::new_stream(Repeat{head: rnode.head, item, count}))
+        }
     }
 }
 
@@ -69,14 +70,6 @@ impl Stream for Repeat {
                 Some(count) => Exact(count.to_owned()),
                 None => Infinite
             }
-        }
-    }
-
-    fn is_string(&self) -> TriState {
-        match &self.item {
-            Item::Stream(stream) => stream.is_string(),
-            Item::Char(_) => TriState::True,
-            _ => TriState::False
         }
     }
 }
@@ -229,6 +222,8 @@ mod tests {
         assert_eq!(parse("\"\".repeat(0)").unwrap().eval_default().unwrap().to_string(), "\"\"");
         assert_eq!(parse("\"\".repeat(1)").unwrap().eval_default().unwrap().to_string(), "\"\"");
         assert_eq!(parse("\"\".repeat(10)").unwrap().eval_default().unwrap().to_string(), "\"\"");
+
+        // TODO 'a'.repeat
 
         assert_eq!(parse("\"abc\".repeat[10^10]").unwrap().eval_default().unwrap().to_string(), "'a'");
         assert_eq!(parse("[].repeat~1").unwrap().eval_default().unwrap().to_string(), "[1]");

@@ -11,15 +11,14 @@ impl Riffle {
     fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         let (source, filler) = match rnode {
+            RNodeS { source: Item::Stream(ref src) | Item::String(ref src), args: RArgs::One(_), .. }
+            if src.is_empty()
+                => return Ok(Item::empty_stream_or_string(rnode.source.is_string())),
             RNodeS { source: Item::Stream(src), args: RArgs::One(filler), .. }
                 => (BoxedStream::from(src), filler),
             _ => return Err(StreamError::new("exactly 1 argument required", rnode))
         };
-        if source.is_empty() {
-            Ok(Item::empty_stream_or_string(source.is_string()))
-        } else {
-            Ok(Item::new_stream(Riffle{head: rnode.head, source, filler}))
-        }
+        Ok(Item::new_stream(Riffle{head: rnode.head, source, filler}))
     }
 }
 
@@ -43,10 +42,6 @@ impl Stream for Riffle {
             source_next,
             which: RiffleState::Source
         })
-    }
-
-    fn is_string(&self) -> TriState {
-        self.source.is_string()
     }
 
     fn length(&self) -> Length {
