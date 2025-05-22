@@ -16,7 +16,7 @@ impl Shift {
             RNodeS { source: Item::String(stm), .. } => stm.into(),
             _ => return Err(StreamError::new(format!("expected string, found {:?}", rnode.source), rnode))
         };
-        Ok(Item::new_string2(Shift{
+        Ok(Item::new_string_stream(Shift{
             head: rnode.head,
             source,
             args: rnode.args.into(),

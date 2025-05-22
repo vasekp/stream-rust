@@ -23,7 +23,7 @@ impl Join {
             .is_true();
 
         if string {
-            Ok(Item::new_string2(Join{node}))
+            Ok(Item::new_string_stream(Join{node}))
         } else {
             Ok(Item::new_stream(Join{node}))
         }

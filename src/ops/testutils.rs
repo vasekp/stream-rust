@@ -13,7 +13,7 @@ impl LenAM {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
                 => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
             RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-                => Ok(Item::new_string2(LenAM { head, src: stm.into() })),
+                => Ok(Item::new_string_stream(LenAM { head, src: stm.into() })),
             _ => panic!()
         }
     }
@@ -70,7 +70,7 @@ impl LenUF {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
                 => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
             RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-                => Ok(Item::new_string2(LenUF { head, src: stm.into() })),
+                => Ok(Item::new_string_stream(LenUF { head, src: stm.into() })),
             _ => panic!()
         }
     }
@@ -127,7 +127,7 @@ impl LenUU {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
                 => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
             RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-                => Ok(Item::new_string2(LenUU { head, src: stm.into() })),
+                => Ok(Item::new_string_stream(LenUU { head, src: stm.into() })),
             _ => panic!()
         }
     }

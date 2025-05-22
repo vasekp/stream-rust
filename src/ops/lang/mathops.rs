@@ -21,7 +21,7 @@ impl MathOp {
 
     fn eval_with(node: ENode, alpha: &Rc<Alphabet>, func: MathFunc) -> Result<Item, StreamError> {
         if node.args.first().unwrap().is_string() { // argc checked nonempty in eval()
-            Ok(Item::new_string2(MathOp{node, alpha: Rc::clone(alpha), func, is_string: true}))
+            Ok(Item::new_string_stream(MathOp{node, alpha: Rc::clone(alpha), func, is_string: true}))
         } else if node.args.iter().any(Item::is_stream) {
             Ok(Item::new_stream(MathOp{node, alpha: Rc::clone(alpha), func, is_string: false}))
         } else {

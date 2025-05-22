@@ -49,11 +49,11 @@ impl Item {
         Item::Stream(Box::new(value))
     }
 
-    pub fn new_string(value: &str) -> Item {
+    pub fn new_string_literal(value: &str) -> Item {
         Item::String(Box::new(LiteralString::from(value)))
     }
 
-    pub fn new_string2(value: impl Stream + 'static) -> Item {
+    pub fn new_string_stream(value: impl Stream + 'static) -> Item {
         Item::String(Box::new(value))
     }
 

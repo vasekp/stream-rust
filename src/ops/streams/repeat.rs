@@ -29,7 +29,7 @@ impl Repeat {
             return Ok(Item::empty_stream());
         }
         match item {
-            Item::Char(_) | Item::String(_) => Ok(Item::new_string2(Repeat{head: rnode.head, item, count})),
+            Item::Char(_) | Item::String(_) => Ok(Item::new_string_stream(Repeat{head: rnode.head, item, count})),
             _ => Ok(Item::new_stream(Repeat{head: rnode.head, item, count}))
         }
     }
