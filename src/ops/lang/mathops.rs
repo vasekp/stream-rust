@@ -5,6 +5,7 @@ struct MathOp {
     node: ENode,
     func: MathFunc,
     alpha: Rc<Alphabet>,
+    is_string: bool,
 }
 
 type MathFunc = fn(&[Item], &Rc<Alphabet>) -> Result<Item, BaseError>;
@@ -19,8 +20,10 @@ impl MathOp {
     }
 
     fn eval_with(node: ENode, alpha: &Rc<Alphabet>, func: MathFunc) -> Result<Item, StreamError> {
-        if node.args.iter().any(Item::is_stream) {
-            Ok(Item::new_stream(MathOp{node, alpha: Rc::clone(alpha), func}))
+        if node.args.first().unwrap().is_string() { // argc checked nonempty in eval()
+            Ok(Item::new_string2(MathOp{node, alpha: Rc::clone(alpha), func, is_string: true}))
+        } else if node.args.iter().any(Item::is_stream) {
+            Ok(Item::new_stream(MathOp{node, alpha: Rc::clone(alpha), func, is_string: false}))
         } else {
             Ok(try_with!(node, func(&node.args, alpha)?))
         }
@@ -148,6 +151,7 @@ impl Stream for MathOp {
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
+                Item::String(stm) if self.is_string => stm.iter(),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
         Box::new(MathOpIter{head: &self.node.head, args, alpha: &self.alpha, func: self.func})
@@ -157,6 +161,7 @@ impl Stream for MathOp {
         self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.length(),
+                Item::String(stm) if self.is_string => stm.length(),
                 _ => Length::Infinite
             })
             .reduce(Length::intersection)
@@ -167,6 +172,7 @@ impl Stream for MathOp {
         self.node.args.iter()
             .any(|item| match item {
                 Item::Stream(stm) => stm.is_empty(),
+                Item::String(stm) if self.is_string => stm.is_empty(),
                 _ => false
             })
     }
@@ -245,16 +251,16 @@ mod tests {
         assert_eq!(parse("1..5+3+[0,10,20]").unwrap().eval_default().unwrap().to_string(), "[4, 15, 26]");
         assert_eq!(parse("1..3+3+seq").unwrap().eval_default().unwrap().to_string(), "[5, 7, 9]");
         assert_eq!(parse("'A'..'e'+3+[0,10,20]").unwrap().eval_default().unwrap().to_string(), "['D', 'O', 'Z']");
-        assert_eq!(parse("\"AbC\"+3+[0,10,20]").unwrap().eval_default().unwrap().to_string(), "['D', 'o', 'Z']");
-        assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval_default().unwrap().to_string(), "['c', 'm', 'q', 'o']");
+        assert_eq!(parse("\"A\"+1").unwrap().eval_default().unwrap().to_string(), "\"B\"");
+        assert!(parse("1+\"a\"").unwrap().eval_default().is_err());
+        assert_eq!(parse("\"AbC\"+3+[0,10,20]").unwrap().eval_default().unwrap().to_string(), "\"DoZ\"");
+        assert_eq!(parse("\"xyz\"+'a'").unwrap().eval_default().unwrap().to_string(), "\"yza\"");
+        assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval_default().unwrap().to_string(), "\"cmqo\"");
         assert_eq!(parse("(1..5+3+[]).len").unwrap().eval_default().unwrap().to_string(), "0");
         assert_eq!(parse("(1..5+3+seq).len").unwrap().eval_default().unwrap().to_string(), "5");
-        assert_eq!(parse(r#""abc"+['d',5,true]"#).unwrap().eval_default().unwrap().to_string(), "['e', 'g', <!>");
-        assert_eq!(parse(r#"['a','b','c']+"def""#).unwrap().eval_default().unwrap().to_string(), "['e', 'g', 'i']");
-        assert_eq!(parse(r#"['a','b',3]+"def""#).unwrap().eval_default().unwrap().to_string(), "['e', 'g', <!>");
+        assert_eq!(parse(r#""abc"+['d',5,true]"#).unwrap().eval_default().unwrap().to_string(), "\"eg<!>");
+        assert_eq!(parse(r#"['a','b','c']+"def""#).unwrap().eval_default().unwrap().to_string(), "[<!>");
         assert_eq!(parse("seq+true").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("1+\"a\"").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("'a'+\"xyz\"").unwrap().eval_default().unwrap().to_string(), "['y', 'z', 'a']");
         assert!(parse("true+false").unwrap().eval_default().is_err());
         assert_eq!(parse("[1,[2,[3]]]+1").unwrap().eval_default().unwrap().to_string(), "[2, [3, [4]]]");
         assert_eq!(parse("['a',['b',['c']]]+[1,2]").unwrap().eval_default().unwrap().to_string(), "['b', ['d', ['e']]]");
