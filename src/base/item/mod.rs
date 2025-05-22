@@ -159,13 +159,13 @@ impl Item {
         })
     }
 
-    pub(crate) fn lex_cmp(&self, other: &Self, env: &Rc<Env>) -> Result<std::cmp::Ordering, BaseError> {
+    pub(crate) fn lex_cmp(&self, other: &Self, alpha: &Rc<Alphabet>) -> Result<std::cmp::Ordering, BaseError> {
         use Item::*;
         use std::cmp::Ordering;
         Ok(match (self, other) {
             (Number(x), Number(y)) => x.cmp(y),
             (Bool(x), Bool(y)) => x.cmp(y),
-            (Char(x), Char(y)) => env.alphabet().cmp(x, y)?,
+            (Char(x), Char(y)) => alpha.cmp(x, y)?,
             (Stream(x), Stream(y))
                 if x.is_string().is_true() == y.is_string().is_true()
             => {
@@ -179,7 +179,7 @@ impl Item {
                         (None, None) => break Ordering::Equal,
                         (Some(_), None) => break Ordering::Greater,
                         (None, Some(_)) => break Ordering::Less,
-                        (Some(lhs), Some(rhs)) => match lhs.lex_cmp(&rhs, env)? {
+                        (Some(lhs), Some(rhs)) => match lhs.lex_cmp(&rhs, alpha)? {
                             Ordering::Less => break Ordering::Less,
                             Ordering::Greater => break Ordering::Greater,
                             Ordering::Equal => continue

@@ -7,32 +7,32 @@ fn eval_sort(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     match &rnode {
         RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } if !stm.is_string().is_true() => {
             let mut vals = stm.listout()?;
-            try_with!(rnode, sort_impl(&mut vals[..], env)?);
+            try_with!(rnode, sort_impl(&mut vals[..], env.alphabet())?);
             Ok(Item::new_stream(List::from(vals)))
         }
         _ => todo!()
     }
 }
 
-fn sort_impl(vals: &mut [Item], env: &Rc<Env>) -> Result<(), BaseError> {
+fn sort_impl(vals: &mut [Item], alpha: &Rc<Alphabet>) -> Result<(), BaseError> {
     match &mut vals[..] {
         [] | [_] => (),
-        [x, y] => if x.lex_cmp(y, env)? == Ordering::Greater { std::mem::swap(x, y) },
+        [x, y] => if x.lex_cmp(y, alpha)? == Ordering::Greater { std::mem::swap(x, y) },
         _ => {
             let mid = vals.len() / 2;
             vals.swap(0, mid);
             let (pivot, rest) = vals.split_first_mut().unwrap(); // checked: len > 2
             let mut div_ix = 0;
             for ix in 0..rest.len() {
-                if rest[ix].lex_cmp(pivot, env)? == Ordering::Less {
+                if rest[ix].lex_cmp(pivot, alpha)? == Ordering::Less {
                     rest.swap(ix, div_ix);
                     div_ix.inc();
                 }
             }
             vals.swap(0, div_ix);
             let (s1, s2) = vals.split_at_mut(div_ix + 1); // div+1 > 0 ⇒ both strictly shorter
-            sort_impl(s1, env)?;
-            sort_impl(s2, env)?;
+            sort_impl(s1, alpha)?;
+            sort_impl(s2, alpha)?;
         }
     }
     Ok(())
