@@ -28,7 +28,8 @@ pub enum Item {
     Number(Number),
     Bool(bool),
     Char(Char),
-    Stream(Box<dyn Stream>)
+    Stream(Box<dyn Stream>),
+    String(Box<dyn Stream>),
 }
 
 impl Item {
@@ -49,7 +50,7 @@ impl Item {
     }
 
     pub fn new_string(value: impl Into<String>) -> Item {
-        Item::Stream(Box::new(LiteralString::from(value.into())))
+        Item::String(Box::new(LiteralString::from(value.into())))
     }
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {
@@ -79,16 +80,20 @@ impl Item {
 
     pub fn as_stream(&self) -> Result<&(dyn Stream + 'static), BaseError> {
         match self {
-            Item::Stream(s) => Ok(&**s),
+            Item::Stream(s) | Item::String(s) => Ok(&**s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
     pub fn to_stream(&self) -> Result<Box<dyn Stream>, BaseError> {
         match self {
-            Item::Stream(s) => Ok(s.clone_box()),
+            Item::Stream(s) | Item::String(s) => Ok(s.clone_box()),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self, Item::String(_))
     }
 
     pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, usize, Option<StreamError>) {
@@ -123,7 +128,7 @@ impl Item {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
             Char(c) => write!(f, "{c}"),
-            Stream(s) => s.writeout(f, count, error)
+            Stream(s) | String(s) => s.writeout(f, count, error)
         }
     }
 
@@ -133,8 +138,8 @@ impl Item {
             Number(_) => "number",
             Bool(_) => "bool",
             Char(_) => "char",
-            Stream(s) if s.is_string().is_true() => "string",
-            Stream(_) => "stream"
+            Stream(_) => "stream",
+            String(_) => "string",
         }
     }
 
@@ -144,8 +149,7 @@ impl Item {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
-            (Stream(x1), Stream(x2)) => {
-                if x1.is_string().is_true() != x2.is_string().is_true() { return Ok(false); }
+            (Stream(x1), Stream(x2)) | (String(x1), String(x2)) => {
                 let l1 = x1.length();
                 let l2 = x2.length();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
@@ -166,9 +170,7 @@ impl Item {
             (Number(x), Number(y)) => x.cmp(y),
             (Bool(x), Bool(y)) => x.cmp(y),
             (Char(x), Char(y)) => alpha.cmp(x, y)?,
-            (Stream(x), Stream(y))
-                if x.is_string().is_true() == y.is_string().is_true()
-            => {
+            (Stream(x), Stream(y)) | (String(x), String(y)) =>{
                 let mut xi = x.iter();
                 let mut yi = y.iter();
                 loop {
@@ -218,7 +220,7 @@ impl Describe for Item {
             Number(n) => n.describe_prec(prec),
             Bool(b) => format!("{b}"),
             Char(c) => format!("{c}"),
-            Stream(s) => s.describe_prec(prec)
+            Stream(s) | String(s) => s.describe_prec(prec)
         }
     }
 }
@@ -235,7 +237,7 @@ impl PartialEq for Item {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
-            (Stream(x1), Stream(x2)) => {
+            (Stream(x1), Stream(x2)) | (String(x1), String(x2)) => {
                 let l1 = x1.length();
                 let l2 = x2.length();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
@@ -254,7 +256,8 @@ impl Clone for Item {
             Number(x) => Number(x.clone()),
             Bool(x) => Bool(*x),
             Char(x) => Char(x.clone()),
-            Stream(s) => Stream(s.clone_box())
+            Stream(s) => Stream(s.clone_box()),
+            String(s) => String(s.clone_box())
         }
     }
 }
