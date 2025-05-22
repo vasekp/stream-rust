@@ -113,6 +113,7 @@ mod tests {
         assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval_default().unwrap().to_string(), "3");
         assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval_default().unwrap().to_string(), "3");
         assert_eq!(parse("[[1,2],[3,4]].part(2,1)").unwrap().eval_default().unwrap().to_string(), "3");
+        assert_eq!(parse("\"abc\"[2]").unwrap().eval_default().unwrap().to_string(), "'b'");
 
         assert_eq!(parse("seq(5,2)[100.repeat]").unwrap().eval_default().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
         assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval_default().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");

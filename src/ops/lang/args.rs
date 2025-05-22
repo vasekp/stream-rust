@@ -49,6 +49,7 @@ mod tests {
         assert_eq!(parse("range@range(3)[1]").unwrap().eval_default().unwrap().to_string(), "1");
         assert!(parse("range@3").unwrap().eval_default().is_err());
         assert!(parse("range@seq").unwrap().eval_default().is_err());
+        assert!(parse("range@\"ab\"").unwrap().eval_default().is_err());
         assert_eq!(parse("range@[3,4]").unwrap().eval_default().unwrap().describe(), "range(3, 4)");
     }
 }

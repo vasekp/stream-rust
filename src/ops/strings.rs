@@ -155,6 +155,7 @@ mod tests {
         use crate::parser::parse;
         assert_eq!(parse("\"AbC\".shift(3,[0,10,20])").unwrap().eval_default().unwrap().to_string(), "\"DoZ\"");
         assert_eq!(parse("\"Test\".shift(13,13)").unwrap().eval_default().unwrap().to_string(), "\"Test\"");
+        assert!(parse("['a','b'].shift(1)").unwrap().eval_default().is_err());
         assert_eq!(parse(r#""ahoj".shift("bebe")"#).unwrap().eval_default().unwrap().to_string(), "\"cmqo\"");
         assert_eq!(parse(r#""Hello world!".shift(seq)"#).unwrap().eval_default().unwrap().to_string(), r#""Igopt cvzun!""#);
         assert_eq!(parse(r#""Hello world!".shift("ab")"#).unwrap().eval_default().unwrap().to_string(), r#""Ig<!>"#);

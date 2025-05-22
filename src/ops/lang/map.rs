@@ -77,6 +77,7 @@ mod tests {
         assert_eq!(parse("seq:{#1}").unwrap().eval_default().unwrap().to_string(), "[<!>");
         assert_eq!(parse("seq:{range(#)}").unwrap().eval_default().unwrap().to_string(), "[[1], [1, 2], ...]");
         assert_eq!(parse("seq.map{#+#1}(3)").unwrap().eval_default().unwrap().to_string(), "[4, 5, 6, 7, 8, ...]");
+        assert!(parse("\"abc\":{#}").unwrap().eval_default().is_err());
         test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval_default().unwrap(), 3);
         test_len_exact(&parse("[]:{#}").unwrap().eval_default().unwrap(), 0);
         test_skip_n(&parse("range(10^10):{#}").unwrap().eval_default().unwrap());

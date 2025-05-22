@@ -139,6 +139,7 @@ mod tests {
         assert_eq!(parse("1.nest{#+1}").unwrap().eval_default().unwrap().to_string(), "[2, 3, 4, 5, 6, ...]");
         assert_eq!(parse("1.nest({#})").unwrap().eval_default().unwrap().to_string(), "[1, 1, 1, 1, 1, ...]");
         assert_eq!(parse("'T'.nest{#+2}").unwrap().eval_default().unwrap().to_string(), "['V', 'X', 'Z', 'B', 'D', ...]");
+        assert_eq!(parse("\"a\".nest({#~'x'})").unwrap().eval_default().unwrap().to_string(), "[\"ax\", \"axx\", \"axxx\", \"axxxx\", \"axxxxx\", ...]");
         assert_eq!(parse("1.nest{#1}").unwrap().eval_default().unwrap().to_string(), "[<!>");
         assert!(parse("1.nest(2.{#})").unwrap().eval_default().is_err());
         assert!(parse("1.nest{#}(1)").unwrap().eval_default().is_err());
