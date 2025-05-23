@@ -299,7 +299,16 @@ impl Stream for StringOp {
     }
 
     fn length(&self) -> Length {
-        Length::at_most(self.first.length())
+        self.node_rem.args.iter()
+            .map(|item| match item {
+                Item::Stream(stm) | Item::String(stm) => stm.length(),
+                _ => Length::Infinite
+            })
+            .map(|len| match len {
+                Length::Infinite => Length::Infinite,
+                _ => Length::Unknown
+            })
+            .fold(self.first.length(), Length::intersection)
     }
 
     fn is_empty(&self) -> bool {
@@ -359,7 +368,7 @@ impl Iterator for StringOpIter<'_> {
 impl SIterator for StringOpIter<'_> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut n_chars = UNumber::zero();
-        let mut remain = n.clone();
+        let mut remain = n;
         while !remain.is_zero() {
             match self.first.next() {
                 Some(Ok(ch)) => {
@@ -373,7 +382,7 @@ impl SIterator for StringOpIter<'_> {
             remain.dec();
         }
         for iter in self.rest.iter_mut() {
-            if let Some(r) = iter.skip_n(n.clone())? {
+            if let Some(r) = iter.skip_n(n_chars.clone())? {
                 remain = std::cmp::max(remain, r);
             }
         }
@@ -382,7 +391,13 @@ impl SIterator for StringOpIter<'_> {
     }
 
     fn len_remain(&self) -> Length {
-        Length::at_most(self.first.len_remain())
+        self.rest.iter()
+            .map(|iter| iter.len_remain())
+            .map(|len| match len {
+                Length::Infinite => Length::Infinite,
+                _ => Length::Unknown
+            })
+            .fold(self.first.len_remain(), Length::intersection)
     }
 }
 
@@ -477,6 +492,14 @@ mod tests {
         assert_eq!(&parse("(('a'.repeat+\"bc\")~\"xyz\")[2]").unwrap().eval_default().unwrap().to_string(), "'d'");
         assert_eq!(&parse("(('a'.repeat+\"bc\")~\"xyz\")[3]").unwrap().eval_default().unwrap().to_string(), "'x'");
         assert_eq!(&parse("(('a'.repeat+\"bc\")~\"xyz\")[4]").unwrap().eval_default().unwrap().to_string(), "'y'");
+        assert_eq!(&parse("' '.repeat+'a'..'c'").unwrap().eval_default().unwrap().as_stream().unwrap().length(), 
+            &Length::Unknown);
+        assert_eq!(&parse("' '.repeat+1").unwrap().eval_default().unwrap().as_stream().unwrap().length(), 
+            &Length::Infinite);
+        assert_eq!(&parse("\"a b c\"+'a'..'c'").unwrap().eval_default().unwrap().as_stream().unwrap().length(), 
+            &Length::AtMost(5usize.into()));
+        assert_eq!(&parse("\"a b c\"+'a'").unwrap().eval_default().unwrap().as_stream().unwrap().length(), 
+            &Length::Exact(5usize.into()));
 
         assert_eq!(parse("\"AbC\"+3+[0,10,20]").unwrap().eval_default().unwrap().describe(), "\"AbC\"+3+[0, 10, 20]");
         assert_eq!(parse("\"a b c!\"+1..3+1").unwrap().eval_default().unwrap().describe(), "\"a b c!\"+1..3+1");
