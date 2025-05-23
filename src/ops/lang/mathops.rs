@@ -83,11 +83,12 @@ impl MathOp {
                 Item::Number(lhs) => Ok(Item::new_number(lhs - rhs.as_num()?)),
                 Item::Char(ch) => {
                     let (index, case) = alpha.ord_case(ch)?;
-                    match rhs {
-                        Item::Number(ref num) => Ok(Item::new_char(alpha.chr_case(&(index - num), case))),
-                        Item::Char(ref ch) => Ok(Item::new_number(index - alpha.ord_case(ch)?.0)),
-                        _ => Err(format!("expected number or character, found {:?}", rhs).into())
-                    }
+                    let ord = match rhs {
+                        Item::Number(ref num) => index - num,
+                        Item::Char(ref ch) => (index - alpha.ord_case(ch)?.0).into(),
+                        _ => return Err(format!("expected number or character, found {:?}", rhs).into())
+                    };
+                    Ok(Item::new_char(alpha.chr_case(&ord, case)))
                 },
                 _ => Err(format!("expected number or character, found {:?}", lhs).into())
             },
@@ -237,6 +238,9 @@ impl StringOp {
     fn eval(mut node: ENode, env: &Rc<Env>) -> Result<Item, StreamError> {
         let func = try_with!(node, Self::find_fn(&node.head)?);
         let alpha = env.alphabet();
+        if node.args.len() < 2 {
+            return Err(StreamError::new("not available for strings", node));
+        }
         let Item::String(first) = node.args.remove(0) else { unreachable!() };
         Ok(Item::new_string_stream(StringOp{first: first.into(), node_rem: node, func, alpha: Rc::clone(alpha)}))
     }
@@ -272,7 +276,16 @@ impl StringOp {
     }
 
     fn minus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
-        todo!()
+        let (index, case) = alpha.ord_case(first)?;
+        let ord = match rest {
+            [other] => match other {
+                Item::Number(ref num) => index - num,
+                Item::Char(ref ch) => (index - alpha.ord_case(ch)?.0).into(),
+                _ => return Err(BaseError::from(format!("expected number or character, found {:?}", other)))
+            },
+            _ => return Err("not available for strings".into())
+        };
+        Ok(Item::new_char(alpha.chr_case(&ord, case)))
     }
 }
 
@@ -436,7 +449,7 @@ mod tests {
         assert!(parse("true+false").unwrap().eval_default().is_err());
         assert_eq!(parse("[1,[2,[3]]]+1").unwrap().eval_default().unwrap().to_string(), "[2, [3, [4]]]");
         assert_eq!(parse("['a',['b',['c']]]+[1,2]").unwrap().eval_default().unwrap().to_string(), "['b', ['d', ['e']]]");
-        assert_eq!(parse("['b','b',2]-[1,'a','a']").unwrap().eval_default().unwrap().to_string(), "['a', 1, <!>");
+        assert_eq!(parse("['b','b',2]-[1,'a','a']").unwrap().eval_default().unwrap().to_string(), "['a', 'a', <!>");
         assert_eq!(parse("-[1,[1,'a']]").unwrap().eval_default().unwrap().to_string(), "[-1, [-1, <!>");
         assert_eq!(parse("[2,'b','b']*[2,2,'b']").unwrap().eval_default().unwrap().to_string(), "[4, 'd', <!>");
         assert!(parse("2*'b'").unwrap().eval_default().is_err());
@@ -455,6 +468,8 @@ mod tests {
         assert_eq!(parse(r#""abc"+['d',5,true]"#).unwrap().eval_default().unwrap().to_string(), "\"eg<!>");
         assert_eq!(parse("\"xyz\"+'a'").unwrap().eval_default().unwrap().to_string(), "\"yza\"");
         assert_eq!(parse(r#""ahoj"+"bebe""#).unwrap().eval_default().unwrap().to_string(), "\"cmqo\"");
+        assert_eq!(parse(r#""ahoj"-"bebe""#).unwrap().eval_default().unwrap().to_string(), "\"ycme\"");
+        assert_eq!(parse(r#""ahoj"-"bebe"+"bcbc""#).unwrap().eval_default().unwrap().to_string(), "\"afoh\"");
         assert_eq!(parse("\"Test\"+13+13").unwrap().eval_default().unwrap().to_string(), "\"Test\"");
         assert_eq!(parse(r#""Hello world!"+[]"#).unwrap().eval_default().unwrap().to_string(), r#""""#);
         assert_eq!(parse(r#""Hello world!"+"ab""#).unwrap().eval_default().unwrap().to_string(), r#""Ig""#);
@@ -464,6 +479,10 @@ mod tests {
         assert_eq!(parse(r#""a b".repeat+seq"#).unwrap().eval_default().unwrap().to_string(), r#""b dd ff hh jj ll nn ..."#);
         assert_eq!(&parse("'u'.repeat+'a'..'c'").unwrap().eval_default().unwrap().to_string(), "\"vwx\"");
         assert_eq!(&parse("' '.repeat+'a'..'c'").unwrap().eval_default().unwrap().to_string(), "\"                    ...");
+        assert!(parse(r#"+"ahoj""#).unwrap().eval_default().is_err());
+        assert!(parse(r#"-"bebe""#).unwrap().eval_default().is_err());
+        assert!(parse(r#""ahoj"*2"#).unwrap().eval_default().is_err());
+        assert!(parse(r#"2*"ahoj""#).unwrap().eval_default().is_err());
 
         assert_eq!(parse("((1..4).repeat+(1..5).repeat)[10^10]").unwrap().eval_default().unwrap().to_string(), "9");
         test_len_exact(&parse("[1,2,3]+seq+5").unwrap().eval_default().unwrap(), 3);
