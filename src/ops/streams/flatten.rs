@@ -139,6 +139,7 @@ mod tests {
         assert_eq!(parse("[0].nest{[#]}.flatten").unwrap().eval_default().unwrap().to_string(), "[0, 0, 0, 0, 0, ...]");
         assert_eq!(parse("[0].nest{[#]}.flatten(3)").unwrap().eval_default().unwrap().to_string(), "[0, 0, [0], [...], ...]");
         assert_eq!(parse("[0].nest{[#]}.flatten(10^10)").unwrap().eval_default().unwrap().to_string(), "[0, 0, 0, 0, 0, ...]");
+        assert_eq!(parse("[\"ab\",\"cd\"].flatten").unwrap().eval_default().unwrap().to_string(), "[\"ab\", \"cd\"]");
         test_skip_n(&parse("[1,range(3)].repeat(10).flatten").unwrap().eval_default().unwrap());
         test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten").unwrap().eval_default().unwrap());
         test_skip_n(&parse("[1,[2,[3]]].repeat(10).flatten(1)").unwrap().eval_default().unwrap());

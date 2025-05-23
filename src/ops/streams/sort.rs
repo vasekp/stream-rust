@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 fn eval_sort(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match &rnode {
-        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } if !stm.is_string().is_true() => {
+        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => {
             let mut vals = stm.listout()?;
             try_with!(rnode, sort_impl(&mut vals[..], env.alphabet())?);
             Ok(Item::new_stream(List::from(vals)))

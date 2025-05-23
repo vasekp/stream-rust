@@ -2,7 +2,7 @@ use crate::base::*;
 
 fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
-    let RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, .. } = rnode else {
+    let RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), args: RArgs::Zero, .. } = rnode else {
         return Err(StreamError::new("expected: source.len", rnode));
     };
     match stm.length() {
@@ -29,6 +29,7 @@ mod tests {
         assert_eq!(parse("[].len").unwrap().eval_default().unwrap().to_string(), "0");
         assert_eq!(parse("range(10).len").unwrap().eval_default().unwrap().to_string(), "10");
         assert_eq!(parse("range(10).flatten.len").unwrap().eval_default().unwrap().to_string(), "10");
+        assert_eq!(parse("\"abc\".len").unwrap().eval_default().unwrap().to_string(), "3");
         assert!(parse("1.len").unwrap().eval_default().is_err());
         // Exact len used without checking
         assert_eq!(parse("[1,2,'a']:{1+#}.len").unwrap().eval_default().unwrap().to_string(), "3");

@@ -28,7 +28,8 @@ pub enum Item {
     Number(Number),
     Bool(bool),
     Char(Char),
-    Stream(Box<dyn Stream>)
+    Stream(Box<dyn Stream>),
+    String(Box<dyn Stream>),
 }
 
 impl Item {
@@ -48,8 +49,32 @@ impl Item {
         Item::Stream(Box::new(value))
     }
 
-    pub fn new_string(value: impl Into<String>) -> Item {
-        Item::Stream(Box::new(LiteralString::from(value.into())))
+    pub fn new_string_literal(value: &str) -> Item {
+        Item::String(Box::new(LiteralString::from(value)))
+    }
+
+    pub fn new_string_stream(value: impl Stream + 'static) -> Item {
+        Item::String(Box::new(value))
+    }
+
+    pub fn new_stream_or_string(value: impl Stream + 'static, is_string: bool) -> Item {
+        if is_string {
+            Item::String(Box::new(value))
+        } else {
+            Item::Stream(Box::new(value))
+        }
+    }
+
+    pub fn empty_stream() -> Item {
+        Item::Stream(Box::new(EmptyStream))
+    }
+
+    pub fn empty_stream_or_string(is_string: bool) -> Item {
+        if is_string {
+            Item::String(Box::new(LiteralString::from("")))
+        } else {
+            Item::empty_stream()
+        }
     }
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {
@@ -77,18 +102,16 @@ impl Item {
         matches!(self, Item::Stream(_))
     }
 
-    pub fn as_stream(&self) -> Result<&(dyn Stream + 'static), BaseError> {
+    #[cfg(test)]
+    pub(crate) fn as_stream(&self) -> Result<&(dyn Stream + 'static), BaseError> {
         match self {
-            Item::Stream(s) => Ok(&**s),
+            Item::Stream(s) | Item::String(s) => Ok(&**s),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
 
-    pub fn to_stream(&self) -> Result<Box<dyn Stream>, BaseError> {
-        match self {
-            Item::Stream(s) => Ok(s.clone_box()),
-            _ => Err(format!("expected stream, found {:?}", &self).into())
-        }
+    pub fn is_string(&self) -> bool {
+        matches!(self, Item::String(_))
     }
 
     pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, usize, Option<StreamError>) {
@@ -123,7 +146,8 @@ impl Item {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
             Char(c) => write!(f, "{c}"),
-            Stream(s) => s.writeout(f, count, error)
+            Stream(s) => s.writeout_stream(f, count, error),
+            String(s) => s.writeout_string(f, error),
         }
     }
 
@@ -133,8 +157,8 @@ impl Item {
             Number(_) => "number",
             Bool(_) => "bool",
             Char(_) => "char",
-            Stream(s) if s.is_string().is_true() => "string",
-            Stream(_) => "stream"
+            Stream(_) => "stream",
+            String(_) => "string",
         }
     }
 
@@ -144,8 +168,7 @@ impl Item {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
-            (Stream(x1), Stream(x2)) => {
-                if x1.is_string().is_true() != x2.is_string().is_true() { return Ok(false); }
+            (Stream(x1), Stream(x2)) | (String(x1), String(x2)) => {
                 let l1 = x1.length();
                 let l2 = x2.length();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
@@ -166,9 +189,7 @@ impl Item {
             (Number(x), Number(y)) => x.cmp(y),
             (Bool(x), Bool(y)) => x.cmp(y),
             (Char(x), Char(y)) => alpha.cmp(x, y)?,
-            (Stream(x), Stream(y))
-                if x.is_string().is_true() == y.is_string().is_true()
-            => {
+            (Stream(x), Stream(y)) | (String(x), String(y)) =>{
                 let mut xi = x.iter();
                 let mut yi = y.iter();
                 loop {
@@ -199,12 +220,20 @@ impl Default for Item {
 }
 
 impl Display for Item {
+    /// Format this `Item` in human-readable form. For streams and strings, the formatter may specify
+    /// a maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),
+    /// if no constraints are given they default to 5 items (total, including sub-streams), or 20
+    /// characters for strings. If an error happens during reading the stream, or a non-character
+    /// value is encountered in a string, it is represented as `"<!>"` and no further output is
+    /// printed.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.format_int(f, &Default::default(), &Default::default())
     }
 }
 
 impl Debug for Item {
+    /// This works exactly the same as the `Display` trait, but prepends the type of the item to
+    /// its value.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", self.type_str())?;
         self.format_int(f, &Default::default(), &Default::default())
@@ -218,7 +247,7 @@ impl Describe for Item {
             Number(n) => n.describe_prec(prec),
             Bool(b) => format!("{b}"),
             Char(c) => format!("{c}"),
-            Stream(s) => s.describe_prec(prec)
+            Stream(s) | String(s) => s.describe_prec(prec)
         }
     }
 }
@@ -235,7 +264,7 @@ impl PartialEq for Item {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
-            (Stream(x1), Stream(x2)) => {
+            (Stream(x1), Stream(x2)) | (String(x1), String(x2)) => {
                 let l1 = x1.length();
                 let l2 = x2.length();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
@@ -254,7 +283,8 @@ impl Clone for Item {
             Number(x) => Number(x.clone()),
             Bool(x) => Bool(*x),
             Char(x) => Char(x.clone()),
-            Stream(s) => Stream(s.clone_box())
+            Stream(s) => Stream(s.clone_box()),
+            String(s) => String(s.clone_box())
         }
     }
 }

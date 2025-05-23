@@ -12,20 +12,20 @@ impl Rev {
         let enode = node.eval_all(env)?;
         try_with!(enode, enode.check_no_args()?);
         let rnode = enode.resolve_source()?;
-        let Item::Stream(source) = rnode.source else {
-            return Err(StreamError::new(format!("expected stream, found {:?}", rnode.source), 
-                    rnode));
+        let is_string = rnode.source.is_string();
+        let (Item::Stream(source) | Item::String(source)) = rnode.source else {
+            return Err(StreamError::new(format!("expected stream or string, found {:?}", rnode.source), rnode));
         };
         match source.length() {
             Length::Infinite
-                => Err(StreamError::new("stream is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::<Item>::Zero })),
+                => Err(StreamError::new("input is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::<Item>::Zero })),
             Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) => {
-                Ok(Item::new_stream(Rev{head: rnode.head, source: source.into(), length: len}))
+                Ok(Item::new_stream_or_string(Rev{head: rnode.head, source: source.into(), length: len}, is_string))
             },
             _ => {
                 let mut vec = source.listout()?;
                 vec.reverse();
-                Ok(Item::new_stream(List{vec, is_string: source.is_string()}))
+                Ok(Item::new_stream_or_string(List::from(vec), is_string))
             }
         }
     }
@@ -42,10 +42,6 @@ impl Stream for Rev {
 
     fn length(&self) -> Length {
         Length::Exact(self.length.clone())
-    }
-
-    fn is_string(&self) -> TriState {
-        self.source.is_string()
     }
 }
 
@@ -130,6 +126,7 @@ mod tests {
 
         assert_eq!(parse("range(3).rev").unwrap().eval_default().unwrap().to_string(), "[3, 2, 1]");
         assert_eq!(parse("\"abc\".rev").unwrap().eval_default().unwrap().to_string(), "\"cba\"");
+        assert_eq!(parse("\"abc\".repeat(10^8).rev").unwrap().eval_default().unwrap().to_string(), "\"cbacbacbacbacbacbacb...");
         assert_eq!(parse("[].rev").unwrap().eval_default().unwrap().to_string(), "[]");
         assert_eq!(parse("\"\".rev").unwrap().eval_default().unwrap().to_string(), "\"\"");
         assert!(parse("seq.rev").unwrap().eval_default().is_err());

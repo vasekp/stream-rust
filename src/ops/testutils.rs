@@ -11,7 +11,9 @@ impl LenAM {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
+                => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
+            RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
+                => Ok(Item::new_string_stream(LenAM { head, src: stm.into() })),
             _ => panic!()
         }
     }
@@ -30,10 +32,6 @@ impl Stream for LenAM {
 
     fn length(&self) -> Length {
         Length::at_most(self.src.length())
-    }
-
-    fn is_string(&self) -> TriState {
-        self.src.is_string()
     }
 }
 
@@ -70,7 +68,9 @@ impl LenUF {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
+                => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
+            RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
+                => Ok(Item::new_string_stream(LenUF { head, src: stm.into() })),
             _ => panic!()
         }
     }
@@ -89,10 +89,6 @@ impl Stream for LenUF {
 
     fn length(&self) -> Length {
         Length::UnknownFinite
-    }
-
-    fn is_string(&self) -> TriState {
-        self.src.is_string()
     }
 }
 
@@ -129,7 +125,9 @@ impl LenUU {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
+                => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
+            RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
+                => Ok(Item::new_string_stream(LenUU { head, src: stm.into() })),
             _ => panic!()
         }
     }
@@ -148,10 +146,6 @@ impl Stream for LenUU {
 
     fn length(&self) -> Length {
         Length::Unknown
-    }
-
-    fn is_string(&self) -> TriState {
-        self.src.is_string()
     }
 }
 

@@ -420,7 +420,7 @@ impl<'str> Parser<'str> {
             Token(TC::BaseNum, value) => Ok(Expr::new_number(parse_basenum(value)?)),
             Token(TC::Bool(value), _) => Ok(Expr::new_bool(value)),
             Token(TC::Char, value) => Ok(Expr::new_char(parse_char(value)?)),
-            Token(TC::String, value) => Ok(Expr::new_string(parse_string(value)?)),
+            Token(TC::String, value) => Ok(Expr::new_string(&parse_string(value)?)),
             Token(TC::Open, bkt @ "[") => Ok(Expr::new_node(LangItem::List, self.read_args(bkt)?)),
             Token(TC::Ident, _) | Token(TC::Special, "$") => {
                 self.tk.unread(tok);

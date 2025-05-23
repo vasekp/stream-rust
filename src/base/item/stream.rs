@@ -1,7 +1,6 @@
 use crate::base::*;
-pub use crate::utils::TriState;
 
-use std::fmt::{Display, Formatter};
+use std::fmt::Formatter;
 use std::cell::Cell;
 
 use dyn_clone::DynClone;
@@ -18,16 +17,6 @@ pub trait Stream: DynClone + Describe {
     /// iterator.
     #[must_use]
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
-
-    /// An indication whether this stream should be treated as a string. The implementation should
-    /// only return [`TriState::True`] if it can be sure that the iterator will produce a stream of 
-    /// [`Char`]s. If so, this affects the behaviour of [`dyn Stream::writeout()`](trait.Stream.html#impl-dyn+Stream).
-    ///
-    /// The default implementation returns [`TriState::False`].
-    // TODO link do <dyn Stream>::writeout unsupported?
-    fn is_string(&self) -> TriState {
-        TriState::False
-    }
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -90,27 +79,7 @@ impl dyn Stream {
         Ok(vec)
     }
 
-    /// Write the contents of the stream (i.e., the items returned by its iterator) in a
-    /// human-readable form. This is called by the [`Display`] trait. The formatter may specify a
-    /// maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),
-    /// if no constraints are given they default to 5 items. If an error happens during reading the
-    /// stream, it is represented as `"<!>"`.
-    ///
-    /// If this is `Stream` represents a string, as expressed by its [`Stream::is_string()`]
-    /// method, the formatting follows that of a string, including character escapes. If no length
-    /// is given, up to 20 characters are printed. Any value returned by the iterator which is not
-    /// a [`Char`] is treated as a reading error.
-    pub fn writeout(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
-        -> std::fmt::Result
-    {
-        if self.is_string().is_true() {
-            self.writeout_string(f, error)
-        } else {
-            self.writeout_stream(f, count, error)
-        }
-    }
-
-    fn writeout_stream(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
+    pub(crate) fn writeout_stream(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -171,7 +140,7 @@ impl dyn Stream {
         }
     }
 
-    fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    pub(crate) fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.string_iter();
@@ -223,15 +192,9 @@ impl dyn Stream {
     }
 
     /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
-    /// failing for other types. Suitable for iterating over strings ([`Stream::is_string()`]` == `[`TriState::True`]).
+    /// failing for other types.
     pub fn string_iter(&self) -> StringIterator<'_> {
         StringIterator::new(self)
-    }
-}
-
-impl Display for Box<dyn Stream> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.writeout(f, &Default::default(), &Default::default())
     }
 }
 
@@ -270,37 +233,18 @@ impl Describe for BoxedStream {
     }
 }
 
-#[derive(Clone)]
-pub(crate) enum EmptyStream {
-    List,
-    String
-}
-
-impl EmptyStream {
-    pub fn cond_string(is_string: TriState) -> Self {
-        match is_string {
-            TriState::True => Self::String,
-            _ => Self::List,
-        }
-    }
-}
+#[derive(Clone, Copy)]
+pub(crate) struct EmptyStream;
 
 impl Stream for EmptyStream {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(std::iter::empty())
     }
-
-    fn is_string(&self) -> TriState {
-        matches!(self, Self::String).into()
-    }
 }
 
 impl Describe for EmptyStream {
-    fn describe_prec(&self, _: u32) -> String {
-        match self {
-            Self::List => "[]".into(),
-            Self::String => "\"\"".into()
-        }
+    fn describe_prec(&self, _prec: u32) -> String {
+        "[]".into()
     }
 }
 

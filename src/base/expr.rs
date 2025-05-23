@@ -27,8 +27,8 @@ impl Expr {
         Item::new_stream(value).into()
     }
 
-    pub fn new_string(value: impl Into<String>) -> Expr {
-        Item::new_string(value).into()
+    pub fn new_string(value: &str) -> Expr {
+        Item::new_string_literal(value).into()
     }
 
     pub fn new_node(head: impl Into<Head>, args: Vec<Expr>) -> Expr {
