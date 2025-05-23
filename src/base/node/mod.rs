@@ -110,6 +110,16 @@ impl Node {
         Ok(self)
     }*/
 
+    pub(crate) fn eval_nth_arg(mut self, ix: usize, env: &Rc<Env>) -> Result<Node, StreamError> {
+        if ix >= self.args.len() {
+            return Err(StreamError::new("not enough arguments", self));
+        }
+        let arg = self.args.remove(ix);
+        let arg = arg.eval(env)?;
+        self.args.insert(ix, arg.into());
+        Ok(self)
+    }
+
     pub(in crate::base) fn apply(self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
         Ok(Node {
             head: self.head,

@@ -1,19 +1,19 @@
 use crate::base::*;
 
 fn eval_alpha(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let rnode = node.resolve_no_source()?;
-    let RNodeNS { head, args: RArgs::Two(alpha, body) } = rnode else {
+    let rnode = node.eval_nth_arg(0, env)?.resolve_no_source()?;
+    let RNodeNS { args: RArgs::Two(alpha, _), .. } = &rnode else {
         return Err(StreamError::new("expected: alpha(alphabet, expr)", rnode));
     };
-    let alpha = alpha.eval(env)?;
-    let alpha = try_with!(Node { head, source: None, args: vec![alpha.into(), body] }, {
-        let (Item::Stream(stm) | Item::String(stm)) = &alpha else {
+    let alpha = try_with!(rnode, {
+        let Expr::Imm(Item::Stream(stm) | Item::String(stm)) = &alpha else {
             return Err(BaseError::from(format!("expected stream or string, found {:?}", alpha)));
         };
         stm.listout()?.try_into()?
     });
     let mut new_env = (**env).clone();
     new_env.alpha = Rc::new(alpha);
+    let RArgs::Two(_, body) = rnode.args else { unreachable!() };
     body.eval(&Rc::new(new_env))
 }
 

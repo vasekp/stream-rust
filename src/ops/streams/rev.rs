@@ -13,13 +13,14 @@ impl Rev {
         try_with!(enode, enode.check_no_args()?);
         let rnode = enode.resolve_source()?;
         let is_string = rnode.source.is_string();
-        let (Item::Stream(source) | Item::String(source)) = rnode.source else {
-            return Err(StreamError::new(format!("expected stream or string, found {:?}", rnode.source), rnode));
+        let (Item::Stream(source) | Item::String(source)) = &rnode.source else {
+            return Err(StreamError::new("expected stream or string", rnode));
         };
         match source.length() {
             Length::Infinite
-                => Err(StreamError::new("input is infinite", RNodeS { head: rnode.head, source: Item::Stream(source), args: RArgs::<Item>::Zero })),
+                => Err(StreamError::new("input is infinite", rnode)),
             Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) => {
+                let (Item::Stream(source) | Item::String(source)) = rnode.source else { unreachable!() };
                 Ok(Item::new_stream_or_string(Rev{head: rnode.head, source: source.into(), length: len}, is_string))
             },
             _ => {

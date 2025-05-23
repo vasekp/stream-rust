@@ -1,37 +1,21 @@
 use crate::base::*;
 
-fn eval_args(mut node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
-    let (head_arg, args_arg) = match std::mem::take(&mut node.args).into() {
-        RArgs::Two(head_arg, args_arg) => (head_arg, args_arg),
-        rargs => {
-            node.args = rargs.into();
-            return Err(StreamError::new("expected: body@stream or source.body@stream", node));
-        }
+fn eval_args(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    debug_assert!(node.args.len() == 2);
+    let node = node.eval_nth_arg(1, env)?;
+    let args_arg = &node.args[1];
+    let Expr::Imm(Item::Stream(stm)) = args_arg else {
+        return Err(StreamError::new(format!("expected stream, found {:?}", args_arg), node));
     };
-    let arg_stream = match args_arg.eval(env)? {
-        Item::Stream(stream) if stream.length() != Length::Infinite => stream,
-        arg @ Item::Stream(..) => return Err(StreamError::new("stream is infinite",
-            Node { head: node.head, source: node.source, args: vec![head_arg, arg.into()] })),
-        arg => return Err(StreamError::new(format!("expected stream, found {arg:?}"),
-            Node { head: node.head, source: node.source, args: vec![head_arg, arg.into()] }))
-    };
-    if arg_stream.length() == Length::Infinite {
-        return Err(StreamError::new("stream is infinite",
-            Node { head: node.head, source: node.source, args: vec![head_arg, Item::Stream(arg_stream).into()] }));
+    if stm.length() == Length::Infinite {
+        return Err(StreamError::new("stream is infinite", node));
     }
-    let head = match head_arg {
-        Expr::Eval(Node { head, source: None, args }) if args.is_empty() => head,
-        _ => return Err(StreamError::new(format!("expected bare symbol or block, found {:?}", head_arg),
-            Node { head: node.head, source: node.source, args: vec![head_arg, Item::Stream(arg_stream).into()] }))
+    let args = stm.listout()?;
+    let Expr::Eval(Node{head, ..}) = node.args.into_iter().next().unwrap() else {
+        panic!("@ should have a bare node as first argument by construction");
     };
-    let expr = Expr::Eval(Node{
-        head,
-        source: node.source,
-        args: arg_stream.iter()
-            .map(|res| res.map(Expr::from))
-            .collect::<Result<Vec<_>, _>>()?
-    });
-    expr.eval(env)
+    let source = node.source.map(|s| s.eval(env)).transpose()?;
+    Node::from(ENode { head, source, args }).eval(env)
 }
 
 #[cfg(test)]
