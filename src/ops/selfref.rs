@@ -146,15 +146,15 @@ mod tests {
         assert_eq!(parse("self{[#]~1}[2]").unwrap().eval_default().unwrap().describe(), "1");
 
         // Hamming weights
-        assert_eq!(parse("'a'.repeat.shift(self{([0,1]~#.skip(2)).riffle(1+#)})").unwrap().eval_default().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
+        assert_eq!(parse("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1+#)}").unwrap().eval_default().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
         // Thue-Morse
-        assert_eq!(parse("'a'.repeat.shift(self{([0,1]~#.skip(2)).riffle(1-#)})").unwrap().eval_default().unwrap().to_string(), "\"abbabaabbaababbabaab...");
+        assert_eq!(parse("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1-#)}").unwrap().eval_default().unwrap().to_string(), "\"abbabaabbaababbabaab...");
         // Paperfolding sequence
-        assert_eq!(parse("'a'.repeat.shift(self{[0,1].repeat.riffle(#)})").unwrap().eval_default().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
+        assert_eq!(parse("'a'.repeat+self{[0,1].repeat.riffle(#)}").unwrap().eval_default().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
         // Trailing zeroes
-        assert_eq!(parse("'a'.repeat.shift(self{0.repeat.riffle(#+1)})").unwrap().eval_default().unwrap().to_string(), "\"abacabadabacabaeabac...");
+        assert_eq!(parse("'a'.repeat+self{0.repeat.riffle(#+1)}").unwrap().eval_default().unwrap().to_string(), "\"abacabadabacabaeabac...");
         // Binary length
-        assert_eq!(parse("'a'.repeat.shift(self{(0~(#+1)).riffle(#+1)})").unwrap().eval_default().unwrap().to_string(), "\"abbccccddddddddeeeee...");
+        assert_eq!(parse("'a'.repeat+self{(0~(#+1)).riffle(#+1)}").unwrap().eval_default().unwrap().to_string(), "\"abbccccddddddddeeeee...");
         // Hanoi towers
         assert_eq!(parse("self{[12,23,31].repeat.riffle([13,32,21].repeat.riffle(#))}").unwrap().eval_default().unwrap().to_string(), "[12, 13, 23, 12, 31, ...]");
     }

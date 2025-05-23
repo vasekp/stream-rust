@@ -22,7 +22,7 @@ mod tests {
     fn test_alpha() {
         use crate::parser::parse;
         assert_eq!(parse("alpha(\"bÁC\"~'ch', 'b' << 'á' << 'c' << 'ch')").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("alpha(\"báC\", \"b Á c d\".shift(1))").unwrap().eval_default().unwrap().to_string(), "\"á C b d\"");
+        assert_eq!(parse("alpha(\"báC\", \"b Á c d\"+1)").unwrap().eval_default().unwrap().to_string(), "\"á C b d\"");
         assert_eq!(parse("alpha(['b', 'á', 'c'], 'B' << 'Á' << 'C')").unwrap().eval_default().unwrap().to_string(), "true");
         assert!(parse("alpha(['a','b', 1], 0)").unwrap().eval_default().is_err());
     }

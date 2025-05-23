@@ -35,9 +35,9 @@ pub(crate) trait Checks {
         }
     }
 
-    /*fn first_arg_checked(&self) -> Result<&Self::Element, BaseError> {
+    fn first_arg_checked(&self) -> Result<&Self::Element, BaseError> {
         self.args().get(0).ok_or("at least 1 argument required".into())
-    }*/
+    }
 
     /*fn first_arg_checked_mut(&mut self) -> Result<&mut Self::Element, BaseError> {
         self.args_mut().get_mut(0).ok_or("at least 1 argument required".into())
