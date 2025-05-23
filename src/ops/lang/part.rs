@@ -16,7 +16,11 @@ impl Part {
     }
 
     fn eval_enode(mut node: ENode, env: &Rc<Env>) -> Result<Item, StreamError> {
-        let source = try_with!(node, node.source_checked()?.to_stream()?);
+        let source = match &node.source {
+            Some(Item::Stream(stm)) | Some(Item::String(stm)) => stm,
+            Some(item) => return Err(StreamError::new(format!("expected stream or string, found {:?}", item), node)),
+            _ => return Err(StreamError::new("source required", node))
+        };
         match node.args.first() {
             None => Err(StreamError::new("at least 1 argument required", node)),
             Some(Item::Number(index)) => {
@@ -29,11 +33,15 @@ impl Part {
                 }
                 let mut iter = source.iter();
                 if iter.skip_n(index - 1u32)?.is_some() {
+                    drop(iter);
                     return Err(StreamError::new("index past end of stream", node));
                 }
                 let item = match iter.next() {
                     Some(value) => value?,
-                    None => return Err(StreamError::new("index past end of stream", node))
+                    None => {
+                        drop(iter);
+                        return Err(StreamError::new("index past end of stream", node));
+                    }
                 };
                 node.args.remove(0);
                 if node.args.is_empty() {
@@ -43,7 +51,14 @@ impl Part {
                 }
             },
             Some(Item::Stream(_)) => {
-                let indices = node.args.remove(0).to_stream().unwrap();
+                let source = match node.source {
+                    Some(Item::Stream(stm)) | Some(Item::String(stm)) => stm,
+                    _ => unreachable!()
+                };
+                let indices = match node.args.remove(0) {
+                    Item::Stream(stm) => stm,
+                    _ => unreachable!()
+                };
                 Ok(Item::new_stream(Part{source: source.into(), indices: indices.into(), rest: node.args, env: Rc::clone(env), head: node.head}))
             },
             Some(first) => {

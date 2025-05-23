@@ -25,7 +25,11 @@ impl SelfRef {
                 parent: Rc::downgrade(&hist)
             }))?
             .eval(&self.env)?;
-        let stm = try_with!(self.body.clone(), item.to_stream()?);
+        let stm = match item {
+            Item::Stream(stm) => stm,
+            _ => return Err(StreamError::new(format!("expected stream, found {:?}", item), 
+                self.body.clone()))
+        };
         Ok((stm, hist))
     }
 }

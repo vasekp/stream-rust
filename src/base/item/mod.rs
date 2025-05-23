@@ -102,16 +102,10 @@ impl Item {
         matches!(self, Item::Stream(_))
     }
 
-    pub fn as_stream(&self) -> Result<&(dyn Stream + 'static), BaseError> {
+    #[cfg(test)]
+    pub(crate) fn as_stream(&self) -> Result<&(dyn Stream + 'static), BaseError> {
         match self {
             Item::Stream(s) | Item::String(s) => Ok(&**s),
-            _ => Err(format!("expected stream, found {:?}", &self).into())
-        }
-    }
-
-    pub fn to_stream(&self) -> Result<Box<dyn Stream>, BaseError> {
-        match self {
-            Item::Stream(s) | Item::String(s) => Ok(s.clone_box()),
             _ => Err(format!("expected stream, found {:?}", &self).into())
         }
     }
