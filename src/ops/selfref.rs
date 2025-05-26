@@ -134,7 +134,7 @@ mod tests {
         assert_eq!(parse("self{[#]}").unwrap().eval_default().unwrap().to_string(), "[[[[[[...]]]]]]");
         assert_eq!(parse("self{[#]~1}[2]").unwrap().eval_default().unwrap().to_string(), "1");
         assert_eq!(parse("self{seq+(5~#)}").unwrap().eval_default().unwrap().to_string(), "[6, 8, 11, 15, 20, ...]");
-        // TODO assert_eq!(parse("self{\"pokus\".shift(\"ab\"~#)}").unwrap().eval_default().unwrap().to_string(), "\"qqblu\"");
+        assert_eq!(parse("self{\"pokus\".chars+(\"ab\".chars~#)}.string").unwrap().eval_default().unwrap().to_string(), "\"qqblu\"");
         assert_eq!(parse("self{#[1]}").unwrap().eval_default().unwrap().to_string(), "[<!>");
         assert_eq!(parse("self{#.len}").unwrap().eval_default().unwrap().to_string(), "[<!>");
         assert_eq!(parse("1.{#~self{0~#}}").unwrap().eval_default().unwrap().to_string(), "[1, 0, 0, 0, 0, ...]");
@@ -143,7 +143,7 @@ mod tests {
         test_len_exact(&parse("self{#:{#}}").unwrap().eval_default().unwrap(), 0);
         test_len_exact(&parse("self{#.riffle(#)}").unwrap().eval_default().unwrap(), 0);
         test_len_exact(&parse("self{#.repeat}").unwrap().eval_default().unwrap(), 0);
-        // TODO test_len_exact(&parse("self{\"pokus\".shift(\"ab\"~#)}").unwrap().eval_default().unwrap(), 5);
+        test_len_exact(&parse("self{\"pokus\".chars+(\"ab\".chars~#)}").unwrap().eval_default().unwrap(), 5);
         test_skip_n(&parse("self{1~(#+1)}").unwrap().eval_default().unwrap());
         assert_eq!(parse("self{#}").unwrap().eval_default().unwrap().describe(), "self({#})");
         assert_eq!(parse("self{[#]~1}").unwrap().eval_default().unwrap().describe(), "self({[#]~1})");

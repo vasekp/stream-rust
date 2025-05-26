@@ -158,7 +158,7 @@ mod tests {
         assert_eq!(parse("[1,2].riffle(['a', 'b'])").unwrap().eval_default().unwrap().to_string(), "[1, 'a', 2]");
         assert_eq!(parse("['a','b'].riffle(seq)").unwrap().eval_default().unwrap().to_string(), "['a', 1, 'b']");
         assert!(parse("\"abc\".riffle(',')").unwrap().eval_default().is_err());
-        // TODO assert!(parse("\"abc\".chars.riffle(',').string").unwrap().eval_default().unwrap().to_string(), "\"a,b,c\"");
+        assert_eq!(parse("\"abc\".chars.riffle(',').string").unwrap().eval_default().unwrap().to_string(), "\"a,b,c\"");
         assert!(parse("1.riffle(2)").unwrap().eval_default().is_err());
         test_len_exact(&parse("[1,2,3].riffle('a')").unwrap().eval_default().unwrap(), 5);
         test_len_exact(&parse("[1,2,3].riffle(['a'])").unwrap().eval_default().unwrap(), 3);
