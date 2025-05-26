@@ -47,8 +47,8 @@ impl Stream for Rev {
 }
 
 impl Describe for Rev {
-    fn describe_inner(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
     }
 }
 

@@ -145,8 +145,8 @@ impl MathOp {
 }
 
 impl Describe for MathOp {
-    fn describe_inner(&self, prec: u32) -> String {
-        self.alpha.wrap_describe(|prec| self.node.describe_inner(prec), prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        self.alpha.wrap_describe(|prec| self.node.describe_inner(prec, env), prec)
     }
 }
 
@@ -290,13 +290,13 @@ impl StringOp {
 }
 
 impl Describe for StringOp {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         self.alpha.wrap_describe(|prec| Node::describe_helper(
                 &self.node_rem.head,
                 None::<&Item>,
                 std::iter::once(ProxyItem::String(&*self.first))
                     .chain(self.node_rem.args.iter().map(ProxyItem::from)),
-                prec
+                prec, env
         ), prec)
     }
 }

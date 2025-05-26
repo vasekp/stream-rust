@@ -51,8 +51,8 @@ impl Stream for First {
 }
 
 impl Describe for First {
-    fn describe_inner(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec, env)
     }
 }
 

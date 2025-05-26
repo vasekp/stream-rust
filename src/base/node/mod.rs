@@ -179,20 +179,21 @@ impl Node {
         head: &Head,
         source: Option<&T>,
         args: impl IntoIterator<Item = U>,
-        prec: u32)
+        prec: u32,
+        env: &Rc<Env>)
     -> String
         where T: Describe, U: Describe
     {
         let mut ret = String::new();
         if let Some(source) = source {
-            ret += &source.describe_inner(u32::MAX);
+            ret += &source.describe_inner(u32::MAX, env);
             match head {
                 Head::Lang(LangItem::Map) => ret.push(':'),
                 Head::Lang(LangItem::Part) => (),
                 _ => ret.push('.')
             }
         }
-        ret += &head.describe();
+        ret += &head.describe(env);
         let args = args.into_iter();
         if let Head::Oper(op) = head {
             let nprec = op_prec(op).unwrap_or(0);
@@ -200,7 +201,7 @@ impl Node {
             if parens {
                 ret.push('(');
             }
-            let mut it = args.map(|arg| arg.describe_inner(nprec));
+            let mut it = args.map(|arg| arg.describe_inner(nprec, env));
             let first = it.next().expect("Head::Oper should have at least one arg");
             // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
             match it.next() {
@@ -222,7 +223,7 @@ impl Node {
                 ret.push(')');
             }
         } else {
-            let mut it = args.map(|arg| arg.describe_inner(0));
+            let mut it = args.map(|arg| arg.describe_inner(0, env));
             match it.next() {
                 Some(first) => {
                     match head {
@@ -251,21 +252,21 @@ impl Node {
 }
 
 impl Describe for Node {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         if matches!(self.head, Head::Lang(LangItem::Args)) {
             let mut ret = String::new();
             if let Some(source) = &self.source {
-                ret += &source.describe_inner(u32::MAX);
+                ret += &source.describe_inner(u32::MAX, env);
                 ret.push('.');
             }
             let [head, args] = &self.args[0..2] else { panic!("Head::Lang(Args) should have exactly 2 arguments") };
-            ret += &head.describe_inner(u32::MAX);
+            ret += &head.describe_inner(u32::MAX, env);
             ret += "@(";
-            ret += &args.describe_inner(u32::MAX);
+            ret += &args.describe_inner(u32::MAX, env);
             ret.push(')');
             ret
         } else {
-            Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec)
+            Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec, env)
         }
     }
 }

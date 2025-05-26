@@ -20,8 +20,8 @@ impl LenAM {
 }
 
 impl Describe for LenAM {
-    fn describe_inner(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
@@ -77,8 +77,8 @@ impl LenUF {
 }
 
 impl Describe for LenUF {
-    fn describe_inner(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
@@ -134,8 +134,8 @@ impl LenUU {
 }
 
 impl Describe for LenUU {
-    fn describe_inner(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 

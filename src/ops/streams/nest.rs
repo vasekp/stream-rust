@@ -46,17 +46,17 @@ fn eval_nest(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
 }
 
 impl Describe for NestSource {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         self.env.wrap_describe(|prec|
-            Node::describe_helper(&self.head, Some(&self.source), [&self.body], prec),
+            Node::describe_helper(&self.head, Some(&self.source), [&self.body], prec, env),
             prec)
     }
 }
 
 impl Describe for NestArgs {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         self.env.wrap_describe(|prec|
-            Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec),
+            Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec, env),
             prec)
     }
 }

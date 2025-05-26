@@ -241,13 +241,13 @@ impl Debug for Item {
 }
 
 impl Describe for Item {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         use Item::*;
         match self {
-            Number(n) => n.describe_inner(prec),
+            Number(n) => n.describe_inner(prec, env),
             Bool(b) => format!("{b}"),
             Char(c) => format!("{c}"),
-            Stream(s) | String(s) => s.describe_inner(prec)
+            Stream(s) | String(s) => s.describe_inner(prec, env)
         }
     }
 }
@@ -310,14 +310,14 @@ impl<'a> From<&'a Item> for ProxyItem<'a> {
 }
 
 impl Describe for ProxyItem<'_> {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         use ProxyItem::*;
         match self {
-            Number(n) => n.describe_inner(prec),
+            Number(n) => n.describe_inner(prec, env),
             Bool(b) => format!("{b}"),
             Char(c) => format!("{c}"),
-            Stream(s) => s.describe_inner(prec),
-            String(s) => s.describe_inner(prec),
+            Stream(s) => s.describe_inner(prec, env),
+            String(s) => s.describe_inner(prec, env),
         }
     }
 }

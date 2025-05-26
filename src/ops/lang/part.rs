@@ -75,10 +75,11 @@ impl Stream for Part {
 }
 
 impl Describe for Part {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         Node::describe_helper(&self.head, Some(&self.source),
             std::iter::once(ProxyItem::Stream(&*self.indices))
-                .chain(self.rest.iter().map(ProxyItem::from)), prec)
+                .chain(self.rest.iter().map(ProxyItem::from)),
+            prec, env)
     }
 }
 

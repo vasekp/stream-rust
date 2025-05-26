@@ -92,19 +92,20 @@ impl Stream for Range {
 }
 
 impl Describe for Range {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         match self.rtype {
             RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
                 [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 
-                prec),
+                prec, env),
             RangeType::Character(case) => {
                 let abc = &self.alpha;
                 abc.wrap_describe(|prec|
                     Node::describe_helper(&self.head, None::<&Item>, [
-                        Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
-                        Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
-                        self.step.as_ref().map(ProxyItem::Number).as_ref()
-                    ].into_iter().flatten(), prec),
+                            Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
+                            Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
+                            self.step.as_ref().map(ProxyItem::Number).as_ref()
+                        ].into_iter().flatten(),
+                        prec, env),
                     prec)
             }
         }

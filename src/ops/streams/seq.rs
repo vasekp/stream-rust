@@ -42,9 +42,9 @@ impl Seq {
 }
 
 impl Describe for Seq {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         Node::describe_helper(&self.head, None::<&Item>,
-            [self.from.as_ref(), self.step.as_ref()].into_iter().flatten(), prec)
+            [self.from.as_ref(), self.step.as_ref()].into_iter().flatten(), prec, env)
     }
 }
 

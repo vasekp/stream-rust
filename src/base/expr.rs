@@ -121,10 +121,10 @@ impl<T> From<T> for Expr where T: Into<Node> {
 }
 
 impl Describe for Expr {
-    fn describe_inner(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
         match self {
-            Expr::Imm(item) => item.describe_inner(prec),
-            Expr::Eval(node) => node.describe_inner(prec),
+            Expr::Imm(item) => item.describe_inner(prec, env),
+            Expr::Eval(node) => node.describe_inner(prec, env),
             Expr::Repl(subs) => subs.to_string(),
         }
     }

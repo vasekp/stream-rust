@@ -31,8 +31,8 @@ impl Join {
 }
 
 impl Describe for Join {
-    fn describe_inner(&self, prec: u32) -> String {
-        self.node.describe_inner(prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        self.node.describe_inner(prec, env)
     }
 }
 

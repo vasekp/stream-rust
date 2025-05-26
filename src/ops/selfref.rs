@@ -35,8 +35,8 @@ impl SelfRef {
 }
 
 impl Describe for SelfRef {
-    fn describe_inner(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec, env)
     }
 }
 
@@ -87,7 +87,7 @@ struct BackRefIter {
 }
 
 impl Describe for BackRef {
-    fn describe_inner(&self, _: u32) -> String {
+    fn describe_inner(&self, _prec: u32, _env: &Rc<Env>) -> String {
         "#".to_owned()
     }
 }

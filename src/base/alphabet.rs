@@ -168,7 +168,7 @@ mod tests {
         assert!(abc.c_plus_c(&Char::from('a'), &Char::from('á')).is_err());
 
         let plus = crate::parser::parse("1+2").unwrap();
-        assert_eq!(abc.wrap_describe(|prec| plus.describe_inner(prec), u32::MAX), "(1+2)");
+        assert_eq!(abc.wrap_describe(|prec| plus.describe_inner(prec, &Default::default()), u32::MAX), "(1+2)");
     }
 
     #[test]
@@ -194,6 +194,6 @@ mod tests {
 
         let abc = Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap();
         let plus = crate::parser::parse("1+2").unwrap();
-        assert_eq!(abc.wrap_describe(|prec| plus.describe_inner(prec), u32::MAX), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
+        assert_eq!(abc.wrap_describe(|prec| plus.describe_inner(prec, &Default::default()), u32::MAX), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
     }
 }

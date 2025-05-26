@@ -22,8 +22,8 @@ impl Flatten {
 }
 
 impl Describe for Flatten {
-    fn describe_inner(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), self.depth.as_ref(), prec)
+    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), self.depth.as_ref(), prec, env)
     }
 }
 
