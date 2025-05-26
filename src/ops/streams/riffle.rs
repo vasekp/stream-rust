@@ -23,7 +23,7 @@ impl Riffle {
 }
 
 impl Describe for Riffle {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.filler], prec)
     }
 }

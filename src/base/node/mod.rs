@@ -185,7 +185,7 @@ impl Node {
     {
         let mut ret = String::new();
         if let Some(source) = source {
-            ret += &source.describe_prec(u32::MAX);
+            ret += &source.describe_inner(u32::MAX);
             match head {
                 Head::Lang(LangItem::Map) => ret.push(':'),
                 Head::Lang(LangItem::Part) => (),
@@ -200,7 +200,7 @@ impl Node {
             if parens {
                 ret.push('(');
             }
-            let mut it = args.map(|arg| arg.describe_prec(nprec));
+            let mut it = args.map(|arg| arg.describe_inner(nprec));
             let first = it.next().expect("Head::Oper should have at least one arg");
             // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
             match it.next() {
@@ -222,7 +222,7 @@ impl Node {
                 ret.push(')');
             }
         } else {
-            let mut it = args.map(|arg| arg.describe_prec(0));
+            let mut it = args.map(|arg| arg.describe_inner(0));
             match it.next() {
                 Some(first) => {
                     match head {
@@ -251,17 +251,17 @@ impl Node {
 }
 
 impl Describe for Node {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32) -> String {
         if matches!(self.head, Head::Lang(LangItem::Args)) {
             let mut ret = String::new();
             if let Some(source) = &self.source {
-                ret += &source.describe_prec(u32::MAX);
+                ret += &source.describe_inner(u32::MAX);
                 ret.push('.');
             }
             let [head, args] = &self.args[0..2] else { panic!("Head::Lang(Args) should have exactly 2 arguments") };
-            ret += &head.describe_prec(u32::MAX);
+            ret += &head.describe_inner(u32::MAX);
             ret += "@(";
-            ret += &args.describe_prec(u32::MAX);
+            ret += &args.describe_inner(u32::MAX);
             ret.push(')');
             ret
         } else {

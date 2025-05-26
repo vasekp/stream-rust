@@ -92,7 +92,7 @@ impl Stream for Range {
 }
 
 impl Describe for Range {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32) -> String {
         match self.rtype {
             RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
                 [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 

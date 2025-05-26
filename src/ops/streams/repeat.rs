@@ -75,7 +75,7 @@ impl Stream for Repeat {
 }
 
 impl Describe for Repeat {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, Some(&self.item), &self.count, prec)
     }
 }

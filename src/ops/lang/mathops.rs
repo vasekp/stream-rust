@@ -145,8 +145,8 @@ impl MathOp {
 }
 
 impl Describe for MathOp {
-    fn describe_prec(&self, prec: u32) -> String {
-        self.alpha.wrap_describe(|prec| self.node.describe_prec(prec), prec)
+    fn describe_inner(&self, prec: u32) -> String {
+        self.alpha.wrap_describe(|prec| self.node.describe_inner(prec), prec)
     }
 }
 
@@ -290,7 +290,7 @@ impl StringOp {
 }
 
 impl Describe for StringOp {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32) -> String {
         self.alpha.wrap_describe(|prec| Node::describe_helper(
                 &self.node_rem.head,
                 None::<&Item>,

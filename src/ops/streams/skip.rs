@@ -51,7 +51,7 @@ impl Stream for Skip {
 }
 
 impl Describe for Skip {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, Some(&self.source), &self.count, prec)
     }
 }

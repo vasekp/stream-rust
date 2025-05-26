@@ -27,8 +27,8 @@ impl Env {
     fn describe(&self) -> String {
         let mut iter = self.vars.iter()
             .map(|(key, val)| match val {
-                Rhs::Value(item) => format!("{}={}", key, item.describe_prec(1)),
-                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_prec(0))
+                Rhs::Value(item) => format!("{}={}", key, item.describe_inner(1)),
+                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_inner(0))
             });
         let mut ret = match iter.next() {
             Some(rec) => rec,

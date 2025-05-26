@@ -17,7 +17,7 @@ impl Head {
     pub(crate) fn describe(&self) -> String {
         match self {
             Head::Symbol(s) => s.to_owned(),
-            Head::Block(b) => format!("{{{}}}", b.describe_prec(0)),
+            Head::Block(b) => format!("{{{}}}", b.describe_inner(0)),
             Head::Oper(_) | Head::Lang(_) => Default::default(),
         }
     }
