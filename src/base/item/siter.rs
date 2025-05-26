@@ -185,7 +185,7 @@ impl Iterator for StringIterator<'_> {
             Some(Err(err)) => Some(Err(err)),
             None => None,
             Some(Ok(item)) => Some(Err(StreamError::new(format!("malformed string: contains {:?}", item),
-                        self.parent.to_expr())))
+                Item::String(self.parent.clone_box()))))
         }
     }
 }

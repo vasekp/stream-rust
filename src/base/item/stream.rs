@@ -183,14 +183,6 @@ impl dyn Stream {
         dyn_clone::clone_box(self)
     }
 
-    pub(crate) fn to_item(&self) -> Item {
-        Item::Stream(self.clone_box())
-    }
-
-    pub(crate) fn to_expr(&self) -> Expr {
-        Expr::Imm(self.to_item())
-    }
-
     /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
     /// failing for other types.
     pub fn string_iter(&self) -> StringIterator<'_> {

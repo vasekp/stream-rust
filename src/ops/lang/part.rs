@@ -98,7 +98,7 @@ impl Iterator for PartIter<'_> {
         // TODO: smarter - number tracks increments, stream unfolds?
         let mut args = self.parent.rest.clone();
         args.insert(0, part);
-        let node = ENode { head: LangItem::Part.into(), source: Some(self.parent.source.to_item()), args };
+        let node = ENode { head: LangItem::Part.into(), source: Some(Item::Stream(self.parent.source.clone().into())), args };
         Some(Part::eval_enode(node, &self.parent.env))
     }
 }
@@ -130,6 +130,7 @@ mod tests {
         assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval_default().unwrap().to_string(), "3");
         assert_eq!(parse("[[1,2],[3,4]].part(2,1)").unwrap().eval_default().unwrap().to_string(), "3");
         assert_eq!(parse("\"abc\"[2]").unwrap().eval_default().unwrap().to_string(), "'b'");
+        assert_eq!(parse("\"abc\"[[2,3]]").unwrap().eval_default().unwrap().to_string(), "['b', 'c']");
 
         assert_eq!(parse("seq(5,2)[100.repeat]").unwrap().eval_default().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
         assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval_default().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");
