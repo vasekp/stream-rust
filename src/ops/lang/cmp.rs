@@ -128,6 +128,10 @@ mod tests {
     }
 }
 
+fn eval_assign(node: Node, _env: &Rc<Env>) -> Result<Item, StreamError> {
+    Err(StreamError::new("assignment not possible here, use == for comparisons", node))
+}
+
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("==", CmpOp::eval);
     keywords.insert("equal", CmpOp::eval);
@@ -136,4 +140,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert(">", CmpOp::eval);
     keywords.insert("<=", CmpOp::eval);
     keywords.insert(">=", CmpOp::eval);
+    keywords.insert("=", eval_assign);
 }
