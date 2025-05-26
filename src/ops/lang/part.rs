@@ -77,7 +77,8 @@ impl Stream for Part {
 impl Describe for Part {
     fn describe_prec(&self, prec: u32) -> String {
         Node::describe_helper(&self.head, Some(&self.source),
-            [self.indices.to_item()].iter().chain(self.rest.iter()), prec)
+            std::iter::once(ProxyItem::Stream(&*self.indices))
+                .chain(self.rest.iter().map(ProxyItem::from)), prec)
     }
 }
 

@@ -165,13 +165,13 @@ impl Node {
         }
     }
 
-    pub(crate) fn describe_helper<'a, T, U>(
+    pub(crate) fn describe_helper<T, U>(
         head: &Head,
         source: Option<&T>,
-        args: impl IntoIterator<Item = &'a U>,
+        args: impl IntoIterator<Item = U>,
         prec: u32)
     -> String
-        where T: Describe, U: Describe + 'a
+        where T: Describe, U: Describe
     {
         let mut ret = String::new();
         if let Some(source) = source {

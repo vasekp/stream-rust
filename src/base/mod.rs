@@ -57,3 +57,9 @@ impl Describe for UNumber {
         self.to_string()
     }
 }
+
+impl<T: Describe> Describe for &T {
+    fn describe_prec(&self, prec: u32) -> String {
+        (**self).describe_prec(prec)
+    }
+}

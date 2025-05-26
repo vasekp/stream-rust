@@ -294,7 +294,8 @@ impl Describe for StringOp {
         self.alpha.wrap_describe(|prec| Node::describe_helper(
                 &self.node_rem.head,
                 None::<&Item>,
-                [self.first.to_item()].iter().chain(self.node_rem.args.iter()),
+                std::iter::once(ProxyItem::String(&*self.first))
+                    .chain(self.node_rem.args.iter().map(ProxyItem::from)),
                 prec
         ), prec)
     }
