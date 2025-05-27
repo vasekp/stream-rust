@@ -21,7 +21,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
                 => Rhs::Function(*block),
             expr => Rhs::Value(expr.eval(&env)?)
         };
-        let mut new_env = Rc::unwrap_or_clone(env);
+        let mut new_vars = (*env.vars).clone();
         let last = args.pop();
         for name in args {
             let name = match name {
@@ -30,7 +30,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
                 => sym,
                 _ => return Err(StreamError::new("expected variable name", name))
             };
-            new_env.vars.insert(name, rhs.clone());
+            new_vars.insert(name, rhs.clone());
         }
         if let Some(name) = last {
             let name = match name {
@@ -39,8 +39,10 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
                 => sym,
                 _ => return Err(StreamError::new("expected variable name", name))
             };
-            new_env.vars.insert(name, rhs);
+            new_vars.insert(name, rhs);
         }
+        let mut new_env = Rc::unwrap_or_clone(env);
+        new_env.vars = Rc::new(new_vars);
         env = Rc::new(new_env);
     };
     body.eval(&env)

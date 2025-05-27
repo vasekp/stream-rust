@@ -7,14 +7,14 @@ use std::collections::HashMap;
 /// This is passed as an argument to [`Expr::eval()`].
 #[derive(Default, Clone)]
 pub struct Env {
-    pub vars: HashMap<String, Rhs>,
+    pub vars: Rc<HashMap<String, Rhs>>,
     pub alpha: Rc<Alphabet>,
 }
 
 impl Env {
     pub(crate) fn wrap_describe(self: &Rc<Self>, call: impl FnOnce(u32, &Rc<Env>) -> String, prec: u32, env_outer: &Rc<Env>) -> String {
         self.alpha.wrap_describe(|prec|
-            match self.vars.is_empty() {
+            match !Rc::ptr_eq(&self.vars, &env_outer.vars) {
                 true => call(prec, env_outer),
                 false => format!("with({}, {})", self.describe(env_outer), call(0, env_outer))
             },
