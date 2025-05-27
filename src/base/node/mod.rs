@@ -249,6 +249,32 @@ impl Node {
         }
         ret
     }
+
+    pub(crate) fn describe_with_env<T, U>(
+        env_inner: &Rc<Env>,
+        head: &Head,
+        source: Option<&T>,
+        args: impl IntoIterator<Item = U>,
+        prec: u32,
+        env_outer: &Rc<Env>)
+    -> String
+        where T: Describe, U: Describe
+    {
+        env_inner.wrap_describe(|prec, env| Node::describe_helper(head, source, args, prec, env), prec, env_outer)
+    }
+
+    pub(crate) fn describe_with_alpha<T, U>(
+        alpha: &Rc<Alphabet>,
+        head: &Head,
+        source: Option<&T>,
+        args: impl IntoIterator<Item = U>,
+        prec: u32,
+        env: &Rc<Env>)
+    -> String
+        where T: Describe, U: Describe
+    {
+        alpha.wrap_describe(|prec| Node::describe_helper(head, source, args, prec, env), prec)
+    }
 }
 
 impl Describe for Node {

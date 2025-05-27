@@ -12,11 +12,11 @@ pub struct Env {
 }
 
 impl Env {
-    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32) -> String, prec: u32) -> String {
+    pub(crate) fn wrap_describe(self: &Rc<Self>, call: impl FnOnce(u32, &Rc<Env>) -> String, prec: u32, env_outer: &Rc<Env>) -> String {
         self.alpha.wrap_describe(|prec|
             match self.vars.is_empty() {
-                true => call(prec),
-                false => format!("with({}, {})", self.describe(), call(0))
+                true => call(prec, env_outer),
+                false => format!("with({}, {})", self.describe(env_outer), call(0, env_outer))
             },
             prec)
     }
@@ -24,11 +24,11 @@ impl Env {
     /// The alphabet used for ordering characters and arithmetic operations on them.
     pub fn alphabet(&self) -> &Rc<Alphabet> { &self.alpha }
 
-    fn describe(&self) -> String {
+    fn describe(&self, env: &Rc<Env>) -> String {
         let mut iter = self.vars.iter()
             .map(|(key, val)| match val {
-                Rhs::Value(item) => format!("{}={}", key, item.describe_inner(1)),
-                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_inner(0))
+                Rhs::Value(item) => format!("{}={}", key, item.describe_inner(1, env)),
+                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_inner(0, env))
             });
         let mut ret = match iter.next() {
             Some(rec) => rec,
