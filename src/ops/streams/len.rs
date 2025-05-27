@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_len(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     let RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), args: RArgs::Zero, .. } = rnode else {
         return Err(StreamError::new("expected: source.len", rnode));

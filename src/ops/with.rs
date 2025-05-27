@@ -1,13 +1,13 @@
 use crate::base::*;
 
-fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_with(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source()?);
     if node.args.len() < 2 {
         return Err(StreamError::new("at least 2 arguments required", node));
     }
     let mut args = node.args;
     let body = args.pop().unwrap(); // just checked len > 2 > 1
-    let mut env = Rc::clone(env);
+    let mut env = env.clone();
     for arg in args {
         let mut args = match arg {
             Expr::Eval(Node { head: Head::Oper(op), source: None, args })
@@ -41,9 +41,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
             };
             new_vars.insert(name, rhs);
         }
-        let mut new_env = Rc::unwrap_or_clone(env);
-        new_env.vars = Rc::new(new_vars);
-        env = Rc::new(new_env);
+        env.vars = Rc::new(new_vars);
     };
     body.eval(&env)
 }

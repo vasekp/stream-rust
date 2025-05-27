@@ -17,7 +17,7 @@ enum RangeType {
 }
 
 impl Range {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let mut rnode = node.eval_all(env)?.resolve_no_source()?;
         let (from, to, step, rtype) = match rnode {
             RNodeNS { args: RArgs::One(Item::Number(to)), .. }
@@ -92,7 +92,7 @@ impl Stream for Range {
 }
 
 impl Describe for Range {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         match self.rtype {
             RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
                 [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 

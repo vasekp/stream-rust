@@ -7,7 +7,7 @@ struct LenAM {
 }
 
 impl LenAM {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
@@ -20,7 +20,7 @@ impl LenAM {
 }
 
 impl Describe for LenAM {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
@@ -64,7 +64,7 @@ struct LenUF {
 }
 
 impl LenUF {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
@@ -77,7 +77,7 @@ impl LenUF {
 }
 
 impl Describe for LenUF {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
@@ -121,7 +121,7 @@ struct LenUU {
 }
 
 impl LenUU {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
@@ -134,7 +134,7 @@ impl LenUU {
 }
 
 impl Describe for LenUU {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }

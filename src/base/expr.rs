@@ -74,7 +74,7 @@ impl Expr {
 
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
     /// `Node::eval()`.
-    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
+    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
         match self {
             Expr::Imm(item) => Ok(item),
             Expr::Eval(node) => node.eval(env),
@@ -121,7 +121,7 @@ impl<T> From<T> for Expr where T: Into<Node> {
 }
 
 impl Describe for Expr {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         match self {
             Expr::Imm(item) => item.describe_inner(prec, env),
             Expr::Eval(node) => node.describe_inner(prec, env),

@@ -6,13 +6,13 @@ struct NestSource {
     source: Item,
     body: Node,
     head: Head,
-    env: Rc<Env>
+    env: Env
 }
 
 struct NestIterSource<'node> {
     body: &'node Node,
     prev: Item,
-    env: &'node Rc<Env>
+    env: &'node Env
 }
 
 #[derive(Clone)]
@@ -20,39 +20,39 @@ struct NestArgs {
     body: Node,
     args: VecDeque<Item>,
     head: Head,
-    env: Rc<Env>
+    env: Env
 }
 
 struct NestIterArgs<'node> {
     body: &'node Node,
     prev: VecDeque<Item>,
-    env: &'node Rc<Env>
+    env: &'node Env
 }
 
-fn eval_nest(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_nest(node: Node, env: &Env) -> Result<Item, StreamError> {
     match node.resolve() {
         RNode::Source(RNodeS { head, source, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && body.args.is_empty() => {
-            Ok(Item::new_stream(NestSource{head, source: source.eval(env)?, body, env: Rc::clone(env)}))
+            Ok(Item::new_stream(NestSource{head, source: source.eval(env)?, body, env: env.clone()}))
         },
         RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(mut body)) }) if body.source.is_none() && !body.args.is_empty() => {
             let args = std::mem::take(&mut body.args)
                 .into_iter()
                 .map(|arg| arg.eval(env))
                 .collect::<Result<VecDeque<_>, _>>()?;
-            Ok(Item::new_stream(NestArgs{head, body, args, env: Rc::clone(env)}))
+            Ok(Item::new_stream(NestArgs{head, body, args, env: env.clone()}))
         },
         node => Err(StreamError::new("expected: source.nest({body}) or nest({body}(args))", node))
     }
 }
 
 impl Describe for NestSource {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_with_env(&self.env, &self.head, Some(&self.source), [&self.body], prec, env)
     }
 }
 
 impl Describe for NestArgs {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_with_env(&self.env, &self.head, None::<&Item>, [&self.body], prec, env)
     }
 }

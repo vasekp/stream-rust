@@ -12,7 +12,7 @@ pub struct Env {
 }
 
 impl Env {
-    pub(crate) fn wrap_describe(self: &Rc<Self>, call: impl FnOnce(u32, &Rc<Env>) -> String, prec: u32, env_outer: &Rc<Env>) -> String {
+    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32, &Env) -> String, prec: u32, env_outer: &Env) -> String {
         self.alpha.wrap_describe(|prec|
             match !Rc::ptr_eq(&self.vars, &env_outer.vars) {
                 true => call(prec, env_outer),
@@ -24,7 +24,7 @@ impl Env {
     /// The alphabet used for ordering characters and arithmetic operations on them.
     pub fn alphabet(&self) -> &Rc<Alphabet> { &self.alpha }
 
-    fn describe(&self, env: &Rc<Env>) -> String {
+    fn describe(&self, env: &Env) -> String {
         let mut iter = self.vars.iter()
             .map(|(key, val)| match val {
                 Rhs::Value(item) => format!("{}={}", key, item.describe_inner(1, env)),

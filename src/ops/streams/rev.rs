@@ -8,7 +8,7 @@ pub struct Rev {
 }
 
 impl Rev {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let enode = node.eval_all(env)?;
         try_with!(enode, enode.check_no_args()?);
         let rnode = enode.resolve_source()?;
@@ -47,7 +47,7 @@ impl Stream for Rev {
 }
 
 impl Describe for Rev {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
     }
 }

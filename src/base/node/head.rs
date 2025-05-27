@@ -14,7 +14,7 @@ pub enum Head {
 
 // Only for private use in Node::describe_helper.
 impl Head {
-    pub(crate) fn describe(&self, env: &Rc<Env>) -> String {
+    pub(crate) fn describe(&self, env: &Env) -> String {
         match self {
             Head::Symbol(s) => s.to_owned(),
             Head::Block(b) => format!("{{{}}}", b.describe_inner(0, env)),

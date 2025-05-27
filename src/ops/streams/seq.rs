@@ -29,7 +29,7 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_no_source()?;
         let (from, step) = match rnode.args {
             RArgs::Zero => (None, None),
@@ -42,7 +42,7 @@ impl Seq {
 }
 
 impl Describe for Seq {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, None::<&Item>,
             [self.from.as_ref(), self.step.as_ref()].into_iter().flatten(), prec, env)
     }

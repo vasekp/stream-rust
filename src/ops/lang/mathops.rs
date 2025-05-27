@@ -9,7 +9,7 @@ struct MathOp {
 
 type MathFunc = fn(&[Item], &Rc<Alphabet>) -> Result<Item, BaseError>;
 
-fn eval_op(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_op(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     match try_with!(node, node.first_arg_checked()?) {
@@ -19,7 +19,7 @@ fn eval_op(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
 }
 
 impl MathOp {
-    fn eval(node: ENode, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: ENode, env: &Env) -> Result<Item, StreamError> {
         let func = Self::find_fn(&node.head);
         Self::eval_with(node, env.alphabet(), func)
     }
@@ -145,7 +145,7 @@ impl MathOp {
 }
 
 impl Describe for MathOp {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         self.node.describe_inner(prec, env)
     }
 }
@@ -235,7 +235,7 @@ struct StringOp {
 type StringFunc = fn(&Char, &[Item], &Rc<Alphabet>) -> Result<Item, BaseError>;
 
 impl StringOp {
-    fn eval(mut node: ENode, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
         let func = try_with!(node, Self::find_fn(&node.head)?);
         let alpha = env.alphabet();
         if node.args.len() < 2 {
@@ -290,7 +290,7 @@ impl StringOp {
 }
 
 impl Describe for StringOp {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_with_alpha(
             &self.alpha,
             &self.node_rem.head,

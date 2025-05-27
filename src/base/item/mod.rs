@@ -241,7 +241,7 @@ impl Debug for Item {
 }
 
 impl Describe for Item {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         use Item::*;
         match self {
             Number(n) => n.describe_inner(prec, env),
@@ -310,7 +310,7 @@ impl<'a> From<&'a Item> for ProxyItem<'a> {
 }
 
 impl Describe for ProxyItem<'_> {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         use ProxyItem::*;
         match self {
             Number(n) => n.describe_inner(prec, env),

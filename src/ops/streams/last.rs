@@ -12,7 +12,7 @@ struct Last {
 }
 
 impl Last {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match &rnode {
             RNodeS { source: Item::Stream(stm) | Item::String(stm), .. }
@@ -106,7 +106,7 @@ impl Stream for Last {
 }
 
 impl Describe for Last {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec, env)
     }
 }

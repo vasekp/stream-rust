@@ -43,7 +43,7 @@ impl Node {
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
-    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
+    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
         match self.head {
             Head::Symbol(ref sym) | Head::Oper(ref sym) => {
                 if let Some(rhs) = env.vars.get(sym) {
@@ -81,7 +81,7 @@ impl Node {
         }
     }
 
-    pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
+    pub(crate) fn eval_all(self, env: &Env) -> Result<ENode, StreamError> {
         let source = match self.source {
             Some(source) => Some(source.eval(env)?),
             None => None
@@ -92,7 +92,7 @@ impl Node {
         Ok(ENode{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, env: &Rc<Env>) -> Result<RNodeS<Item, Expr>, StreamError> {
+    pub(crate) fn eval_source(self, env: &Env) -> Result<RNodeS<Item, Expr>, StreamError> {
         match self.source {
             Some(source) => Ok(RNodeS {
                 head: self.head,
@@ -103,14 +103,14 @@ impl Node {
         }
     }
 
-    /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+    /*pub(crate) fn eval_args(mut self, env: &Env) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
             .map(|x| x.eval(env).map(Expr::from))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
     }*/
 
-    pub(crate) fn eval_nth_arg(mut self, ix: usize, env: &Rc<Env>) -> Result<Node, StreamError> {
+    pub(crate) fn eval_nth_arg(mut self, ix: usize, env: &Env) -> Result<Node, StreamError> {
         if ix >= self.args.len() {
             return Err(StreamError::new("not enough arguments", self));
         }
@@ -180,7 +180,7 @@ impl Node {
         source: Option<&T>,
         args: impl IntoIterator<Item = U>,
         prec: u32,
-        env: &Rc<Env>)
+        env: &Env)
     -> String
         where T: Describe, U: Describe
     {
@@ -251,12 +251,12 @@ impl Node {
     }
 
     pub(crate) fn describe_with_env<T, U>(
-        env_inner: &Rc<Env>,
+        env_inner: &Env,
         head: &Head,
         source: Option<&T>,
         args: impl IntoIterator<Item = U>,
         prec: u32,
-        env_outer: &Rc<Env>)
+        env_outer: &Env)
     -> String
         where T: Describe, U: Describe
     {
@@ -269,7 +269,7 @@ impl Node {
         source: Option<&T>,
         args: impl IntoIterator<Item = U>,
         prec: u32,
-        env: &Rc<Env>)
+        env: &Env)
     -> String
         where T: Describe, U: Describe
     {
@@ -278,7 +278,7 @@ impl Node {
 }
 
 impl Describe for Node {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         if matches!(self.head, Head::Lang(LangItem::Args)) {
             let mut ret = String::new();
             if let Some(source) = &self.source {

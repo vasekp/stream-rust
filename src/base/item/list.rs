@@ -14,7 +14,7 @@ impl Stream for List {
 }
 
 impl Describe for List {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&Head::Lang(LangItem::List), None::<&Item>, &self.0, prec, env)
     }
 }

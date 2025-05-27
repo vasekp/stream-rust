@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_and(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_and(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     let res = try_with!(node, node.args.iter()
@@ -8,7 +8,7 @@ fn eval_and(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     Ok(Item::Bool(res))
 }
 
-fn eval_or(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_or(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     let res = try_with!(node, node.args.iter()
@@ -16,7 +16,7 @@ fn eval_or(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     Ok(Item::Bool(res))
 }
 
-fn eval_not_xor(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_not_xor(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     let res = try_with!(node, match (&node.head, &node.args[..]) {

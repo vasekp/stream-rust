@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_chars(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_chars(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_args()?);
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode.source {
@@ -9,7 +9,7 @@ fn eval_chars(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_string(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_string(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_args()?);
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode.source {

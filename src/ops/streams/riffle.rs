@@ -8,7 +8,7 @@ struct Riffle {
 }
 
 impl Riffle {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         let (source, filler) = match rnode {
             RNodeS { source: Item::Stream(ref src), args: RArgs::One(_), .. }
@@ -23,7 +23,7 @@ impl Riffle {
 }
 
 impl Describe for Riffle {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.filler], prec, env)
     }
 }

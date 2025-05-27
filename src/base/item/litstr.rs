@@ -14,7 +14,7 @@ impl Stream for LiteralString {
 }
 
 impl Describe for LiteralString {
-    fn describe_inner(&self, _prec: u32, _env: &Rc<Env>) -> String {
+    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
         let mut ret = String::new();
         ret.push('"');
         for ch in &self.0 {

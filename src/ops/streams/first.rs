@@ -14,7 +14,7 @@ struct FirstIter<'node> {
 }
 
 impl First {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         let is_string = rnode.source.is_string();
         match rnode {
@@ -51,7 +51,7 @@ impl Stream for First {
 }
 
 impl Describe for First {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec, env)
     }
 }

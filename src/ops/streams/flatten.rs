@@ -8,7 +8,7 @@ struct Flatten {
 }
 
 impl Flatten {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         match node.eval_all(env)?.resolve_source()? {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero } => {
                 Ok(Item::new_stream(Flatten { source: stm.into(), head, depth: None }))
@@ -22,7 +22,7 @@ impl Flatten {
 }
 
 impl Describe for Flatten {
-    fn describe_inner(&self, prec: u32, env: &Rc<Env>) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), self.depth.as_ref(), prec, env)
     }
 }
