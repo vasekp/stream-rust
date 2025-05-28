@@ -5,14 +5,13 @@ use crate::base::*;
 pub(crate) fn describe_helper<T, U>(
     head: &Head,
     source: Option<&T>,
-    args: impl IntoIterator<Item = U>,
+    args: impl Iterator<Item = U>,
     prec: u32,
     env: &Env)
 -> String
     where T: Describe, U: Describe
 {
     let src_str = source.map(|src| src.describe_inner(u32::MAX, env));
-    let args = args.into_iter();
     match head {
         Head::Symbol(sym) => desc_basic(sym, src_str, args, env),
         Head::Block(b) => desc_basic(&format!("{{{}}}", b.describe_inner(0, env)), src_str, args, env),

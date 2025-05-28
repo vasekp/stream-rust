@@ -185,7 +185,7 @@ impl Node {
     -> String
         where T: Describe, U: Describe
     {
-        dh::describe_helper(head, source, args, prec, env)
+        dh::describe_helper(head, source, args.into_iter(), prec, env)
     }
 
     pub(crate) fn describe_with_env<T, U>(
@@ -198,7 +198,8 @@ impl Node {
     -> String
         where T: Describe, U: Describe
     {
-        env_inner.wrap_describe(|prec, env| Node::describe_helper(head, source, args, prec, env), prec, env_outer)
+        env_inner.wrap_describe(|prec, env|
+            dh::describe_helper(head, source, args.into_iter(), prec, env), prec, env_outer)
     }
 
     pub(crate) fn describe_with_alpha<T, U>(
@@ -211,12 +212,13 @@ impl Node {
     -> String
         where T: Describe, U: Describe
     {
-        alpha.wrap_describe(|prec, env| Node::describe_helper(head, source, args, prec, env), prec, env)
+        alpha.wrap_describe(|prec, env|
+            dh::describe_helper(head, source, args.into_iter(), prec, env), prec, env)
     }
 }
 
 impl Describe for Node {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec, env)
+        dh::describe_helper(&self.head, self.source.as_deref(), self.args.iter(), prec, env)
     }
 }
