@@ -18,7 +18,7 @@ fn eval_with(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rhs = match args.pop().expect("= should have at least 2 args") {
             Expr::Eval(Node { head: Head::Block(block), source: None, args })
                 if args.is_empty()
-                => Rhs::Function(*block),
+                => Rhs::Function(*block, env.clone()),
             expr => Rhs::Value(expr.eval(&env)?)
         };
         let mut new_vars = (*env.vars).clone();
@@ -70,8 +70,11 @@ mod tests {
         assert!(parse("with(len=2, seq.len)").unwrap().eval_default().is_err());
         assert_eq!(parse("with(a={5*#1}, a(4))").unwrap().eval_default().unwrap().to_string(), "20");
         assert_eq!(parse("with(a={5*#1}, b={a(#+1)}, 3.b)").unwrap().eval_default().unwrap().to_string(), "20");
-        // This fails because the second expression has to be stored unevaluated.
-        assert!(parse("with(a={5*#1}, a={a(#+1)}, 3.a)").unwrap().eval_default().is_err());
+        assert_eq!(parse("with(a={5*#1}, a={a(#+1)}, 3.a)").unwrap().eval_default().unwrap().to_string(), "20");
         assert_eq!(parse("with(df={times@range(#1,1,-2)}, df(10))").unwrap().eval_default().unwrap().to_string(), "3840");
+
+        assert!(parse("with(a={a}, a)").unwrap().eval_default().is_err());
+        assert_eq!(parse("with(a=1, a={a}, a)").unwrap().eval_default().unwrap().to_string(), "1");
+        assert_eq!(parse("with(a=1, b={a}, a=2, b)").unwrap().eval_default().unwrap().to_string(), "1");
     }
 }

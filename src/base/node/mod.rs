@@ -54,12 +54,12 @@ impl Node {
                             try_with!(self, self.check_no_args()?);
                             Ok(item.clone())
                         },
-                        Rhs::Function(block) => {
+                        Rhs::Function(block, saved_env) => {
                             Expr::Eval(Node {
                                 head: block.clone().into(),
                                 source: self.source,
                                 args: self.args
-                            }).eval(env)
+                            }).eval(saved_env)
                         }
                     }
                 } else if let Some(func) = find_keyword(sym) {

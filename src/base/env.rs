@@ -29,7 +29,7 @@ impl Env {
         let mut iter = self.vars.iter()
             .map(|(key, val)| match val {
                 Rhs::Value(item) => format!("{}={}", key, item.describe_inner(1, env)),
-                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_inner(0, env))
+                Rhs::Function(expr, saved_env) => format!("{}={{{}}}", key, expr.describe_inner(0, saved_env)) // TODO wrap
             });
         let mut ret = match iter.next() {
             Some(rec) => rec,
@@ -46,5 +46,5 @@ impl Env {
 #[derive(Clone)]
 pub enum Rhs {
     Value(Item),
-    Function(Expr)
+    Function(Expr, Env)
 }

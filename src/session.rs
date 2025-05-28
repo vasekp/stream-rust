@@ -28,7 +28,7 @@ impl Session {
                 let rhs = match self.apply_context(rhs)? {
                     Expr::Eval(Node { head: Head::Block(block), source: None, args })
                         if args.is_empty()
-                        => Rhs::Function(*block),
+                        => Rhs::Function(*block, Env::default()),
                     expr => Rhs::Value(expr.eval_default()?)
                 };
                 let mut names = Vec::with_capacity(args.len());
@@ -105,7 +105,7 @@ impl Session {
                                         Ok(Expr::Imm(item.clone()))
                                     }
                                 },
-                                Some(Rhs::Function(block)) => {
+                                Some(Rhs::Function(block, _)) => {
                                     Ok(Expr::Eval(Node {
                                         head: block.clone().into(),
                                         source: source.take(),
@@ -159,6 +159,7 @@ mod tests {
         assert_eq!(sess.process(parse("clear($b)").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$b".into()]));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(20)));
         assert!(sess.process(parse("$b").unwrap()).is_err());
+        assert!(sess.process(parse("$c={$c}").unwrap()).is_err());
 
         let mut sess = Session::new();
         assert_eq!(sess.process(parse("100").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(100)));
