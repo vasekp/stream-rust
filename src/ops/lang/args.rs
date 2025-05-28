@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_args(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_args(node: Node, env: &Env) -> Result<Item, StreamError> {
     debug_assert!(node.args.len() == 2);
     let node = node.eval_nth_arg(1, env)?;
     let args_arg = &node.args[1];

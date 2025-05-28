@@ -8,7 +8,7 @@ struct LexOp;
 type CritFunc = fn(Ordering) -> bool;
 
 impl LexOp {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         let func = Self::find_fn(&node.head);
         try_with!(node, node.check_no_source()?);
@@ -31,7 +31,7 @@ impl LexOp {
         }
     }
 
-    fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Rc<Env>) -> Result<bool, BaseError> {
+    fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> Result<bool, BaseError> {
         let mut iter = items.iter();
         let mut prev = iter.next().unwrap(); // args checked to be nonempty in eval()
         for next in iter {

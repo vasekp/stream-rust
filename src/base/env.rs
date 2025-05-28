@@ -7,35 +7,36 @@ use std::collections::HashMap;
 /// This is passed as an argument to [`Expr::eval()`].
 #[derive(Default, Clone)]
 pub struct Env {
-    pub vars: HashMap<String, Rhs>,
+    pub vars: Rc<HashMap<String, Rhs>>,
     pub alpha: Rc<Alphabet>,
 }
 
 impl Env {
-    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32) -> String, prec: u32) -> String {
-        self.alpha.wrap_describe(|prec|
-            match self.vars.is_empty() {
-                true => call(prec),
-                false => format!("with({}, {})", self.describe(), call(0))
+    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32, &Env) -> String, prec: u32, env_outer: &Env) -> String {
+        self.alpha.wrap_describe(|prec, env|
+            if Rc::ptr_eq(&self.vars, &env.vars) || self.vars.is_empty() && env.vars.is_empty() {
+                call(prec, self)
+            } else {
+                format!("with({}, {})", self.describe(env), call(0, self))
             },
-            prec)
+            prec, env_outer)
     }
 
     /// The alphabet used for ordering characters and arithmetic operations on them.
     pub fn alphabet(&self) -> &Rc<Alphabet> { &self.alpha }
 
-    fn describe(&self) -> String {
+    fn describe(&self, env: &Env) -> String {
         let mut iter = self.vars.iter()
             .map(|(key, val)| match val {
-                Rhs::Value(item) => format!("{}={}", key, item.describe_prec(1)),
-                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_prec(0))
+                Rhs::Value(item) => format!("{}={}", key, item.describe_inner(1, env)),
+                Rhs::Function(expr) => format!("{}={{{}}}", key, expr.describe_inner(0, env))
             });
         let mut ret = match iter.next() {
             Some(rec) => rec,
             None => return String::new()
         };
         for rec in iter {
-            ret.push(',');
+            ret += ", ";
             ret += &rec;
         }
         ret

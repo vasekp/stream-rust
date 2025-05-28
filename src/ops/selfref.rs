@@ -6,14 +6,14 @@ use std::cell::RefCell;
 struct SelfRef {
     head: Head,
     body: Node,
-    env: Rc<Env>
+    env: Env
 }
 
 impl SelfRef {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         match node.resolve() {
             RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) =>
-                Ok(Item::new_stream(SelfRef{head, body, env: Rc::clone(env)})),
+                Ok(Item::new_stream(SelfRef{head, body, env: env.clone()})),
             node => Err(StreamError::new("expected: self({body})", node))
         }
     }
@@ -35,8 +35,8 @@ impl SelfRef {
 }
 
 impl Describe for SelfRef {
-    fn describe_prec(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec)
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec, env)
     }
 }
 
@@ -87,7 +87,7 @@ struct BackRefIter {
 }
 
 impl Describe for BackRef {
-    fn describe_prec(&self, _: u32) -> String {
+    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
         "#".to_owned()
     }
 }

@@ -43,7 +43,7 @@ impl Node {
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
-    pub fn eval(self, env: &Rc<Env>) -> Result<Item, StreamError> {
+    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
         match self.head {
             Head::Symbol(ref sym) | Head::Oper(ref sym) => {
                 if let Some(rhs) = env.vars.get(sym) {
@@ -81,7 +81,7 @@ impl Node {
         }
     }
 
-    pub(crate) fn eval_all(self, env: &Rc<Env>) -> Result<ENode, StreamError> {
+    pub(crate) fn eval_all(self, env: &Env) -> Result<ENode, StreamError> {
         let source = match self.source {
             Some(source) => Some(source.eval(env)?),
             None => None
@@ -92,7 +92,7 @@ impl Node {
         Ok(ENode{head: self.head, source, args})
     }
 
-    pub(crate) fn eval_source(self, env: &Rc<Env>) -> Result<RNodeS<Item, Expr>, StreamError> {
+    pub(crate) fn eval_source(self, env: &Env) -> Result<RNodeS<Item, Expr>, StreamError> {
         match self.source {
             Some(source) => Ok(RNodeS {
                 head: self.head,
@@ -103,14 +103,14 @@ impl Node {
         }
     }
 
-    /*pub(crate) fn eval_args(mut self, env: &Rc<Env>) -> Result<Node, StreamError> {
+    /*pub(crate) fn eval_args(mut self, env: &Env) -> Result<Node, StreamError> {
         self.args = self.args.into_iter()
             .map(|x| x.eval(env).map(Expr::from))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(self)
     }*/
 
-    pub(crate) fn eval_nth_arg(mut self, ix: usize, env: &Rc<Env>) -> Result<Node, StreamError> {
+    pub(crate) fn eval_nth_arg(mut self, ix: usize, env: &Env) -> Result<Node, StreamError> {
         if ix >= self.args.len() {
             return Err(StreamError::new("not enough arguments", self));
         }
@@ -179,20 +179,21 @@ impl Node {
         head: &Head,
         source: Option<&T>,
         args: impl IntoIterator<Item = U>,
-        prec: u32)
+        prec: u32,
+        env: &Env)
     -> String
         where T: Describe, U: Describe
     {
         let mut ret = String::new();
         if let Some(source) = source {
-            ret += &source.describe_prec(u32::MAX);
+            ret += &source.describe_inner(u32::MAX, env);
             match head {
                 Head::Lang(LangItem::Map) => ret.push(':'),
                 Head::Lang(LangItem::Part) => (),
                 _ => ret.push('.')
             }
         }
-        ret += &head.describe();
+        ret += &head.describe(env);
         let args = args.into_iter();
         if let Head::Oper(op) = head {
             let nprec = op_prec(op).unwrap_or(0);
@@ -200,7 +201,7 @@ impl Node {
             if parens {
                 ret.push('(');
             }
-            let mut it = args.map(|arg| arg.describe_prec(nprec));
+            let mut it = args.map(|arg| arg.describe_inner(nprec, env));
             let first = it.next().expect("Head::Oper should have at least one arg");
             // if len == 1, print {op}{arg}, otherwise {arg}{op}{arg}...
             match it.next() {
@@ -222,7 +223,7 @@ impl Node {
                 ret.push(')');
             }
         } else {
-            let mut it = args.map(|arg| arg.describe_prec(0));
+            let mut it = args.map(|arg| arg.describe_inner(0, env));
             match it.next() {
                 Some(first) => {
                     match head {
@@ -248,24 +249,50 @@ impl Node {
         }
         ret
     }
+
+    pub(crate) fn describe_with_env<T, U>(
+        env_inner: &Env,
+        head: &Head,
+        source: Option<&T>,
+        args: impl IntoIterator<Item = U>,
+        prec: u32,
+        env_outer: &Env)
+    -> String
+        where T: Describe, U: Describe
+    {
+        env_inner.wrap_describe(|prec, env| Node::describe_helper(head, source, args, prec, env), prec, env_outer)
+    }
+
+    pub(crate) fn describe_with_alpha<T, U>(
+        alpha: &Rc<Alphabet>,
+        head: &Head,
+        source: Option<&T>,
+        args: impl IntoIterator<Item = U>,
+        prec: u32,
+        env: &Env)
+    -> String
+        where T: Describe, U: Describe
+    {
+        alpha.wrap_describe(|prec, env| Node::describe_helper(head, source, args, prec, env), prec, env)
+    }
 }
 
 impl Describe for Node {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         if matches!(self.head, Head::Lang(LangItem::Args)) {
             let mut ret = String::new();
             if let Some(source) = &self.source {
-                ret += &source.describe_prec(u32::MAX);
+                ret += &source.describe_inner(u32::MAX, env);
                 ret.push('.');
             }
             let [head, args] = &self.args[0..2] else { panic!("Head::Lang(Args) should have exactly 2 arguments") };
-            ret += &head.describe_prec(u32::MAX);
+            ret += &head.describe_inner(u32::MAX, env);
             ret += "@(";
-            ret += &args.describe_prec(u32::MAX);
+            ret += &args.describe_inner(u32::MAX, env);
             ret.push(')');
             ret
         } else {
-            Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec)
+            Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec, env)
         }
     }
 }

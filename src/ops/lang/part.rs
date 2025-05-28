@@ -6,16 +6,16 @@ struct Part {
     source: BoxedStream,
     indices: BoxedStream,
     rest: Vec<Item>,
-    env: Rc<Env>,
+    env: Env,
     head: Head
 }
 
 impl Part {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         Self::eval_enode(node.eval_all(env)?, env)
     }
 
-    fn eval_enode(mut node: ENode, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval_enode(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
         let source = match &node.source {
             Some(Item::Stream(stm)) | Some(Item::String(stm)) => stm,
             Some(item) => return Err(StreamError::new(format!("expected stream or string, found {:?}", item), node)),
@@ -59,7 +59,7 @@ impl Part {
                     Item::Stream(stm) => stm,
                     _ => unreachable!()
                 };
-                Ok(Item::new_stream(Part{source: source.into(), indices: indices.into(), rest: node.args, env: Rc::clone(env), head: node.head}))
+                Ok(Item::new_stream(Part{source: source.into(), indices: indices.into(), rest: node.args, env: env.clone(), head: node.head}))
             },
             Some(first) => {
                 Err(StreamError::new(format!("expected number or stream, found {:?}", first), node))
@@ -75,10 +75,11 @@ impl Stream for Part {
 }
 
 impl Describe for Part {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source),
             std::iter::once(ProxyItem::Stream(&*self.indices))
-                .chain(self.rest.iter().map(ProxyItem::from)), prec)
+                .chain(self.rest.iter().map(ProxyItem::from)),
+            prec, env)
     }
 }
 

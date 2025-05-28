@@ -5,7 +5,7 @@ struct Map {
     source: BoxedStream,
     body: Node,
     head: Head,
-    env: Rc<Env>
+    env: Env
 }
 
 struct MapIter<'node> {
@@ -14,20 +14,18 @@ struct MapIter<'node> {
 }
 
 impl Map {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         match node.eval_source(env)? {
             RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
-                Ok(Item::new_stream(Map{head, source: source.into(), body, env: Rc::clone(env)})),
+                Ok(Item::new_stream(Map{head, source: source.into(), body, env: env.clone()})),
             node => Err(StreamError::new("expected: source:body", node))
         }
     }
 }
 
 impl Describe for Map {
-    fn describe_prec(&self, prec: u32) -> String {
-        self.env.wrap_describe(|prec|
-            Node::describe_helper(&self.head, Some(&self.source), [&self.body], prec),
-            prec)
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_with_env(&self.env, &self.head, Some(&self.source), [&self.body], prec, env)
     }
 }
 

@@ -90,10 +90,12 @@ impl Alphabet {
         Ok(ox.cmp(&oy))
     }
 
-    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32) -> String, prec: u32) -> String {
-        match self {
-            Alphabet::Std26 => call(prec),
-            Alphabet::Listed{vec, ..} => format!("alpha({}, {})", Self::format(vec), call(0))
+    pub(crate) fn wrap_describe(self: &Rc<Self>, call: impl FnOnce(u32, &Env) -> String, prec: u32, env: &Env) -> String {
+        match **self {
+            Alphabet::Listed{ref vec, ..} if !Rc::ptr_eq(self, &env.alpha)
+                => format!("alpha({}, {})", Self::format(vec),
+                    call(0, &Env{alpha: Rc::clone(self), vars: Rc::clone(&env.vars)})),
+            _ => call(prec, env)
         }
     }
 
@@ -149,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_std26() {
-        let abc = Alphabet::Std26;
+        let abc = Rc::new(Alphabet::Std26);
         assert_eq!(abc.ord_case(&Char::from('a')), Ok((1isize, CharCase::Lower)));
         assert_eq!(abc.ord_case(&Char::from('Z')), Ok((26isize, CharCase::Upper)));
         assert!(abc.ord_case(&Char::from('@')).is_err());
@@ -168,12 +170,12 @@ mod tests {
         assert!(abc.c_plus_c(&Char::from('a'), &Char::from('á')).is_err());
 
         let plus = crate::parser::parse("1+2").unwrap();
-        assert_eq!(abc.wrap_describe(|prec| plus.describe_prec(prec), u32::MAX), "(1+2)");
+        assert_eq!(abc.wrap_describe(|prec, env| plus.describe_inner(prec, env), u32::MAX, &Default::default()), "(1+2)");
     }
 
     #[test]
     fn test_custom_alpha() {
-        let abc = Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap();
+        let abc = Rc::new(Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap());
         assert_eq!(abc.ord_case(&Char::from('a')), Ok((4isize, CharCase::Lower)));
         assert_eq!(abc.ord_case(&Char::from('Á')), Ok((2isize, CharCase::Upper)));
         assert_eq!(abc.ord_case(&Char::from("CH")), Ok((3isize, CharCase::Upper)));
@@ -192,8 +194,8 @@ mod tests {
         assert!(Alphabet::try_from(vec![Item::new_char("ch"), Item::new_char("Ch")]).is_err());
         assert!(Alphabet::try_from(vec![]).is_err());
 
-        let abc = Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap();
+        let abc = Rc::new(Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap());
         let plus = crate::parser::parse("1+2").unwrap();
-        assert_eq!(abc.wrap_describe(|prec| plus.describe_prec(prec), u32::MAX), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
+        assert_eq!(abc.wrap_describe(|prec, env| plus.describe_inner(prec, env), u32::MAX, &Default::default()), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
     }
 }

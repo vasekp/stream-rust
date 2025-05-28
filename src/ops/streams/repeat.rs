@@ -9,7 +9,7 @@ pub struct Repeat {
 }
 
 impl Repeat {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_source()?;
         let (item, count) = match rnode {
             RNodeS { source, args: RArgs::Zero, .. }
@@ -75,8 +75,8 @@ impl Stream for Repeat {
 }
 
 impl Describe for Repeat {
-    fn describe_prec(&self, prec: u32) -> String {
-        Node::describe_helper(&self.head, Some(&self.item), &self.count, prec)
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, Some(&self.item), &self.count, prec, env)
     }
 }
 

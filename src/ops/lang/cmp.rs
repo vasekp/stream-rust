@@ -6,7 +6,7 @@ struct CmpOp;
 type CmpFunc = fn(&[Item]) -> Result<bool, BaseError>;
 
 impl CmpOp {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         let func = Self::find_fn(&node.head);
         try_with!(node, node.check_no_source()?);
@@ -128,7 +128,7 @@ mod tests {
     }
 }
 
-fn eval_assign(node: Node, _env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_assign(node: Node, _env: &Env) -> Result<Item, StreamError> {
     Err(StreamError::new("assignment not possible here, use == for comparisons", node))
 }
 

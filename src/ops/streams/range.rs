@@ -17,7 +17,7 @@ enum RangeType {
 }
 
 impl Range {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let mut rnode = node.eval_all(env)?.resolve_no_source()?;
         let (from, to, step, rtype) = match rnode {
             RNodeNS { args: RArgs::One(Item::Number(to)), .. }
@@ -92,20 +92,19 @@ impl Stream for Range {
 }
 
 impl Describe for Range {
-    fn describe_prec(&self, prec: u32) -> String {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
         match self.rtype {
             RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
                 [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 
-                prec),
+                prec, env),
             RangeType::Character(case) => {
                 let abc = &self.alpha;
-                abc.wrap_describe(|prec|
-                    Node::describe_helper(&self.head, None::<&Item>, [
+                Node::describe_with_alpha(abc, &self.head, None::<&Item>, [
                         Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
                         Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
                         self.step.as_ref().map(ProxyItem::Number).as_ref()
-                    ].into_iter().flatten(), prec),
-                    prec)
+                    ].into_iter().flatten(),
+                    prec, env)
             }
         }
     }

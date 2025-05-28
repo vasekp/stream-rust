@@ -1,13 +1,13 @@
 use crate::base::*;
 
-fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_with(node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source()?);
     if node.args.len() < 2 {
         return Err(StreamError::new("at least 2 arguments required", node));
     }
     let mut args = node.args;
     let body = args.pop().unwrap(); // just checked len > 2 > 1
-    let mut env = Rc::clone(env);
+    let mut env = env.clone();
     for arg in args {
         let mut args = match arg {
             Expr::Eval(Node { head: Head::Oper(op), source: None, args })
@@ -21,7 +21,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
                 => Rhs::Function(*block),
             expr => Rhs::Value(expr.eval(&env)?)
         };
-        let mut new_env = Rc::unwrap_or_clone(env);
+        let mut new_vars = (*env.vars).clone();
         let last = args.pop();
         for name in args {
             let name = match name {
@@ -30,7 +30,7 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
                 => sym,
                 _ => return Err(StreamError::new("expected variable name", name))
             };
-            new_env.vars.insert(name, rhs.clone());
+            new_vars.insert(name, rhs.clone());
         }
         if let Some(name) = last {
             let name = match name {
@@ -39,9 +39,9 @@ fn eval_with(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
                 => sym,
                 _ => return Err(StreamError::new("expected variable name", name))
             };
-            new_env.vars.insert(name, rhs);
+            new_vars.insert(name, rhs);
         }
-        env = Rc::new(new_env);
+        env.vars = Rc::new(new_vars);
     };
     body.eval(&env)
 }

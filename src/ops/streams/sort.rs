@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::cmp::Ordering;
 
-fn eval_sort(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+fn eval_sort(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match &rnode {
         RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => {

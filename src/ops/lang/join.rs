@@ -7,7 +7,7 @@ struct Join {
 }
 
 impl Join {
-    fn eval(node: Node, env: &Rc<Env>) -> Result<Item, StreamError> {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         try_with!(node, node.check_no_source()?);
         try_with!(node, node.check_args_nonempty()?);
@@ -31,8 +31,8 @@ impl Join {
 }
 
 impl Describe for Join {
-    fn describe_prec(&self, prec: u32) -> String {
-        self.node.describe_prec(prec)
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        self.node.describe_inner(prec, env)
     }
 }
 
