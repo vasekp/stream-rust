@@ -21,11 +21,15 @@ fn eval_alpha(node: Node, env: &Env) -> Result<Item, StreamError> {
 mod tests {
     #[test]
     fn test_alpha() {
+        use super::*;
         use crate::parser::parse;
         assert_eq!(parse("alpha(\"bÁC\"~'ch', 'b' << 'á' << 'c' << 'ch')").unwrap().eval_default().unwrap().to_string(), "true");
         assert_eq!(parse("alpha(\"báC\", \"b Á c d\"+1)").unwrap().eval_default().unwrap().to_string(), "\"á C b d\"");
         assert_eq!(parse("alpha(['b', 'á', 'c'], 'B' << 'Á' << 'C')").unwrap().eval_default().unwrap().to_string(), "true");
         assert!(parse("alpha(['a','b', 1], 0)").unwrap().eval_default().is_err());
+
+        assert_eq!(parse("alpha(\"cba\", \"abc\".nest{#+1}[3])").unwrap().eval_default().unwrap().describe(), "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");
+        assert_eq!(parse("alpha(\"cba\", \"abc\".nest{#+1})[3]").unwrap().eval_default().unwrap().describe(), "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");
     }
 }
 

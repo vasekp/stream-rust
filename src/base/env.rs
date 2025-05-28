@@ -13,12 +13,13 @@ pub struct Env {
 
 impl Env {
     pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32, &Env) -> String, prec: u32, env_outer: &Env) -> String {
-        self.alpha.wrap_describe(|prec|
-            match !Rc::ptr_eq(&self.vars, &env_outer.vars) {
-                true => call(prec, env_outer),
-                false => format!("with({}, {})", self.describe(env_outer), call(0, env_outer))
+        self.alpha.wrap_describe(|prec, env|
+            if Rc::ptr_eq(&self.vars, &env.vars) || self.vars.is_empty() && env.vars.is_empty() {
+                call(prec, self)
+            } else {
+                format!("with({}, {})", self.describe(env), call(0, self))
             },
-            prec)
+            prec, env_outer)
     }
 
     /// The alphabet used for ordering characters and arithmetic operations on them.
@@ -35,7 +36,7 @@ impl Env {
             None => return String::new()
         };
         for rec in iter {
-            ret.push(',');
+            ret += ", ";
             ret += &rec;
         }
         ret

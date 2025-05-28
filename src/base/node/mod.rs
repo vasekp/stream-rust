@@ -273,7 +273,7 @@ impl Node {
     -> String
         where T: Describe, U: Describe
     {
-        alpha.wrap_describe(|prec| Node::describe_helper(head, source, args, prec, env), prec)
+        alpha.wrap_describe(|prec, env| Node::describe_helper(head, source, args, prec, env), prec, env)
     }
 }
 
