@@ -217,20 +217,6 @@ impl Node {
 
 impl Describe for Node {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        if matches!(self.head, Head::Lang(LangItem::Args)) {
-            let mut ret = String::new();
-            if let Some(source) = &self.source {
-                ret += &source.describe_inner(u32::MAX, env);
-                ret.push('.');
-            }
-            let [head, args] = &self.args[0..2] else { panic!("Head::Lang(Args) should have exactly 2 arguments") };
-            ret += &head.describe_inner(u32::MAX, env);
-            ret += "@(";
-            ret += &args.describe_inner(u32::MAX, env);
-            ret.push(')');
-            ret
-        } else {
-            Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec, env)
-        }
+        Node::describe_helper(&self.head, self.source.as_deref(), &self.args, prec, env)
     }
 }
