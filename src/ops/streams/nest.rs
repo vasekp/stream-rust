@@ -17,14 +17,13 @@ struct NestIterSource<'node> {
 
 #[derive(Clone)]
 struct NestArgs {
-    body: Node,
-    args: VecDeque<Item>,
+    body: ENode,
     head: Head,
     env: Env
 }
 
 struct NestIterArgs<'node> {
-    body: &'node Node,
+    body: &'node ENode,
     prev: VecDeque<Item>,
     env: &'node Env
 }
@@ -34,12 +33,8 @@ fn eval_nest(node: Node, env: &Env) -> Result<Item, StreamError> {
         RNode::Source(RNodeS { head, source, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && body.args.is_empty() => {
             Ok(Item::new_stream(NestSource{head, source: source.eval(env)?, body, env: env.clone()}))
         },
-        RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(mut body)) }) if body.source.is_none() && !body.args.is_empty() => {
-            let args = std::mem::take(&mut body.args)
-                .into_iter()
-                .map(|arg| arg.eval(env))
-                .collect::<Result<VecDeque<_>, _>>()?;
-            Ok(Item::new_stream(NestArgs{head, body, args, env: env.clone()}))
+        RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && !body.args.is_empty() => {
+            Ok(Item::new_stream(NestArgs{head, body: body.eval_all(env)?, env: env.clone()}))
         },
         node => Err(StreamError::new("expected: source.nest({body}) or nest({body}(args))", node))
     }
@@ -69,7 +64,8 @@ impl Stream for NestSource {
 
 impl Stream for NestArgs {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(NestIterArgs{body: &self.body, prev: self.args.clone(), env: &self.env})
+        let args = self.body.args.iter().cloned().collect();
+        Box::new(NestIterArgs{body: &self.body, prev: args, env: &self.env})
     }
 
     fn length(&self) -> Length {
@@ -106,7 +102,7 @@ impl Iterator for NestIterArgs<'_> {
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();
-        match self.body.clone()
+        match Node::new(self.body.head.clone(), None, vec![])
             .with_args(args)
             .and_then(|expr| expr.eval(self.env)) {
                 Ok(item) => {
@@ -127,10 +123,9 @@ impl SIterator for NestIterArgs<'_> {
 
 #[cfg(test)]
 mod tests {
-    //use super::*;
-
     #[test]
     fn test_nest() {
+        use super::*;
         use crate::parser::parse;
         assert_eq!(parse("1.nest{#+1}").unwrap().eval_default().unwrap().to_string(), "[2, 3, 4, 5, 6, ...]");
         assert_eq!(parse("1.nest({#})").unwrap().eval_default().unwrap().to_string(), "[1, 1, 1, 1, 1, ...]");
@@ -147,12 +142,15 @@ mod tests {
         assert_eq!(parse("1.nest{#*2}[64]").unwrap().eval_default().unwrap().to_string(), "18446744073709551616");
         assert_eq!(parse("[].nest{[#]}[3]").unwrap().eval_default().unwrap().to_string(), "[[[[]]]]");
         assert_eq!(parse("[].nest{[#, #]}[2]").unwrap().eval_default().unwrap().to_string(), "[[[], []], [[], ...]]");
+        // Fibonacci
+        assert_eq!(parse("nest{#1+#2}(1,1)").unwrap().eval_default().unwrap().to_string(), "[2, 3, 5, 8, 13, ...]");
         // Von Neumann numerals
         assert_eq!(parse("[].nest{#~[#]}[3]").unwrap().eval_default().unwrap().to_string(), "[[], [[]], [[], ...]]");
         // Binomial coefficients
         assert_eq!(parse("[1].nest{(0~#)+(#~0)}[4]").unwrap().eval_default().unwrap().to_string(), "[1, 4, 6, 4, 1]");
         assert_eq!(parse("\"caesar\".nest{#+1}").unwrap().eval_default().unwrap().to_string(), "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
         assert_eq!(parse("[0,1]~[1].nest{#~(#+1)}.flatten").unwrap().eval_default().unwrap().to_string(), "[0, 1, 1, 2, 1, ...]");
+        assert_eq!(parse("nest{#1+#2}(1,1)").unwrap().eval_default().unwrap().describe(), "nest({#1+#2}(1, 1))");
     }
 }
 
