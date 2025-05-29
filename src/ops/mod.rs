@@ -4,6 +4,7 @@ mod selfref;
 mod with;
 mod alpha;
 mod strings;
+mod global;
 
 #[cfg(test)]
 mod testutils;
@@ -15,6 +16,7 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     with::init(keywords);
     alpha::init(keywords);
     strings::init(keywords);
+    global::init(keywords);
 
     #[cfg(test)]
     testutils::init(keywords);
