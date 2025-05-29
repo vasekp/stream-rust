@@ -77,15 +77,15 @@ impl Iterator for NestIterSource<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.body.clone()
-            .with_source(Expr::Imm(std::mem::take(&mut self.prev)))
-            .and_then(|expr| expr.eval(self.env)) {
-                Ok(item) => {
-                    self.prev = item.clone();
-                    Some(Ok(item))
-                },
-                Err(err) => Some(Err(err))
-            }
+        let node = Node::new(self.body.head.clone(),
+            Some(std::mem::take(&mut self.prev).into()),
+            vec![]);
+        let item = match node.eval(self.env) {
+            Ok(item) => item,
+            Err(err) => return Some(Err(err))
+        };
+        self.prev = item.clone();
+        Some(Ok(item))
     }
 }
 
@@ -102,16 +102,14 @@ impl Iterator for NestIterArgs<'_> {
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();
-        match Node::new(self.body.head.clone(), None, vec![])
-            .with_args(args)
-            .and_then(|expr| expr.eval(self.env)) {
-                Ok(item) => {
-                    self.prev.pop_front();
-                    self.prev.push_back(item.clone());
-                    Some(Ok(item))
-                },
-                Err(err) => Some(Err(err))
-            }
+        let node = Node::new(self.body.head.clone(), None, args);
+        let item = match node.eval(self.env) {
+            Ok(item) => item,
+            Err(err) => return Some(Err(err))
+        };
+        self.prev.pop_front();
+        self.prev.push_back(item.clone());
+        Some(Ok(item))
     }
 }
 
