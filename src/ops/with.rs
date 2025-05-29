@@ -54,6 +54,7 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
 mod tests {
     #[test]
     fn test_with() {
+        use super::*;
         use crate::parser::parse;
         assert_eq!(parse("with(a=1, a)").unwrap().eval_default().unwrap().to_string(), "1");
         assert!(parse("with(1)").unwrap().eval_default().is_err());
@@ -76,5 +77,7 @@ mod tests {
         assert!(parse("with(a={a}, a)").unwrap().eval_default().is_err());
         assert_eq!(parse("with(a=1, a={a}, a)").unwrap().eval_default().unwrap().to_string(), "1");
         assert_eq!(parse("with(a=1, b={a}, a=2, b)").unwrap().eval_default().unwrap().to_string(), "1");
+
+        assert_eq!(parse("with(a=1,[].nest{#:{1}})[3]").unwrap().eval_default().unwrap().describe(), "with(a=1, []:{1}:{1}:{1})");
     }
 }

@@ -107,7 +107,7 @@ impl Session {
                                 },
                                 Some(Rhs::Function(block, _)) => {
                                     Ok(Expr::Eval(Node {
-                                        head: block.clone().into(),
+                                        head: Expr::new_node("global", vec![block.clone()]).into(),
                                         source: source.take(),
                                         args: std::mem::take(args)
                                     }))
@@ -173,5 +173,10 @@ mod tests {
         assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
         assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}(6,7)").unwrap()).unwrap().unwrap(), &Item::new_number(47));
         assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
+
+        let mut sess = Session::new();
+        assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("with(a=1,{a})").unwrap()).unwrap().unwrap(), &Item::new_number(1));
+        assert!(sess.process(parse("with(a=1,$a)").unwrap()).is_err());
     }
 }
