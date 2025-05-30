@@ -4,12 +4,12 @@ use crate::base::*;
 struct Select {
     head: Head,
     source: BoxedStream,
-    body: ENode,
+    cond: ENode,
     env: Env
 }
 
 struct SelectIter<'node> {
-    body: &'node ENode,
+    cond: &'node ENode,
     source: Box<dyn SIterator + 'node>,
     env: &'node Env
 }
@@ -17,23 +17,21 @@ struct SelectIter<'node> {
 fn eval_select(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_source(env)?;
     match rnode {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(body)) }
-        if body.source.is_none() => {
-            Ok(Item::new_stream(Select{head, body: body.eval_all(env)?, source: stm.into(), env: env.clone()}))
-        },
+        RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)) } =>
+            Ok(Item::new_stream(Select{head, cond: cond.eval_all(env)?, source: stm.into(), env: env.clone()})),
         node => Err(StreamError::new("expected: stream.select{cond}", node))
     }
 }
 
 impl Describe for Select {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_with_env(&self.env, &self.head, Some(&self.source), [&self.body], prec, env)
+        Node::describe_with_env(&self.env, &self.head, Some(&self.source), [&self.cond], prec, env)
     }
 }
 
 impl Stream for Select {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SelectIter{body: &self.body, source: self.source.iter(), env: &self.env})
+        Box::new(SelectIter{cond: &self.cond, source: self.source.iter(), env: &self.env})
     }
 
     fn length(&self) -> Length {
@@ -48,11 +46,11 @@ impl Iterator for SelectIter<'_> {
         loop {
             check_stop!(iter);
             let source = iter_try_expr!(self.source.next()?);
-            let cond_item = iter_try_call!(Node::from(self.body.clone())
+            let cond_item = iter_try_call!(Node::from(self.cond.clone())
                 .with_source(source.clone().into())?
                 .eval(self.env)?);
             let Item::Bool(cond) = cond_item else {
-                return Some(Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.body.clone())));
+                return Some(Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone())));
             };
             if cond {
                 return Some(Ok(source));
@@ -77,6 +75,10 @@ mod tests {
         assert_eq!(parse("range(5).select{false}").unwrap().eval_default().unwrap().to_string(), "[]");
         assert_eq!(parse("range(5).select{#}").unwrap().eval_default().unwrap().to_string(), "[<!>");
         assert_eq!(parse("seq.select{#>#1}(5)").unwrap().eval_default().unwrap().to_string(), "[6, 7, 8, 9, 10, ...]");
+        assert_eq!(parse("range(5).select([].len)").unwrap().eval_default().unwrap().to_string(), "[<!>");
+        assert_eq!(parse("[].select([].len)").unwrap().eval_default().unwrap().to_string(), "[]");
+        assert_eq!(parse("[].select{1}").unwrap().eval_default().unwrap().to_string(), "[]");
+        assert!(parse("[].select(1)").unwrap().eval_default().is_err());
         test_len_exact(&parse("range(5).select{true}").unwrap().eval_default().unwrap(), 5);
         test_len_exact(&parse("range(5).select{false}").unwrap().eval_default().unwrap(), 0);
         test_len_exact(&parse("range(5).select{#<3}").unwrap().eval_default().unwrap(), 2);
