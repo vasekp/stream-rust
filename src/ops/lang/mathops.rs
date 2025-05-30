@@ -354,11 +354,7 @@ impl Iterator for StringOpIter<'_> {
             }
         }
 
-        let ch = match self.first.next() {
-            None => return None,
-            Some(Ok(ch)) => ch,
-            Some(Err(err)) => return Some(Err(err))
-        };
+        let ch = iter_try_expr!(self.first.next()?);
         if !self.alpha.contains(&ch) {
             return Some(Ok(Item::Char(ch)));
         }
@@ -366,16 +362,9 @@ impl Iterator for StringOpIter<'_> {
         let rest = self.rest.iter_mut()
             .map(Iterator::next)
             .collect::<Option<Result<Vec<_>, _>>>();
-        match rest {
-            None => None,
-            Some(Ok(inputs)) => {
-                match (self.func)(&ch, &inputs, self.alpha) {
-                    Ok(item) => Some(Ok(item)),
-                    Err(err) => Some(Err(StreamError::new(err, aux_node(ch, inputs))))
-                }
-            },
-            Some(Err(err)) => Some(Err(err))
-        }
+        let inputs = iter_try_expr!(rest?);
+        let res = (self.func)(&ch, &inputs, self.alpha);
+        Some(res.map_err(|err| StreamError::new(err, aux_node(ch, inputs))))
     }
 }
 

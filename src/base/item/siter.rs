@@ -180,11 +180,9 @@ impl Iterator for StringIterator<'_> {
     type Item = Result<Char, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.iter.next() {
-            Some(Ok(Item::Char(ch))) => Some(Ok(ch)),
-            Some(Err(err)) => Some(Err(err)),
-            None => None,
-            Some(Ok(item)) => Some(Err(StreamError::new(format!("malformed string: contains {:?}", item),
+        match iter_try_expr!(self.iter.next()?) {
+            Item::Char(ch) => Some(Ok(ch)),
+            item => Some(Err(StreamError::new(format!("malformed string: contains {:?}", item),
                 Item::String(self.parent.clone_box()))))
         }
     }

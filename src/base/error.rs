@@ -66,34 +66,6 @@ impl Display for StreamError {
     }
 }
 
-
-macro_rules! try_with {
-    ($blame:expr, $expr:expr) => {
-        match (|| -> Result<_, BaseError> { Ok($expr) })() {
-            Ok(result) => result,
-            Err(err) => return Err(StreamError::new(err, $blame))
-        }
-    }
-}
-
-pub(crate) use try_with;
-
-macro_rules! check_stop {
-    () => {
-        if stop::should_stop() {
-            Err(StreamError::Interrupt)?;
-        }
-    };
-    (iter) => {
-        if stop::should_stop() {
-            return Some(Err(StreamError::Interrupt));
-        }
-    }
-}
-
-pub(crate) use check_stop;
-
-
 /// The error type returned by [`parser::parse`](crate::parser::parse). Contains the description of
 /// the error and its location within the input string. The lifetime is bound to the lifetime of
 /// the input string.
@@ -126,3 +98,48 @@ impl Display for ParseError<'_> {
         Display::fmt(&self.reason, f)
     }
 }
+
+macro_rules! try_with {
+    ($blame:expr, $expr:expr) => {
+        match (|| -> Result<_, BaseError> { Ok($expr) })() {
+            Ok(result) => result,
+            Err(err) => return Err(StreamError::new(err, $blame))
+        }
+    }
+}
+
+macro_rules! iter_try_call {
+    ($expr:expr) => {
+        match (|| -> Result<_, StreamError> { Ok($expr) })() {
+            Ok(value) => value,
+            Err(err) => return Some(Err(err))
+        }
+    }
+}
+
+macro_rules! iter_try_expr {
+    ($expr:expr) => {
+        match $expr {
+            Ok(value) => value,
+            Err(err) => return Some(Err(err))
+        }
+    }
+}
+
+macro_rules! check_stop {
+    () => {
+        if stop::should_stop() {
+            Err(StreamError::Interrupt)?;
+        }
+    };
+    (iter) => {
+        if stop::should_stop() {
+            return Some(Err(StreamError::Interrupt));
+        }
+    }
+}
+
+pub(crate) use try_with;
+pub(crate) use iter_try_call;
+pub(crate) use iter_try_expr;
+pub(crate) use check_stop;

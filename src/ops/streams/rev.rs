@@ -74,16 +74,9 @@ impl Iterator for RevIter<'_> {
                         None => (UNumber::zero(), self.start.to_usize().expect("start < CACHE_LEN should fit into usize"))
                     };
                     let mut iter = self.source.iter();
-                    match iter.skip_n(new_start.clone()) {
-                        Err(err) => return Some(Err(err)),
-                        Ok(Some(_)) => unreachable!(),
-                        Ok(None) => ()
-                    }
+                    iter_try_expr!(iter.skip_n(new_start.clone()));
                     self.start = new_start;
-                    self.cached = match iter.take(diff).collect() {
-                        Ok(vec) => vec,
-                        Err(err) => return Some(Err(err))
-                    };
+                    self.cached =iter_try_expr!(iter.take(diff).collect());
                     Ok(self.cached.pop()).transpose()
                 }
             }

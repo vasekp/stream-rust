@@ -47,16 +47,10 @@ impl Iterator for SelectIter<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             check_stop!(iter);
-            let source = match self.source.next()? {
-                Ok(item) => item,
-                Err(err) => return Some(Err(err))
-            };
-            let cond_item = match Node::from(self.body.clone())
-                .with_source(source.clone().into())
-                .and_then(|node| node.eval(self.env)) {
-                    Ok(val) => val,
-                    Err(err) => return Some(Err(err))
-            };
+            let source = iter_try_expr!(self.source.next()?);
+            let cond_item = iter_try_call!(Node::from(self.body.clone())
+                .with_source(source.clone().into())?
+                .eval(self.env)?);
             let Item::Bool(cond) = cond_item else {
                 return Some(Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.body.clone())));
             };

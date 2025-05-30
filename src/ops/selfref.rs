@@ -64,13 +64,9 @@ impl Iterator for SelfRefIter {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.inner.next()? {
-            Ok(item) => {
-                self.hist.borrow_mut().push(item.clone());
-                Some(Ok(item))
-            },
-            Err(err) => Some(Err(err))
-        }
+        let item = iter_try_expr!(self.inner.next()?);
+        self.hist.borrow_mut().push(item.clone());
+        Some(Ok(item))
     }
 }
 

@@ -80,10 +80,7 @@ impl Iterator for NestIterSource<'_> {
         let node = Node::new(self.body.head.clone(),
             Some(std::mem::take(&mut self.prev).into()),
             vec![]);
-        let item = match node.eval(self.env) {
-            Ok(item) => item,
-            Err(err) => return Some(Err(err))
-        };
+        let item = iter_try_expr!(node.eval(self.env));
         self.prev = item.clone();
         Some(Ok(item))
     }
@@ -103,10 +100,7 @@ impl Iterator for NestIterArgs<'_> {
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();
         let node = Node::new(self.body.head.clone(), None, args);
-        let item = match node.eval(self.env) {
-            Ok(item) => item,
-            Err(err) => return Some(Err(err))
-        };
+        let item = iter_try_expr!(node.eval(self.env));
         self.prev.pop_front();
         self.prev.push_back(item.clone());
         Some(Ok(item))
