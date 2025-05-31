@@ -82,6 +82,7 @@ mod tests {
         test_len_exact(&parse("range(5).select{true}").unwrap().eval_default().unwrap(), 5);
         test_len_exact(&parse("range(5).select{false}").unwrap().eval_default().unwrap(), 0);
         test_len_exact(&parse("range(5).select{#<3}").unwrap().eval_default().unwrap(), 2);
+        assert_eq!(parse("seq.select(isodd)").unwrap().eval_default().unwrap().to_string(), "[1, 3, 5, 7, 9, ...]");
     }
 }
 

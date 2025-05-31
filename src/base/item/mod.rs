@@ -91,6 +91,13 @@ impl Item {
         }
     }
 
+    pub fn as_char(&self) -> Result<&Char, BaseError> {
+        match self {
+            Item::Char(x) => Ok(x),
+            _ => Err(format!("expected character, found {:?}", &self).into())
+        }
+    }
+
     pub fn into_char(self) -> Result<Char, BaseError> {
         match self {
             Item::Char(x) => Ok(x),

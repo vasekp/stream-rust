@@ -24,6 +24,7 @@ mod tests {
         assert_eq!(parse("if(false, \"\", [])").unwrap().eval_default().unwrap().to_string(), "[]");
         assert!(parse("if(0, \"\", [])").unwrap().eval_default().is_err());
         assert_eq!(parse("seq:{if(#<4,-#,#)}").unwrap().eval_default().unwrap().to_string(), "[-1, -2, -3, 4, 5, ...]");
+        assert_eq!(parse("[1,'a',\"a\"]:{if(#.isnum,-#,#+1)}").unwrap().eval_default().unwrap().to_string(), "[-1, 'b', \"b\"]");
     }
 }
 
