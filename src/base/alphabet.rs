@@ -58,7 +58,7 @@ impl Alphabet {
                 match case {
                     CharCase::Upper => c.to_uppercase(),
                     CharCase::Lower => c.to_lowercase(),
-                    CharCase::Indeterminate => c.to_owned()
+                    _ => c.to_owned()
                 }
             }
         }

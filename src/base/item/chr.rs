@@ -11,7 +11,8 @@ pub enum Char {
 pub enum CharCase {
     Indeterminate,
     Lower,
-    Upper
+    Upper,
+    Mixed
 }
 
 impl Char {
@@ -22,9 +23,12 @@ impl Char {
                 else if ch.is_uppercase() { CharCase::Upper }
                 else { CharCase::Indeterminate },
             Char::Multi(ch) =>
-                if ch == &ch.to_lowercase() { CharCase::Lower }
-                else if ch == &ch.to_uppercase() { CharCase::Upper }
-                else { CharCase::Indeterminate }
+                match (ch == &ch.to_lowercase(), ch == &ch.to_uppercase()) {
+                    (true, false) => CharCase::Lower,
+                    (false, true) => CharCase::Upper,
+                    (false, false) => CharCase::Mixed,
+                    (true, true) => CharCase::Indeterminate
+                }
         }
     }
 
@@ -129,5 +133,24 @@ mod tests {
         assert_eq!(Char::from("é"), Char::Multi("é".into())); // combining mark
         assert_eq!(Char::from("as"), Char::Multi("as".into()));
         assert_eq!(Char::from('\n').to_string(), "'\\n'");
+
+        assert_eq!(Char::Single('a').case(), CharCase::Lower);
+        assert_eq!(Char::Single('á').case(), CharCase::Lower);
+        assert_eq!(Char::Single(' ').case(), CharCase::Indeterminate);
+        assert_eq!(Char::Single('❤').case(), CharCase::Indeterminate);
+
+        assert_eq!(Char::from("ch").case(), CharCase::Lower);
+        assert_eq!(Char::from("Ch").case(), CharCase::Mixed);
+        assert_eq!(Char::from("CH").case(), CharCase::Upper);
+        assert_eq!(Char::from("  ").case(), CharCase::Indeterminate);
+        assert_eq!(Char::from("a ").case(), CharCase::Lower);
+
+        assert_eq!(Char::from("Ch").to_lowercase(), Char::from("ch"));
+        assert_eq!(Char::from("Ch").to_uppercase(), Char::from("CH"));
+        assert_eq!(Char::from("ß").to_uppercase(), Char::from("SS"));
+        assert_eq!(Char::Single('İ').to_lowercase(), Char::from("i\u{307}"));
+        assert_eq!(Char::Single('ß').case(), CharCase::Lower);
+        assert_eq!(Char::Single('İ').case(), CharCase::Upper);
+        assert_eq!(Char::Single('İ').to_lowercase().case(), CharCase::Lower);
     }
 }
