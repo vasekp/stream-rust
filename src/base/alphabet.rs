@@ -9,38 +9,34 @@ pub enum Alphabet {
     #[default]
     Std26,
     /// An alphabet ordering created by explicitly listing the letters in order.
-    Listed { vec: Vec<Char>, map: HashMap<Char, (isize, CharCase)> }
+    Listed { vec: Vec<Char>, map: HashMap<Char, isize> }
 }
 
 impl Alphabet {
     /// Returns the order of `chr` in the alphabet. Counts between 1 and the size.
     /// The information about the case of the character is preserved using `CharCase`.
-    pub fn ord_case(&self, chr: &Char) -> Result<(isize, CharCase), BaseError> {
+    pub fn ord(&self, chr: &Char) -> Result<isize, BaseError> {
         match self {
             Alphabet::Std26 => {
                 let Char::Single(ch) = chr else {
                     return Err(format!("{chr}: not in alphabet").into());
                 };
-                let case = chr.case();
                 match ch.to_ascii_lowercase().try_into() {
-                    Ok(ord @ b'a'..=b'z') => Ok(((ord - b'a' + 1).into(), case)),
+                    Ok(ord @ b'a'..=b'z') => Ok((ord - b'a' + 1).into()),
                     _ => Err(format!("{chr}: not in alphabet").into())
                 }
             },
             Alphabet::Listed{map, ..} => {
-                if let Some(rec) = map.get(chr) {
-                    Ok(*rec)
-                } else if let Some((ix, _)) = map.get(&chr.to_lowercase()) {
-                    Ok((*ix, CharCase::Indeterminate))
-                } else {
-                    Err(format!("{chr}: not in alphabet").into())
-                }
+                map.get(chr)
+                    .or_else(|| map.get(&chr.to_lowercase()))
+                    .copied()
+                    .ok_or_else(|| format!("{chr}: not in alphabet").into())
             }
         }
     }
 
     /// Returns the `ord`-th character in the alphabet in the given `CharCase`. Wraps around.
-    pub fn chr_case(&self, ord: &Number, case: CharCase) -> Char {
+    pub fn chr(&self, ord: &Number, case: CharCase) -> Char {
         match self {
             Alphabet::Std26 => {
                 let ord: u8 = ord.rem_euclid(&Number::from(26))
@@ -73,20 +69,21 @@ impl Alphabet {
                 };
                 matches!(ch.to_ascii_lowercase().try_into(), Ok(b'a'..=b'z'))
             },
-            Alphabet::Listed{..} => self.ord_case(chr).is_ok()
+            Alphabet::Listed{..} => self.ord(chr).is_ok()
         }
     }
 
     #[cfg(test)]
     fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, BaseError> {
-        let (index1, case) = self.ord_case(lhs)?;
-        let (index2, _) = self.ord_case(rhs)?;
-        Ok(self.chr_case(&Number::from(index1 + index2), case))
+        let case = lhs.case();
+        let index1 = self.ord(lhs)?;
+        let index2 = self.ord(rhs)?;
+        Ok(self.chr(&Number::from(index1 + index2), case))
     }
 
     /// Compares two characters
     pub fn cmp(&self, x: &Char, y: &Char) -> Result<std::cmp::Ordering, BaseError> {
-        let ((ox, _), (oy, _)) = (self.ord_case(x)?, self.ord_case(y)?);
+        let (ox, oy) = (self.ord(x)?, self.ord(y)?);
         Ok(ox.cmp(&oy))
     }
 
@@ -131,10 +128,9 @@ impl TryFrom<Vec<Item>> for Alphabet {
             let lcase = chr.to_lowercase();
             let ucase = chr.to_uppercase();
             let prev = if lcase == ucase {
-                map.insert(chr.to_owned(), (ix, CharCase::Indeterminate))
+                map.insert(chr.to_owned(), ix)
             } else {
-                map.insert(lcase, (ix, CharCase::Lower))
-                    .or(map.insert(ucase, (ix, CharCase::Upper)))
+                map.insert(lcase, ix).or(map.insert(ucase, ix))
             };
             if prev.is_some() {
                 return Err(format!("duplicate character {chr}").into());
@@ -152,18 +148,18 @@ mod tests {
     #[test]
     fn test_std26() {
         let abc = Rc::new(Alphabet::Std26);
-        assert_eq!(abc.ord_case(&Char::from('a')), Ok((1isize, CharCase::Lower)));
-        assert_eq!(abc.ord_case(&Char::from('Z')), Ok((26isize, CharCase::Upper)));
-        assert!(abc.ord_case(&Char::from('@')).is_err());
-        assert!(abc.ord_case(&Char::from('á')).is_err());
-        assert!(abc.ord_case(&Char::from("ch")).is_err());
+        assert_eq!(abc.ord(&Char::from('a')), Ok(1isize));
+        assert_eq!(abc.ord(&Char::from('Z')), Ok(26isize));
+        assert!(abc.ord(&Char::from('@')).is_err());
+        assert!(abc.ord(&Char::from('á')).is_err());
+        assert!(abc.ord(&Char::from("ch")).is_err());
 
-        assert_eq!(abc.chr_case(&Number::from(1), CharCase::Lower), Char::from('a'));
-        assert_eq!(abc.chr_case(&Number::from(0), CharCase::Indeterminate), Char::from('z'));
-        assert_eq!(abc.chr_case(&Number::from(26), CharCase::Upper), Char::from('Z'));
-        assert_eq!(abc.chr_case(&Number::from(100), CharCase::Lower), Char::from('v'));
-        assert_eq!(abc.chr_case(&Number::from(-1), CharCase::Lower), Char::from('y'));
-        assert_eq!(abc.chr_case(&Number::from(-100), CharCase::Lower), Char::from('d'));
+        assert_eq!(abc.chr(&Number::from(1), CharCase::Lower), Char::from('a'));
+        assert_eq!(abc.chr(&Number::from(0), CharCase::Indeterminate), Char::from('z'));
+        assert_eq!(abc.chr(&Number::from(26), CharCase::Upper), Char::from('Z'));
+        assert_eq!(abc.chr(&Number::from(100), CharCase::Lower), Char::from('v'));
+        assert_eq!(abc.chr(&Number::from(-1), CharCase::Lower), Char::from('y'));
+        assert_eq!(abc.chr(&Number::from(-100), CharCase::Lower), Char::from('d'));
 
         assert_eq!(abc.c_plus_c(&Char::from('C'), &Char::from('e')), Ok(Char::from('H')));
         assert_eq!(abc.c_plus_c(&Char::from('x'), &Char::from('Y')), Ok(Char::from('w')));
@@ -176,18 +172,18 @@ mod tests {
     #[test]
     fn test_custom_alpha() {
         let abc = Rc::new(Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap());
-        assert_eq!(abc.ord_case(&Char::from('a')), Ok((4isize, CharCase::Lower)));
-        assert_eq!(abc.ord_case(&Char::from('Á')), Ok((2isize, CharCase::Upper)));
-        assert_eq!(abc.ord_case(&Char::from("CH")), Ok((3isize, CharCase::Upper)));
-        assert_eq!(abc.ord_case(&Char::from("Ch")), Ok((3isize, CharCase::Indeterminate)));
-        assert!(abc.ord_case(&Char::from('c')).is_err());
-        assert_eq!(abc.chr_case(&Number::from(3), CharCase::Lower), Char::from("ch"));
-        assert_eq!(abc.chr_case(&Number::from(98), CharCase::Upper), Char::from('Á'));
-        assert_eq!(abc.chr_case(&Number::from(99), CharCase::Upper), Char::from("CH"));
-        assert_eq!(abc.chr_case(&Number::from(99), CharCase::Indeterminate), Char::from("Ch"));
+        assert_eq!(abc.ord(&Char::from('a')), Ok(4isize));
+        assert_eq!(abc.ord(&Char::from('Á')), Ok(2isize));
+        assert_eq!(abc.ord(&Char::from("CH")), Ok(3isize));
+        assert_eq!(abc.ord(&Char::from("Ch")), Ok(3isize));
+        assert!(abc.ord(&Char::from('c')).is_err());
+        assert_eq!(abc.chr(&Number::from(3), CharCase::Lower), Char::from("ch"));
+        assert_eq!(abc.chr(&Number::from(98), CharCase::Upper), Char::from('Á'));
+        assert_eq!(abc.chr(&Number::from(99), CharCase::Upper), Char::from("CH"));
+        assert_eq!(abc.chr(&Number::from(99), CharCase::Indeterminate), Char::from("Ch"));
 
         let abc = Alphabet::try_from(vec![Item::new_char('❤')]).unwrap();
-        assert_eq!(abc.ord_case(&Char::from("❤")), Ok((1isize, CharCase::Indeterminate)));
+        assert_eq!(abc.ord(&Char::from("❤")), Ok(1isize));
 
         assert!(Alphabet::try_from(vec![Item::new_char('a'), Item::new_char('A')]).is_err());
         assert!(Alphabet::try_from(vec![Item::new_char('İ'), Item::new_char("i\u{307}")]).is_err());

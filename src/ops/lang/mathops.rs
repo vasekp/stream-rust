@@ -61,16 +61,17 @@ impl MathOp {
                 Ok(Item::new_number(ans?))
             },
             Item::Char(ref ch) => {
-                let (index, case) = alpha.ord_case(ch)?;
+                let index = alpha.ord(ch)?;
+                let case = ch.case();
                 let ans = iter.try_fold(index.into(),
                     |a, e| {
                         match e {
                             Item::Number(ref num) => Ok(a + num),
-                            Item::Char(ref ch) => Ok(a + alpha.ord_case(ch)?.0),
+                            Item::Char(ref ch) => Ok(a + alpha.ord(ch)?),
                             _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
                         }
                     })?;
-                Ok(Item::new_char(alpha.chr_case(&ans, case)))
+                Ok(Item::new_char(alpha.chr(&ans, case)))
             },
             item => Err(format!("expected number or character, found {:?}", item).into())
         }
@@ -82,13 +83,14 @@ impl MathOp {
             [lhs, rhs] => match lhs {
                 Item::Number(lhs) => Ok(Item::new_number(lhs - rhs.as_num()?)),
                 Item::Char(ch) => {
-                    let (index, case) = alpha.ord_case(ch)?;
+                    let index = alpha.ord(ch)?;
+                    let case = ch.case();
                     let ord = match rhs {
                         Item::Number(ref num) => index - num,
-                        Item::Char(ref ch) => (index - alpha.ord_case(ch)?.0).into(),
+                        Item::Char(ref ch) => (index - alpha.ord(ch)?).into(),
                         _ => return Err(format!("expected number or character, found {:?}", rhs).into())
                     };
-                    Ok(Item::new_char(alpha.chr_case(&ord, case)))
+                    Ok(Item::new_char(alpha.chr(&ord, case)))
                 },
                 _ => Err(format!("expected number or character, found {:?}", lhs).into())
             },
@@ -105,9 +107,10 @@ impl MathOp {
                 Ok(Item::new_number(ans))
             },
             Item::Char(ref ch) => {
-                let (index, case) = alpha.ord_case(ch)?;
+                let index = alpha.ord(ch)?;
+                let case = ch.case();
                 let ans = iter.try_fold(index.into(), |a, e| e.as_num().map(|num| a * num))?;
-                Ok(Item::new_char(alpha.chr_case(&ans, case)))
+                Ok(Item::new_char(alpha.chr(&ans, case)))
             },
             item => Err(format!("expected number or character, found {:?}", item).into())
         }
@@ -263,29 +266,31 @@ impl StringOp {
     }
 
     fn plus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
-        let (index, case) = alpha.ord_case(first)?;
+        let index = alpha.ord(first)?;
+        let case = first.case();
         let ans = rest.iter().try_fold(index.into(),
             |a, e| {
                 match e {
                     Item::Number(ref num) => Ok(a + num),
-                    Item::Char(ref ch) => Ok(a + alpha.ord_case(ch)?.0),
+                    Item::Char(ref ch) => Ok(a + alpha.ord(ch)?),
                     _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
                 }
             })?;
-        Ok(Item::new_char(alpha.chr_case(&ans, case)))
+        Ok(Item::new_char(alpha.chr(&ans, case)))
     }
 
     fn minus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
-        let (index, case) = alpha.ord_case(first)?;
+        let index = alpha.ord(first)?;
+        let case = first.case();
         let ord = match rest {
             [other] => match other {
                 Item::Number(ref num) => index - num,
-                Item::Char(ref ch) => (index - alpha.ord_case(ch)?.0).into(),
+                Item::Char(ref ch) => (index - alpha.ord(ch)?).into(),
                 _ => return Err(BaseError::from(format!("expected number or character, found {:?}", other)))
             },
             _ => return Err("not available for strings".into())
         };
-        Ok(Item::new_char(alpha.chr_case(&ord, case)))
+        Ok(Item::new_char(alpha.chr(&ord, case)))
     }
 }
 

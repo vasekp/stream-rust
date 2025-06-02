@@ -29,15 +29,17 @@ impl Range {
             RNodeNS { args: RArgs::Two(Item::Char(ref from), Item::Char(ref to)), .. }
                 => {
                     let abc = env.alphabet();
-                    let (from_ix, case) = try_with!(rnode, abc.ord_case(from)?);
-                    let (to_ix, _) = try_with!(rnode, abc.ord_case(to)?);
+                    let case = from.case();
+                    let from_ix = try_with!(rnode, abc.ord(from)?);
+                    let to_ix = try_with!(rnode, abc.ord(to)?);
                     (Some(from_ix.into()), to_ix.into(), None, RangeType::Character(case))
                 },
             RNodeNS { args: RArgs::Three(Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)), .. }
                 => {
                     let abc = env.alphabet();
-                    let (from_ix, case) = try_with!(rnode, abc.ord_case(from)?);
-                    let (to_ix, _) = try_with!(rnode, abc.ord_case(to)?);
+                    let case = from.case();
+                    let from_ix = try_with!(rnode, abc.ord(from)?);
+                    let to_ix = try_with!(rnode, abc.ord(to)?);
                     (Some(from_ix.into()), to_ix.into(), Some(std::mem::take(step)), RangeType::Character(case))
                 },
             _ => return Err(StreamError::new("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)", rnode))
@@ -100,8 +102,8 @@ impl Describe for Range {
             RangeType::Character(case) => {
                 let abc = &self.alpha;
                 Node::describe_with_alpha(abc, &self.head, None::<&Item>, [
-                        Some(&ProxyItem::Char(&abc.chr_case(self.from.as_ref().expect("char range should have from"), case))),
-                        Some(&ProxyItem::Char(&abc.chr_case(&self.to, case))),
+                        Some(&ProxyItem::Char(&abc.chr(self.from.as_ref().expect("char range should have from"), case))),
+                        Some(&ProxyItem::Char(&abc.chr(&self.to, case))),
                         self.step.as_ref().map(ProxyItem::Number).as_ref()
                     ].into_iter().flatten(),
                     prec, env)
@@ -124,7 +126,7 @@ impl Iterator for RangeIter<'_> {
             || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
                 let ret = match self.parent.rtype {
                     RangeType::Numeric => Item::new_number(self.value.clone()),
-                    RangeType::Character(case) => Item::new_char(self.parent.alpha.chr_case(&self.value, case))
+                    RangeType::Character(case) => Item::new_char(self.parent.alpha.chr(&self.value, case))
                 };
                 match &self.parent.step {
                     Some(step) => self.value += step,
