@@ -30,3 +30,17 @@ impl From<&str> for LiteralString {
         LiteralString(s.chars().map(Char::from).collect())
     }
 }
+
+impl From<Vec<Char>> for LiteralString {
+    fn from(s: Vec<Char>) -> Self {
+        LiteralString(s)
+    }
+}
+
+impl std::ops::Deref for LiteralString {
+    type Target = [Char];
+
+    fn deref(&self) -> &[Char] {
+        &self.0
+    }
+}

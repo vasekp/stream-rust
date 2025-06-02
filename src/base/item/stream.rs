@@ -188,6 +188,23 @@ impl dyn Stream {
     pub fn string_iter(&self) -> StringIterator<'_> {
         StringIterator::new(self)
     }
+
+    pub(crate) fn string_listout(&self) -> Result<Vec<Char>, StreamError> {
+        let mut vec = Vec::new();
+        match self.length() {
+            Length::Exact(len) | Length::AtMost(len) => {
+                if let Some(len) = len.to_usize() {
+                    vec.reserve(len);
+                }
+            },
+            _ => ()
+        };
+        for res in self.string_iter() {
+            check_stop!();
+            vec.push(res?);
+        }
+        Ok(vec)
+    }
 }
 
 
