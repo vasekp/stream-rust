@@ -1,22 +1,9 @@
 use crate::base::*;
 
-#[derive(Clone)]
-struct Split {
-    head: Head,
-    source: BoxedStream,
-    sep: Vec<LiteralString>,
-}
-
-struct SplitIter<'node> {
-    source: StringIterator<'node>,
-    sep: &'node Vec<LiteralString>,
-    done: bool,
-}
-
 fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_args_nonempty()?);
-    match &node.source {
+    match node.source {
         Some(Item::String(_)) => {
             let sep = try_with!(node, node.args.iter()
                 .map(|item| match item {
@@ -27,21 +14,37 @@ fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
                 .map(|res| res.map(LiteralString::from))
                 .collect::<Result<Vec<_>, _>>()?);
             let Some(Item::String(stm)) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Split{head: node.head, source: stm.into(), sep}))
+            Ok(Item::new_stream(SplitString{head: node.head, source: stm.into(), sep}))
         },
-        _ => Err(StreamError::new("expected: string.split(separators)", node))
+        Some(Item::Stream(stm)) => {
+            Ok(Item::new_stream(SplitStream{head: node.head, source: stm.into(), sep: node.args}))
+        },
+        _ => Err(StreamError::new("expected: string.split(separators) or stream.split(separators)", node))
     }
 }
 
-impl Describe for Split {
+#[derive(Clone)]
+struct SplitString {
+    head: Head,
+    source: BoxedStream,
+    sep: Vec<LiteralString>,
+}
+
+struct SplitStringIter<'node> {
+    source: StringIterator<'node>,
+    sep: &'node Vec<LiteralString>,
+    done: bool,
+}
+
+impl Describe for SplitString {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), &self.sep, prec, env)
     }
 }
 
-impl Stream for Split {
+impl Stream for SplitString {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitIter{source: self.source.string_iter(), sep: &self.sep, done: false})
+        Box::new(SplitStringIter{source: self.source.string_iter(), sep: &self.sep, done: false})
     }
 
     fn length(&self) -> Length {
@@ -49,7 +52,7 @@ impl Stream for Split {
     }
 }
 
-impl Iterator for SplitIter<'_> {
+impl Iterator for SplitStringIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -74,7 +77,65 @@ impl Iterator for SplitIter<'_> {
     }
 }
 
-impl SIterator for SplitIter<'_> {
+impl SIterator for SplitStringIter<'_> {
+    fn len_remain(&self) -> Length {
+        Length::at_most(self.source.len_remain())
+    }
+}
+
+#[derive(Clone)]
+struct SplitStream {
+    head: Head,
+    source: BoxedStream,
+    sep: Vec<Item>,
+}
+
+struct SplitStreamIter<'node> {
+    source: Box<dyn SIterator + 'node>,
+    sep: &'node Vec<Item>,
+    done: bool,
+}
+
+impl Describe for SplitStream {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), &self.sep, prec, env)
+    }
+}
+
+impl Stream for SplitStream {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false})
+    }
+
+    fn length(&self) -> Length {
+        Length::at_most(self.source.length())
+    }
+}
+
+impl Iterator for SplitStreamIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+        let mut cache = vec![];
+        for item in &mut self.source {
+            check_stop!(iter);
+            let item = iter_try_expr!(item);
+            for sep in self.sep {
+                if iter_try_expr!(item.try_eq(sep)) {
+                    return Some(Ok(Item::new_stream(List::from(cache))));
+                }
+            }
+            cache.push(item);
+        }
+        self.done = true;
+        Some(Ok(Item::new_stream(List::from(cache))))
+    }
+}
+
+impl SIterator for SplitStreamIter<'_> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }
@@ -96,6 +157,9 @@ mod tests {
         test_describe!("\"Hello, world!\".split(',', ' ')" => "\"Hello, world!\".split(\",\", \" \")");
         test_eval!("\"abcacbadc\".split('a'.repeat)" => err);
         test_eval!("\"abcacbadc\".split('a'.repeat(10^20))" => err);
+        test_eval!("range(10).split(3)" => "[[1, 2], [4, ...]]");
+        test_eval!("range('a', 'e').split('c')" => "[['a', 'b'], ['d', ...]]");
+        test_eval!("range('a', 'e').split(\"c\")" => "[['a', 'b', 'c', 'd', ...]]");
     }
 }
 

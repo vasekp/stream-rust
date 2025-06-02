@@ -49,7 +49,7 @@ impl CmpOp {
 
     fn ineq_func(items: &[Item]) -> Result<bool, BaseError> {
         match items {
-            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
+            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b).map_err(BaseError::from),
             _ => Err("exactly 2 arguments required".into())
         }
     }

@@ -161,7 +161,7 @@ impl Item {
         }
     }
 
-    pub(crate) fn try_eq(&self, other: &Self) -> Result<bool, BaseError> {
+    pub(crate) fn try_eq(&self, other: &Self) -> Result<bool, StreamError> {
         use Item::*;
         Ok(match (self, other) {
             (Number(x1), Number(x2)) => x1 == x2,
