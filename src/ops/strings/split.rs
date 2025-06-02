@@ -91,8 +91,11 @@ mod tests {
         test_eval!("\"abbacca\".split('b', \"bb\", \"cc\")" => "[\"a\", \"\", \"a\", \"a\"]");
         test_eval!("\"\".split(' ')" => "[\"\"]");
         test_eval!("\"abc\".split(\"\")" => err);
+        test_eval!("\"abc\".split()" => err);
         test_eval!("\"abcacbadc\".split(\"ab\", \"ac\")" => "[\"\", \"c\", \"badc\"]");
         test_describe!("\"Hello, world!\".split(',', ' ')" => "\"Hello, world!\".split(\",\", \" \")");
+        test_eval!("\"abcacbadc\".split('a'.repeat)" => err);
+        test_eval!("\"abcacbadc\".split('a'.repeat(10^20))" => err);
     }
 }
 

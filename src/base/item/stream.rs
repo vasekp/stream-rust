@@ -64,12 +64,15 @@ impl dyn Stream {
 
     pub(crate) fn listout(&self) -> Result<Vec<Item>, StreamError> {
         let mut vec = Vec::new();
-        match self.length() {
-            Length::Exact(len) | Length::AtMost(len) => {
+        match &self.length() {
+            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
                 if let Some(len) = len.to_usize() {
                     vec.reserve(len);
+                } else if matches!(lobj, Length::Exact(_)) {
+                    return Err(StreamError::new("string is too long", Item::Stream(self.clone_box())));
                 }
             },
+            Length::Infinite => return Err(StreamError::new("string is infinite", Item::Stream(self.clone_box()))),
             _ => ()
         };
         for res in self.iter() {
@@ -191,12 +194,15 @@ impl dyn Stream {
 
     pub(crate) fn string_listout(&self) -> Result<Vec<Char>, StreamError> {
         let mut vec = Vec::new();
-        match self.length() {
-            Length::Exact(len) | Length::AtMost(len) => {
+        match &self.length() {
+            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
                 if let Some(len) = len.to_usize() {
                     vec.reserve(len);
+                } else if matches!(lobj, Length::Exact(_)) {
+                    return Err(StreamError::new("string is too long", Item::String(self.clone_box())));
                 }
             },
+            Length::Infinite => return Err(StreamError::new("string is infinite", Item::String(self.clone_box()))),
             _ => ()
         };
         for res in self.string_iter() {
