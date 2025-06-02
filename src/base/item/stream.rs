@@ -268,6 +268,12 @@ pub struct OwnedStreamIter {
     _stream: std::pin::Pin<Box<dyn Stream>>
 }
 
+impl OwnedStreamIter {
+    pub fn stream(&self) -> &(dyn Stream + 'static) {
+        &*self._stream
+    }
+}
+
 impl From<Box<dyn Stream>> for OwnedStreamIter {
     fn from(stm: Box<dyn Stream>) -> Self {
         let pin = Box::into_pin(stm);
