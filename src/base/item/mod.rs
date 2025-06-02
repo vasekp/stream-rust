@@ -109,14 +109,6 @@ impl Item {
         matches!(self, Item::Stream(_))
     }
 
-    #[cfg(test)]
-    pub(crate) fn as_stream(&self) -> Result<&(dyn Stream + 'static), BaseError> {
-        match self {
-            Item::Stream(s) | Item::String(s) => Ok(&**s),
-            _ => Err(format!("expected stream, found {:?}", &self).into())
-        }
-    }
-
     pub fn is_string(&self) -> bool {
         matches!(self, Item::String(_))
     }

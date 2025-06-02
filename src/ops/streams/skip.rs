@@ -64,30 +64,30 @@ mod tests {
     fn test_skip() {
         use crate::parser::parse;
 
-        assert_eq!(parse("(1..3).skip(0)").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("(1..3).skip(1)").unwrap().eval_default().unwrap().to_string(), "[2, 3]");
-        assert_eq!(parse("(1..3).skip(2)").unwrap().eval_default().unwrap().to_string(), "[3]");
-        assert_eq!(parse("(1..3).skip(3)").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("(1..3).skip(4)").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("(1..3).skip(5)").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("(1..3).skip").unwrap().eval_default().unwrap().to_string(), "[2, 3]");
-        assert_eq!(parse("\"abc\".skip").unwrap().eval_default().unwrap().to_string(), "\"bc\"");
-        assert_eq!(parse("\"abc\".skip(3)").unwrap().eval_default().unwrap().to_string(), "\"\"");
-        assert!(parse("(1..3).skip(-1)").unwrap().eval_default().is_err());
-        assert_eq!(parse("seq.skip(10^10)").unwrap().eval_default().unwrap().to_string(), "[10000000001, 10000000002, 10000000003, 10000000004, 10000000005, ...]");
-        assert_eq!(parse("seq.skip(10^10).skip(10^10)").unwrap().eval_default().unwrap().to_string(), "[20000000001, 20000000002, 20000000003, 20000000004, 20000000005, ...]");
-        test_len_exact(&parse("(1..3).skip(0)").unwrap().eval_default().unwrap(), 3);
-        test_len_exact(&parse("(1..3).skip(1)").unwrap().eval_default().unwrap(), 2);
-        test_len_exact(&parse("(1..3).skip(2)").unwrap().eval_default().unwrap(), 1);
-        test_len_exact(&parse("(1..3).skip(3)").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("(1..3).skip(4)").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("(1..3).skip(5)").unwrap().eval_default().unwrap(), 0);
-        test_skip_n(&parse("seq.skip(100)").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("(1..10^10).skip(10^9)").unwrap().eval_default().unwrap());
-        assert_eq!(parse("(1..3).skip(0)").unwrap().eval_default().unwrap().describe(), "(1..3).skip(0)");
-        assert_eq!(parse("(1..3).skip(4)").unwrap().eval_default().unwrap().describe(), "(1..3).skip(4)");
-        assert_eq!(parse("\"abc\".skip").unwrap().eval_default().unwrap().describe(), "\"abc\".skip");
-        assert_eq!(parse("\"abc\".skip(4)").unwrap().eval_default().unwrap().describe(), "\"abc\".skip(4)");
+        test_eval!("(1..3).skip(0)" => "[1, 2, 3]");
+        test_eval!("(1..3).skip(1)" => "[2, 3]");
+        test_eval!("(1..3).skip(2)" => "[3]");
+        test_eval!("(1..3).skip(3)" => "[]");
+        test_eval!("(1..3).skip(4)" => "[]");
+        test_eval!("(1..3).skip(5)" => "[]");
+        test_eval!("(1..3).skip" => "[2, 3]");
+        test_eval!("\"abc\".skip" => "\"bc\"");
+        test_eval!("\"abc\".skip(3)" => "\"\"");
+        test_eval!("(1..3).skip(-1)" => err);
+        test_eval!("seq.skip(10^10)" => "[10000000001, 10000000002, 10000000003, 10000000004, 10000000005, ...]");
+        test_eval!("seq.skip(10^10).skip(10^10)" => "[20000000001, 20000000002, 20000000003, 20000000004, 20000000005, ...]");
+        test_len!("(1..3).skip(0)" => 3);
+        test_len!("(1..3).skip(1)" => 2);
+        test_len!("(1..3).skip(2)" => 1);
+        test_len!("(1..3).skip(3)" => 0);
+        test_len!("(1..3).skip(4)" => 0);
+        test_len!("(1..3).skip(5)" => 0);
+        test_skip_n("seq.skip(100)");
+        test_skip_n("(1..10^10).skip(10^9)");
+        test_describe!("(1..3).skip(0)" => "(1..3).skip(0)");
+        test_describe!("(1..3).skip(4)" => "(1..3).skip(4)");
+        test_describe!("\"abc\".skip" => "\"abc\".skip");
+        test_describe!("\"abc\".skip(4)" => "\"abc\".skip(4)");
     }
 }
 

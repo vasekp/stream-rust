@@ -127,48 +127,48 @@ mod tests {
     fn test_join() {
         use crate::parser::parse;
 
-        assert_eq!(parse("[10]~seq").unwrap().eval_default().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
-        assert_eq!(parse("range(2)~seq").unwrap().eval_default().unwrap().to_string(), "[1, 2, 1, 2, 3, ...]");
-        assert_eq!(parse("range(10^10).{#~#~#}.len").unwrap().eval_default().unwrap().to_string(), "30000000000");
-        assert!(parse("([5]~seq).len").unwrap().eval_default().is_err());
-        assert_eq!(parse("(range(10^10)~seq)[10^11]").unwrap().eval_default().unwrap().to_string(), "90000000000");
+        test_eval!("[10]~seq" => "[10, 1, 2, 3, 4, ...]");
+        test_eval!("range(2)~seq" => "[1, 2, 1, 2, 3, ...]");
+        test_eval!("range(10^10).{#~#~#}.len" => "30000000000");
+        test_eval!("([5]~seq).len" => err);
+        test_eval!("(range(10^10)~seq)[10^11]" => "90000000000");
 
-        assert_eq!(parse("(\"ab\"~\"cd\").len").unwrap().eval_default().unwrap().to_string(), "4");
+        test_eval!("(\"ab\"~\"cd\").len" => "4");
 
-        assert_eq!(parse("[1]~[2]").unwrap().eval_default().unwrap().to_string(), "[1, 2]");
-        assert_eq!(parse("[1]~[[2]]").unwrap().eval_default().unwrap().to_string(), "[1, [2]]");
-        assert_eq!(parse("[1]~2~'c'").unwrap().eval_default().unwrap().to_string(), "[1, 2, 'c']");
-        assert_eq!(parse("1~2~3").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("10~seq").unwrap().eval_default().unwrap().to_string(), "[10, 1, 2, 3, 4, ...]");
-        assert_eq!(parse("(0~1..0~2)").unwrap().eval_default().unwrap().to_string(), "[0, 2]");
-        assert_eq!(parse("(0~1..3~4)[3]").unwrap().eval_default().unwrap().to_string(), "2");
-        assert_eq!(parse("(0~1..3~4)[4]").unwrap().eval_default().unwrap().to_string(), "3");
-        assert_eq!(parse("\"ab\"~\"cd\"").unwrap().eval_default().unwrap().to_string(), "\"abcd\"");
-        assert_eq!(parse("\"ab\"~'c'").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
-        assert_eq!(parse("'a'~\"b\"~'c'").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
-        assert_eq!(parse("join([1],[2])").unwrap().eval_default().unwrap().to_string(), "[1, 2]");
-        assert!(parse("[1].join([1],[2])").unwrap().eval_default().is_err());
-        assert!(parse("\"a\"~1").unwrap().eval_default().is_err());
-        assert!(parse("\"a\"~[1]").unwrap().eval_default().is_err());
-        assert!(parse("\"a\"~['b']").unwrap().eval_default().is_err());
-        assert!(parse("[1]~\"a\"").unwrap().eval_default().is_err());
+        test_eval!("[1]~[2]" => "[1, 2]");
+        test_eval!("[1]~[[2]]" => "[1, [2]]");
+        test_eval!("[1]~2~'c'" => "[1, 2, 'c']");
+        test_eval!("1~2~3" => "[1, 2, 3]");
+        test_eval!("10~seq" => "[10, 1, 2, 3, 4, ...]");
+        test_eval!("(0~1..0~2)" => "[0, 2]");
+        test_eval!("(0~1..3~4)[3]" => "2");
+        test_eval!("(0~1..3~4)[4]" => "3");
+        test_eval!("\"ab\"~\"cd\"" => "\"abcd\"");
+        test_eval!("\"ab\"~'c'" => "\"abc\"");
+        test_eval!("'a'~\"b\"~'c'" => "\"abc\"");
+        test_eval!("join([1],[2])" => "[1, 2]");
+        test_eval!("[1].join([1],[2])" => err);
+        test_eval!("\"a\"~1" => err);
+        test_eval!("\"a\"~[1]" => err);
+        test_eval!("\"a\"~['b']" => err);
+        test_eval!("[1]~\"a\"" => err);
 
-        test_len_exact(&parse("[1,2,3]~4~[5]~[[5,6]]").unwrap().eval_default().unwrap(), 6);
-        test_len_exact(&parse("1~2~3").unwrap().eval_default().unwrap(), 3);
-        test_len_exact(&parse("0~1..2~3").unwrap().eval_default().unwrap(), 4);
-        test_len_exact(&parse("0~1..0~3").unwrap().eval_default().unwrap(), 2);
-        test_len_exact(&parse("\"ab\"~\"cd\"").unwrap().eval_default().unwrap(), 4);
-        test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval_default().unwrap(), 3);
-        test_len_exact(&parse("\"ab\"~'ch'").unwrap().eval_default().unwrap(), 3);
-        test_len_exact(&parse("\"\"~\"\"").unwrap().eval_default().unwrap(), 0);
-        test_skip_n(&parse("range(10^10)~range(10^9)").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("range(10^10)~range(-10^10)~range(10^9)").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("('a'..'z').repeat(10^10)~['A'].repeat(10^10)").unwrap().eval_default().unwrap());
+        test_len!("[1,2,3]~4~[5]~[[5,6]]" => 6);
+        test_len!("1~2~3" => 3);
+        test_len!("0~1..2~3" => 4);
+        test_len!("0~1..0~3" => 2);
+        test_len!("\"ab\"~\"cd\"" => 4);
+        test_len!("\"ab\"~'ch'" => 3);
+        test_len!("\"ab\"~'ch'" => 3);
+        test_len!("\"\"~\"\"" => 0);
+        test_skip_n("range(10^10)~range(10^9)");
+        test_skip_n("range(10^10)~range(-10^10)~range(10^9)");
+        test_skip_n("('a'..'z').repeat(10^10)~['A'].repeat(10^10)");
 
-        assert_eq!(parse("1~2").unwrap().eval_default().unwrap().describe(), "1~2");
-        assert_eq!(parse("[1]~[2]").unwrap().eval_default().unwrap().describe(), "[1]~[2]");
-        assert_eq!(parse("join([1],[2])").unwrap().eval_default().unwrap().describe(), "join([1], [2])");
-        assert_eq!(parse("\"ab\"~'c'").unwrap().eval_default().unwrap().describe(), "\"ab\"~'c'");
+        test_describe!("1~2" => "1~2");
+        test_describe!("[1]~[2]" => "[1]~[2]");
+        test_describe!("join([1],[2])" => "join([1], [2])");
+        test_describe!("\"ab\"~'c'" => "\"ab\"~'c'");
     }
 }
 

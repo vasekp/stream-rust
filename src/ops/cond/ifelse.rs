@@ -18,13 +18,14 @@ fn eval_if(node: Node, env: &Env) -> Result<Item, StreamError> {
 mod tests {
     #[test]
     fn test_if() {
-        //use super::*;
+        use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("if(true, \"\", [])").unwrap().eval_default().unwrap().to_string(), "\"\"");
-        assert_eq!(parse("if(false, \"\", [])").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert!(parse("if(0, \"\", [])").unwrap().eval_default().is_err());
-        assert_eq!(parse("seq:{if(#<4,-#,#)}").unwrap().eval_default().unwrap().to_string(), "[-1, -2, -3, 4, 5, ...]");
-        assert_eq!(parse("[1,'a',\"a\"]:{if(#.isnum,-#,#+1)}").unwrap().eval_default().unwrap().to_string(), "[-1, 'b', \"b\"]");
+
+        test_eval!("if(true, \"\", [])" => "\"\"");
+        test_eval!("if(false, \"\", [])" => "[]");
+        test_eval!("if(0, \"\", [])" => err);
+        test_eval!("seq:{if(#<4,-#,#)}" => "[-1, -2, -3, 4, 5, ...]");
+        test_eval!("[1,'a',\"a\"]:{if(#.isnum,-#,#+1)}" => "[-1, 'b', \"b\"]");
     }
 }
 

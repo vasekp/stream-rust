@@ -102,28 +102,29 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
 mod tests {
     #[test]
     fn test_class() {
-        //use super::*;
+        use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("[1,true,'2',\"3\",[]]:isnum").unwrap().eval_default().unwrap().to_string(), "[true, false, false, false, false]");
-        assert_eq!(parse("[1,true,'2',\"3\",[]]:isbool").unwrap().eval_default().unwrap().to_string(), "[false, true, false, false, false]");
-        assert_eq!(parse("[1,true,'2',\"3\",[]]:ischar").unwrap().eval_default().unwrap().to_string(), "[false, false, true, false, false]");
-        assert_eq!(parse("[1,true,'2',\"3\",[]]:isstream").unwrap().eval_default().unwrap().to_string(), "[false, false, false, false, true]");
-        assert_eq!(parse("[1,true,'2',\"3\",[]]:isstring").unwrap().eval_default().unwrap().to_string(), "[false, false, false, true, false]");
-        assert_eq!(parse("[0,1,2,3,'a']:isodd").unwrap().eval_default().unwrap().to_string(), "[false, true, false, true, <!>");
-        assert_eq!(parse("[0,1,2,3,'a']:iseven").unwrap().eval_default().unwrap().to_string(), "[true, false, true, false, <!>");
-        assert_eq!(parse("[\"\",[],\"a\",[0],0]:isempty").unwrap().eval_default().unwrap().to_string(), "[true, true, false, false, <!>");
-        assert_eq!(parse("['a','A','á',\"a\"]:isalpha").unwrap().eval_default().unwrap().to_string(), "[true, true, false, <!>");
-        assert_eq!(parse("alpha(['Á'],['a','A','á','Á',\"a\"]:isalpha)").unwrap().eval_default().unwrap().to_string(), "[false, false, true, true, <!>");
-        assert_eq!(parse("['a','á','ch',\"a\"]:isascii").unwrap().eval_default().unwrap().to_string(), "[true, false, false, <!>");
-        assert_eq!(parse("['0','00',\"0\"]:isdigit").unwrap().eval_default().unwrap().to_string(), "[true, false, <!>");
-        assert_eq!(parse("[' ','.','\r','\n']:iswhite").unwrap().eval_default().unwrap().to_string(), "[true, false, true, true]");
-        assert_eq!(parse("['á','Á','ch','Ch','CH']:isupper").unwrap().eval_default().unwrap().to_string(), "[false, true, false, false, true]");
-        assert_eq!(parse("['á','Á','ch','Ch','CH']:islower").unwrap().eval_default().unwrap().to_string(), "[true, false, true, false, false]");
-        assert_eq!(parse("[' ','  ',\"A B\",\"A b\",['Ch'].string]:isupper").unwrap().eval_default().unwrap().to_string(), "[false, false, true, false, false]");
-        assert_eq!(parse("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower").unwrap().eval_default().unwrap().to_string(), "[false, false, true, false, true]");
-        assert_eq!(parse("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower").unwrap().eval_default().unwrap().to_string(), "[false, false, true, false, true]");
-        assert_eq!(parse("['0', '+', \"0\", \"+\", 0]:isnumeric").unwrap().eval_default().unwrap().to_string(), "[true, false, true, false, <!>");
-        assert_eq!(parse("[\"-123\",\"+-1\",'a'.repeat,'00',[1].string]:isnumeric").unwrap().eval_default().unwrap().to_string(), "[true, false, false, false, <!>");
+
+        test_eval!("[1,true,'2',\"3\",[]]:isnum" => "[true, false, false, false, false]");
+        test_eval!("[1,true,'2',\"3\",[]]:isbool" => "[false, true, false, false, false]");
+        test_eval!("[1,true,'2',\"3\",[]]:ischar" => "[false, false, true, false, false]");
+        test_eval!("[1,true,'2',\"3\",[]]:isstream" => "[false, false, false, false, true]");
+        test_eval!("[1,true,'2',\"3\",[]]:isstring" => "[false, false, false, true, false]");
+        test_eval!("[0,1,2,3,'a']:isodd" => "[false, true, false, true, <!>");
+        test_eval!("[0,1,2,3,'a']:iseven" => "[true, false, true, false, <!>");
+        test_eval!("[\"\",[],\"a\",[0],0]:isempty" => "[true, true, false, false, <!>");
+        test_eval!("['a','A','á',\"a\"]:isalpha" => "[true, true, false, <!>");
+        test_eval!("alpha(['Á'],['a','A','á','Á',\"a\"]:isalpha)" => "[false, false, true, true, <!>");
+        test_eval!("['a','á','ch',\"a\"]:isascii" => "[true, false, false, <!>");
+        test_eval!("['0','00',\"0\"]:isdigit" => "[true, false, <!>");
+        test_eval!("[' ','.','\r','\n']:iswhite" => "[true, false, true, true]");
+        test_eval!("['á','Á','ch','Ch','CH']:isupper" => "[false, true, false, false, true]");
+        test_eval!("['á','Á','ch','Ch','CH']:islower" => "[true, false, true, false, false]");
+        test_eval!("[' ','  ',\"A B\",\"A b\",['Ch'].string]:isupper" => "[false, false, true, false, false]");
+        test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
+        test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
+        test_eval!("['0', '+', \"0\", \"+\", 0]:isnumeric" => "[true, false, true, false, <!>");
+        test_eval!("[\"-123\",\"+-1\",'a'.repeat,'00',[1].string]:isnumeric" => "[true, false, false, false, <!>");
     }
 }
 

@@ -34,51 +34,52 @@ fn eval_not_xor(node: Node, env: &Env) -> Result<Item, StreamError> {
 mod tests {
     #[test]
     fn test_bools() {
+        use super::*;
         use crate::parser::parse;
 
-        assert_eq!(parse("false&false").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("false&true").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("true&false").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("true&true").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("and@[]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("and@[1==1]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("and@[1==1,1==2]").unwrap().eval_default().unwrap().to_string(), "false");
+        test_eval!("false&false" => "false");
+        test_eval!("false&true" => "false");
+        test_eval!("true&false" => "false");
+        test_eval!("true&true" => "true");
+        test_eval!("and@[]" => "true");
+        test_eval!("and@[1==1]" => "true");
+        test_eval!("and@[1==1,1==2]" => "false");
         // Eval error avoided by short circuit
-        assert_eq!(parse("1==1&1==2&1+'a'==1").unwrap().eval_default().unwrap().to_string(), "false");
+        test_eval!("1==1&1==2&1+'a'==1" => "false");
         // Here it happens because evaluation reaches it
-        assert!(parse("1==1&1+'a'==1").unwrap().eval_default().is_err());
+        test_eval!("1==1&1+'a'==1" => err);
         // Here it happens because @ evaulates all
-        assert!(parse("and@[1==1,1==2,1+'a'==1]").unwrap().eval_default().is_err());
+        test_eval!("and@[1==1,1==2,1+'a'==1]" => err);
         // Eval to non-bool after short-circuit
-        assert_eq!(parse("and@[1==1,1==2,1]").unwrap().eval_default().unwrap().to_string(), "false");
+        test_eval!("and@[1==1,1==2,1]" => "false");
 
-        assert_eq!(parse("false|false").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("true|false").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("true|true").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("false|true").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("or@[]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("or@[1==1]").unwrap().eval_default().unwrap().to_string(), "true");
+        test_eval!("false|false" => "false");
+        test_eval!("true|false" => "true");
+        test_eval!("true|true" => "true");
+        test_eval!("false|true" => "true");
+        test_eval!("or@[]" => "false");
+        test_eval!("or@[1==1]" => "true");
         // Short-circuit
-        assert_eq!(parse("1==2|1==1|1+'a'==1").unwrap().eval_default().unwrap().to_string(), "true");
-        assert!(parse("1==2|1+'a'==1").unwrap().eval_default().is_err());
+        test_eval!("1==2|1==1|1+'a'==1" => "true");
+        test_eval!("1==2|1+'a'==1" => err);
 
-        assert_eq!(parse("!false").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("true!true").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("true!true!true").unwrap().eval_default().unwrap().to_string(), "true");
+        test_eval!("!false" => "true");
+        test_eval!("true!true" => "false");
+        test_eval!("true!true!true" => "true");
         assert!(parse("!true!true!true").is_err());
-        assert_eq!(parse("xor()").unwrap().eval_default().unwrap().to_string(), "false");
-        assert!(parse("not()").unwrap().eval_default().is_err());
-        assert_eq!(parse("xor(false)").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("not(false)").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("xor(true,false)").unwrap().eval_default().unwrap().to_string(), "true");
-        assert!(parse("not(true,false)").unwrap().eval_default().is_err());
+        test_eval!("xor()" => "false");
+        test_eval!("not()" => err);
+        test_eval!("xor(false)" => "false");
+        test_eval!("not(false)" => "true");
+        test_eval!("xor(true,false)" => "true");
+        test_eval!("not(true,false)" => err);
 
-        assert_eq!(parse("false&true==false").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("(false&true)==false").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("1==2|2==2").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("true&false|false&true|true&true").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("!true|true").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("with(a=1==2,a)").unwrap().eval_default().unwrap().to_string(), "false");
+        test_eval!("false&true==false" => "false");
+        test_eval!("(false&true)==false" => "true");
+        test_eval!("1==2|2==2" => "true");
+        test_eval!("true&false|false&true|true&true" => "true");
+        test_eval!("!true|true" => "true");
+        test_eval!("with(a=1==2,a)" => "false");
     }
 }
 

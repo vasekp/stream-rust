@@ -119,30 +119,30 @@ mod tests {
     fn test_nest() {
         use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("1.nest{#+1}").unwrap().eval_default().unwrap().to_string(), "[2, 3, 4, 5, 6, ...]");
-        assert_eq!(parse("1.nest({#})").unwrap().eval_default().unwrap().to_string(), "[1, 1, 1, 1, 1, ...]");
-        assert_eq!(parse("'T'.nest{#+2}").unwrap().eval_default().unwrap().to_string(), "['V', 'X', 'Z', 'B', 'D', ...]");
-        assert_eq!(parse("\"a\".nest({#~'x'})").unwrap().eval_default().unwrap().to_string(), "[\"ax\", \"axx\", \"axxx\", \"axxxx\", \"axxxxx\", ...]");
-        assert_eq!(parse("1.nest{#1}").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert!(parse("1.nest(2.{#})").unwrap().eval_default().is_err());
-        assert!(parse("1.nest{#}(1)").unwrap().eval_default().is_err());
-        assert_eq!(parse("nest{#1+#2}(1,1)").unwrap().eval_default().unwrap().to_string(), "[2, 3, 5, 8, 13, ...]");
-        assert_eq!(parse("nest{#1+#2}(1)").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("nest{#}(1,1)").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert!(parse("nest({#}())").unwrap().eval_default().is_err());
+        test_eval!("1.nest{#+1}" => "[2, 3, 4, 5, 6, ...]");
+        test_eval!("1.nest({#})" => "[1, 1, 1, 1, 1, ...]");
+        test_eval!("'T'.nest{#+2}" => "['V', 'X', 'Z', 'B', 'D', ...]");
+        test_eval!("\"a\".nest({#~'x'})" => "[\"ax\", \"axx\", \"axxx\", \"axxxx\", \"axxxxx\", ...]");
+        test_eval!("1.nest{#1}" => "[<!>");
+        test_eval!("1.nest(2.{#})" => err);
+        test_eval!("1.nest{#}(1)" => err);
+        test_eval!("nest{#1+#2}(1,1)" => "[2, 3, 5, 8, 13, ...]");
+        test_eval!("nest{#1+#2}(1)" => "[<!>");
+        test_eval!("nest{#}(1,1)" => "[<!>");
+        test_eval!("nest({#}())" => err);
 
-        assert_eq!(parse("1.nest{#*2}[64]").unwrap().eval_default().unwrap().to_string(), "18446744073709551616");
-        assert_eq!(parse("[].nest{[#]}[3]").unwrap().eval_default().unwrap().to_string(), "[[[[]]]]");
-        assert_eq!(parse("[].nest{[#, #]}[2]").unwrap().eval_default().unwrap().to_string(), "[[[], []], [[], ...]]");
+        test_eval!("1.nest{#*2}[64]" => "18446744073709551616");
+        test_eval!("[].nest{[#]}[3]" => "[[[[]]]]");
+        test_eval!("[].nest{[#, #]}[2]" => "[[[], []], [[], ...]]");
         // Fibonacci
-        assert_eq!(parse("nest{#1+#2}(1,1)").unwrap().eval_default().unwrap().to_string(), "[2, 3, 5, 8, 13, ...]");
+        test_eval!("nest{#1+#2}(1,1)" => "[2, 3, 5, 8, 13, ...]");
         // Von Neumann numerals
-        assert_eq!(parse("[].nest{#~[#]}[3]").unwrap().eval_default().unwrap().to_string(), "[[], [[]], [[], ...]]");
+        test_eval!("[].nest{#~[#]}[3]" => "[[], [[]], [[], ...]]");
         // Binomial coefficients
-        assert_eq!(parse("[1].nest{(0~#)+(#~0)}[4]").unwrap().eval_default().unwrap().to_string(), "[1, 4, 6, 4, 1]");
-        assert_eq!(parse("\"caesar\".nest{#+1}").unwrap().eval_default().unwrap().to_string(), "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
-        assert_eq!(parse("[0,1]~[1].nest{#~(#+1)}.flatten").unwrap().eval_default().unwrap().to_string(), "[0, 1, 1, 2, 1, ...]");
-        assert_eq!(parse("nest{#1+#2}(1,1)").unwrap().eval_default().unwrap().describe(), "nest({#1+#2}(1, 1))");
+        test_eval!("[1].nest{(0~#)+(#~0)}[4]" => "[1, 4, 6, 4, 1]");
+        test_eval!("\"caesar\".nest{#+1}" => "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
+        test_eval!("[0,1]~[1].nest{#~(#+1)}.flatten" => "[0, 1, 1, 2, 1, ...]");
+        test_describe!("nest{#1+#2}(1,1)" => "nest({#1+#2}(1, 1))");
     }
 }
 

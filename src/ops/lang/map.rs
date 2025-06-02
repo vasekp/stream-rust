@@ -70,20 +70,20 @@ mod tests {
     #[test]
     fn test_map() {
         use crate::parser::parse;
-        assert_eq!(parse("[1,2,3]:{#*10}").unwrap().eval_default().unwrap().to_string(), "[10, 20, 30]");
-        assert_eq!(parse("seq:{#^2}").unwrap().eval_default().unwrap().to_string(), "[1, 4, 9, 16, 25, ...]");
-        assert_eq!(parse("seq:{#1}").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("seq:{range(#)}").unwrap().eval_default().unwrap().to_string(), "[[1], [1, 2], ...]");
-        assert_eq!(parse("seq.map{#+#1}(3)").unwrap().eval_default().unwrap().to_string(), "[4, 5, 6, 7, 8, ...]");
-        assert!(parse("\"abc\":{#}").unwrap().eval_default().is_err());
-        test_len_exact(&parse("[1,2,3]:{#}").unwrap().eval_default().unwrap(), 3);
-        test_len_exact(&parse("[]:{#}").unwrap().eval_default().unwrap(), 0);
-        test_skip_n(&parse("range(10^10):{#}").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("seq:{#}").unwrap().eval_default().unwrap());
-        assert_eq!(parse("[1,2,3]:{#}").unwrap().eval_default().unwrap().describe(), "[1, 2, 3]:{#}");
-        assert_eq!(parse("seq:{#}").unwrap().eval_default().unwrap().describe(), "seq:{#}");
-        assert_eq!(parse("seq.map{#}").unwrap().eval_default().unwrap().describe(), "seq.map({#})");
-        assert_eq!(parse("seq.map{#+#1}(1)").unwrap().eval_default().unwrap().describe(), "seq.map({#+#1}(1))");
+        test_eval!("[1,2,3]:{#*10}" => "[10, 20, 30]");
+        test_eval!("seq:{#^2}" => "[1, 4, 9, 16, 25, ...]");
+        test_eval!("seq:{#1}" => "[<!>");
+        test_eval!("seq:{range(#)}" => "[[1], [1, 2], ...]");
+        test_eval!("seq.map{#+#1}(3)" => "[4, 5, 6, 7, 8, ...]");
+        test_eval!("\"abc\":{#}" => err);
+        test_len!("[1,2,3]:{#}" => 3);
+        test_len!("[]:{#}" => 0);
+        test_skip_n("range(10^10):{#}");
+        test_skip_n("seq:{#}");
+        test_describe!("[1,2,3]:{#}" => "[1, 2, 3]:{#}");
+        test_describe!("seq:{#}" => "seq:{#}");
+        test_describe!("seq.map{#}" => "seq.map({#})");
+        test_describe!("seq.map{#+#1}(1)" => "seq.map({#+#1}(1))");
     }
 }
 

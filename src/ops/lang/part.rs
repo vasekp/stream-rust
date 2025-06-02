@@ -121,35 +121,35 @@ mod tests {
     #[test]
     fn test_part() {
         use crate::parser::parse;
-        assert_eq!(parse("range(3)[1]").unwrap().eval_default().unwrap().to_string(), "1");
-        assert_eq!(parse("range(3)[3]").unwrap().eval_default().unwrap().to_string(), "3");
-        assert!(parse("range(3)[4]").unwrap().eval_default().is_err());
-        assert!(parse("range(3)[10]").unwrap().eval_default().is_err());
-        assert!(parse("range(3)[0]").unwrap().eval_default().is_err());
-        assert!(parse("range(3)[-1]").unwrap().eval_default().is_err());
-        assert_eq!(parse("[[1,2],[3,4]][2,1]").unwrap().eval_default().unwrap().to_string(), "3");
-        assert_eq!(parse("[[1,2],[3,4]][2][1]").unwrap().eval_default().unwrap().to_string(), "3");
-        assert_eq!(parse("[[1,2],[3,4]].part(2,1)").unwrap().eval_default().unwrap().to_string(), "3");
-        assert_eq!(parse("\"abc\"[2]").unwrap().eval_default().unwrap().to_string(), "'b'");
-        assert_eq!(parse("\"abc\"[[2,3]]").unwrap().eval_default().unwrap().to_string(), "['b', 'c']");
+        test_eval!("range(3)[1]" => "1");
+        test_eval!("range(3)[3]" => "3");
+        test_eval!("range(3)[4]" => err);
+        test_eval!("range(3)[10]" => err);
+        test_eval!("range(3)[0]" => err);
+        test_eval!("range(3)[-1]" => err);
+        test_eval!("[[1,2],[3,4]][2,1]" => "3");
+        test_eval!("[[1,2],[3,4]][2][1]" => "3");
+        test_eval!("[[1,2],[3,4]].part(2,1)" => "3");
+        test_eval!("\"abc\"[2]" => "'b'");
+        test_eval!("\"abc\"[[2,3]]" => "['b', 'c']");
 
-        assert_eq!(parse("seq(5,2)[100.repeat]").unwrap().eval_default().unwrap().to_string(), "[203, 203, 203, 203, 203, ...]");
-        assert_eq!(parse("seq(5,2)[2*seq+1]").unwrap().eval_default().unwrap().to_string(), "[9, 13, 17, 21, 25, ...]");
-        assert_eq!(parse("seq[seq][seq]").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
-        assert_eq!(parse("seq[seq, seq]").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("seq:{seq^#}[seq,4]").unwrap().eval_default().unwrap().to_string(), "[4, 16, 64, 256, 1024, ...]");
-        assert_eq!(parse("seq:{seq^#}[seq][4]").unwrap().eval_default().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
-        assert_eq!(parse("seq:{seq^#}[4,seq]").unwrap().eval_default().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
-        assert_eq!(parse("seq:{seq^#}[4][seq]").unwrap().eval_default().unwrap().to_string(), "[1, 16, 81, 256, 625, ...]");
-        assert_eq!(parse("seq:{seq^#}[[1,2],[1,2,3]]").unwrap().eval_default().unwrap().to_string(), "[[1, 2, 3], [...]]");
-        assert!(parse("seq[2,5]").unwrap().eval_default().is_err());
-        assert_eq!(parse("seq[[2,5]]").unwrap().eval_default().unwrap().to_string(), "[2, 5]");
-        assert_eq!(parse("seq[[[2,5]]]").unwrap().eval_default().unwrap().to_string(), "[[2, 5]]"); // subject to change
-        test_len_exact(&parse("seq[[2,5]]").unwrap().eval_default().unwrap(), 2);
-        test_len_exact(&parse("seq[[]]").unwrap().eval_default().unwrap(), 0);
+        test_eval!("seq(5,2)[100.repeat]" => "[203, 203, 203, 203, 203, ...]");
+        test_eval!("seq(5,2)[2*seq+1]" => "[9, 13, 17, 21, 25, ...]");
+        test_eval!("seq[seq][seq]" => "[1, 2, 3, 4, 5, ...]");
+        test_eval!("seq[seq, seq]" => "[<!>");
+        test_eval!("seq:{seq^#}[seq,4]" => "[4, 16, 64, 256, 1024, ...]");
+        test_eval!("seq:{seq^#}[seq][4]" => "[1, 16, 81, 256, 625, ...]");
+        test_eval!("seq:{seq^#}[4,seq]" => "[1, 16, 81, 256, 625, ...]");
+        test_eval!("seq:{seq^#}[4][seq]" => "[1, 16, 81, 256, 625, ...]");
+        test_eval!("seq:{seq^#}[[1,2],[1,2,3]]" => "[[1, 2, 3], [...]]");
+        test_eval!("seq[2,5]" => err);
+        test_eval!("seq[[2,5]]" => "[2, 5]");
+        test_eval!("seq[[[2,5]]]" => "[[2, 5]]"); // subject to change
+        test_len!("seq[[2,5]]" => 2);
+        test_len!("seq[[]]" => 0);
 
-        assert_eq!(parse("seq[[3]]").unwrap().eval_default().unwrap().describe(), "seq[[3]]");
-        assert_eq!(parse("seq.part([3])").unwrap().eval_default().unwrap().describe(), "seq.part([3])");
+        test_describe!("seq[[3]]" => "seq[[3]]");
+        test_describe!("seq.part([3])" => "seq.part([3])");
     }
 }
 

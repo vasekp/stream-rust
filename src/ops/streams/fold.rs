@@ -72,18 +72,18 @@ mod tests {
     fn test_fold() {
         use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("seq.fold{#*#1}(1)").unwrap().eval_default().unwrap().to_string(), "[1, 2, 6, 24, 120, ...]");
-        assert_eq!(parse("(1..20).fold{#*#1}(1).last").unwrap().eval_default().unwrap().to_string(), "2432902008176640000");
-        assert_eq!(parse("seq.fold{#+#1}(0)").unwrap().eval_default().unwrap().to_string(), "[1, 3, 6, 10, 15, ...]");
-        assert_eq!(parse("seq.fold{#+#1+#2}(0,1)").unwrap().eval_default().unwrap().to_string(), "[2, 5, 10, 19, 34, ...]");
-        assert!(parse("seq.fold{#}").unwrap().eval_default().is_err());
-        assert_eq!(parse("seq.fold{#+#1+#2}(0)").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert!(parse("3.fold{#+#1}(0)").unwrap().eval_default().is_err());
-        assert!(parse("3.fold{#+#1}(0)").unwrap().eval_default().is_err());
-        assert_eq!(parse("\"abc\".chars.fold{#+#1}('a')").unwrap().eval_default().unwrap().to_string(), "['b', 'd', 'g']");
-        assert!(parse("\"abc\".fold{#+#1}('a')").unwrap().eval_default().is_err());
-        assert_eq!(parse("seq.fold{#+#1+#2}(0,1)").unwrap().eval_default().unwrap().describe(), "seq.fold({#+#1+#2}(0, 1))");
-        assert_eq!(parse("seq.fold{#1~#}([])").unwrap().eval_default().unwrap().to_string(), "[[1], [1, 2], ...]");
+        test_eval!("seq.fold{#*#1}(1)" => "[1, 2, 6, 24, 120, ...]");
+        test_eval!("(1..20).fold{#*#1}(1).last" => "2432902008176640000");
+        test_eval!("seq.fold{#+#1}(0)" => "[1, 3, 6, 10, 15, ...]");
+        test_eval!("seq.fold{#+#1+#2}(0,1)" => "[2, 5, 10, 19, 34, ...]");
+        test_eval!("seq.fold{#}" => err);
+        test_eval!("seq.fold{#+#1+#2}(0)" => "[<!>");
+        test_eval!("3.fold{#+#1}(0)" => err);
+        test_eval!("3.fold{#+#1}(0)" => err);
+        test_eval!("\"abc\".chars.fold{#+#1}('a')" => "['b', 'd', 'g']");
+        test_eval!("\"abc\".fold{#+#1}('a')" => err);
+        test_describe!("seq.fold{#+#1+#2}(0,1)" => "seq.fold({#+#1+#2}(0, 1))");
+        test_eval!("seq.fold{#1~#}([])" => "[[1], [1, 2], ...]");
     }
 }
 

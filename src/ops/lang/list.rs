@@ -13,19 +13,19 @@ mod tests {
     #[test]
     fn test_list() {
         use crate::parser::parse;
-        assert_eq!(parse("[1,2,3]").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("list(1,2,3)").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("list()").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert!(parse("[1].list(1,2,3)").unwrap().eval_default().is_err());
-        test_len_exact(&parse("[1,2,3]").unwrap().eval_default().unwrap(), 3);
-        test_len_exact(&parse("[1]").unwrap().eval_default().unwrap(), 1);
-        test_len_exact(&parse("[]").unwrap().eval_default().unwrap(), 0);
-        test_skip_n(&parse("[1,2,3]").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("[1]").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("[]").unwrap().eval_default().unwrap());
-        assert_eq!(parse("[1,2,3]").unwrap().eval_default().unwrap().describe(), "[1, 2, 3]");
-        assert_eq!(parse("[]").unwrap().eval_default().unwrap().describe(), "[]");
-        assert_eq!(parse("list(1)").unwrap().eval_default().unwrap().describe(), "[1]");
+        test_eval!("[1,2,3]" => "[1, 2, 3]");
+        test_eval!("list(1,2,3)" => "[1, 2, 3]");
+        test_eval!("list()" => "[]");
+        test_eval!("[1].list(1,2,3)" => err);
+        test_len!("[1,2,3]" => 3);
+        test_len!("[1]" => 1);
+        test_len!("[]" => 0);
+        test_skip_n("[1,2,3]");
+        test_skip_n("[1]");
+        test_skip_n("[]");
+        test_describe!("[1,2,3]" => "[1, 2, 3]");
+        test_describe!("[]" => "[]");
+        test_describe!("list(1)" => "[1]");
     }
 }
 

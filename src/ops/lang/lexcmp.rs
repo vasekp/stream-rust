@@ -48,28 +48,29 @@ impl LexOp {
 mod tests {
     #[test]
     fn test_cmp() {
+        use super::*;
         use crate::parser::parse;
 
-        assert_eq!(parse("1<<=1").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("'a'<<='b'").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("'a'<<='A'").unwrap().eval_default().unwrap().to_string(), "true");
-        assert!(parse("'a'<<='á'").unwrap().eval_default().is_err());
-        assert_eq!(parse("[1]<<[1]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("[1]<<[1,1]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("[1,[2,[3]]]<<[1,[2,[4]]]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("[1,[2,[3]]]<<=[1,[2,[3]]]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("[1,[2,[3]]]<<=[1,[2,[2]]]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert!(parse("\"ab\"<<=['a','b']").unwrap().eval_default().is_err());
-        assert_eq!(parse(r#""ab"<<="abc"<<="abc"<<="abd"<<="ac""#).unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse(r#""ab"<<"abc"<<"abc"<<"abd"<<"ac""#).unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse(r#""ab"<<"abc"<<"abd"<<"ac""#).unwrap().eval_default().unwrap().to_string(), "true");
-        assert!(parse("[1,2,'a']:{1+#}>>=[2,3,4]").unwrap().eval_default().is_err());
-        assert!(parse("[1,2,'a']:{1+#}>>=[2,3]").unwrap().eval_default().is_err());
-        assert_eq!(parse("[1,2,'a']:{1+#}>>=[2,2]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("[1,2,'a']:{1+#}>>=[2,4]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("[1,2,'a']:{1+#}>>=[2]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("\"abc\"<<=\"ABC\"").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("\"abc\">>=\"ABC\"").unwrap().eval_default().unwrap().to_string(), "true");
+        test_eval!("1<<=1" => "true");
+        test_eval!("'a'<<='b'" => "true");
+        test_eval!("'a'<<='A'" => "true");
+        test_eval!("'a'<<='á'" => err);
+        test_eval!("[1]<<[1]" => "false");
+        test_eval!("[1]<<[1,1]" => "true");
+        test_eval!("[1,[2,[3]]]<<[1,[2,[4]]]" => "true");
+        test_eval!("[1,[2,[3]]]<<=[1,[2,[3]]]" => "true");
+        test_eval!("[1,[2,[3]]]<<=[1,[2,[2]]]" => "false");
+        test_eval!("\"ab\"<<=['a','b']" => err);
+        test_eval!(r#""ab"<<="abc"<<="abc"<<="abd"<<="ac""# => "true");
+        test_eval!(r#""ab"<<"abc"<<"abc"<<"abd"<<"ac""# => "false");
+        test_eval!(r#""ab"<<"abc"<<"abd"<<"ac""# => "true");
+        test_eval!("[1,2,'a']:{1+#}>>=[2,3,4]" => err);
+        test_eval!("[1,2,'a']:{1+#}>>=[2,3]" => err);
+        test_eval!("[1,2,'a']:{1+#}>>=[2,2]" => "true");
+        test_eval!("[1,2,'a']:{1+#}>>=[2,4]" => "false");
+        test_eval!("[1,2,'a']:{1+#}>>=[2]" => "true");
+        test_eval!("\"abc\"<<=\"ABC\"" => "true");
+        test_eval!("\"abc\">>=\"ABC\"" => "true");
     }
 }
 

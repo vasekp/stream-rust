@@ -1,9 +1,37 @@
 use crate::base::*;
+use crate::parser::parse;
+
+macro_rules! test_eval {
+    ($input:expr => err) => { assert!(parse($input).unwrap().eval_default().is_err()); };
+    ($input:expr => $output:expr) => { assert_eq!(eval!($input).to_string(), $output); };
+}
+
+macro_rules! test_describe {
+    ($input:expr => $output:expr) => { assert_eq!(eval!($input).describe(), $output); };
+}
+
+macro_rules! test_len {
+    ($input:expr => $len:literal) => { test_len_exact($input, $len); };
+    ($input:expr => $len:expr) => {
+        let item = eval!($input);
+        let (Item::Stream(stm) | Item::String(stm)) = &item else {
+            panic!("test_skip_n: expected stream or string, found {:?}", item)
+        };
+        assert_eq!(stm.length(), $len);
+    }
+}
+
+pub(crate) use test_eval;
+pub(crate) use test_describe;
+pub(crate) use test_len;
 
 #[cfg(test)]
 #[track_caller]
-pub(crate) fn test_len_exact(item: &Item, len: usize) {
-    let stm = item.as_stream().unwrap();
+pub(crate) fn test_len_exact(input: &str, len: usize) {
+    let item = eval!(input);
+    let (Item::Stream(stm) | Item::String(stm)) = &item else {
+        panic!("test_skip_n: expected stream or string, found {:?}", item)
+    };
     assert_eq!(stm.iter().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.length(), &Length::Exact(len.into())));
     assert!(Length::possibly_eq(&stm.iter().len_remain(), &Length::Exact(len.into())));
@@ -12,8 +40,11 @@ pub(crate) fn test_len_exact(item: &Item, len: usize) {
 
 #[cfg(test)]
 #[track_caller]
-pub(crate) fn test_skip_n(item: &Item) {
-    let stm = item.as_stream().unwrap();
+pub(crate) fn test_skip_n(input: &str) {
+    let item = eval!(input);
+    let (Item::Stream(stm) | Item::String(stm)) = &item else {
+        panic!("test_skip_n: expected stream or string, found {:?}", item)
+    };
     const TEST: u32 = 5;
 
     assert_eq!(stm.iter().len_remain(), stm.length());

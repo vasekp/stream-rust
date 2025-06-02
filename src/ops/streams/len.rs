@@ -24,17 +24,18 @@ fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
 mod tests {
     #[test]
     fn test_len() {
+        use super::*;
         use crate::parser::parse;
 
-        assert_eq!(parse("[].len").unwrap().eval_default().unwrap().to_string(), "0");
-        assert_eq!(parse("range(10).len").unwrap().eval_default().unwrap().to_string(), "10");
-        assert_eq!(parse("range(10).flatten.len").unwrap().eval_default().unwrap().to_string(), "10");
-        assert_eq!(parse("\"abc\".len").unwrap().eval_default().unwrap().to_string(), "3");
-        assert!(parse("1.len").unwrap().eval_default().is_err());
+        test_eval!("[].len" => "0");
+        test_eval!("range(10).len" => "10");
+        test_eval!("range(10).flatten.len" => "10");
+        test_eval!("\"abc\".len" => "3");
+        test_eval!("1.len" => err);
         // Exact len used without checking
-        assert_eq!(parse("[1,2,'a']:{1+#}.len").unwrap().eval_default().unwrap().to_string(), "3");
+        test_eval!("[1,2,'a']:{1+#}.len" => "3");
         // Actual enumeration stops at errors
-        assert!(parse("[1,2,'a']:{1+#}.flatten.len").unwrap().eval_default().is_err());
+        test_eval!("[1,2,'a']:{1+#}.flatten.len" => err);
     }
 }
 

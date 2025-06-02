@@ -56,28 +56,28 @@ mod tests {
     fn test_with() {
         use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("with(a=1, a)").unwrap().eval_default().unwrap().to_string(), "1");
-        assert!(parse("with(1)").unwrap().eval_default().is_err());
-        assert!(parse("with(a=1, b)").unwrap().eval_default().is_err());
-        assert!(parse("with(a=a, a)").unwrap().eval_default().is_err());
-        assert!(parse("with(a, a)").unwrap().eval_default().is_err());
-        assert!(parse("with(1=2, 1)").unwrap().eval_default().is_err());
-        assert_eq!(parse("with(a=b=1, a+b)").unwrap().eval_default().unwrap().to_string(), "2");
-        assert!(parse("with(a=(b=1), 1)").unwrap().eval_default().is_err());
-        assert_eq!(parse("with(a=1, with(a=a+1, a))").unwrap().eval_default().unwrap().to_string(), "2");
-        assert_eq!(parse("with(a=5, a=a+4, a)").unwrap().eval_default().unwrap().to_string(), "9");
+        test_eval!("with(a=1, a)" => "1");
+        test_eval!("with(1)" => err);
+        test_eval!("with(a=1, b)" => err);
+        test_eval!("with(a=a, a)" => err);
+        test_eval!("with(a, a)" => err);
+        test_eval!("with(1=2, 1)" => err);
+        test_eval!("with(a=b=1, a+b)" => "2");
+        test_eval!("with(a=(b=1), 1)" => err);
+        test_eval!("with(a=1, with(a=a+1, a))" => "2");
+        test_eval!("with(a=5, a=a+4, a)" => "9");
         // Rewrite existing symbols
-        assert_eq!(parse("with(seq=2, seq)").unwrap().eval_default().unwrap().to_string(), "2");
-        assert!(parse("with(len=2, seq.len)").unwrap().eval_default().is_err());
-        assert_eq!(parse("with(a={5*#1}, a(4))").unwrap().eval_default().unwrap().to_string(), "20");
-        assert_eq!(parse("with(a={5*#1}, b={a(#+1)}, 3.b)").unwrap().eval_default().unwrap().to_string(), "20");
-        assert_eq!(parse("with(a={5*#1}, a={a(#+1)}, 3.a)").unwrap().eval_default().unwrap().to_string(), "20");
-        assert_eq!(parse("with(df={times@range(#1,1,-2)}, df(10))").unwrap().eval_default().unwrap().to_string(), "3840");
+        test_eval!("with(seq=2, seq)" => "2");
+        test_eval!("with(len=2, seq.len)" => err);
+        test_eval!("with(a={5*#1}, a(4))" => "20");
+        test_eval!("with(a={5*#1}, b={a(#+1)}, 3.b)" => "20");
+        test_eval!("with(a={5*#1}, a={a(#+1)}, 3.a)" => "20");
+        test_eval!("with(df={times@range(#1,1,-2)}, df(10))" => "3840");
 
-        assert!(parse("with(a={a}, a)").unwrap().eval_default().is_err());
-        assert_eq!(parse("with(a=1, a={a}, a)").unwrap().eval_default().unwrap().to_string(), "1");
-        assert_eq!(parse("with(a=1, b={a}, a=2, b)").unwrap().eval_default().unwrap().to_string(), "1");
+        test_eval!("with(a={a}, a)" => err);
+        test_eval!("with(a=1, a={a}, a)" => "1");
+        test_eval!("with(a=1, b={a}, a=2, b)" => "1");
 
-        assert_eq!(parse("with(a=1,[].nest{#:{1}})[3]").unwrap().eval_default().unwrap().describe(), "with(a=1, []:{1}:{1}:{1})");
+        test_describe!("with(a=1,[].nest{#:{1}})[3]" => "with(a=1, []:{1}:{1}:{1})");
     }
 }

@@ -22,20 +22,22 @@ fn eval_string(node: Node, env: &Env) -> Result<Item, StreamError> {
 mod tests {
     #[test]
     fn test_chars_string() {
+        use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("\"abc\".chars").unwrap().eval_default().unwrap().to_string(), "['a', 'b', 'c']");
-        assert_eq!(parse("\"\".chars").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("'a'.repeat.chars").unwrap().eval_default().unwrap().to_string(), "['a', 'a', 'a', 'a', 'a', ...]");
-        assert!(parse("\"abc\".chars(1)").unwrap().eval_default().is_err());
-        assert!(parse("['a', 'b', 'c'].chars").unwrap().eval_default().is_err());
 
-        assert_eq!(parse("['a', 'b', 'c'].string").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
-        assert_eq!(parse("[].string").unwrap().eval_default().unwrap().to_string(), "\"\"");
-        assert_eq!(parse("'a'.repeat.chars.string").unwrap().eval_default().unwrap().to_string(), "\"aaaaaaaaaaaaaaaaaaaa...");
-        assert_eq!(parse("['a', 'b', \"c\"].string").unwrap().eval_default().unwrap().to_string(), "\"ab<!>");
-        assert_eq!(parse("seq.string").unwrap().eval_default().unwrap().to_string(), "\"<!>");
-        assert_eq!(parse("range('a','c').string").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
-        assert!(parse("\"abc\".string").unwrap().eval_default().is_err());
+        test_eval!("\"abc\".chars" => "['a', 'b', 'c']");
+        test_eval!("\"\".chars" => "[]");
+        test_eval!("'a'.repeat.chars" => "['a', 'a', 'a', 'a', 'a', ...]");
+        test_eval!("\"abc\".chars(1)" => err);
+        test_eval!("['a', 'b', 'c'].chars" => err);
+
+        test_eval!("['a', 'b', 'c'].string" => "\"abc\"");
+        test_eval!("[].string" => "\"\"");
+        test_eval!("'a'.repeat.chars.string" => "\"aaaaaaaaaaaaaaaaaaaa...");
+        test_eval!("['a', 'b', \"c\"].string" => "\"ab<!>");
+        test_eval!("seq.string" => "\"<!>");
+        test_eval!("range('a','c').string" => "\"abc\"");
+        test_eval!("\"abc\".string" => err);
     }
 }
 

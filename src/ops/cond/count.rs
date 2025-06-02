@@ -23,16 +23,17 @@ fn eval_count(node: Node, env: &Env) -> Result<Item, StreamError> {
 mod tests {
     #[test]
     fn test_count() {
-        //use super::*;
+        use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("range(5).count{true}").unwrap().eval_default().unwrap().to_string(), "5");
-        assert_eq!(parse("range(5).count{false}").unwrap().eval_default().unwrap().to_string(), "0");
-        assert_eq!(parse("range(-5,5).count{#<0}").unwrap().eval_default().unwrap().to_string(), "5");
-        assert!(parse("range(5).count{#}").unwrap().eval_default().is_err());
-        assert!(parse("range(5).count([].len)").unwrap().eval_default().is_err());
-        assert_eq!(parse("[].count{1}").unwrap().eval_default().unwrap().to_string(), "0");
-        assert!(parse("[].count(1)").unwrap().eval_default().is_err());
-        assert_eq!(parse("[].count([].len)").unwrap().eval_default().unwrap().to_string(), "0");
+
+        test_eval!("range(5).count{true}" => "5");
+        test_eval!("range(5).count{false}" => "0");
+        test_eval!("range(-5,5).count{#<0}" => "5");
+        test_eval!("range(5).count{#}" => err);
+        test_eval!("range(5).count([].len)" => err);
+        test_eval!("[].count{1}" => "0");
+        test_eval!("[].count(1)" => err);
+        test_eval!("[].count([].len)" => "0");
     }
 }
 

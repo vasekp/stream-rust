@@ -94,30 +94,30 @@ mod tests {
     fn test_first() {
         use crate::parser::parse;
 
-        assert_eq!(parse("(1..3).first").unwrap().eval_default().unwrap().to_string(), "1");
-        assert_eq!(parse("(1..3).first(0)").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("(1..3).first(1)").unwrap().eval_default().unwrap().to_string(), "[1]");
-        assert_eq!(parse("(1..3).first(2)").unwrap().eval_default().unwrap().to_string(), "[1, 2]");
-        assert_eq!(parse("(1..3).first(3)").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("(1..3).first(4)").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("\"abc\".first").unwrap().eval_default().unwrap().to_string(), "'a'");
-        assert_eq!(parse("\"abc\".first(0)").unwrap().eval_default().unwrap().to_string(), "\"\"");
-        assert_eq!(parse("\"abc\".first(1)").unwrap().eval_default().unwrap().to_string(), "\"a\"");
-        assert_eq!(parse("\"abc\".first(4)").unwrap().eval_default().unwrap().to_string(), "\"abc\"");
-        assert_eq!(parse("seq.first(10^10).len").unwrap().eval_default().unwrap().to_string(), "10000000000");
-        assert_eq!(parse("range(10^9).first(10^10).len").unwrap().eval_default().unwrap().to_string(), "1000000000");
-        assert_eq!(parse("range(10^11).first(10^10).len").unwrap().eval_default().unwrap().to_string(), "10000000000");
-        test_len_exact(&parse("(1..3).first(0)").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("(1..3).first(1)").unwrap().eval_default().unwrap(), 1);
-        test_len_exact(&parse("(1..3).first(2)").unwrap().eval_default().unwrap(), 2);
-        test_len_exact(&parse("(1..3).first(3)").unwrap().eval_default().unwrap(), 3);
-        test_len_exact(&parse("(1..3).first(4)").unwrap().eval_default().unwrap(), 3);
-        test_skip_n(&parse("seq.first(10^10)").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("range(10^9).first(10^10)").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("range(10^11).first(10^10)").unwrap().eval_default().unwrap());
-        assert_eq!(parse("(1..3).first").unwrap().eval_default().unwrap().describe(), "1");
-        assert_eq!(parse("(1..3).first(4)").unwrap().eval_default().unwrap().describe(), "(1..3).first(4)");
-        assert_eq!(parse("(1..3).take(4)").unwrap().eval_default().unwrap().describe(), "(1..3).take(4)");
+        test_eval!("(1..3).first" => "1");
+        test_eval!("(1..3).first(0)" => "[]");
+        test_eval!("(1..3).first(1)" => "[1]");
+        test_eval!("(1..3).first(2)" => "[1, 2]");
+        test_eval!("(1..3).first(3)" => "[1, 2, 3]");
+        test_eval!("(1..3).first(4)" => "[1, 2, 3]");
+        test_eval!("\"abc\".first" => "'a'");
+        test_eval!("\"abc\".first(0)" => "\"\"");
+        test_eval!("\"abc\".first(1)" => "\"a\"");
+        test_eval!("\"abc\".first(4)" => "\"abc\"");
+        test_eval!("seq.first(10^10).len" => "10000000000");
+        test_eval!("range(10^9).first(10^10).len" => "1000000000");
+        test_eval!("range(10^11).first(10^10).len" => "10000000000");
+        test_len!("(1..3).first(0)" => 0);
+        test_len!("(1..3).first(1)" => 1);
+        test_len!("(1..3).first(2)" => 2);
+        test_len!("(1..3).first(3)" => 3);
+        test_len!("(1..3).first(4)" => 3);
+        test_skip_n("seq.first(10^10)");
+        test_skip_n("range(10^9).first(10^10)");
+        test_skip_n("range(10^11).first(10^10)");
+        test_describe!("(1..3).first" => "1");
+        test_describe!("(1..3).first(4)" => "(1..3).first(4)");
+        test_describe!("(1..3).take(4)" => "(1..3).take(4)");
     }
 }
 

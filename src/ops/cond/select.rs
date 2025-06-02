@@ -71,20 +71,20 @@ mod tests {
     fn test_select() {
         use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("range(5).select{true}").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3, 4, 5]");
-        assert_eq!(parse("range(5).select{false}").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("range(5).select{#}").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("seq.select{#>#1}(5)").unwrap().eval_default().unwrap().to_string(), "[6, 7, 8, 9, 10, ...]");
-        assert_eq!(parse("range(5).select([].len)").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("[].select([].len)").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("[].select{1}").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert!(parse("[].select(1)").unwrap().eval_default().is_err());
-        test_len_exact(&parse("range(5).select{true}").unwrap().eval_default().unwrap(), 5);
-        test_len_exact(&parse("range(5).select{false}").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("range(5).select{#<3}").unwrap().eval_default().unwrap(), 2);
-        assert_eq!(parse("seq.select(isodd)").unwrap().eval_default().unwrap().to_string(), "[1, 3, 5, 7, 9, ...]");
+        test_eval!("range(5).select{true}" => "[1, 2, 3, 4, 5]");
+        test_eval!("range(5).select{false}" => "[]");
+        test_eval!("range(5).select{#}" => "[<!>");
+        test_eval!("seq.select{#>#1}(5)" => "[6, 7, 8, 9, 10, ...]");
+        test_eval!("range(5).select([].len)" => "[<!>");
+        test_eval!("[].select([].len)" => "[]");
+        test_eval!("[].select{1}" => "[]");
+        test_eval!("[].select(1)" => err);
+        test_len!("range(5).select{true}" => 5);
+        test_len!("range(5).select{false}" => 0);
+        test_len!("range(5).select{#<3}" => 2);
+        test_eval!("seq.select(isodd)" => "[1, 3, 5, 7, 9, ...]");
         // Short-circuiting
-        assert_eq!(parse("[1,2,'a','á'].select{#.isnum&#.isodd|#.ischar&#.isalpha}").unwrap().eval_default().unwrap().to_string(), "[1, 'a']");
+        test_eval!("[1,2,'a','á'].select{#.isnum&#.isodd|#.ischar&#.isalpha}" => "[1, 'a']");
     }
 }
 

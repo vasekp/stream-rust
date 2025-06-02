@@ -26,15 +26,15 @@ mod tests {
     fn test_list() {
         use crate::parser::parse;
 
-        assert_eq!(parse("range@[3]").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3]");
-        assert_eq!(parse("range@range(3)").unwrap().eval_default().unwrap().to_string(), "[1]");
-        assert_eq!(parse("range@range(3)").unwrap().eval_default().unwrap().to_string(), "[1]");
-        assert_eq!(parse("range@[3][2]").unwrap().eval_default().unwrap().to_string(), "2");
-        assert_eq!(parse("range@range(3)[1]").unwrap().eval_default().unwrap().to_string(), "1");
-        assert!(parse("range@3").unwrap().eval_default().is_err());
-        assert!(parse("range@seq").unwrap().eval_default().is_err());
-        assert!(parse("range@\"ab\"").unwrap().eval_default().is_err());
-        assert_eq!(parse("range@[3,4]").unwrap().eval_default().unwrap().describe(), "range(3, 4)");
+        test_eval!("range@[3]" => "[1, 2, 3]");
+        test_eval!("range@range(3)" => "[1]");
+        test_eval!("range@range(3)" => "[1]");
+        test_eval!("range@[3][2]" => "2");
+        test_eval!("range@range(3)[1]" => "1");
+        test_eval!("range@3" => err);
+        test_eval!("range@seq" => err);
+        test_eval!("range@\"ab\"" => err);
+        test_describe!("range@[3,4]" => "range(3, 4)");
     }
 }
 

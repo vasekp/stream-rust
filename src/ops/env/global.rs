@@ -23,16 +23,18 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
 mod tests {
     #[test]
     fn test_with() {
+        use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("with(len=1, global(range(3).len))").unwrap().eval_default().unwrap().to_string(), "3");
-        assert_eq!(parse("with(a=1, a.global{#+#1}(a))").unwrap().eval_default().unwrap().to_string(), "2");
-        assert_eq!(parse("with(a={#+#1}, 1.a(2))").unwrap().eval_default().unwrap().to_string(), "3");
-        assert!(parse("with(a={#+#1}, global(1.a(2)))").unwrap().eval_default().is_err());
-        assert!(parse("with(a={#+#1}, 1.global{a}(2))").unwrap().eval_default().is_err());
-        assert_eq!(parse("1.global{2}").unwrap().eval_default().unwrap().to_string(), "2");
-        assert!(parse("1.global(2)").unwrap().eval_default().is_err());
-        assert!(parse("with(a=1, global{a})").unwrap().eval_default().is_err());
-        assert_eq!(parse("with(a=1, global{with(a=2, a)})").unwrap().eval_default().unwrap().to_string(), "2");
-        assert_eq!(parse("with(a=1, global{with(a=#1+1, a)}(a))").unwrap().eval_default().unwrap().to_string(), "2");
+
+        test_eval!("with(len=1, global(range(3).len))" => "3");
+        test_eval!("with(a=1, a.global{#+#1}(a))" => "2");
+        test_eval!("with(a={#+#1}, 1.a(2))" => "3");
+        test_eval!("with(a={#+#1}, global(1.a(2)))" => err);
+        test_eval!("with(a={#+#1}, 1.global{a}(2))" => err);
+        test_eval!("1.global{2}" => "2");
+        test_eval!("1.global(2)" => err);
+        test_eval!("with(a=1, global{a})" => err);
+        test_eval!("with(a=1, global{with(a=2, a)})" => "2");
+        test_eval!("with(a=1, global{with(a=#1+1, a)}(a))" => "2");
     }
 }

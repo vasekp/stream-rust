@@ -118,14 +118,14 @@ mod tests {
     fn test_rev() {
         use crate::parser::parse;
 
-        assert_eq!(parse("range(3).rev").unwrap().eval_default().unwrap().to_string(), "[3, 2, 1]");
-        assert_eq!(parse("\"abc\".rev").unwrap().eval_default().unwrap().to_string(), "\"cba\"");
-        assert_eq!(parse("\"abc\".repeat(10^8).rev").unwrap().eval_default().unwrap().to_string(), "\"cbacbacbacbacbacbacb...");
-        assert_eq!(parse("[].rev").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("\"\".rev").unwrap().eval_default().unwrap().to_string(), "\"\"");
-        assert!(parse("seq.rev").unwrap().eval_default().is_err());
-        test_skip_n(&parse("range(1000).rev").unwrap().eval_default().unwrap());
-        test_skip_n(&parse("range(10^10).rev").unwrap().eval_default().unwrap());
+        test_eval!("range(3).rev" => "[3, 2, 1]");
+        test_eval!("\"abc\".rev" => "\"cba\"");
+        test_eval!("\"abc\".repeat(10^8).rev" => "\"cbacbacbacbacbacbacb...");
+        test_eval!("[].rev" => "[]");
+        test_eval!("\"\".rev" => "\"\"");
+        test_eval!("seq.rev" => err);
+        test_skip_n("range(1000).rev");
+        test_skip_n("range(10^10).rev");
     }
 }
 

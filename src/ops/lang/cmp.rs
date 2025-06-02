@@ -90,41 +90,42 @@ impl CmpOp {
 mod tests {
     #[test]
     fn test_cmp() {
+        use super::*;
         use crate::parser::parse;
 
-        assert_eq!(parse("1==1").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("1==1==1").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("1==1==2").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("[]==[]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("[]<>[]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("[]<>[[]]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("(1==1)==true").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("(1==2)==(3==4)").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("10<11<12").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("10<11<11").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("10<=11<=12").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("10<=11<=11").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("10<=11<=10").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("12>11>10").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("12>11>11").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("12>=11>=10").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("12>=11>=11").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("12>=11>=12").unwrap().eval_default().unwrap().to_string(), "false");
-        assert!(parse("1<[1]").unwrap().eval_default().is_err());
-        assert!(parse("1<'a'").unwrap().eval_default().is_err());
-        assert_eq!(parse("'a'=='a'").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("'a'=='A'").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("[]==[]").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("\"\"==\"\"").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("\"\"==[]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("\"abc\"==\"abc\"").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("\"abc\"==['a','b','c']").unwrap().eval_default().unwrap().to_string(), "false");
-        assert_eq!(parse("\"abc\"==\"ABC\"").unwrap().eval_default().unwrap().to_string(), "false");
-        assert!(parse("1<\"a\"").unwrap().eval_default().is_err());
-        assert!(parse("[1]<[2]").unwrap().eval_default().is_err());
-        assert_eq!(parse("1+2==3").unwrap().eval_default().unwrap().to_string(), "true");
-        assert_eq!(parse("[1,2,'a']:{1+#}==[2,3]").unwrap().eval_default().unwrap().to_string(), "false");
-        assert!(parse("[1,2,'a']:{1+#}==[2,3,4]").unwrap().eval_default().is_err());
+        test_eval!("1==1" => "true");
+        test_eval!("1==1==1" => "true");
+        test_eval!("1==1==2" => "false");
+        test_eval!("[]==[]" => "true");
+        test_eval!("[]<>[]" => "false");
+        test_eval!("[]<>[[]]" => "true");
+        test_eval!("(1==1)==true" => "true");
+        test_eval!("(1==2)==(3==4)" => "true");
+        test_eval!("10<11<12" => "true");
+        test_eval!("10<11<11" => "false");
+        test_eval!("10<=11<=12" => "true");
+        test_eval!("10<=11<=11" => "true");
+        test_eval!("10<=11<=10" => "false");
+        test_eval!("12>11>10" => "true");
+        test_eval!("12>11>11" => "false");
+        test_eval!("12>=11>=10" => "true");
+        test_eval!("12>=11>=11" => "true");
+        test_eval!("12>=11>=12" => "false");
+        test_eval!("1<[1]" => err);
+        test_eval!("1<'a'" => err);
+        test_eval!("'a'=='a'" => "true");
+        test_eval!("'a'=='A'" => "false");
+        test_eval!("[]==[]" => "true");
+        test_eval!("\"\"==\"\"" => "true");
+        test_eval!("\"\"==[]" => "false");
+        test_eval!("\"abc\"==\"abc\"" => "true");
+        test_eval!("\"abc\"==['a','b','c']" => "false");
+        test_eval!("\"abc\"==\"ABC\"" => "false");
+        test_eval!("1<\"a\"" => err);
+        test_eval!("[1]<[2]" => err);
+        test_eval!("1+2==3" => "true");
+        test_eval!("[1,2,'a']:{1+#}==[2,3]" => "false");
+        test_eval!("[1,2,'a']:{1+#}==[2,3,4]" => err);
     }
 }
 

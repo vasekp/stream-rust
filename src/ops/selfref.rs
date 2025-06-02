@@ -121,42 +121,42 @@ mod tests {
     #[test]
     fn test_selfref() {
         use crate::parser::parse;
-        assert_eq!(parse("self{#}").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("self{#+1}").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("self{#.repeat}").unwrap().eval_default().unwrap().to_string(), "[]");
-        assert_eq!(parse("self{1~(#+1)}").unwrap().eval_default().unwrap().to_string(), "[1, 2, 3, 4, 5, ...]");
-        assert_eq!(parse("self{0~(1-#)}").unwrap().eval_default().unwrap().to_string(), "[0, 1, 0, 1, 0, ...]");
-        assert_eq!(parse("self{1~[#+1]}").unwrap().eval_default().unwrap().to_string(), "[1, [2, [3, ...]]]");
-        assert_eq!(parse("self{[#]}").unwrap().eval_default().unwrap().to_string(), "[[[[[[...]]]]]]");
-        assert_eq!(parse("self{[#]~1}[2]").unwrap().eval_default().unwrap().to_string(), "1");
-        assert_eq!(parse("self{seq+(5~#)}").unwrap().eval_default().unwrap().to_string(), "[6, 8, 11, 15, 20, ...]");
-        assert_eq!(parse("self{\"pokus\".chars+(\"ab\".chars~#)}.string").unwrap().eval_default().unwrap().to_string(), "\"qqblu\"");
-        assert_eq!(parse("self{#[1]}").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("self{#.len}").unwrap().eval_default().unwrap().to_string(), "[<!>");
-        assert_eq!(parse("1.{#~self{0~#}}").unwrap().eval_default().unwrap().to_string(), "[1, 0, 0, 0, 0, ...]");
-        test_len_exact(&parse("self{#}").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("self{#~#}").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("self{#:{#}}").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("self{#.riffle(#)}").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("self{#.repeat}").unwrap().eval_default().unwrap(), 0);
-        test_len_exact(&parse("self{\"pokus\".chars+(\"ab\".chars~#)}").unwrap().eval_default().unwrap(), 5);
-        test_skip_n(&parse("self{1~(#+1)}").unwrap().eval_default().unwrap());
-        assert_eq!(parse("self{#}").unwrap().eval_default().unwrap().describe(), "self({#})");
-        assert_eq!(parse("self{[#]~1}").unwrap().eval_default().unwrap().describe(), "self({[#]~1})");
-        assert_eq!(parse("self{[#]~1}[2]").unwrap().eval_default().unwrap().describe(), "1");
+        test_eval!("self{#}" => "[]");
+        test_eval!("self{#+1}" => "[]");
+        test_eval!("self{#.repeat}" => "[]");
+        test_eval!("self{1~(#+1)}" => "[1, 2, 3, 4, 5, ...]");
+        test_eval!("self{0~(1-#)}" => "[0, 1, 0, 1, 0, ...]");
+        test_eval!("self{1~[#+1]}" => "[1, [2, [3, ...]]]");
+        test_eval!("self{[#]}" => "[[[[[[...]]]]]]");
+        test_eval!("self{[#]~1}[2]" => "1");
+        test_eval!("self{seq+(5~#)}" => "[6, 8, 11, 15, 20, ...]");
+        test_eval!("self{\"pokus\".chars+(\"ab\".chars~#)}.string" => "\"qqblu\"");
+        test_eval!("self{#[1]}" => "[<!>");
+        test_eval!("self{#.len}" => "[<!>");
+        test_eval!("1.{#~self{0~#}}" => "[1, 0, 0, 0, 0, ...]");
+        test_len!("self{#}" => 0);
+        test_len!("self{#~#}" => 0);
+        test_len!("self{#:{#}}" => 0);
+        test_len!("self{#.riffle(#)}" => 0);
+        test_len!("self{#.repeat}" => 0);
+        test_len!("self{\"pokus\".chars+(\"ab\".chars~#)}" => 5);
+        test_skip_n("self{1~(#+1)}");
+        test_describe!("self{#}" => "self({#})");
+        test_describe!("self{[#]~1}" => "self({[#]~1})");
+        test_describe!("self{[#]~1}[2]" => "1");
 
         // Hamming weights
-        assert_eq!(parse("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1+#)}").unwrap().eval_default().unwrap().to_string(), "\"abbcbccdbccdcddebccd...");
+        test_eval!("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1+#)}" => "\"abbcbccdbccdcddebccd...");
         // Thue-Morse
-        assert_eq!(parse("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1-#)}").unwrap().eval_default().unwrap().to_string(), "\"abbabaabbaababbabaab...");
+        test_eval!("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1-#)}" => "\"abbabaabbaababbabaab...");
         // Paperfolding sequence
-        assert_eq!(parse("'a'.repeat+self{[0,1].repeat.riffle(#)}").unwrap().eval_default().unwrap().to_string(), "\"aabaabbaaabbabbaaaba...");
+        test_eval!("'a'.repeat+self{[0,1].repeat.riffle(#)}" => "\"aabaabbaaabbabbaaaba...");
         // Trailing zeroes
-        assert_eq!(parse("'a'.repeat+self{0.repeat.riffle(#+1)}").unwrap().eval_default().unwrap().to_string(), "\"abacabadabacabaeabac...");
+        test_eval!("'a'.repeat+self{0.repeat.riffle(#+1)}" => "\"abacabadabacabaeabac...");
         // Binary length
-        assert_eq!(parse("'a'.repeat+self{(0~(#+1)).riffle(#+1)}").unwrap().eval_default().unwrap().to_string(), "\"abbccccddddddddeeeee...");
+        test_eval!("'a'.repeat+self{(0~(#+1)).riffle(#+1)}" => "\"abbccccddddddddeeeee...");
         // Hanoi towers
-        assert_eq!(parse("self{[12,23,31].repeat.riffle([13,32,21].repeat.riffle(#))}").unwrap().eval_default().unwrap().to_string(), "[12, 13, 23, 12, 31, ...]");
+        test_eval!("self{[12,23,31].repeat.riffle([13,32,21].repeat.riffle(#))}" => "[12, 13, 23, 12, 31, ...]");
     }
 }
 

@@ -42,12 +42,14 @@ fn sort_impl(vals: &mut [Item], alpha: &Rc<Alphabet>) -> Result<(), BaseError> {
 mod tests {
     #[test]
     fn test_sort() {
+        use super::*;
         use crate::parser::parse;
-        assert_eq!(parse("[5,2,9,3,5].sort").unwrap().eval_default().unwrap().to_string(), "[2, 3, 5, 5, 9]");
-        //assert!(parse("\"bac\".sort").unwrap().eval_default().is_err());
-        assert_eq!(parse("['b','a','c'].sort").unwrap().eval_default().unwrap().to_string(), "['a', 'b', 'c']");
-        assert_eq!(parse("[\"abc\", \"def\", \"AdS\"].sort").unwrap().eval_default().unwrap().to_string(), "[\"abc\", \"AdS\", \"def\"]");
-        assert_eq!(parse("alpha(\"aáb\", [\"a\", \"B\", \"Á\"].sort)").unwrap().eval_default().unwrap().to_string(), "[\"a\", \"Á\", \"B\"]");
+
+        test_eval!("[5,2,9,3,5].sort" => "[2, 3, 5, 5, 9]");
+        //test_eval!("\"bac\".sort" => err);
+        test_eval!("['b','a','c'].sort" => "['a', 'b', 'c']");
+        test_eval!("[\"abc\", \"def\", \"AdS\"].sort" => "[\"abc\", \"AdS\", \"def\"]");
+        test_eval!("alpha(\"aáb\", [\"a\", \"B\", \"Á\"].sort)" => "[\"a\", \"Á\", \"B\"]");
     }
 }
 
