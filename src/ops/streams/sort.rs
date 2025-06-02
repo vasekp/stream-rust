@@ -10,7 +10,7 @@ fn eval_sort(node: Node, env: &Env) -> Result<Item, StreamError> {
             try_with!(rnode, sort_impl(&mut vals[..], env.alphabet())?);
             Ok(Item::new_stream(List::from(vals)))
         }
-        _ => todo!()
+        _ => Err(StreamError::new("expected: stream.sort", rnode))
     }
 }
 
