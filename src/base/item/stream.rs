@@ -16,7 +16,7 @@ pub trait Stream<ItemType = Item>: DynClone + Describe {
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
     #[must_use]
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -50,7 +50,7 @@ pub trait Stream<ItemType = Item>: DynClone + Describe {
     }
 }
 
-impl<ItemType> dyn Stream<ItemType> {
+impl<ItemType: 'static> dyn Stream<ItemType> {
     /// Consume this `Stream` and turn it into a one-time standalone [`SIterator`].
     ///
     /// To avoid a large amount of code duplication, a `Stream` only needs to implement
@@ -216,7 +216,7 @@ impl dyn Stream<Item> {
 }
 
 
-pub(crate) struct BoxedStream<ItemType = Item>(Box<dyn Stream<ItemType>>);
+pub(crate) struct BoxedStream<ItemType: 'static = Item>(Box<dyn Stream<ItemType>>);
 
 impl<ItemType> Clone for BoxedStream<ItemType> {
     fn clone(&self) -> Self {
@@ -254,7 +254,7 @@ impl<ItemType> Describe for BoxedStream<ItemType> {
 pub(crate) struct EmptyStream;
 
 impl Stream<Item> for EmptyStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
         Box::new(std::iter::empty())
     }
 }
@@ -266,7 +266,7 @@ impl Describe for EmptyStream {
 }
 
 pub struct OwnedStreamIter<ItemType = Item> {
-    iter: Box<dyn SIterator>,
+    iter: Box<dyn SIterator<ItemType>>,
     _stream: std::pin::Pin<Box<dyn Stream<ItemType>>>
 }
 
@@ -276,16 +276,16 @@ impl<ItemType> OwnedStreamIter<ItemType> {
     }
 }
 
-impl<ItemType> From<Box<dyn Stream<ItemType>>> for OwnedStreamIter<ItemType> {
+impl<ItemType: 'static> From<Box<dyn Stream<ItemType>>> for OwnedStreamIter<ItemType> {
     fn from(stm: Box<dyn Stream<ItemType>>) -> Self {
         let pin = Box::into_pin(stm);
-        let iter = unsafe { std::mem::transmute::<&dyn Stream<ItemType>, &(dyn Stream + 'static)>(&*pin) }.iter();
+        let iter = unsafe { std::mem::transmute::<&dyn Stream<ItemType>, &(dyn Stream<ItemType> + 'static)>(&*pin) }.iter();
         OwnedStreamIter { iter, _stream: pin }
     }
 }
 
 impl<ItemType> std::ops::Deref for OwnedStreamIter<ItemType> {
-    type Target = dyn SIterator;
+    type Target = dyn SIterator<ItemType>;
 
     fn deref(&self) -> &Self::Target {
         self.iter.deref()

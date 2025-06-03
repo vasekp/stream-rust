@@ -8,7 +8,7 @@ use crate::base::*;
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
+pub trait SIterator<ItemType = Item>: Iterator<Item = Result<ItemType, StreamError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. The return value must be consistent with the actual behaviour of the stream.
     ///
@@ -56,16 +56,16 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     }
 }
 
-impl<T, U, V> SIterator for std::iter::Map<T, U>
+impl<ItemType, T, U, V> SIterator<ItemType> for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<Item, StreamError>
+      U: FnMut(V) -> Result<ItemType, StreamError>
 { }
 
-impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
+impl<ItemType> SIterator<ItemType> for std::iter::Once<Result<ItemType, StreamError>> { }
 
-impl SIterator for std::iter::Empty<Result<Item, StreamError>> { }
+impl<ItemType> SIterator<ItemType> for std::iter::Empty<Result<ItemType, StreamError>> { }
 
-impl SIterator for std::iter::Repeat<Result<Item, StreamError>> {
+impl<ItemType: Clone> SIterator<ItemType> for std::iter::Repeat<Result<ItemType, StreamError>> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
@@ -75,8 +75,8 @@ impl SIterator for std::iter::Repeat<Result<Item, StreamError>> {
     }
 }
 
-impl<F> SIterator for std::iter::RepeatWith<F>
-where F: FnMut() -> Result<Item, StreamError>
+impl<ItemType: Clone, F> SIterator<ItemType> for std::iter::RepeatWith<F>
+where F: FnMut() -> Result<ItemType, StreamError>
 {
     fn len_remain(&self) -> Length {
         Length::Infinite
@@ -93,13 +93,13 @@ mod tests {
 
     #[test]
     fn test_simple_iters() {
-        let mut iter = std::iter::empty();
+        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(iter.next(), None);
-        let mut iter = std::iter::empty();
+        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
         assert_eq!(iter.skip_n(UNumber::zero()), Ok(None));
         assert_eq!(iter.next(), None);
-        let mut iter = std::iter::empty();
+        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
         assert_eq!(iter.skip_n(UNumber::one()), Ok(Some(UNumber::one())));
 
         let mut iter = std::iter::once(Ok(Item::default()));
