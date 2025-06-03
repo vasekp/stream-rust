@@ -1,20 +1,69 @@
 use crate::base::*;
 
-fn eval_chars(node: Node, env: &Env) -> Result<Item, StreamError> {
-    try_with!(node, node.check_no_args()?);
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match rnode.source {
-        Item::String(stm) => Ok(Item::Stream(stm)),
-        ref item => Err(StreamError::new(format!("expected string, found {:?}", item), rnode))
+#[derive(Clone)]
+struct Chars {
+    head: Head,
+    source: BoxedStream<Char>
+}
+
+impl Chars {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+        try_with!(node, node.check_no_args()?);
+        let rnode = node.eval_all(env)?.resolve_source()?;
+        match rnode.source {
+            Item::String(stm) => Ok(Item::new_stream(Chars{head: rnode.head, source: stm.into()})),
+            ref item => Err(StreamError::new(format!("expected string, found {:?}", item), rnode))
+        }
     }
 }
 
-fn eval_string(node: Node, env: &Env) -> Result<Item, StreamError> {
-    try_with!(node, node.check_no_args()?);
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match rnode.source {
-        Item::Stream(stm) => Ok(Item::String(stm)),
-        ref item => Err(StreamError::new(format!("expected stream, found {:?}", item), rnode))
+impl Describe for Chars {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+    }
+}
+
+impl Stream for Chars {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+        self.source.map_iter(|ch| Ok(Item::Char(ch)))
+    }
+
+    fn length(&self) -> Length {
+        self.source.length()
+    }
+}
+
+
+#[derive(Clone)]
+struct Str {
+    head: Head,
+    source: BoxedStream
+}
+
+impl Str {
+    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+        try_with!(node, node.check_no_args()?);
+        let rnode = node.eval_all(env)?.resolve_source()?;
+        match rnode.source {
+            Item::Stream(stm) => Ok(Item::new_string_stream(Str{head: rnode.head, source: stm.into()})),
+            ref item => Err(StreamError::new(format!("expected stream, found {:?}", item), rnode))
+        }
+    }
+}
+
+impl Describe for Str {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+    }
+}
+
+impl Stream<Char> for Str {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+        self.source.map_iter(Item::into_char)
+    }
+
+    fn length(&self) -> Length {
+        self.source.length()
     }
 }
 
@@ -42,6 +91,6 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("chars", eval_chars);
-    keywords.insert("string", eval_string);
+    keywords.insert("chars", Chars::eval);
+    keywords.insert("string", Str::eval);
 }

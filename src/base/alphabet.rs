@@ -110,20 +110,16 @@ impl Alphabet {
     }
 }
 
-impl TryFrom<Vec<Item>> for Alphabet {
+impl TryFrom<Vec<Char>> for Alphabet {
     type Error = BaseError;
 
-    fn try_from(vec: Vec<Item>) -> Result<Alphabet, BaseError> {
+    fn try_from(src_vec: Vec<Char>) -> Result<Alphabet, BaseError> {
         let mut map = HashMap::new();
-        if vec.is_empty() {
+        if src_vec.is_empty() {
             return Err("alphabet is empty".into());
         }
-        let mut char_vec = Vec::with_capacity(vec.len());
-        for (ix, item) in vec.into_iter().enumerate() {
-            let chr = match item {
-                Item::Char(chr) => chr,
-                _ => return Err(format!("expected character, found {item:?}").into())
-            };
+        let mut res_vec = Vec::with_capacity(src_vec.len());
+        for (ix, chr) in src_vec.into_iter().enumerate() {
             let ix = (ix + 1) as isize;
             let lcase = chr.to_lowercase();
             let ucase = chr.to_uppercase();
@@ -135,9 +131,9 @@ impl TryFrom<Vec<Item>> for Alphabet {
             if prev.is_some() {
                 return Err(format!("duplicate character {chr}").into());
             }
-            char_vec.push(chr);
+            res_vec.push(chr);
         }
-        Ok(Alphabet::Listed{vec: char_vec, map})
+        Ok(Alphabet::Listed{vec: res_vec, map})
     }
 }
 
@@ -171,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_custom_alpha() {
-        let abc = Rc::new(Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap());
+        let abc = Rc::new(Alphabet::try_from(vec![Char::from('b'), Char::from('á'), Char::from("Ch"), Char::from('a')]).unwrap());
         assert_eq!(abc.ord(&Char::from('a')), Ok(4isize));
         assert_eq!(abc.ord(&Char::from('Á')), Ok(2isize));
         assert_eq!(abc.ord(&Char::from("CH")), Ok(3isize));
@@ -182,15 +178,15 @@ mod tests {
         assert_eq!(abc.chr(&Number::from(99), CharCase::Upper), Char::from("CH"));
         assert_eq!(abc.chr(&Number::from(99), CharCase::Indeterminate), Char::from("Ch"));
 
-        let abc = Alphabet::try_from(vec![Item::new_char('❤')]).unwrap();
+        let abc = Alphabet::try_from(vec![Char::from('❤')]).unwrap();
         assert_eq!(abc.ord(&Char::from("❤")), Ok(1isize));
 
-        assert!(Alphabet::try_from(vec![Item::new_char('a'), Item::new_char('A')]).is_err());
-        assert!(Alphabet::try_from(vec![Item::new_char('İ'), Item::new_char("i\u{307}")]).is_err());
-        assert!(Alphabet::try_from(vec![Item::new_char("ch"), Item::new_char("Ch")]).is_err());
+        assert!(Alphabet::try_from(vec![Char::from('a'), Char::from('A')]).is_err());
+        assert!(Alphabet::try_from(vec![Char::from('İ'), Char::from("i\u{307}")]).is_err());
+        assert!(Alphabet::try_from(vec![Char::from("ch"), Char::from("Ch")]).is_err());
         assert!(Alphabet::try_from(vec![]).is_err());
 
-        let abc = Rc::new(Alphabet::try_from(vec![Item::new_char('b'), Item::new_char('á'), Item::new_char("Ch"), Item::new_char('a')]).unwrap());
+        let abc = Rc::new(Alphabet::try_from(vec![Char::from('b'), Char::from('á'), Char::from("Ch"), Char::from('a')]).unwrap());
         let plus = crate::parser::parse("1+2").unwrap();
         assert_eq!(abc.wrap_describe(|prec, env| plus.describe_inner(prec, env), u32::MAX, &Default::default()), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
     }

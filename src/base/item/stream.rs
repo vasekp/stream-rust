@@ -8,7 +8,7 @@ use dyn_clone::DynClone;
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
-pub trait Stream: DynClone + Describe {
+pub trait Stream<ItemType = Item>: DynClone + Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
     ///
@@ -16,7 +16,7 @@ pub trait Stream: DynClone + Describe {
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
     #[must_use]
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node>;
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -50,7 +50,7 @@ pub trait Stream: DynClone + Describe {
     }
 }
 
-impl dyn Stream {
+impl<ItemType: 'static> dyn Stream<ItemType> {
     /// Consume this `Stream` and turn it into a one-time standalone [`SIterator`].
     ///
     /// To avoid a large amount of code duplication, a `Stream` only needs to implement
@@ -58,10 +58,22 @@ impl dyn Stream {
     /// a self-referential struct which holds the owned instance for the duration
     /// of its lifetime.
     #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self: Box<Self>) -> OwnedStreamIter {
+    pub fn into_iter(self: Box<Self>) -> OwnedStreamIter<ItemType> {
         OwnedStreamIter::from(self)
     }
 
+    pub(crate) fn clone_box(&self) -> Box<dyn Stream<ItemType>> {
+        dyn_clone::clone_box(self)
+    }
+}
+
+impl<I: ItemTypeT> dyn Stream<I> {
+    pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> Result<I2, BaseError> + 'static>(&'node self, func: F) -> Box<dyn SIterator<I2> + 'node> {
+        Box::new(SMap::new(self, func))
+    }
+}
+
+impl dyn Stream<Item> {
     pub(crate) fn listout(&self) -> Result<Vec<Item>, StreamError> {
         let mut vec = Vec::new();
         match &self.length() {
@@ -69,10 +81,10 @@ impl dyn Stream {
                 if let Some(len) = len.to_usize() {
                     vec.reserve(len);
                 } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::new("string is too long", Item::Stream(self.clone_box())));
+                    return Err(StreamError::new("stream is too long", Item::Stream(self.clone_box())));
                 }
             },
-            Length::Infinite => return Err(StreamError::new("string is infinite", Item::Stream(self.clone_box()))),
+            Length::Infinite => return Err(StreamError::new("stream is infinite", Item::Stream(self.clone_box()))),
             _ => ()
         };
         for res in self.iter() {
@@ -142,11 +154,33 @@ impl dyn Stream {
             _ => write!(f, "{}", s)
         }
     }
+}
+
+impl dyn Stream<Char> {
+    pub(crate) fn listout(&self) -> Result<Vec<Char>, StreamError> {
+        let mut vec = Vec::new();
+        match &self.length() {
+            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
+                if let Some(len) = len.to_usize() {
+                    vec.reserve(len);
+                } else if matches!(lobj, Length::Exact(_)) {
+                    return Err(StreamError::new("string is too long", Item::String(self.clone_box())));
+                }
+            },
+            Length::Infinite => return Err(StreamError::new("string is infinite", Item::String(self.clone_box()))),
+            _ => ()
+        };
+        for res in self.iter() {
+            check_stop!();
+            vec.push(res?);
+        }
+        Ok(vec)
+    }
 
     pub(crate) fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
-        let mut iter = self.string_iter();
+        let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (Some(std::cmp::max(prec, 4)), None),
             None => (None, Some(20))
@@ -181,68 +215,38 @@ impl dyn Stream {
             _ => write!(f, "{}", s)
         }
     }
-
-    pub(crate) fn clone_box(&self) -> Box<dyn Stream> {
-        dyn_clone::clone_box(self)
-    }
-
-    /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
-    /// failing for other types.
-    pub fn string_iter(&self) -> StringIterator<'_> {
-        StringIterator::new(self)
-    }
-
-    pub(crate) fn string_listout(&self) -> Result<Vec<Char>, StreamError> {
-        let mut vec = Vec::new();
-        match &self.length() {
-            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
-                if let Some(len) = len.to_usize() {
-                    vec.reserve(len);
-                } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::new("string is too long", Item::String(self.clone_box())));
-                }
-            },
-            Length::Infinite => return Err(StreamError::new("string is infinite", Item::String(self.clone_box()))),
-            _ => ()
-        };
-        for res in self.string_iter() {
-            check_stop!();
-            vec.push(res?);
-        }
-        Ok(vec)
-    }
 }
 
 
-pub(crate) struct BoxedStream(Box<dyn Stream>);
+pub(crate) struct BoxedStream<ItemType: 'static = Item>(Box<dyn Stream<ItemType>>);
 
-impl Clone for BoxedStream {
+impl<ItemType> Clone for BoxedStream<ItemType> {
     fn clone(&self) -> Self {
         Self(self.0.clone_box())
     }
 }
 
-impl std::ops::Deref for BoxedStream {
-    type Target = dyn Stream;
+impl<ItemType> std::ops::Deref for BoxedStream<ItemType> {
+    type Target = dyn Stream<ItemType>;
 
     fn deref(&self) -> &Self::Target {
         &*self.0
     }
 }
 
-impl From<Box<dyn Stream>> for BoxedStream {
-    fn from(val: Box<dyn Stream>) -> Self {
+impl<ItemType> From<Box<dyn Stream<ItemType>>> for BoxedStream<ItemType> {
+    fn from(val: Box<dyn Stream<ItemType>>) -> Self {
         BoxedStream(val)
     }
 }
 
-impl From<BoxedStream> for Box<dyn Stream> {
-    fn from(val: BoxedStream) -> Self {
+impl<ItemType> From<BoxedStream<ItemType>> for Box<dyn Stream<ItemType>> {
+    fn from(val: BoxedStream<ItemType>) -> Self {
         val.0
     }
 }
 
-impl Describe for BoxedStream {
+impl<ItemType> Describe for BoxedStream<ItemType> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         self.0.describe_inner(prec, env)
     }
@@ -251,8 +255,8 @@ impl Describe for BoxedStream {
 #[derive(Clone, Copy)]
 pub(crate) struct EmptyStream;
 
-impl Stream for EmptyStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+impl Stream<Item> for EmptyStream {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
         Box::new(std::iter::empty())
     }
 }
@@ -263,34 +267,49 @@ impl Describe for EmptyStream {
     }
 }
 
-pub struct OwnedStreamIter {
-    iter: Box<dyn SIterator>,
-    _stream: std::pin::Pin<Box<dyn Stream>>
+#[derive(Clone, Copy)]
+pub(crate) struct EmptyString;
+
+impl Stream<Char> for EmptyString {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+        Box::new(std::iter::empty())
+    }
 }
 
-impl OwnedStreamIter {
-    pub fn stream(&self) -> &(dyn Stream + 'static) {
+impl Describe for EmptyString {
+    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
+        "\"\"".into()
+    }
+}
+
+pub struct OwnedStreamIter<ItemType = Item> {
+    iter: Box<dyn SIterator<ItemType>>,
+    _stream: std::pin::Pin<Box<dyn Stream<ItemType>>>
+}
+
+impl<ItemType> OwnedStreamIter<ItemType> {
+    pub fn stream(&self) -> &(dyn Stream<ItemType> + 'static) {
         &*self._stream
     }
 }
 
-impl From<Box<dyn Stream>> for OwnedStreamIter {
-    fn from(stm: Box<dyn Stream>) -> Self {
+impl<ItemType: 'static> From<Box<dyn Stream<ItemType>>> for OwnedStreamIter<ItemType> {
+    fn from(stm: Box<dyn Stream<ItemType>>) -> Self {
         let pin = Box::into_pin(stm);
-        let iter = unsafe { std::mem::transmute::<&dyn Stream, &(dyn Stream + 'static)>(&*pin) }.iter();
+        let iter = unsafe { std::mem::transmute::<&dyn Stream<ItemType>, &(dyn Stream<ItemType> + 'static)>(&*pin) }.iter();
         OwnedStreamIter { iter, _stream: pin }
     }
 }
 
-impl std::ops::Deref for OwnedStreamIter {
-    type Target = dyn SIterator;
+impl<ItemType> std::ops::Deref for OwnedStreamIter<ItemType> {
+    type Target = dyn SIterator<ItemType>;
 
     fn deref(&self) -> &Self::Target {
         self.iter.deref()
     }
 }
 
-impl std::ops::DerefMut for OwnedStreamIter {
+impl<ItemType> std::ops::DerefMut for OwnedStreamIter<ItemType> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.iter.deref_mut()
     }

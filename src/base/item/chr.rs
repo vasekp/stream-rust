@@ -1,3 +1,5 @@
+use crate::base::*;
+
 use std::fmt::{Display, Formatter};
 
 /// A 'character' in Stream may represent a single code point or a multigraph (such as 'dz').
@@ -117,6 +119,12 @@ impl Display for Char {
         }
         if !alt { write!(f, "'")? };
         Ok(())
+    }
+}
+
+impl Describe for Char {
+    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
+        format!("{}", self)
     }
 }
 

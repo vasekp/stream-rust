@@ -229,13 +229,13 @@ impl SIterator for MathOpIter<'_> {
 
 #[derive(Clone)]
 struct StringOp {
-    first: BoxedStream,
+    first: BoxedStream<Char>,
     node_rem: ENode,
     func: StringFunc,
     alpha: Rc<Alphabet>,
 }
 
-type StringFunc = fn(&Char, &[Item], &Rc<Alphabet>) -> Result<Item, BaseError>;
+type StringFunc = fn(&Char, &[Item], &Rc<Alphabet>) -> Result<Char, BaseError>;
 
 impl StringOp {
     fn eval(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
@@ -265,7 +265,7 @@ impl StringOp {
         }
     }
 
-    fn plus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
+    fn plus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Char, BaseError> {
         let index = alpha.ord(first)?;
         let case = first.case();
         let ans = rest.iter().try_fold(index.into(),
@@ -276,10 +276,10 @@ impl StringOp {
                     _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
                 }
             })?;
-        Ok(Item::new_char(alpha.chr(&ans, case)))
+        Ok(alpha.chr(&ans, case))
     }
 
-    fn minus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
+    fn minus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Char, BaseError> {
         let index = alpha.ord(first)?;
         let case = first.case();
         let ord = match rest {
@@ -290,7 +290,7 @@ impl StringOp {
             },
             _ => return Err("not available for strings".into())
         };
-        Ok(Item::new_char(alpha.chr(&ord, case)))
+        Ok(alpha.chr(&ord, case))
     }
 }
 
@@ -306,12 +306,13 @@ impl Describe for StringOp {
     }
 }
 
-impl Stream for StringOp {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let first = self.first.string_iter();
+impl Stream<Char> for StringOp {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+        let first = self.first.iter();
         let rest = self.node_rem.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) | Item::String(stm) => stm.iter(),
+                Item::Stream(stm) => stm.iter(),
+                Item::String(stm) => stm.map_iter(|ch| Ok(Item::Char(ch))),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
         Box::new(StringOpIter{first, rest, alpha: &self.alpha, func: self.func})
@@ -320,7 +321,8 @@ impl Stream for StringOp {
     fn length(&self) -> Length {
         self.node_rem.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) | Item::String(stm) => stm.length(),
+                Item::Stream(stm) => stm.length(),
+                Item::String(stm) => stm.length(),
                 _ => Length::Infinite
             })
             .map(|len| match len {
@@ -340,14 +342,14 @@ impl Stream for StringOp {
 }
 
 struct StringOpIter<'node> {
-    first: StringIterator<'node>,
+    first: Box<dyn SIterator<Char> + 'node>,
     rest: Vec<Box<dyn SIterator + 'node>>,
     alpha: &'node Rc<Alphabet>,
     func: StringFunc
 }
 
 impl Iterator for StringOpIter<'_> {
-    type Item = Result<Item, StreamError>;
+    type Item = Result<Char, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         fn aux_node(base: Char, mut inputs: Vec<Item>) -> Node {
@@ -361,7 +363,7 @@ impl Iterator for StringOpIter<'_> {
 
         let ch = iter_try_expr!(self.first.next()?);
         if !self.alpha.contains(&ch) {
-            return Some(Ok(Item::Char(ch)));
+            return Some(Ok(ch));
         }
 
         let rest = self.rest.iter_mut()
@@ -373,7 +375,7 @@ impl Iterator for StringOpIter<'_> {
     }
 }
 
-impl SIterator for StringOpIter<'_> {
+impl SIterator<Char> for StringOpIter<'_> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut n_chars = UNumber::zero();
         let mut remain = n;

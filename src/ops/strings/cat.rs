@@ -23,8 +23,8 @@ impl Describe for Cat {
     }
 }
 
-impl Stream for Cat {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+impl Stream<Char> for Cat {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(CatIter {
             outer: self.source.iter(),
             inner: None
@@ -46,24 +46,23 @@ impl Stream for Cat {
 
 struct CatIter<'node> {
     outer: Box<dyn SIterator + 'node>,
-    inner: Option<OwnedStreamIter>,
+    inner: Option<OwnedStreamIter<Char>>,
 }
 
 impl Iterator for CatIter<'_> {
-    type Item = Result<Item, StreamError>;
+    type Item = Result<Char, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             check_stop!(iter);
             if let Some(ref mut iter) = &mut self.inner {
                 match iter_try_expr!(iter.next().transpose()) {
-                    Some(Item::Char(ch)) => return Some(Ok(Item::Char(ch))),
-                    Some(item) => return Some(Err(StreamError::new(format!("malformed string: contains {:?}", item), Item::String(iter.stream().clone_box())))),
+                    Some(ch) => return Some(Ok(ch)),
                     None => self.inner = None
                 }
             }
             match iter_try_expr!(self.outer.next()?) {
-                Item::Char(ch) => return Some(Ok(Item::Char(ch))),
+                Item::Char(ch) => return Some(Ok(ch)),
                 Item::String(s) => self.inner = Some(s.into_iter()),
                 item => return Some(Err(StreamError::new(format!("expected string or character, found {:?}", item), Expr::new_node("cat", vec![]))))
             }
@@ -71,7 +70,7 @@ impl Iterator for CatIter<'_> {
     }
 }
 
-impl SIterator for CatIter<'_> {
+impl SIterator<Char> for CatIter<'_> {
     fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();

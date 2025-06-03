@@ -1,32 +1,30 @@
 use crate::base::*;
 
-#[derive(Clone)]
-struct LenAM {
-    head: Head,
-    src: BoxedStream,
-}
-
-impl LenAM {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode {
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-                => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
-            RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-                => Ok(Item::new_string_stream(LenAM { head, src: stm.into() })),
-            _ => panic!()
-        }
+fn eval_len_am(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    match rnode {
+        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
+            => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
+        RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
+            => Ok(Item::new_string_stream(LenAM { head, src: stm.into() })),
+        _ => panic!()
     }
 }
 
-impl Describe for LenAM {
+#[derive(Clone)]
+struct LenAM<ItemType: ItemTypeT> {
+    head: Head,
+    src: BoxedStream<ItemType>,
+}
+
+impl<ItemType: ItemTypeT> Describe for LenAM<ItemType> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
-impl Stream for LenAM {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+impl<ItemType: ItemTypeT> Stream<ItemType> for LenAM<ItemType> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
         Box::new(LenAMIter { iter: self.src.iter() })
     }
 
@@ -35,19 +33,19 @@ impl Stream for LenAM {
     }
 }
 
-struct LenAMIter<'node> {
-    iter: Box<dyn SIterator + 'node>
+struct LenAMIter<'node, ItemType: ItemTypeT> {
+    iter: Box<dyn SIterator<ItemType> + 'node>
 }
 
-impl Iterator for LenAMIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<ItemType: ItemTypeT> Iterator for LenAMIter<'_, ItemType> {
+    type Item = Result<ItemType, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl SIterator for LenAMIter<'_> {
+impl<ItemType: ItemTypeT> SIterator<ItemType> for LenAMIter<'_, ItemType> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
@@ -57,33 +55,31 @@ impl SIterator for LenAMIter<'_> {
     }
 }
 
-#[derive(Clone)]
-struct LenUF {
-    head: Head,
-    src: BoxedStream,
-}
-
-impl LenUF {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode {
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-                => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
-            RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-                => Ok(Item::new_string_stream(LenUF { head, src: stm.into() })),
-            _ => panic!()
-        }
+fn eval_len_uf(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    match rnode {
+        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
+            => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
+        RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
+            => Ok(Item::new_string_stream(LenUF { head, src: stm.into() })),
+        _ => panic!()
     }
 }
 
-impl Describe for LenUF {
+#[derive(Clone)]
+struct LenUF<ItemType: ItemTypeT> {
+    head: Head,
+    src: BoxedStream<ItemType>,
+}
+
+impl<ItemType: ItemTypeT> Describe for LenUF<ItemType> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
-impl Stream for LenUF {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+impl<ItemType: ItemTypeT> Stream<ItemType> for LenUF<ItemType> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
         Box::new(LenUFIter { iter: self.src.iter() })
     }
 
@@ -92,19 +88,19 @@ impl Stream for LenUF {
     }
 }
 
-struct LenUFIter<'node> {
-    iter: Box<dyn SIterator + 'node>
+struct LenUFIter<'node, ItemType: ItemTypeT> {
+    iter: Box<dyn SIterator<ItemType> + 'node>
 }
 
-impl Iterator for LenUFIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<ItemType: ItemTypeT> Iterator for LenUFIter<'_, ItemType> {
+    type Item = Result<ItemType, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl SIterator for LenUFIter<'_> {
+impl<ItemType: ItemTypeT> SIterator<ItemType> for LenUFIter<'_, ItemType> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
@@ -114,33 +110,31 @@ impl SIterator for LenUFIter<'_> {
     }
 }
 
-#[derive(Clone)]
-struct LenUU {
-    head: Head,
-    src: BoxedStream,
-}
-
-impl LenUU {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode {
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-                => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
-            RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-                => Ok(Item::new_string_stream(LenUU { head, src: stm.into() })),
-            _ => panic!()
-        }
+fn eval_len_uu(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    match rnode {
+        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
+            => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
+        RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
+            => Ok(Item::new_string_stream(LenUU { head, src: stm.into() })),
+        _ => panic!()
     }
 }
 
-impl Describe for LenUU {
+#[derive(Clone)]
+struct LenUU<ItemType: ItemTypeT> {
+    head: Head,
+    src: BoxedStream<ItemType>,
+}
+
+impl<ItemType: ItemTypeT> Describe for LenUU<ItemType> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
-impl Stream for LenUU {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+impl<ItemType: ItemTypeT> Stream<ItemType> for LenUU<ItemType> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
         Box::new(LenUUIter { iter: self.src.iter() })
     }
 
@@ -149,19 +143,19 @@ impl Stream for LenUU {
     }
 }
 
-struct LenUUIter<'node> {
-    iter: Box<dyn SIterator + 'node>
+struct LenUUIter<'node, ItemType: ItemTypeT> {
+    iter: Box<dyn SIterator<ItemType> + 'node>
 }
 
-impl Iterator for LenUUIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<ItemType: ItemTypeT> Iterator for LenUUIter<'_, ItemType> {
+    type Item = Result<ItemType, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl SIterator for LenUUIter<'_> {
+impl<ItemType: ItemTypeT> SIterator<ItemType> for LenUUIter<'_, ItemType> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
@@ -172,7 +166,7 @@ impl SIterator for LenUUIter<'_> {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("lenAM", LenAM::eval);
-    keywords.insert("lenUF", LenUF::eval);
-    keywords.insert("lenUU", LenUU::eval);
+    keywords.insert("lenAM", eval_len_am);
+    keywords.insert("lenUF", eval_len_uf);
+    keywords.insert("lenUU", eval_len_uu);
 }

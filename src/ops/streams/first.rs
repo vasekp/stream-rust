@@ -1,47 +1,44 @@
 use crate::base::*;
 use crate::utils::unsign;
 
-#[derive(Clone)]
-struct First {
-    head: Head,
-    source: BoxedStream,
-    count: UNumber
-}
-
-struct FirstIter<'node> {
-    source: Box<dyn SIterator + 'node>,
-    count_rem: UNumber
-}
-
-impl First {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        let is_string = rnode.source.is_string();
-        match rnode {
-            RNodeS { source: Item::Stream(ref stm) | Item::String(ref stm), args: RArgs::Zero, .. } => {
-                let mut it = stm.iter();
-                match it.next() {
-                    Some(result) => result,
-                    None => {
-                        drop(it);
-                        Err(StreamError::new("stream is empty", rnode))
-                    }
-                }
-            },
-            RNodeS { head, source: Item::Stream(s) | Item::String(s), args: RArgs::One(Item::Number(count)) }
-                    if !count.is_negative()
-                => Ok(Item::new_stream_or_string(First {
-                    head,
-                    source: s.into(),
-                    count: unsign(count)
-                }, is_string)),
-            _ => Err(StreamError::new("expected: source.first or source.first(count)", rnode))
-        }
+fn eval_first(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    match rnode {
+        RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, .. }
+            => first_item_impl(&**stm).map_err(|err| StreamError::new(err, rnode)),
+        RNodeS { source: Item::String(ref stm), args: RArgs::Zero, .. }
+            => first_item_impl(&**stm).map(Item::Char).map_err(|err| StreamError::new(err, rnode)),
+        RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
+                if !count.is_negative()
+            => Ok(Item::new_stream(First{head, source: s.into(), count: unsign(count)})),
+        RNodeS { head, source: Item::String(s), args: RArgs::One(Item::Number(count)) }
+                if !count.is_negative()
+            => Ok(Item::new_string_stream(First{head, source: s.into(), count: unsign(count)})),
+        _ => Err(StreamError::new("expected: source.first or source.first(count)", rnode))
     }
 }
 
-impl Stream for First {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+fn first_item_impl<ItemType: ItemTypeT>(stm: &dyn Stream<ItemType>) -> Result<ItemType, BaseError> {
+    match stm.iter().next() {
+        Some(result) => Ok(result?),
+        None => Err("stream is empty".into())
+    }
+}
+
+#[derive(Clone)]
+struct First<ItemType: ItemTypeT> {
+    head: Head,
+    source: BoxedStream<ItemType>,
+    count: UNumber
+}
+
+struct FirstIter<'node, ItemType: ItemTypeT> {
+    source: Box<dyn SIterator<ItemType> + 'node>,
+    count_rem: UNumber
+}
+
+impl<ItemType: ItemTypeT> Stream<ItemType> for First<ItemType> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
         Box::new(FirstIter { source: self.source.iter(), count_rem: self.count.clone() })
     }
 
@@ -50,14 +47,14 @@ impl Stream for First {
     }
 }
 
-impl Describe for First {
+impl<ItemType: ItemTypeT> Describe for First<ItemType> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec, env)
     }
 }
 
-impl Iterator for FirstIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<ItemType: ItemTypeT> Iterator for FirstIter<'_, ItemType> {
+    type Item = Result<ItemType, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.count_rem.is_zero() {
@@ -69,7 +66,7 @@ impl Iterator for FirstIter<'_> {
     }
 }
 
-impl SIterator for FirstIter<'_> {
+impl<ItemType: ItemTypeT> SIterator<ItemType> for FirstIter<'_, ItemType> {
     fn len_remain(&self) -> Length {
         Length::intersection(self.source.len_remain(), Length::Exact(self.count_rem.to_owned()))
     }
@@ -122,6 +119,6 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("first", First::eval);
-    keywords.insert("take", First::eval);
+    keywords.insert("first", eval_first);
+    keywords.insert("take", eval_first);
 }

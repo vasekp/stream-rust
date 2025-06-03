@@ -1,38 +1,32 @@
 use crate::base::*;
 use crate::utils::unsign;
 
-#[derive(Clone)]
-struct Skip {
-    head: Head,
-    source: BoxedStream,
-    count: Option<UNumber>
-}
-
-impl Skip {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        let is_string = rnode.source.is_string();
-        match rnode {
-            RNodeS { head, source: Item::Stream(s) | Item::String(s), args: RArgs::Zero }
-                => Ok(Item::new_stream_or_string(Skip {
-                    head,
-                    source: s.into(),
-                    count: None
-                }, is_string)),
-            RNodeS { head, source: Item::Stream(s) | Item::String(s), args: RArgs::One(Item::Number(count)) }
-                    if !count.is_negative()
-                => Ok(Item::new_stream_or_string(Skip {
-                    head,
-                    source: s.into(),
-                    count: Some(unsign(count))
-                }, is_string)),
-            _ => Err(StreamError::new("expected: source.skip or source.skip(count)", rnode))
-        }
+fn eval_skip(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    match rnode {
+        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
+            => Ok(Item::new_stream(Skip{head, source: stm.into(), count: None })),
+        RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
+            => Ok(Item::new_string_stream(Skip{head, source: stm.into(), count: None })),
+        RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
+                if !count.is_negative()
+            => Ok(Item::new_stream(Skip{head, source: stm.into(), count: Some(unsign(count))})),
+        RNodeS { head, source: Item::String(stm), args: RArgs::One(Item::Number(count)) }
+                if !count.is_negative()
+            => Ok(Item::new_string_stream(Skip{head, source: stm.into(), count: Some(unsign(count))})),
+        _ => Err(StreamError::new("expected: source.skip or source.skip(count)", rnode))
     }
 }
 
-impl Stream for Skip {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+#[derive(Clone)]
+struct Skip<ItemType: ItemTypeT> {
+    head: Head,
+    source: BoxedStream<ItemType>,
+    count: Option<UNumber>
+}
+
+impl<ItemType: ItemTypeT> Stream<ItemType> for Skip<ItemType> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
         let mut iter = self.source.iter();
         match iter.skip_n(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
             Ok(None) => iter,
@@ -50,7 +44,7 @@ impl Stream for Skip {
     }
 }
 
-impl Describe for Skip {
+impl<ItemType: ItemTypeT> Describe for Skip<ItemType> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), &self.count, prec, env)
     }
@@ -92,5 +86,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("skip", Skip::eval);
+    keywords.insert("skip", eval_skip);
 }
