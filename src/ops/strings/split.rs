@@ -31,7 +31,7 @@ struct SplitString {
 }
 
 struct SplitStringIter<'node> {
-    source: StringIterator<'node>,
+    source: Box<dyn SIterator<Char> + 'node>,
     sep: &'node Vec<LiteralString>,
     done: bool,
 }
@@ -44,7 +44,7 @@ impl Describe for SplitString {
 
 impl Stream for SplitString {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStringIter{source: self.source.string_iter(), sep: &self.sep, done: false})
+        Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false})
     }
 
     fn length(&self) -> Length {

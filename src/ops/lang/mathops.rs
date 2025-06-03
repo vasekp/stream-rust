@@ -229,7 +229,7 @@ impl SIterator for MathOpIter<'_> {
 
 #[derive(Clone)]
 struct StringOp {
-    first: BoxedStream,
+    first: BoxedStream<Char>,
     node_rem: ENode,
     func: StringFunc,
     alpha: Rc<Alphabet>,
@@ -306,9 +306,9 @@ impl Describe for StringOp {
     }
 }
 
-impl Stream for StringOp {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let first = self.first.string_iter();
+impl Stream<Char> for StringOp {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+        let first = self.first.iter();
         let rest = self.node_rem.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) | Item::String(stm) => stm.iter(),
@@ -340,14 +340,14 @@ impl Stream for StringOp {
 }
 
 struct StringOpIter<'node> {
-    first: StringIterator<'node>,
+    first: Box<dyn SIterator<Char> + 'node>,
     rest: Vec<Box<dyn SIterator + 'node>>,
     alpha: &'node Rc<Alphabet>,
     func: StringFunc
 }
 
 impl Iterator for StringOpIter<'_> {
-    type Item = Result<Item, StreamError>;
+    type Item = Result<Char, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         fn aux_node(base: Char, mut inputs: Vec<Item>) -> Node {
@@ -361,7 +361,7 @@ impl Iterator for StringOpIter<'_> {
 
         let ch = iter_try_expr!(self.first.next()?);
         if !self.alpha.contains(&ch) {
-            return Some(Ok(Item::Char(ch)));
+            return Some(Ok(ch));
         }
 
         let rest = self.rest.iter_mut()
@@ -373,7 +373,7 @@ impl Iterator for StringOpIter<'_> {
     }
 }
 
-impl SIterator for StringOpIter<'_> {
+impl SIterator<Char> for StringOpIter<'_> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut n_chars = UNumber::zero();
         let mut remain = n;

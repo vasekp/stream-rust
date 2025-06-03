@@ -88,32 +88,6 @@ impl dyn Stream<Item> {
         Ok(vec)
     }
 
-    pub(crate) fn string_listout(&self) -> Result<Vec<Char>, StreamError> {
-        let mut vec = Vec::new();
-        match &self.length() {
-            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
-                if let Some(len) = len.to_usize() {
-                    vec.reserve(len);
-                } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::new("string is too long", Item::String(self.clone_box())));
-                }
-            },
-            Length::Infinite => return Err(StreamError::new("string is infinite", Item::String(self.clone_box()))),
-            _ => ()
-        };
-        for res in self.string_iter() {
-            check_stop!();
-            vec.push(res?);
-        }
-        Ok(vec)
-    }
-
-    /// Create an iterator adapted over `self.iter()` extracting [`Char`] values from [`Item`] and
-    /// failing for other types.
-    pub fn string_iter(&self) -> StringIterator<'_> {
-        StringIterator::new(self)
-    }
-
     pub(crate) fn writeout_stream(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
@@ -174,11 +148,33 @@ impl dyn Stream<Item> {
             _ => write!(f, "{}", s)
         }
     }
+}
+
+impl dyn Stream<Char> {
+    pub(crate) fn string_listout(&self) -> Result<Vec<Char>, StreamError> {
+        let mut vec = Vec::new();
+        match &self.length() {
+            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
+                if let Some(len) = len.to_usize() {
+                    vec.reserve(len);
+                } else if matches!(lobj, Length::Exact(_)) {
+                    return Err(StreamError::new("string is too long", Item::String(self.clone_box())));
+                }
+            },
+            Length::Infinite => return Err(StreamError::new("string is infinite", Item::String(self.clone_box()))),
+            _ => ()
+        };
+        for res in self.iter() {
+            check_stop!();
+            vec.push(res?);
+        }
+        Ok(vec)
+    }
 
     pub(crate) fn writeout_string(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
-        let mut iter = self.string_iter();
+        let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (Some(std::cmp::max(prec, 4)), None),
             None => (None, Some(20))

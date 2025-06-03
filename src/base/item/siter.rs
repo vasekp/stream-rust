@@ -151,39 +151,3 @@ mod tests {
         assert_eq!(iter.skip_n(3u32.into()), Ok(Some(UNumber::one())));
     }
 }
-
-
-/// The iterator returned by [`dyn Stream::string_iter()`](trait.Stream.html#impl-dyn+Stream). The 
-/// semantics of `next()` are the same as in the case of [`SIterator`], with the difference that 
-/// the return type in success is [`Char`]. If the conversion can not be done, the error message 
-/// indicates a malformed string.
-pub struct StringIterator<'node> {
-    iter: Box<dyn SIterator + 'node>,
-    parent: &'node (dyn Stream + 'static)
-}
-
-impl<'node> StringIterator<'node> {
-    pub fn new(item: &'node (dyn Stream + 'static)) -> Self {
-        StringIterator{iter: item.iter(), parent: item}
-    }
-}
-
-impl<'node> std::ops::Deref for StringIterator<'node> {
-    type Target = dyn SIterator + 'node;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.iter
-    }
-}
-
-impl Iterator for StringIterator<'_> {
-    type Item = Result<Char, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match iter_try_expr!(self.iter.next()?) {
-            Item::Char(ch) => Some(Ok(ch)),
-            item => Some(Err(StreamError::new(format!("malformed string: contains {:?}", item),
-                Item::String(self.parent.clone_box()))))
-        }
-    }
-}

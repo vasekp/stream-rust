@@ -39,7 +39,7 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
             Item::Char(ch) => ch.case() == CharCase::Upper,
             Item::String(stm) => {
                 let mut indet = true;
-                for ch in stm.string_iter() {
+                for ch in stm.iter() {
                     check_stop!();
                     let ch = ch?;
                     match ch.case() {
@@ -56,7 +56,7 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
             Item::Char(ch) => ch.case() == CharCase::Lower,
             Item::String(stm) => {
                 let mut indet = true;
-                for ch in stm.string_iter() {
+                for ch in stm.iter() {
                     check_stop!();
                     let ch = ch?;
                     match ch.case() {
@@ -77,7 +77,7 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
                 }
             }
             let Item::String(stm) = item else { return Err(format!("expected character or string, found {:?}", item).into()); };
-            let mut iter = stm.string_iter();
+            let mut iter = stm.iter();
             let mut nonempty = match iter.next().transpose()? {
                 Some(ch) => match ch {
                     Char::Single('+'|'-') => false,

@@ -13,7 +13,7 @@ mod litstr;
 pub use chr::{Char, CharCase};
 pub use stream::*;
 pub use length::Length;
-pub use siter::{SIterator, StringIterator};
+pub use siter::SIterator;
 pub(crate) use list::List;
 pub(crate) use litstr::LiteralString;
 
@@ -28,8 +28,8 @@ pub enum Item {
     Number(Number),
     Bool(bool),
     Char(Char),
-    Stream(Box<dyn Stream>),
-    String(Box<dyn Stream>),
+    Stream(Box<dyn Stream<Item>>),
+    String(Box<dyn Stream<Char>>),
 }
 
 impl Item {
@@ -53,16 +53,17 @@ impl Item {
         Item::String(Box::new(LiteralString::from(value)))
     }
 
-    pub fn new_string_stream(value: impl Stream + 'static) -> Item {
+    pub fn new_string_stream(value: impl Stream<Char> + 'static) -> Item {
         Item::String(Box::new(value))
     }
 
     pub fn new_stream_or_string(value: impl Stream + 'static, is_string: bool) -> Item {
-        if is_string {
+        todo!() // XXX
+        /*if is_string {
             Item::String(Box::new(value))
         } else {
             Item::Stream(Box::new(value))
-        }
+        }*/
     }
 
     pub fn empty_stream() -> Item {
@@ -167,13 +168,23 @@ impl Item {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
-            (Stream(x1), Stream(x2)) | (String(x1), String(x2)) => {
+            (Stream(x1), Stream(x2)) => {
                 let l1 = x1.length();
                 let l2 = x2.length();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
                 for (x, y) in x1.iter().zip(x2.iter()) {
                     check_stop!();
                     if !x?.try_eq(&y?)? { return Ok(false); }
+                }
+                true
+            },
+            (String(x1), String(x2)) => {
+                let l1 = x1.length();
+                let l2 = x2.length();
+                if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
+                for (x, y) in x1.iter().zip(x2.iter()) {
+                    check_stop!();
+                    if x? != y? { return Ok(false); }
                 }
                 true
             },
@@ -188,7 +199,7 @@ impl Item {
             (Number(x), Number(y)) => x.cmp(y),
             (Bool(x), Bool(y)) => x.cmp(y),
             (Char(x), Char(y)) => alpha.cmp(x, y)?,
-            (Stream(x), Stream(y)) | (String(x), String(y)) =>{
+            (Stream(x), Stream(y)) =>{
                 let mut xi = x.iter();
                 let mut yi = y.iter();
                 loop {
@@ -200,6 +211,25 @@ impl Item {
                         (Some(_), None) => break Ordering::Greater,
                         (None, Some(_)) => break Ordering::Less,
                         (Some(lhs), Some(rhs)) => match lhs.lex_cmp(&rhs, alpha)? {
+                            Ordering::Less => break Ordering::Less,
+                            Ordering::Greater => break Ordering::Greater,
+                            Ordering::Equal => continue
+                        }
+                    }
+                }
+            },
+            (String(x), String(y)) =>{
+                let mut xi = x.iter();
+                let mut yi = y.iter();
+                loop {
+                    check_stop!();
+                    let lhs = xi.next().transpose()?;
+                    let rhs = yi.next().transpose()?;
+                    match (lhs, rhs) {
+                        (None, None) => break Ordering::Equal,
+                        (Some(_), None) => break Ordering::Greater,
+                        (None, Some(_)) => break Ordering::Less,
+                        (Some(lhs), Some(rhs)) => match alpha.cmp(&lhs, &rhs)? {
                             Ordering::Less => break Ordering::Less,
                             Ordering::Greater => break Ordering::Greater,
                             Ordering::Equal => continue
@@ -246,7 +276,8 @@ impl Describe for Item {
             Number(n) => n.describe_inner(prec, env),
             Bool(b) => format!("{b}"),
             Char(c) => format!("{c}"),
-            Stream(s) | String(s) => s.describe_inner(prec, env)
+            Stream(s) => s.describe_inner(prec, env),
+            String(s) => s.describe_inner(prec, env),
         }
     }
 }
@@ -263,7 +294,14 @@ impl PartialEq for Item {
             (Number(x1), Number(x2)) => x1 == x2,
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
-            (Stream(x1), Stream(x2)) | (String(x1), String(x2)) => {
+            (Stream(x1), Stream(x2)) => {
+                let l1 = x1.length();
+                let l2 = x2.length();
+                if !Length::possibly_eq(&l1, &l2) { return false; }
+                x1.iter().zip(x2.iter())
+                    .all(|(x, y)| x == y)
+            },
+            (String(x1), String(x2)) => {
                 let l1 = x1.length();
                 let l2 = x2.length();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
@@ -283,7 +321,7 @@ impl Clone for Item {
             Bool(x) => Bool(*x),
             Char(x) => Char(x.clone()),
             Stream(s) => Stream(s.clone_box()),
-            String(s) => String(s.clone_box())
+            String(s) => String(s.clone_box()),
         }
     }
 }
@@ -292,8 +330,8 @@ pub(crate) enum ProxyItem<'a> {
     Number(&'a Number),
     Bool(bool),
     Char(&'a Char),
-    Stream(&'a (dyn Stream + 'static)),
-    String(&'a (dyn Stream + 'static)),
+    Stream(&'a (dyn Stream<Item> + 'static)),
+    String(&'a (dyn Stream<Char> + 'static)),
 }
 
 impl<'a> From<&'a Item> for ProxyItem<'a> {
