@@ -47,7 +47,7 @@ impl Iterator for CharsIter<'_> {
 }
 
 impl SIterator for CharsIter<'_> {
-    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.source.skip_n(n)
     }
 
@@ -108,7 +108,7 @@ impl Iterator for StrIter<'_> {
 }
 
 impl SIterator<Char> for StrIter<'_> {
-    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.source.skip_n(n)
     }
 

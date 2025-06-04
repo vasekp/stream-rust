@@ -11,78 +11,66 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
         _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
     };
     match (&item, count.as_ref().and_then(UNumber::to_u32)) {
-        (Item::String(ref stm), _) if stm.is_empty() => Ok(item),
-        (Item::Stream(ref stm), _) if stm.is_empty() => Ok(item),
+        (Item::String(stm), _) if stm.is_empty() => Ok(item),
+        (Item::Stream(stm), _) if stm.is_empty() => Ok(item),
         (Item::Char(_) | Item::String(_), Some(0)) => Ok(Item::empty_string()),
         (_, Some(0)) => Ok(Item::empty_stream()),
         (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item),
+        (Item::Stream(_), _) => {
+            let Item::Stream(stm) = item else { unreachable!() };
+            Ok(Item::new_stream(RepeatStream{head: rnode.head, stream: stm.into(), count}))
+        },
+        (Item::String(_), _) => {
+            let Item::String(stm) = item else { unreachable!() };
+            Ok(Item::new_string_stream(RepeatStream{head: rnode.head, stream: stm.into(), count}))
+        },
+        (Item::Char(_), _) => {
+            let Item::Char(ch) = item else { unreachable!() };
+            Ok(Item::new_string_stream(RepeatItem{head: rnode.head, item: ch, count}))
+        },
         (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item]))),
-        (Item::Char(_) | Item::String(_), _) => todo!(), //Ok(Item::new_string_stream(Repeat{head: rnode.head, item, count})),
-        //(Item::Stream(stm), _) => Ok(Item::new_stream(RepeatStream{head: rnode.head, item, count})),
         _ => Ok(Item::new_stream(RepeatItem{head: rnode.head, item, count}))
     }
 }
 
 #[derive(Clone)]
-pub struct RepeatItem {
+pub struct RepeatItem<ItemType: ItemTypeT> {
     head: Head,
-    item: Item,
+    item: ItemType,
     count: Option<UNumber>
 }
 
-struct RepeatItemIter<'node> {
-    item: &'node Item,
+struct RepeatItemIter<'node, ItemType: ItemTypeT> {
+    item: &'node ItemType,
     count_rem: UNumber // None covered by std::iter::repeat_with
 }
 
 
-impl Stream for RepeatItem {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        match &self.item {
-            Item::Stream(stream) => Box::new(RepeatStreamIter {
-                stream: &**stream,
-                iter: stream.iter(),
-                len: stream.length(),
-                resets_rem: self.count.as_ref()
-                    .map(|count| count - 1u32)
-            }),
-            item => match &self.count {
-                Some(count) => Box::new(RepeatItemIter{item, count_rem: count.to_owned()}),
-                None => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
-            }
+impl<ItemType: ItemTypeT> Stream<ItemType> for RepeatItem<ItemType> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+        match &self.count {
+            Some(count) => Box::new(RepeatItemIter{item: &self.item, count_rem: count.to_owned()}),
+            None => Box::new(std::iter::repeat_with(|| Ok(self.item.clone())))
         }
     }
 
     fn length(&self) -> Length {
         use Length::*;
-        if self.count == Some(UNumber::zero()) { return Exact(UNumber::zero()); }
-        match &self.item {
-            Item::Stream(stream) => {
-                if stream.is_empty() { return Exact(UNumber::zero()); }
-                match (stream.length(), &self.count) {
-                    (_, None) | (Infinite, _) => Infinite,
-                    (Exact(len), Some(count)) => Exact(len * count),
-                    (AtMost(len), Some(count)) => AtMost(len * count),
-                    (UnknownFinite, _) => UnknownFinite,
-                    (Unknown, _) => Unknown
-                }
-            },
-            _ => match &self.count {
-                Some(count) => Exact(count.to_owned()),
-                None => Infinite
-            }
+        match &self.count {
+            Some(count) => Exact(count.to_owned()),
+            None => Infinite
         }
     }
 }
 
-impl Describe for RepeatItem {
+impl<ItemType: ItemTypeT> Describe for RepeatItem<ItemType> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.item), &self.count, prec, env)
     }
 }
 
-impl Iterator for RepeatItemIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<ItemType: ItemTypeT> Iterator for RepeatItemIter<'_, ItemType> {
+    type Item = Result<ItemType, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.count_rem.is_zero() {
@@ -94,7 +82,7 @@ impl Iterator for RepeatItemIter<'_> {
     }
 }
 
-impl SIterator for RepeatItemIter<'_> {
+impl<ItemType: ItemTypeT> SIterator<ItemType> for RepeatItemIter<'_, ItemType> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if n > self.count_rem {
             Ok(Some(n - &self.count_rem))
@@ -109,22 +97,52 @@ impl SIterator for RepeatItemIter<'_> {
     }
 }
 
-/*#[derive(Clone)]
-pub struct RepeatItem {
+#[derive(Clone)]
+pub struct RepeatStream<ItemType: ItemTypeT> {
     head: Head,
-    item: Item,
+    stream: BoxedStream<ItemType>,
     count: Option<UNumber>
-}*/
+}
 
-struct RepeatStreamIter<'node> {
-    stream: &'node dyn Stream,
-    iter: Box<dyn SIterator + 'node>,
+impl<ItemType: ItemTypeT> Stream<ItemType> for RepeatStream<ItemType> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+        Box::new(RepeatStreamIter {
+            stream: &*self.stream,
+            iter: self.stream.iter(),
+            len: self.stream.length(),
+            resets_rem: self.count.as_ref()
+                .map(|count| count - 1u32)
+        })
+    }
+
+    fn length(&self) -> Length {
+        use Length::*;
+        if self.count == Some(UNumber::zero()) { return Exact(UNumber::zero()); }
+        match (self.stream.length(), &self.count) {
+            (_, None) | (Infinite, _) => Infinite,
+            (Exact(len), Some(count)) => Exact(len * count),
+            (AtMost(len), Some(count)) => AtMost(len * count),
+            (UnknownFinite, _) => UnknownFinite,
+            (Unknown, _) => Unknown
+        }
+    }
+}
+
+impl<ItemType: ItemTypeT> Describe for RepeatStream<ItemType> {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, Some(&self.stream), &self.count, prec, env)
+    }
+}
+
+struct RepeatStreamIter<'node, ItemType: ItemTypeT> {
+    stream: &'node dyn Stream<ItemType>,
+    iter: Box<dyn SIterator<ItemType> + 'node>,
     len: Length,
     resets_rem: Option<UNumber>
 }
 
-impl Iterator for RepeatStreamIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<ItemType: ItemTypeT> Iterator for RepeatStreamIter<'_, ItemType> {
+    type Item = Result<ItemType, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.iter.next();
@@ -142,7 +160,7 @@ impl Iterator for RepeatStreamIter<'_> {
     }
 }
 
-impl SIterator for RepeatStreamIter<'_> {
+impl<ItemType: ItemTypeT> SIterator<ItemType> for RepeatStreamIter<'_, ItemType> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let Some(n) = self.iter.skip_n(n)? else { return Ok(None); };
 
@@ -215,6 +233,8 @@ mod tests {
         test_eval!("(1..2).repeat(2)" => "[1, 2, 1, 2]");
         test_eval!("[1, 2].repeat(1)" => "[1, 2]");
         test_eval!("'a'.repeat" => "\"aaaaaaaaaaaaaaaaaaaa...");
+        test_eval!("'a'.repeat(1)" => "\"a\"");
+        test_eval!("'a'.repeat(0)" => "\"\"");
         test_eval!("\"ab\".repeat" => "\"abababababababababab...");
         test_eval!("\"ab\".repeat(3)" => "\"ababab\"");
         test_eval!("\"ab\".repeat(0)" => "\"\"");
@@ -259,6 +279,7 @@ mod tests {
         test_describe!("1.repeat(0)" => "[]");
         test_describe!("[1, 2].repeat(1)" => "[1, 2]");
         test_describe!("\"ab\".repeat(1)" => "\"ab\"");
+        test_describe!("'a'.repeat(0)" => "\"\"");
         test_describe!("seq.repeat(1)" => "seq");
         test_describe!("[].repeat(0)" => "[]");
         test_describe!("[].repeat(1)" => "[]");
