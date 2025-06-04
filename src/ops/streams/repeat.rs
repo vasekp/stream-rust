@@ -1,44 +1,45 @@
 use crate::base::*;
 use crate::utils::unsign;
 
+fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    let (item, count) = match rnode {
+        RNodeS { source, args: RArgs::Zero, .. }
+            => (source, None),
+        RNodeS { source, args: RArgs::One(Item::Number(count)), .. } if !count.is_negative()
+            => (source, Some(unsign(count))),
+        _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
+    };
+    match (&item, count.as_ref().and_then(UNumber::to_u32)) {
+        (Item::String(ref stm), _) if stm.is_empty() => Ok(item),
+        (Item::Stream(ref stm), _) if stm.is_empty() => Ok(item),
+        (Item::Char(_) | Item::String(_), Some(0)) => Ok(Item::empty_string()),
+        (_, Some(0)) => Ok(Item::empty_stream()),
+        (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item),
+        (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item]))),
+        (Item::Char(_) | Item::String(_), _) => todo!(), //Ok(Item::new_string_stream(Repeat{head: rnode.head, item, count})),
+        //(Item::Stream(stm), _) => Ok(Item::new_stream(RepeatStream{head: rnode.head, item, count})),
+        _ => Ok(Item::new_stream(RepeatItem{head: rnode.head, item, count}))
+    }
+}
+
 #[derive(Clone)]
-pub struct Repeat {
+pub struct RepeatItem {
     head: Head,
     item: Item,
     count: Option<UNumber>
 }
 
-impl Repeat {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        let (item, count) = match rnode {
-            RNodeS { source, args: RArgs::Zero, .. }
-                => (source, None),
-            RNodeS { source, args: RArgs::One(Item::Number(count)), .. } if !count.is_negative()
-                => (source, Some(unsign(count))),
-            _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
-        };
-        if let Item::Stream(ref stm) | Item::String(ref stm) = &item {
-            if stm.is_empty() || count.as_ref().is_some_and(UNumber::is_zero) {
-                return Ok(Item::empty_stream_or_string(item.is_string()));
-            }
-            if count.as_ref().is_some_and(One::is_one) {
-                return Ok(item);
-            }
-        } else if count.as_ref().is_some_and(UNumber::is_zero) {
-            return Ok(Item::empty_stream());
-        }
-        match item {
-            Item::Char(_) | Item::String(_) => Ok(Item::new_string_stream(Repeat{head: rnode.head, item, count})),
-            _ => Ok(Item::new_stream(Repeat{head: rnode.head, item, count}))
-        }
-    }
+struct RepeatItemIter<'node> {
+    item: &'node Item,
+    count_rem: UNumber // None covered by std::iter::repeat_with
 }
 
-impl Stream for Repeat {
+
+impl Stream for RepeatItem {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         match &self.item {
-            Item::Stream(stream) | Item::String(stream) => Box::new(RepeatStreamIter {
+            Item::Stream(stream) => Box::new(RepeatStreamIter {
                 stream: &**stream,
                 iter: stream.iter(),
                 len: stream.length(),
@@ -56,7 +57,7 @@ impl Stream for Repeat {
         use Length::*;
         if self.count == Some(UNumber::zero()) { return Exact(UNumber::zero()); }
         match &self.item {
-            Item::Stream(stream) | Item::String(stream) => {
+            Item::Stream(stream) => {
                 if stream.is_empty() { return Exact(UNumber::zero()); }
                 match (stream.length(), &self.count) {
                     (_, None) | (Infinite, _) => Infinite,
@@ -74,15 +75,10 @@ impl Stream for Repeat {
     }
 }
 
-impl Describe for Repeat {
+impl Describe for RepeatItem {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.item), &self.count, prec, env)
     }
-}
-
-struct RepeatItemIter<'node> {
-    item: &'node Item,
-    count_rem: UNumber // None covered by std::iter::repeat_with
 }
 
 impl Iterator for RepeatItemIter<'_> {
@@ -112,6 +108,13 @@ impl SIterator for RepeatItemIter<'_> {
         Length::Exact(self.count_rem.to_owned())
     }
 }
+
+/*#[derive(Clone)]
+pub struct RepeatItem {
+    head: Head,
+    item: Item,
+    count: Option<UNumber>
+}*/
 
 struct RepeatStreamIter<'node> {
     stream: &'node dyn Stream,
@@ -267,5 +270,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("repeat", Repeat::eval);
+    keywords.insert("repeat", eval_repeat);
 }
