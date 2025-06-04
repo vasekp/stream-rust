@@ -12,7 +12,7 @@ fn eval_alpha(node: Node, env: &Env) -> Result<Item, StreamError> {
                 .map(Item::into_char)
                 .collect::<Result<Vec<_>, _>>()?
                 .try_into()?,
-            Expr::Imm(Item::String(stm)) => stm.string_listout()?.try_into()?,
+            Expr::Imm(Item::String(stm)) => stm.listout()?.try_into()?,
             _ => return Err(BaseError::from(format!("expected stream or string, found {:?}", alpha)))
         }
     });

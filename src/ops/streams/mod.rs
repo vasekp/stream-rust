@@ -6,11 +6,11 @@ mod repeat;
 //mod skip;
 //mod first;
 //mod last;
-//mod rev;
+mod rev;
 mod nest;
 mod flatten;
 mod sort;
-//mod sortby;
+mod sortby;
 mod fold;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
@@ -22,10 +22,10 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     //skip::init(keywords);
     //first::init(keywords);
     //last::init(keywords);
-    //rev::init(keywords);
+    rev::init(keywords);
     nest::init(keywords);
     flatten::init(keywords);
     sort::init(keywords);
-    //sortby::init(keywords);
+    sortby::init(keywords);
     fold::init(keywords);
 }

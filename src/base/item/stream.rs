@@ -151,7 +151,7 @@ impl dyn Stream<Item> {
 }
 
 impl dyn Stream<Char> {
-    pub(crate) fn string_listout(&self) -> Result<Vec<Char>, StreamError> {
+    pub(crate) fn listout(&self) -> Result<Vec<Char>, StreamError> {
         let mut vec = Vec::new();
         match &self.length() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
