@@ -2,7 +2,7 @@ mod lang;
 mod streams;
 mod selfref;
 mod env;
-//mod strings;
+mod strings;
 mod cond;
 //
 //#[cfg(test)]
@@ -13,7 +13,7 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     streams::init(keywords);
     selfref::init(keywords);
     env::init(keywords);
-//    strings::init(keywords);
+    strings::init(keywords);
     cond::init(keywords);
 //
 //    #[cfg(test)]
