@@ -261,6 +261,21 @@ impl Describe for EmptyStream {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct EmptyString;
+
+impl Stream<Char> for EmptyString {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+        Box::new(std::iter::empty())
+    }
+}
+
+impl Describe for EmptyString {
+    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
+        "\"\"".into()
+    }
+}
+
 pub struct OwnedStreamIter<ItemType = Item> {
     iter: Box<dyn SIterator<ItemType>>,
     _stream: std::pin::Pin<Box<dyn Stream<ItemType>>>

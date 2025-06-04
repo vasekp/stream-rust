@@ -2,15 +2,15 @@ mod seq;
 mod range;
 mod len;
 mod riffle;
-mod repeat;
-mod skip;
-mod first;
-mod last;
-mod rev;
+//mod repeat;
+//mod skip;
+//mod first;
+//mod last;
+//mod rev;
 mod nest;
 mod flatten;
 mod sort;
-mod sortby;
+//mod sortby;
 mod fold;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
@@ -18,14 +18,14 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     range::init(keywords);
     len::init(keywords);
     riffle::init(keywords);
-    repeat::init(keywords);
-    skip::init(keywords);
-    first::init(keywords);
-    last::init(keywords);
-    rev::init(keywords);
+    //repeat::init(keywords);
+    //skip::init(keywords);
+    //first::init(keywords);
+    //last::init(keywords);
+    //rev::init(keywords);
     nest::init(keywords);
     flatten::init(keywords);
     sort::init(keywords);
-    sortby::init(keywords);
+    //sortby::init(keywords);
     fold::init(keywords);
 }

@@ -57,25 +57,12 @@ impl Item {
         Item::String(Box::new(value))
     }
 
-    pub fn new_stream_or_string(value: impl Stream + 'static, is_string: bool) -> Item {
-        todo!() // XXX
-        /*if is_string {
-            Item::String(Box::new(value))
-        } else {
-            Item::Stream(Box::new(value))
-        }*/
-    }
-
     pub fn empty_stream() -> Item {
         Item::Stream(Box::new(EmptyStream))
     }
 
-    pub fn empty_stream_or_string(is_string: bool) -> Item {
-        if is_string {
-            Item::String(Box::new(LiteralString::from("")))
-        } else {
-            Item::empty_stream()
-        }
+    pub fn empty_string() -> Item {
+        Item::String(Box::new(EmptyString))
     }
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {
@@ -279,6 +266,34 @@ impl Describe for Item {
             Stream(s) => s.describe_inner(prec, env),
             String(s) => s.describe_inner(prec, env),
         }
+    }
+}
+
+impl From<Char> for Item {
+    fn from(ch: Char) -> Item {
+        Item::Char(ch)
+    }
+}
+
+pub(crate) trait ItemTypeT: Clone + Describe + Into<Item> + 'static {
+    fn from_vec(vec: Vec<Self>) -> Item;
+}
+
+impl ItemTypeT for Item {
+    fn from_vec(vec: Vec<Item>) -> Item {
+        Item::Stream(Box::new(List::from(vec)))
+    }
+}
+
+impl ItemTypeT for Char {
+    fn from_vec(vec: Vec<Char>) -> Item {
+        Item::String(Box::new(LiteralString::from(vec)))
+    }
+}
+
+impl<T: ItemTypeT> From<Vec<T>> for Item {
+    fn from(vec: Vec<T>) -> Item {
+        T::from_vec(vec)
     }
 }
 

@@ -13,7 +13,7 @@ impl Riffle {
         let (source, filler) = match rnode {
             RNodeS { source: Item::Stream(ref src), args: RArgs::One(_), .. }
             if src.is_empty()
-                => return Ok(Item::empty_stream_or_string(rnode.source.is_string())),
+                => return Ok(Item::empty_stream()),
             RNodeS { source: Item::Stream(src), args: RArgs::One(filler), .. }
                 => (BoxedStream::from(src), filler),
             _ => return Err(StreamError::new("expected: stream.riffle(item or stream)", rnode))

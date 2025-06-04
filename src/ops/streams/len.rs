@@ -2,19 +2,19 @@ use crate::base::*;
 
 fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
-    let len = try_with!(rnode, match &rnode {
+    let len = match &rnode {
         RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => len_impl(&**stm),
         RNodeS { source: Item::String(stm), args: RArgs::Zero, .. } => len_impl(&**stm),
         _ => return Err(StreamError::new("expected: source.len", rnode))
-    });
-    Ok(Item::new_number(len))
+    };
+    Ok(Item::new_number(try_with!(rnode, len?)))
 }
 
 fn len_impl<ItemType>(stm: &dyn Stream<ItemType>) -> Result<UNumber, BaseError> {
     match stm.length() {
         Length::Exact(len) => Ok(len),
         Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {
-            let mut len = 0;
+            let mut len = 0usize;
             for res in stm.iter() {
                 check_stop!();
                 let _ = res?;
@@ -22,7 +22,7 @@ fn len_impl<ItemType>(stm: &dyn Stream<ItemType>) -> Result<UNumber, BaseError> 
             }
             Ok(len.into())
         },
-        Length::Infinite => Err("stream is infinite".from())
+        Length::Infinite => Err("stream is infinite".into())
     }
 }
 

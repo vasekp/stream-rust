@@ -19,7 +19,8 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
         "isodd" => Ok(item.as_num()?.is_odd()),
         "iseven" => Ok(item.as_num()?.is_even()),
         "isempty" => match item {
-            Item::Stream(stm) | Item::String(stm) => Ok(stm.is_empty()),
+            Item::Stream(stm) => Ok(stm.is_empty()),
+            Item::String(stm) => Ok(stm.is_empty()),
             _ => Err(format!("expected stream or string, found {:?}", item).into())
         },
         "isalpha" => Ok(env.alpha.contains(item.as_char()?)),
