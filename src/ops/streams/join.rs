@@ -194,6 +194,6 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("~", eval_join);
     keywords.insert("join", eval_join);
+    keywords.insert("~", eval_join);
 }

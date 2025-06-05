@@ -2,7 +2,6 @@ mod list;
 mod part;
 mod map;
 mod mathops;
-mod join;
 mod args;
 mod cmp;
 mod lexcmp;
@@ -13,7 +12,6 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     part::init(keywords);
     map::init(keywords);
     mathops::init(keywords);
-    join::init(keywords);
     args::init(keywords);
     cmp::init(keywords);
     lexcmp::init(keywords);
