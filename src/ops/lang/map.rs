@@ -1,26 +1,19 @@
 use crate::base::*;
 
+fn eval_map(node: Node, env: &Env) -> Result<Item, StreamError> {
+    match node.eval_source(env)? {
+        RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
+            Ok(Item::new_stream(Map{head, source: source.into(), body, env: env.clone()})),
+        node => Err(StreamError::new("expected: source:body", node))
+    }
+}
+
 #[derive(Clone)]
 struct Map {
     source: BoxedStream,
     body: Node,
     head: Head,
     env: Env
-}
-
-struct MapIter<'node> {
-    parent: &'node Map,
-    source: Box<dyn SIterator + 'node>
-}
-
-impl Map {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        match node.eval_source(env)? {
-            RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
-                Ok(Item::new_stream(Map{head, source: source.into(), body, env: env.clone()})),
-            node => Err(StreamError::new("expected: source:body", node))
-        }
-    }
 }
 
 impl Describe for Map {
@@ -31,35 +24,16 @@ impl Describe for Map {
 
 impl Stream for Map {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(MapIter{parent: self, source: self.source.iter()})
+        Box::new(SMap::new(&*self.source, |item| {
+            self.body.clone()
+                .with_source(item.into())
+                .and_then(|node| Expr::from(node).eval(&self.env))
+                .map_err(BaseError::from)
+        }))
     }
 
     fn length(&self) -> Length {
         self.source.length()
-    }
-}
-
-impl Iterator for MapIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let source = self.source.next()?;
-        let Ok(source) = source else {
-            return Some(source)
-        };
-        Some(self.parent.body.clone()
-            .with_source(source.into())
-            .and_then(|node| Expr::from(node).eval(&self.parent.env)))
-    }
-}
-
-impl SIterator for MapIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.source.skip_n(n)
-    }
-
-    fn len_remain(&self) -> Length {
-        self.source.len_remain()
     }
 }
 
@@ -88,7 +62,7 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("*map", Map::eval);
-    keywords.insert("map", Map::eval);
-    keywords.insert("foreach", Map::eval);
+    keywords.insert("*map", eval_map);
+    keywords.insert("map", eval_map);
+    keywords.insert("foreach", eval_map);
 }
