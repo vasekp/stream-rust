@@ -275,7 +275,7 @@ mod tests {
         test_skip_n("seq.repeat(2)");
 
         test_describe!("1.repeat" => "1.repeat");
-        test_describe!("1.repeat(1)" => "1.repeat(1)");
+        test_describe!("1.repeat(1)" => "[1]");
         test_describe!("1.repeat(0)" => "[]");
         test_describe!("[1, 2].repeat(1)" => "[1, 2]");
         test_describe!("\"ab\".repeat(1)" => "\"ab\"");

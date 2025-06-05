@@ -4,7 +4,7 @@ mod len;
 mod riffle;
 mod repeat;
 //mod skip;
-//mod first;
+mod first;
 //mod last;
 mod rev;
 mod nest;
@@ -20,7 +20,7 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     riffle::init(keywords);
     repeat::init(keywords);
     //skip::init(keywords);
-    //first::init(keywords);
+    first::init(keywords);
     //last::init(keywords);
     rev::init(keywords);
     nest::init(keywords);
