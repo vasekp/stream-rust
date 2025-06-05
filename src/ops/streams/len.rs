@@ -10,7 +10,7 @@ fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(try_with!(rnode, len?)))
 }
 
-fn len_impl<ItemType>(stm: &dyn Stream<ItemType>) -> Result<UNumber, BaseError> {
+fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, BaseError> {
     match stm.length() {
         Length::Exact(len) => Ok(len),
         Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {

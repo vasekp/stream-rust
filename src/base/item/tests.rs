@@ -38,7 +38,7 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
     }
 }
 
-fn test_len_exact_impl<ItemType>(stm: &dyn Stream<ItemType>, len: usize) {
+fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) {
     assert_eq!(stm.iter().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.length(), &Length::Exact(len.into())));
     assert!(Length::possibly_eq(&stm.iter().len_remain(), &Length::Exact(len.into())));
@@ -55,7 +55,7 @@ pub(crate) fn test_skip_n(input: &str) {
     }
 }
 
-fn test_skip_n_impl<ItemType: PartialEq + Debug>(stm: &dyn Stream<ItemType>) {
+fn test_skip_n_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
     const TEST: u32 = 5;
 
     assert_eq!(stm.iter().len_remain(), stm.length());

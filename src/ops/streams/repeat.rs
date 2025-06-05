@@ -22,11 +22,11 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
         },
         (Item::String(_), _) => {
             let Item::String(stm) = item else { unreachable!() };
-            Ok(Item::new_string_stream(RepeatStream{head: rnode.head, stream: stm.into(), count}))
+            Ok(Item::new_string(RepeatStream{head: rnode.head, stream: stm.into(), count}))
         },
         (Item::Char(_), _) => {
             let Item::Char(ch) = item else { unreachable!() };
-            Ok(Item::new_string_stream(RepeatItem{head: rnode.head, item: ch, count}))
+            Ok(Item::new_string(RepeatItem{head: rnode.head, item: ch, count}))
         },
         (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item]))),
         _ => Ok(Item::new_stream(RepeatItem{head: rnode.head, item, count}))
@@ -34,20 +34,20 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 #[derive(Clone)]
-pub struct RepeatItem<ItemType: ItemTypeT> {
+pub struct RepeatItem<I: ItemType> {
     head: Head,
-    item: ItemType,
+    item: I,
     count: Option<UNumber>
 }
 
-struct RepeatItemIter<'node, ItemType: ItemTypeT> {
-    item: &'node ItemType,
+struct RepeatItemIter<'node, I: ItemType> {
+    item: &'node I,
     count_rem: UNumber // None covered by std::iter::repeat_with
 }
 
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for RepeatItem<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for RepeatItem<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         match &self.count {
             Some(count) => Box::new(RepeatItemIter{item: &self.item, count_rem: count.to_owned()}),
             None => Box::new(std::iter::repeat_with(|| Ok(self.item.clone())))
@@ -63,14 +63,14 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for RepeatItem<ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> Describe for RepeatItem<ItemType> {
+impl<I: ItemType> Describe for RepeatItem<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.item), &self.count, prec, env)
     }
 }
 
-impl<ItemType: ItemTypeT> Iterator for RepeatItemIter<'_, ItemType> {
-    type Item = Result<ItemType, StreamError>;
+impl<I: ItemType> Iterator for RepeatItemIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.count_rem.is_zero() {
@@ -82,7 +82,7 @@ impl<ItemType: ItemTypeT> Iterator for RepeatItemIter<'_, ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator<ItemType> for RepeatItemIter<'_, ItemType> {
+impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if n > self.count_rem {
             Ok(Some(n - &self.count_rem))
@@ -98,14 +98,14 @@ impl<ItemType: ItemTypeT> SIterator<ItemType> for RepeatItemIter<'_, ItemType> {
 }
 
 #[derive(Clone)]
-pub struct RepeatStream<ItemType: ItemTypeT> {
+pub struct RepeatStream<I: ItemType> {
     head: Head,
-    stream: BoxedStream<ItemType>,
+    stream: BoxedStream<I>,
     count: Option<UNumber>
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for RepeatStream<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for RepeatStream<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(RepeatStreamIter {
             stream: &*self.stream,
             iter: self.stream.iter(),
@@ -128,21 +128,21 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for RepeatStream<ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> Describe for RepeatStream<ItemType> {
+impl<I: ItemType> Describe for RepeatStream<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.stream), &self.count, prec, env)
     }
 }
 
-struct RepeatStreamIter<'node, ItemType: ItemTypeT> {
-    stream: &'node dyn Stream<ItemType>,
-    iter: Box<dyn SIterator<ItemType> + 'node>,
+struct RepeatStreamIter<'node, I: ItemType> {
+    stream: &'node dyn Stream<I>,
+    iter: Box<dyn SIterator<I> + 'node>,
     len: Length,
     resets_rem: Option<UNumber>
 }
 
-impl<ItemType: ItemTypeT> Iterator for RepeatStreamIter<'_, ItemType> {
-    type Item = Result<ItemType, StreamError>;
+impl<I: ItemType> Iterator for RepeatStreamIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.iter.next();
@@ -160,7 +160,7 @@ impl<ItemType: ItemTypeT> Iterator for RepeatStreamIter<'_, ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator<ItemType> for RepeatStreamIter<'_, ItemType> {
+impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let Some(n) = self.iter.skip_n(n)? else { return Ok(None); };
 

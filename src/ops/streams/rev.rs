@@ -11,29 +11,29 @@ fn eval_rev(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_rev_impl<ItemType: ItemTypeT>(head: Head, source: Box<dyn Stream<ItemType>>) -> Result<Item, StreamError> {
+fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<Item, StreamError> {
     match source.length() {
         Length::Infinite
-            => Err(StreamError::new("input is infinite", ItemType::from_box(source))),
+            => Err(StreamError::new("input is infinite", I::from_box(source))),
         Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) =>
-            Ok(ItemType::from_box(Box::new(Rev{head, source: source.into(), length: len}))),
+            Ok(I::from_box(Box::new(Rev{head, source: source.into(), length: len}))),
         _ => {
-            let mut vec = ItemType::listout(&*source)?;
+            let mut vec = I::listout(&*source)?;
             vec.reverse();
-            Ok(ItemType::from_vec(vec))
+            Ok(I::from_vec(vec))
         }
     }
 }
 
 #[derive(Clone)]
-pub struct Rev<ItemType: ItemTypeT> {
+pub struct Rev<I: ItemType> {
     head: Head,
-    source: BoxedStream<ItemType>,
+    source: BoxedStream<I>,
     length: UNumber
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for Rev<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for Rev<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(RevIter {
             source: &*self.source,
             start: self.length.clone(),
@@ -46,20 +46,20 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for Rev<ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> Describe for Rev<ItemType> {
+impl<I: ItemType> Describe for Rev<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
     }
 }
 
-struct RevIter<'node, ItemType: ItemTypeT> {
-    source: &'node (dyn Stream<ItemType> + 'static),
+struct RevIter<'node, I: ItemType> {
+    source: &'node (dyn Stream<I> + 'static),
     start: UNumber,
-    cached: Vec<ItemType>
+    cached: Vec<I>
 }
 
-impl<ItemType: ItemTypeT> Iterator for RevIter<'_, ItemType> {
-    type Item = Result<ItemType, StreamError>;
+impl<I: ItemType> Iterator for RevIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.cached.pop() {
@@ -84,7 +84,7 @@ impl<ItemType: ItemTypeT> Iterator for RevIter<'_, ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator<ItemType> for RevIter<'_, ItemType> {
+impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let len = self.cached.len();
         match n.to_usize() {

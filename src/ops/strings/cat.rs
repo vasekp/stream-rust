@@ -10,7 +10,7 @@ impl Cat {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         match node.eval_all(env)?.resolve_source()? {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero } => {
-                Ok(Item::new_string_stream(Cat { source: stm.into(), head }))
+                Ok(Item::new_string(Cat { source: stm.into(), head }))
             },
             node => Err(StreamError::new("expected: stream.cat", node))
         }

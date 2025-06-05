@@ -68,12 +68,12 @@ impl Iterator for SplitStringIter<'_> {
                 let bkpt = cache.len() - sep.len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
-                    return Some(Ok(Item::new_string_stream(LiteralString::from(cache))));
+                    return Some(Ok(Item::new_string(LiteralString::from(cache))));
                 }
             }
         }
         self.done = true;
-        Some(Ok(Item::new_string_stream(LiteralString::from(cache))))
+        Some(Ok(Item::new_string(LiteralString::from(cache))))
     }
 }
 

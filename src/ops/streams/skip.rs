@@ -7,26 +7,26 @@ fn eval_skip(node: Node, env: &Env) -> Result<Item, StreamError> {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
             => Ok(Item::new_stream(Skip{head, source: stm.into(), count: None })),
         RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string_stream(Skip{head, source: stm.into(), count: None })),
+            => Ok(Item::new_string(Skip{head, source: stm.into(), count: None })),
         RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
                 if !count.is_negative()
             => Ok(Item::new_stream(Skip{head, source: stm.into(), count: Some(unsign(count))})),
         RNodeS { head, source: Item::String(stm), args: RArgs::One(Item::Number(count)) }
                 if !count.is_negative()
-            => Ok(Item::new_string_stream(Skip{head, source: stm.into(), count: Some(unsign(count))})),
+            => Ok(Item::new_string(Skip{head, source: stm.into(), count: Some(unsign(count))})),
         _ => Err(StreamError::new("expected: source.skip or source.skip(count)", rnode))
     }
 }
 
 #[derive(Clone)]
-struct Skip<ItemType: ItemTypeT> {
+struct Skip<I: ItemType> {
     head: Head,
-    source: BoxedStream<ItemType>,
+    source: BoxedStream<I>,
     count: Option<UNumber>
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for Skip<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for Skip<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         let mut iter = self.source.iter();
         match iter.skip_n(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
             Ok(None) => iter,
@@ -44,7 +44,7 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for Skip<ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> Describe for Skip<ItemType> {
+impl<I: ItemType> Describe for Skip<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), &self.count, prec, env)
     }

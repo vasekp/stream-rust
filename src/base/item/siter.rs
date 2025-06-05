@@ -8,7 +8,7 @@ use crate::base::*;
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator<ItemType = Item>: Iterator<Item = Result<ItemType, StreamError>> {
+pub trait SIterator<I = Item>: Iterator<Item = Result<I, StreamError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. The return value must be consistent with the actual behaviour of the stream.
     ///
@@ -56,16 +56,16 @@ pub trait SIterator<ItemType = Item>: Iterator<Item = Result<ItemType, StreamErr
     }
 }
 
-impl<ItemType, T, U, V> SIterator<ItemType> for std::iter::Map<T, U>
+impl<I, T, U, V> SIterator<I> for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<ItemType, StreamError>
+      U: FnMut(V) -> Result<I, StreamError>
 { }
 
-impl<ItemType> SIterator<ItemType> for std::iter::Once<Result<ItemType, StreamError>> { }
+impl<I> SIterator<I> for std::iter::Once<Result<I, StreamError>> { }
 
-impl<ItemType> SIterator<ItemType> for std::iter::Empty<Result<ItemType, StreamError>> { }
+impl<I> SIterator<I> for std::iter::Empty<Result<I, StreamError>> { }
 
-impl<ItemType: Clone> SIterator<ItemType> for std::iter::Repeat<Result<ItemType, StreamError>> {
+impl<I: Clone> SIterator<I> for std::iter::Repeat<Result<I, StreamError>> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
@@ -75,8 +75,8 @@ impl<ItemType: Clone> SIterator<ItemType> for std::iter::Repeat<Result<ItemType,
     }
 }
 
-impl<ItemType: Clone, F> SIterator<ItemType> for std::iter::RepeatWith<F>
-where F: FnMut() -> Result<ItemType, StreamError>
+impl<I: Clone, F> SIterator<I> for std::iter::RepeatWith<F>
+where F: FnMut() -> Result<I, StreamError>
 {
     fn len_remain(&self) -> Length {
         Length::Infinite
@@ -87,19 +87,19 @@ where F: FnMut() -> Result<ItemType, StreamError>
     }
 }
 
-pub(crate) struct SMap<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> {
+pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> {
     parent: &'node (dyn Stream<I1> + 'static),
     source: Box<dyn SIterator<I1> + 'node>,
     func: F
 }
 
-impl<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> SMap<'node, I1, I2, F> {
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SMap<'node, I1, I2, F> {
     pub(crate) fn new(stream: &'node (dyn Stream<I1> + 'static), func: F) -> Self {
         SMap{parent: stream, source: stream.iter(), func}
     }
 }
 
-impl<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'node, I1, I2, F> {
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'node, I1, I2, F> {
     type Item = Result<I2, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -109,7 +109,7 @@ impl<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for 
     }
 }
 
-impl<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> SIterator<I2> for SMap<'node, I1, I2, F> {
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SIterator<I2> for SMap<'node, I1, I2, F> {
     fn len_remain(&self) -> Length {
         self.source.len_remain()
     }

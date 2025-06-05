@@ -49,11 +49,7 @@ impl Item {
         Item::Stream(Box::new(value))
     }
 
-    pub fn new_string_literal(value: &str) -> Item {
-        Item::String(Box::new(LiteralString::from(value)))
-    }
-
-    pub fn new_string_stream(value: impl Stream<Char> + 'static) -> Item {
+    pub fn new_string(value: impl Stream<Char> + 'static) -> Item {
         Item::String(Box::new(value))
     }
 
@@ -133,8 +129,8 @@ impl Item {
             Number(n) => write!(f, "{n}"),
             Bool(b) => write!(f, "{b}"),
             Char(c) => write!(f, "{c}"),
-            Stream(s) => s.writeout_stream(f, count, error),
-            String(s) => s.writeout_string(f, error),
+            Stream(s) => s.writeout(f, count, error),
+            String(s) => s.writeout(f, error),
         }
     }
 
@@ -275,13 +271,13 @@ impl From<Char> for Item {
     }
 }
 
-pub(crate) trait ItemTypeT: Clone + Describe + Into<Item> + 'static {
+pub(crate) trait ItemType: Clone + Describe + Into<Item> + 'static {
     fn from_vec(vec: Vec<Self>) -> Item;
     fn from_box(stm: Box<dyn Stream<Self>>) -> Item;
     fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError>;
 }
 
-impl ItemTypeT for Item {
+impl ItemType for Item {
     fn from_vec(vec: Vec<Item>) -> Item {
         Item::Stream(Box::new(List::from(vec)))
     }
@@ -295,7 +291,7 @@ impl ItemTypeT for Item {
     }
 }
 
-impl ItemTypeT for Char {
+impl ItemType for Char {
     fn from_vec(vec: Vec<Char>) -> Item {
         Item::String(Box::new(LiteralString::from(vec)))
     }
@@ -309,7 +305,7 @@ impl ItemTypeT for Char {
     }
 }
 
-impl<T: ItemTypeT> From<Vec<T>> for Item {
+impl<T: ItemType> From<Vec<T>> for Item {
     fn from(vec: Vec<T>) -> Item {
         T::from_vec(vec)
     }

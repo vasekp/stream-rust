@@ -12,27 +12,27 @@ fn eval_splitby(node: Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 #[derive(Clone)]
-struct SplitBy<ItemType: ItemTypeT> {
+struct SplitBy<I: ItemType> {
     head: Head,
-    source: BoxedStream<ItemType>,
+    source: BoxedStream<I>,
     cond: ENode,
     env: Env
 }
 
-struct SplitByIter<'node, ItemType: ItemTypeT> {
-    source: Box<dyn SIterator<ItemType> + 'node>,
+struct SplitByIter<'node, I: ItemType> {
+    source: Box<dyn SIterator<I> + 'node>,
     cond: &'node ENode,
     env: &'node Env,
     done: bool,
 }
 
-impl<ItemType: ItemTypeT> Describe for SplitBy<ItemType> {
+impl<I: ItemType> Describe for SplitBy<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.cond], prec, env)
     }
 }
 
-impl<ItemType: ItemTypeT> Stream for SplitBy<ItemType> {
+impl<I: ItemType> Stream for SplitBy<I> {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(SplitByIter{source: self.source.iter(), cond: &self.cond, env: &self.env, done: false})
     }
@@ -42,7 +42,7 @@ impl<ItemType: ItemTypeT> Stream for SplitBy<ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> Iterator for SplitByIter<'_, ItemType> {
+impl<I: ItemType> Iterator for SplitByIter<'_, I> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -69,7 +69,7 @@ impl<ItemType: ItemTypeT> Iterator for SplitByIter<'_, ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator for SplitByIter<'_, ItemType> {
+impl<I: ItemType> SIterator for SplitByIter<'_, I> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }

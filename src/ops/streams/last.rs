@@ -38,11 +38,11 @@ fn eval_last(node: Node, env: &Env) -> Result<Item, StreamError> {
             => {
                 let count = unsign(count.to_owned());
                 match eval_last_count(&**stm, &count) {
-                    Ok(RetType::Listed(vec)) => Ok(Item::new_string_stream(LiteralString::from(vec))),
+                    Ok(RetType::Listed(vec)) => Ok(Item::new_string(LiteralString::from(vec))),
                     Ok(RetType::PassThrough) => Ok(rnode.source),
                     Ok(RetType::Skip(skip)) => {
                         let Item::String(stm) = rnode.source else { unreachable!() };
-                        Ok(Item::new_string_stream(Last {
+                        Ok(Item::new_string(Last {
                             head: rnode.head,
                             source: stm.into(),
                             skip,
@@ -56,7 +56,7 @@ fn eval_last(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_last_item<ItemType: ItemTypeT>(stm: &dyn Stream<ItemType>) -> Result<ItemType, BaseError> {
+fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, BaseError> {
     match stm.length() {
         Length::Exact(len) if !len.is_zero() => {
             let mut it = stm.iter();
@@ -82,7 +82,7 @@ fn eval_last_item<ItemType: ItemTypeT>(stm: &dyn Stream<ItemType>) -> Result<Ite
     }
 }
 
-fn eval_last_count<ItemType: ItemTypeT>(stm: &dyn Stream<ItemType>, count: &UNumber) -> Result<RetType<ItemType>, BaseError> {
+fn eval_last_count<I: ItemType>(stm: &dyn Stream<I>, count: &UNumber) -> Result<RetType<I>, BaseError> {
     match stm.length() {
         Length::Exact(len) if &len < count => Ok(RetType::PassThrough),
         Length::Exact(len) => Ok(RetType::Skip(len - count)),
@@ -106,22 +106,22 @@ fn eval_last_count<ItemType: ItemTypeT>(stm: &dyn Stream<ItemType>, count: &UNum
     }
 }
 
-enum RetType<ItemType> {
-    Listed(Vec<ItemType>),
+enum RetType<I> {
+    Listed(Vec<I>),
     PassThrough,
     Skip(UNumber)
 }
 
 #[derive(Clone)]
-struct Last<ItemType: ItemTypeT> {
+struct Last<I: ItemType> {
     head: Head,
-    source: BoxedStream<ItemType>,
+    source: BoxedStream<I>,
     count: UNumber,
     skip: UNumber
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for Last<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for Last<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         let mut it = self.source.iter();
         match it.skip_n(self.skip.to_owned()) {
             Ok(None) => it,
@@ -135,7 +135,7 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for Last<ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> Describe for Last<ItemType> {
+impl<I: ItemType> Describe for Last<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec, env)
     }

@@ -41,7 +41,7 @@ fn eval_enode(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_index_impl<ItemType: ItemTypeT>(source: &dyn Stream<ItemType>, index: &Number) -> Result<ItemType, BaseError> {
+fn eval_index_impl<I: ItemType>(source: &dyn Stream<I>, index: &Number) -> Result<I, BaseError> {
     let index = UNumber::try_from(index).map_err(|_| "index must be greater than zero")?;
     if index.is_zero() {
         return Err("index must be greater than zero".into());
@@ -66,21 +66,21 @@ fn eval_index_impl<ItemType: ItemTypeT>(source: &dyn Stream<ItemType>, index: &N
 }
 
 #[derive(Clone)]
-struct Part<ItemType: ItemTypeT> {
-    source: BoxedStream<ItemType>,
+struct Part<I: ItemType> {
+    source: BoxedStream<I>,
     indices: BoxedStream,
     rest: Vec<Item>,
     env: Env,
     head: Head
 }
 
-impl<ItemType: ItemTypeT> Stream for Part<ItemType> {
+impl<I: ItemType> Stream for Part<I> {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(PartIter{parent: self, iter: self.indices.iter()})
     }
 }
 
-impl<ItemType: ItemTypeT> Describe for Part<ItemType> {
+impl<I: ItemType> Describe for Part<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source),
             std::iter::once(ProxyItem::Stream(&*self.indices))
@@ -89,12 +89,12 @@ impl<ItemType: ItemTypeT> Describe for Part<ItemType> {
     }
 }
 
-struct PartIter<'node, ItemType: ItemTypeT> {
-    parent: &'node Part<ItemType>,
+struct PartIter<'node, I: ItemType> {
+    parent: &'node Part<I>,
     iter: Box<dyn SIterator + 'node>
 }
 
-impl<ItemType: ItemTypeT> Iterator for PartIter<'_, ItemType> {
+impl<I: ItemType> Iterator for PartIter<'_, I> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -107,14 +107,14 @@ impl<ItemType: ItemTypeT> Iterator for PartIter<'_, ItemType> {
         args.insert(0, part);
         let node = ENode {
             head: LangItem::Part.into(),
-            source: Some(ItemType::from_box(self.parent.source.clone().into())),
+            source: Some(I::from_box(self.parent.source.clone().into())),
             args
         };
         Some(eval_enode(node, &self.parent.env))
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator for PartIter<'_, ItemType> {
+impl<I: ItemType> SIterator for PartIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }

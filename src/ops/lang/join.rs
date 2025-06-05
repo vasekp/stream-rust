@@ -24,7 +24,7 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
                 _ => unreachable!()
             })
             .collect::<Vec<_>>();
-        Ok(Item::new_string_stream(Join{head: node.head, elems}))
+        Ok(Item::new_string(Join{head: node.head, elems}))
     } else {
         let elems = node.args.into_iter()
             .map(|item| match item {
@@ -37,12 +37,12 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 #[derive(Clone)]
-enum Joinable<ItemType: ItemTypeT> {
-    Single(ItemType),
-    Stream(BoxedStream<ItemType>)
+enum Joinable<I: ItemType> {
+    Single(I),
+    Stream(BoxedStream<I>)
 }
 
-impl<ItemType: ItemTypeT> Describe for Joinable<ItemType> {
+impl<I: ItemType> Describe for Joinable<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         match self {
             Joinable::Single(item) => item.describe_inner(prec, env),
@@ -52,19 +52,19 @@ impl<ItemType: ItemTypeT> Describe for Joinable<ItemType> {
 }
 
 #[derive(Clone)]
-struct Join<ItemType: ItemTypeT> {
+struct Join<I: ItemType> {
     head: Head,
-    elems: Vec<Joinable<ItemType>>
+    elems: Vec<Joinable<I>>
 }
 
-impl<ItemType: ItemTypeT> Describe for Join<ItemType> {
+impl<I: ItemType> Describe for Join<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, None::<&Item>, &self.elems, prec, env)
     }
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for Join<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for Join<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(JoinIter{elems: &self.elems, index: 0, inner: None})
     }
 
@@ -86,14 +86,14 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for Join<ItemType> {
     }
 }
 
-struct JoinIter<'node, ItemType: ItemTypeT> {
-    elems: &'node Vec<Joinable<ItemType>>,
+struct JoinIter<'node, I: ItemType> {
+    elems: &'node Vec<Joinable<I>>,
     index: usize,
-    inner: Option<Box<dyn SIterator<ItemType> + 'node>>
+    inner: Option<Box<dyn SIterator<I> + 'node>>
 }
 
-impl<ItemType: ItemTypeT> Iterator for JoinIter<'_, ItemType> {
-    type Item = Result<ItemType, StreamError>;
+impl<I: ItemType> Iterator for JoinIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -111,7 +111,7 @@ impl<ItemType: ItemTypeT> Iterator for JoinIter<'_, ItemType> {
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator<ItemType> for JoinIter<'_, ItemType> {
+impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
     fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();

@@ -45,7 +45,7 @@ impl Str {
         try_with!(node, node.check_no_args()?);
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode.source {
-            Item::Stream(stm) => Ok(Item::new_string_stream(Str{head: rnode.head, source: stm.into()})),
+            Item::Stream(stm) => Ok(Item::new_string(Str{head: rnode.head, source: stm.into()})),
             ref item => Err(StreamError::new(format!("expected stream, found {:?}", item), rnode))
         }
     }

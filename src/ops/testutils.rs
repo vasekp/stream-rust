@@ -6,25 +6,25 @@ fn eval_len_am(node: Node, env: &Env) -> Result<Item, StreamError> {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
             => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
         RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string_stream(LenAM { head, src: stm.into() })),
+            => Ok(Item::new_string(LenAM { head, src: stm.into() })),
         _ => panic!()
     }
 }
 
 #[derive(Clone)]
-struct LenAM<ItemType: ItemTypeT> {
+struct LenAM<I: ItemType> {
     head: Head,
-    src: BoxedStream<ItemType>,
+    src: BoxedStream<I>,
 }
 
-impl<ItemType: ItemTypeT> Describe for LenAM<ItemType> {
+impl<I: ItemType> Describe for LenAM<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for LenAM<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for LenAM<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(LenAMIter { iter: self.src.iter() })
     }
 
@@ -33,19 +33,19 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for LenAM<ItemType> {
     }
 }
 
-struct LenAMIter<'node, ItemType: ItemTypeT> {
-    iter: Box<dyn SIterator<ItemType> + 'node>
+struct LenAMIter<'node, I: ItemType> {
+    iter: Box<dyn SIterator<I> + 'node>
 }
 
-impl<ItemType: ItemTypeT> Iterator for LenAMIter<'_, ItemType> {
-    type Item = Result<ItemType, StreamError>;
+impl<I: ItemType> Iterator for LenAMIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator<ItemType> for LenAMIter<'_, ItemType> {
+impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
@@ -61,25 +61,25 @@ fn eval_len_uf(node: Node, env: &Env) -> Result<Item, StreamError> {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
             => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
         RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string_stream(LenUF { head, src: stm.into() })),
+            => Ok(Item::new_string(LenUF { head, src: stm.into() })),
         _ => panic!()
     }
 }
 
 #[derive(Clone)]
-struct LenUF<ItemType: ItemTypeT> {
+struct LenUF<I: ItemType> {
     head: Head,
-    src: BoxedStream<ItemType>,
+    src: BoxedStream<I>,
 }
 
-impl<ItemType: ItemTypeT> Describe for LenUF<ItemType> {
+impl<I: ItemType> Describe for LenUF<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for LenUF<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for LenUF<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(LenUFIter { iter: self.src.iter() })
     }
 
@@ -88,19 +88,19 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for LenUF<ItemType> {
     }
 }
 
-struct LenUFIter<'node, ItemType: ItemTypeT> {
-    iter: Box<dyn SIterator<ItemType> + 'node>
+struct LenUFIter<'node, I: ItemType> {
+    iter: Box<dyn SIterator<I> + 'node>
 }
 
-impl<ItemType: ItemTypeT> Iterator for LenUFIter<'_, ItemType> {
-    type Item = Result<ItemType, StreamError>;
+impl<I: ItemType> Iterator for LenUFIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator<ItemType> for LenUFIter<'_, ItemType> {
+impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
@@ -116,25 +116,25 @@ fn eval_len_uu(node: Node, env: &Env) -> Result<Item, StreamError> {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
             => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
         RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string_stream(LenUU { head, src: stm.into() })),
+            => Ok(Item::new_string(LenUU { head, src: stm.into() })),
         _ => panic!()
     }
 }
 
 #[derive(Clone)]
-struct LenUU<ItemType: ItemTypeT> {
+struct LenUU<I: ItemType> {
     head: Head,
-    src: BoxedStream<ItemType>,
+    src: BoxedStream<I>,
 }
 
-impl<ItemType: ItemTypeT> Describe for LenUU<ItemType> {
+impl<I: ItemType> Describe for LenUU<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
     }
 }
 
-impl<ItemType: ItemTypeT> Stream<ItemType> for LenUU<ItemType> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<ItemType> + 'node> {
+impl<I: ItemType> Stream<I> for LenUU<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(LenUUIter { iter: self.src.iter() })
     }
 
@@ -143,19 +143,19 @@ impl<ItemType: ItemTypeT> Stream<ItemType> for LenUU<ItemType> {
     }
 }
 
-struct LenUUIter<'node, ItemType: ItemTypeT> {
-    iter: Box<dyn SIterator<ItemType> + 'node>
+struct LenUUIter<'node, I: ItemType> {
+    iter: Box<dyn SIterator<I> + 'node>
 }
 
-impl<ItemType: ItemTypeT> Iterator for LenUUIter<'_, ItemType> {
-    type Item = Result<ItemType, StreamError>;
+impl<I: ItemType> Iterator for LenUUIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
 }
 
-impl<ItemType: ItemTypeT> SIterator<ItemType> for LenUUIter<'_, ItemType> {
+impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
