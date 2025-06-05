@@ -7,6 +7,7 @@ mod chr;
 mod stream;
 mod length;
 mod siter;
+mod itemtype;
 mod list;
 mod litstr;
 
@@ -14,6 +15,7 @@ pub use chr::{Char, CharCase};
 pub use stream::*;
 pub use length::Length;
 pub use siter::*;
+pub use itemtype::*;
 pub(crate) use list::List;
 pub(crate) use litstr::LiteralString;
 
@@ -286,40 +288,6 @@ impl<I: ItemType> From<Box<dyn Stream<I>>> for Item {
 impl<I: ItemType> From<BoxedStream<I>> for Item {
     fn from(vec: BoxedStream<I>) -> Item {
         I::from_box(vec.into())
-    }
-}
-
-pub(crate) trait ItemType: Clone + Describe + Into<Item> + 'static {
-    fn from_vec(vec: Vec<Self>) -> Item;
-    fn from_box(stm: Box<dyn Stream<Self>>) -> Item;
-    fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError>;
-}
-
-impl ItemType for Item {
-    fn from_vec(vec: Vec<Item>) -> Item {
-        Item::Stream(Box::new(List::from(vec)))
-    }
-
-    fn from_box(stm: Box<dyn Stream<Item>>) -> Item {
-        Item::Stream(stm)
-    }
-
-    fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
-        stm.listout_impl()
-    }
-}
-
-impl ItemType for Char {
-    fn from_vec(vec: Vec<Char>) -> Item {
-        Item::String(Box::new(LiteralString::from(vec)))
-    }
-
-    fn from_box(stm: Box<dyn Stream<Char>>) -> Item {
-        Item::String(stm)
-    }
-
-    fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
-        stm.listout_impl()
     }
 }
 
