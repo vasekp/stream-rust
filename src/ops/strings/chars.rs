@@ -6,10 +6,6 @@ struct Chars {
     source: BoxedStream<Char>
 }
 
-struct CharsIter<'node> {
-    source: Box<dyn SIterator<Char> + 'node>
-}
-
 impl Chars {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         try_with!(node, node.check_no_args()?);
@@ -29,30 +25,11 @@ impl Describe for Chars {
 
 impl Stream for Chars {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(CharsIter{source: self.source.iter()})
+        self.source.map_iter(|ch| Ok(Item::Char(ch)))
     }
 
     fn length(&self) -> Length {
         self.source.length()
-    }
-}
-
-impl Iterator for CharsIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let res = self.source.next()?;
-        Some(res.map(Item::Char))
-    }
-}
-
-impl SIterator for CharsIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.source.skip_n(n)
-    }
-
-    fn len_remain(&self) -> Length {
-        self.source.len_remain()
     }
 }
 
@@ -61,11 +38,6 @@ impl SIterator for CharsIter<'_> {
 struct Str {
     head: Head,
     source: BoxedStream
-}
-
-struct StrIter<'node> {
-    parent: &'node Str,
-    source: Box<dyn SIterator + 'node>
 }
 
 impl Str {
@@ -87,33 +59,11 @@ impl Describe for Str {
 
 impl Stream<Char> for Str {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(StrIter{parent: &self, source: self.source.iter()})
+        self.source.map_iter(Item::into_char)
     }
 
     fn length(&self) -> Length {
         self.source.length()
-    }
-}
-
-impl Iterator for StrIter<'_> {
-    type Item = Result<Char, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = iter_try_expr!(self.source.next()?);
-        Some(match item.into_char() {
-            Ok(ch) => Ok(ch),
-            Err(err) => Err(StreamError::new(err, Item::new_string_stream(self.parent.clone())))
-        })
-    }
-}
-
-impl SIterator<Char> for StrIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.source.skip_n(n)
-    }
-
-    fn len_remain(&self) -> Length {
-        self.source.len_remain()
     }
 }
 

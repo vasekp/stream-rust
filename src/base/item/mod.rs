@@ -13,7 +13,7 @@ mod litstr;
 pub use chr::{Char, CharCase};
 pub use stream::*;
 pub use length::Length;
-pub use siter::SIterator;
+pub use siter::*;
 pub(crate) use list::List;
 pub(crate) use litstr::LiteralString;
 

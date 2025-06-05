@@ -87,6 +87,38 @@ where F: FnMut() -> Result<ItemType, StreamError>
     }
 }
 
+pub(crate) struct SMap<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> {
+    parent: &'node (dyn Stream<I1> + 'static),
+    source: Box<dyn SIterator<I1> + 'node>,
+    func: F
+}
+
+impl<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> SMap<'node, I1, I2, F> {
+    pub(crate) fn new(stream: &'node (dyn Stream<I1> + 'static), func: F) -> Self {
+        SMap{parent: stream, source: stream.iter(), func}
+    }
+}
+
+impl<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'node, I1, I2, F> {
+    type Item = Result<I2, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = iter_try_expr!(self.source.next()?);
+        let res = (self.func)(item);
+        Some(res.map_err(|err| StreamError::new(err, I1::from_box(self.parent.clone_box()))))
+    }
+}
+
+impl<'node, I1: ItemTypeT, I2, F: Fn(I1) -> Result<I2, BaseError>> SIterator<I2> for SMap<'node, I1, I2, F> {
+    fn len_remain(&self) -> Length {
+        self.source.len_remain()
+    }
+
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.source.skip_n(n)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

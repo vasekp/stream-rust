@@ -235,7 +235,7 @@ struct StringOp {
     alpha: Rc<Alphabet>,
 }
 
-type StringFunc = fn(&Char, &[Item], &Rc<Alphabet>) -> Result<Item, BaseError>;
+type StringFunc = fn(&Char, &[Item], &Rc<Alphabet>) -> Result<Char, BaseError>;
 
 impl StringOp {
     fn eval(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
@@ -265,7 +265,7 @@ impl StringOp {
         }
     }
 
-    fn plus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
+    fn plus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Char, BaseError> {
         let index = alpha.ord(first)?;
         let case = first.case();
         let ans = rest.iter().try_fold(index.into(),
@@ -276,10 +276,10 @@ impl StringOp {
                     _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
                 }
             })?;
-        Ok(Item::new_char(alpha.chr(&ans, case)))
+        Ok(alpha.chr(&ans, case))
     }
 
-    fn minus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
+    fn minus_func(first: &Char, rest: &[Item], alpha: &Rc<Alphabet>) -> Result<Char, BaseError> {
         let index = alpha.ord(first)?;
         let case = first.case();
         let ord = match rest {
@@ -290,7 +290,7 @@ impl StringOp {
             },
             _ => return Err("not available for strings".into())
         };
-        Ok(Item::new_char(alpha.chr(&ord, case)))
+        Ok(alpha.chr(&ord, case))
     }
 }
 
@@ -311,7 +311,8 @@ impl Stream<Char> for StringOp {
         let first = self.first.iter();
         let rest = self.node_rem.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) | Item::String(stm) => stm.iter(),
+                Item::Stream(stm) => stm.iter(),
+                Item::String(stm) => stm.map_iter(|ch| Ok(Item::Char(ch))),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
         Box::new(StringOpIter{first, rest, alpha: &self.alpha, func: self.func})
@@ -320,7 +321,8 @@ impl Stream<Char> for StringOp {
     fn length(&self) -> Length {
         self.node_rem.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) | Item::String(stm) => stm.length(),
+                Item::Stream(stm) => stm.length(),
+                Item::String(stm) => stm.length(),
                 _ => Length::Infinite
             })
             .map(|len| match len {

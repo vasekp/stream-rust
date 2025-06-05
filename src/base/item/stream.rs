@@ -67,6 +67,12 @@ impl<ItemType: 'static> dyn Stream<ItemType> {
     }
 }
 
+impl<I: ItemTypeT> dyn Stream<I> {
+    pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> Result<I2, BaseError> + 'static>(&'node self, func: F) -> Box<dyn SIterator<I2> + 'node> {
+        Box::new(SMap::new(self, func))
+    }
+}
+
 impl dyn Stream<Item> {
     pub(crate) fn listout(&self) -> Result<Vec<Item>, StreamError> {
         let mut vec = Vec::new();
@@ -209,6 +215,9 @@ impl dyn Stream<Char> {
             _ => write!(f, "{}", s)
         }
     }
+
+    /*pub(crate) item_iter<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
+    }*/
 }
 
 
