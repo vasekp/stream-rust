@@ -1,5 +1,4 @@
 use crate::base::*;
-use crate::utils::NumWithin;
 
 fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
