@@ -107,7 +107,7 @@ impl<I: ItemType> Iterator for PartIter<'_, I> {
         args.insert(0, part);
         let node = ENode {
             head: LangItem::Part.into(),
-            source: Some(I::from_box(self.parent.source.clone().into())),
+            source: Some(self.parent.source.clone().into()),
             args
         };
         Some(eval_enode(node, &self.parent.env))

@@ -271,6 +271,24 @@ impl From<Char> for Item {
     }
 }
 
+impl<I: ItemType> From<Vec<I>> for Item {
+    fn from(vec: Vec<I>) -> Item {
+        I::from_vec(vec)
+    }
+}
+
+impl<I: ItemType> From<Box<dyn Stream<I>>> for Item {
+    fn from(vec: Box<dyn Stream<I>>) -> Item {
+        I::from_box(vec)
+    }
+}
+
+impl<I: ItemType> From<BoxedStream<I>> for Item {
+    fn from(vec: BoxedStream<I>) -> Item {
+        I::from_box(vec.into())
+    }
+}
+
 pub(crate) trait ItemType: Clone + Describe + Into<Item> + 'static {
     fn from_vec(vec: Vec<Self>) -> Item;
     fn from_box(stm: Box<dyn Stream<Self>>) -> Item;
@@ -287,7 +305,7 @@ impl ItemType for Item {
     }
 
     fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
-        stm.listout()
+        stm.listout_impl()
     }
 }
 
@@ -301,13 +319,7 @@ impl ItemType for Char {
     }
 
     fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
-        stm.listout()
-    }
-}
-
-impl<T: ItemType> From<Vec<T>> for Item {
-    fn from(vec: Vec<T>) -> Item {
-        T::from_vec(vec)
+        stm.listout_impl()
     }
 }
 

@@ -14,13 +14,14 @@ fn eval_rev(node: Node, env: &Env) -> Result<Item, StreamError> {
 fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<Item, StreamError> {
     match source.length() {
         Length::Infinite
-            => Err(StreamError::new("input is infinite", I::from_box(source))),
+            => Err(StreamError::new("input is infinite", Item::from(source))),
         Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) =>
-            Ok(I::from_box(Box::new(Rev{head, source: source.into(), length: len}))),
+            Ok(Item::from(Box::new(Rev{head, source: source.into(), length: len})
+                    as Box<dyn Stream<I>>)),
         _ => {
-            let mut vec = I::listout(&*source)?;
+            let mut vec = source.listout()?;
             vec.reverse();
-            Ok(I::from_vec(vec))
+            Ok(vec.into())
         }
     }
 }

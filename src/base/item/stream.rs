@@ -50,7 +50,7 @@ pub trait Stream<I = Item>: DynClone + Describe {
     }
 }
 
-impl<I: 'static> dyn Stream<I> {
+impl<I: ItemType> dyn Stream<I> {
     /// Consume this `Stream` and turn it into a one-time standalone [`SIterator`].
     ///
     /// To avoid a large amount of code duplication, a `Stream` only needs to implement
@@ -65,16 +65,18 @@ impl<I: 'static> dyn Stream<I> {
     pub(crate) fn clone_box(&self) -> Box<dyn Stream<I>> {
         dyn_clone::clone_box(self)
     }
-}
 
-impl<I: ItemType> dyn Stream<I> {
+    pub(crate) fn listout(&self) -> Result<Vec<I>, StreamError> {
+        I::listout(self)
+    }
+
     pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> Result<I2, BaseError> + 'static>(&'node self, func: F) -> Box<dyn SIterator<I2> + 'node> {
         Box::new(SMap::new(self, func))
     }
 }
 
 impl dyn Stream<Item> {
-    pub(crate) fn listout(&self) -> Result<Vec<Item>, StreamError> {
+    pub(crate) fn listout_impl(&self) -> Result<Vec<Item>, StreamError> {
         let mut vec = Vec::new();
         match &self.length() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
@@ -157,7 +159,7 @@ impl dyn Stream<Item> {
 }
 
 impl dyn Stream<Char> {
-    pub(crate) fn listout(&self) -> Result<Vec<Char>, StreamError> {
+    pub(crate) fn listout_impl(&self) -> Result<Vec<Char>, StreamError> {
         let mut vec = Vec::new();
         match &self.length() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
@@ -218,15 +220,15 @@ impl dyn Stream<Char> {
 }
 
 
-pub(crate) struct BoxedStream<I: 'static = Item>(Box<dyn Stream<I>>);
+pub(crate) struct BoxedStream<I: ItemType = Item>(Box<dyn Stream<I>>);
 
-impl<I> Clone for BoxedStream<I> {
+impl<I: ItemType> Clone for BoxedStream<I> {
     fn clone(&self) -> Self {
         Self(self.0.clone_box())
     }
 }
 
-impl<I> std::ops::Deref for BoxedStream<I> {
+impl<I: ItemType> std::ops::Deref for BoxedStream<I> {
     type Target = dyn Stream<I>;
 
     fn deref(&self) -> &Self::Target {
@@ -234,19 +236,19 @@ impl<I> std::ops::Deref for BoxedStream<I> {
     }
 }
 
-impl<I> From<Box<dyn Stream<I>>> for BoxedStream<I> {
+impl<I: ItemType> From<Box<dyn Stream<I>>> for BoxedStream<I> {
     fn from(val: Box<dyn Stream<I>>) -> Self {
         BoxedStream(val)
     }
 }
 
-impl<I> From<BoxedStream<I>> for Box<dyn Stream<I>> {
+impl<I: ItemType> From<BoxedStream<I>> for Box<dyn Stream<I>> {
     fn from(val: BoxedStream<I>) -> Self {
         val.0
     }
 }
 
-impl<I> Describe for BoxedStream<I> {
+impl<I: ItemType> Describe for BoxedStream<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         self.0.describe_inner(prec, env)
     }
