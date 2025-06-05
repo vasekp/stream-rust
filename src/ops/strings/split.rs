@@ -8,7 +8,7 @@ fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
             let sep = try_with!(node, node.args.iter()
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![ch.to_owned()]),
-                    Item::String(s) if !s.is_empty() => s.string_listout().map_err(BaseError::from),
+                    Item::String(s) if !s.is_empty() => s.listout().map_err(BaseError::from),
                     _ => Err(BaseError::from(format!("expected character or nonempty string, found {:?}", item)))
                 })
                 .map(|res| res.map(LiteralString::from))
@@ -26,12 +26,12 @@ fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct SplitString {
     head: Head,
-    source: BoxedStream,
+    source: BoxedStream<Char>,
     sep: Vec<LiteralString>,
 }
 
 struct SplitStringIter<'node> {
-    source: StringIterator<'node>,
+    source: Box<dyn SIterator<Char> + 'node>,
     sep: &'node Vec<LiteralString>,
     done: bool,
 }
@@ -44,7 +44,7 @@ impl Describe for SplitString {
 
 impl Stream for SplitString {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStringIter{source: self.source.string_iter(), sep: &self.sep, done: false})
+        Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false})
     }
 
     fn length(&self) -> Length {
@@ -68,12 +68,12 @@ impl Iterator for SplitStringIter<'_> {
                 let bkpt = cache.len() - sep.len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
-                    return Some(Ok(Item::new_string_stream(LiteralString::from(cache))));
+                    return Some(Ok(Item::new_string(LiteralString::from(cache))));
                 }
             }
         }
         self.done = true;
-        Some(Ok(Item::new_string_stream(LiteralString::from(cache))))
+        Some(Ok(Item::new_string(LiteralString::from(cache))))
     }
 }
 

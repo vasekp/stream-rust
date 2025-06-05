@@ -1,121 +1,141 @@
 use crate::base::*;
 use crate::utils::TriState;
 
-#[derive(Clone)]
-struct Join {
-    node: ENode,
+fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source()?);
+    try_with!(node, node.check_args_nonempty()?);
+
+    let is_string = try_with!(node, node.args.iter()
+        .map(|item| match item {
+            Item::String(_) => TriState::True,
+            Item::Char(_) => TriState::Either,
+            _ => TriState::False
+        })
+        .try_fold(TriState::Either, TriState::join)
+        .map_err(|()| BaseError::from("mixed strings and non-strings"))?)
+        .can_be_true();
+
+    if is_string {
+        let elems = node.args.into_iter()
+            .map(|item| match item {
+                Item::Char(ch) => Joinable::Single(ch),
+                Item::String(stm) => Joinable::Stream(stm.into()),
+                _ => unreachable!()
+            })
+            .collect::<Vec<_>>();
+        Ok(Item::new_string(Join{head: node.head, elems}))
+    } else {
+        let elems = node.args.into_iter()
+            .map(|item| match item {
+                Item::Stream(stm) => Joinable::Stream(stm.into()),
+                _ => Joinable::Single(item)
+            })
+            .collect::<Vec<_>>();
+        Ok(Item::new_stream(Join{head: node.head, elems}))
+    }
 }
 
-impl Join {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        try_with!(node, node.check_no_source()?);
-        try_with!(node, node.check_args_nonempty()?);
+#[derive(Clone)]
+enum Joinable<I: ItemType> {
+    Single(I),
+    Stream(BoxedStream<I>)
+}
 
-        let string = try_with!(node, node.args.iter()
-            .map(|item| match item {
-                Item::String(_) => TriState::True,
-                Item::Char(_) => TriState::Either,
-                _ => TriState::False
-            })
-            .try_fold(TriState::Either, TriState::join)
-            .map_err(|()| BaseError::from("mixed strings and non-strings"))?)
-            .is_true();
-
-        if string {
-            Ok(Item::new_string_stream(Join{node}))
-        } else {
-            Ok(Item::new_stream(Join{node}))
+impl<I: ItemType> Describe for Joinable<I> {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        match self {
+            Joinable::Single(item) => item.describe_inner(prec, env),
+            Joinable::Stream(stm) => stm.describe_inner(prec, env),
         }
     }
 }
 
-impl Describe for Join {
+#[derive(Clone)]
+struct Join<I: ItemType> {
+    head: Head,
+    elems: Vec<Joinable<I>>
+}
+
+impl<I: ItemType> Describe for Join<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        self.node.describe_inner(prec, env)
+        Node::describe_helper(&self.head, None::<&Item>, &self.elems, prec, env)
     }
 }
 
-impl Stream for Join {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let first = match &self.node.args[0] {
-            Item::Stream(stm) | Item::String(stm) => stm.iter(),
-            item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
-        };
-        Box::new(JoinIter{node: &self.node, index: 0, cur: first})
+impl<I: ItemType> Stream<I> for Join<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+        Box::new(JoinIter{elems: &self.elems, index: 0, inner: None})
     }
 
     fn length(&self) -> Length {
-        self.node.args.iter()
+        self.elems.iter()
             .map(|item| match item {
-                Item::Stream(stm) | Item::String(stm) => stm.length(),
-                _ => Length::Exact(UNumber::one())
+                Joinable::Single(_) => Length::Exact(UNumber::one()),
+                Joinable::Stream(stm) => stm.length()
             })
             .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
     }
 
     fn is_empty(&self) -> bool {
-        self.node.args.iter()
+        self.elems.iter()
             .all(|item| match item {
-                Item::Stream(stm) | Item::String(stm) => stm.is_empty(),
+                Joinable::Stream(stm) => stm.is_empty(),
                 _ => false
             })
     }
 }
 
-struct JoinIter<'node> {
-    node: &'node ENode,
+struct JoinIter<'node, I: ItemType> {
+    elems: &'node Vec<Joinable<I>>,
     index: usize,
-    cur: Box<dyn SIterator + 'node>
+    inner: Option<Box<dyn SIterator<I> + 'node>>
 }
 
-impl Iterator for JoinIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<I: ItemType> Iterator for JoinIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let next = self.cur.next();
-            if next.is_some() {
-                return next;
-            } else {
-                self.index += 1;
-                self.cur = match self.node.args.get(self.index)? {
-                    Item::Stream(stm) | Item::String(stm) => stm.iter(),
-                    item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
-                };
+            check_stop!(iter);
+            if let Some(inner) = &mut self.inner {
+                if let Some(res) = inner.next() { return Some(res); }
+                else { self.inner = None; }
+            }
+            self.index += 1;
+            match self.elems.get(self.index - 1)? {
+                Joinable::Single(item) => return Some(Ok(item.clone())),
+                Joinable::Stream(stm) => self.inner = Some(stm.iter())
             }
         }
     }
 }
 
-impl SIterator for JoinIter<'_> {
+impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
     fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
-            let Some(m) = self.cur.skip_n(n)?
-                else { return Ok(None); };
-            n = m;
+            check_stop!();
+            if let Some(inner) = &mut self.inner {
+                let Some(m) = inner.skip_n(n)? else { return Ok(None); };
+                n = m;
+            }
             self.index += 1;
-            let Some(next) = self.node.args.get(self.index)
-                else { return Ok(Some(n)); };
-            self.cur = match next {
-                Item::Stream(stm) | Item::String(stm) => stm.iter(),
-                item => Box::new(std::iter::once(Ok::<Item, StreamError>(item.clone())))
-            };
+            let Some(next) = self.elems.get(self.index - 1) else { return Ok(Some(n)); };
+            match next {
+                Joinable::Single(_) => n.dec(),
+                Joinable::Stream(stm) => self.inner = Some(stm.iter())
+            }
         }
     }
 
     fn len_remain(&self) -> Length {
-        let mut len = self.cur.len_remain();
-        if matches!(len, Length::Infinite | Length::Unknown | Length::UnknownFinite) {
-            return len;
-        }
-        for i in (self.index + 1)..self.node.args.len() {
-            match &self.node.args[i] {
-                Item::Stream(stm) | Item::String(stm) => len = len + stm.length(),
-                _ => len += UNumber::one()
-            }
-        }
-        len
+        let len = if let Some(inner) = &self.inner { inner.len_remain() } else { Length::Exact(UNumber::zero()) };
+        self.elems[self.index..].iter()
+            .map(|item| match item {
+                Joinable::Single(_) => Length::Exact(UNumber::one()),
+                Joinable::Stream(stm) => stm.length()
+            })
+            .fold(len, |acc, e| acc + e)
     }
 }
 
@@ -145,6 +165,7 @@ mod tests {
         test_eval!("(0~1..3~4)[4]" => "3");
         test_eval!("\"ab\"~\"cd\"" => "\"abcd\"");
         test_eval!("\"ab\"~'c'" => "\"abc\"");
+        test_eval!("'a'~'b'" => "\"ab\"");
         test_eval!("'a'~\"b\"~'c'" => "\"abc\"");
         test_eval!("join([1],[2])" => "[1, 2]");
         test_eval!("[1].join([1],[2])" => err);
@@ -173,6 +194,6 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("~", Join::eval);
-    keywords.insert("join", Join::eval);
+    keywords.insert("~", eval_join);
+    keywords.insert("join", eval_join);
 }

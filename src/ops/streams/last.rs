@@ -3,95 +3,125 @@ use crate::utils::unsign;
 
 use std::collections::VecDeque;
 
-#[derive(Clone)]
-struct Last {
-    head: Head,
-    source: BoxedStream,
-    count: UNumber,
-    skip: UNumber
-}
-
-impl Last {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match &rnode {
-            RNodeS { source: Item::Stream(stm) | Item::String(stm), .. }
-                    if stm.length() == Length::Infinite
-                => Err(StreamError::new(format!("{} is infinite", rnode.source.type_str()), rnode)),
-            RNodeS { source: Item::Stream(stm) | Item::String(stm), args: RArgs::Zero, .. } => {
-                match stm.length() {
-                    Length::Exact(len) if !len.is_zero() => {
-                        let mut it = stm.iter();
-                        it.skip_n(len - 1u32)?;
-                        it.next().expect("1 item should remain after skip(len - 1)")
+fn eval_last(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let rnode = node.eval_all(env)?.resolve_source()?;
+    match &rnode {
+        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. }
+            => eval_last_item(&**stm).map_err(|err| StreamError::new(err, rnode)),
+        RNodeS { source: Item::String(stm), args: RArgs::Zero, .. }
+            => eval_last_item(&**stm).map(Item::Char).map_err(|err| StreamError::new(err, rnode)),
+        RNodeS { source: Item::Stream(_), args: RArgs::One(Item::Number(count)), .. } if count.is_zero()
+            => Ok(Item::empty_stream()),
+        RNodeS { source: Item::String(_), args: RArgs::One(Item::Number(count)), .. } if count.is_zero()
+            => Ok(Item::empty_string()),
+        RNodeS { source: Item::Stream(stm), args: RArgs::One(Item::Number(count)), .. }
+                if !count.is_negative()
+            => {
+                let count = unsign(count.to_owned());
+                match eval_last_count(&**stm, &count) {
+                    Ok(RetType::Listed(vec)) => Ok(Item::new_stream(List::from(vec))),
+                    Ok(RetType::PassThrough) => Ok(rnode.source),
+                    Ok(RetType::Skip(skip)) => {
+                        let Item::Stream(stm) = rnode.source else { unreachable!() };
+                        Ok(Item::new_stream(Last {
+                            head: rnode.head,
+                            source: stm.into(),
+                            skip,
+                            count
+                        }))
                     },
-                    Length::Infinite => Err(StreamError::new(format!("{} is infinite", rnode.source.type_str()), rnode)),
-                    _ => {
-                        let mut iter = stm.iter();
-                        let mut last = match iter.next() {
-                            Some(Ok(item)) => item,
-                            Some(Err(err)) => return Err(err),
-                            None => {
-                                drop(iter);
-                                return Err(StreamError::new(format!("{} is empty", rnode.source.type_str()), rnode))
-                            }
-                        };
-                        for res in iter {
-                            check_stop!();
-                            last = res?;
-                        }
-                        Ok(last)
-                    }
+                    Err(err) => Err(StreamError::new(err, rnode))
                 }
             },
-            RNodeS { source: Item::Stream(_) | Item::String(_), args: RArgs::One(Item::Number(count)), .. } if count.is_zero()
-                => Ok(Item::empty_stream_or_string(rnode.source.is_string())),
-            RNodeS { source: Item::Stream(stm) | Item::String(stm), args: RArgs::One(Item::Number(count)), .. }
-                    if !count.is_negative()
-                => {
-                    let count = unsign(count.to_owned());
-                    match stm.length() {
-                        Length::Exact(len) if len < count => Ok(rnode.source),
-                        Length::Exact(len) => {
-                            let (stm, is_string) = match rnode.source {
-                                Item::Stream(stm) => (stm, false),
-                                Item::String(stm) => (stm, true),
-                                _ => unreachable!()
-                            };
-                            Ok(Item::new_stream_or_string(Last {
-                                head: rnode.head,
-                                source: stm.into(),
-                                skip: len - &count,
-                                count
-                            }, is_string))
-                        },
-                        Length::Infinite => Err(StreamError::new("stream is infinite", rnode)),
-                        _ => {
-                            let size = match count.to_usize() {
-                                Some(size) => size,
-                                None => return Err(StreamError::new("length too large", rnode))
-                            };
-                            let mut vec = VecDeque::with_capacity(size);
-                            for res in stm.iter() {
-                                check_stop!();
-                                let item = res?;
-                                if vec.len() == size {
-                                    vec.pop_front();
-                                }
-                                vec.push_back(item);
-                            }
-                            let is_string = rnode.source.is_string();
-                            Ok(Item::new_stream_or_string(List::from(Vec::from(vec)), is_string))
-                        }
-                    }
-                },
-            _ => Err(StreamError::new("expected: source.last or source.last(count)", rnode))
+        RNodeS { source: Item::String(stm), args: RArgs::One(Item::Number(count)), .. }
+                if !count.is_negative()
+            => {
+                let count = unsign(count.to_owned());
+                match eval_last_count(&**stm, &count) {
+                    Ok(RetType::Listed(vec)) => Ok(Item::new_string(LiteralString::from(vec))),
+                    Ok(RetType::PassThrough) => Ok(rnode.source),
+                    Ok(RetType::Skip(skip)) => {
+                        let Item::String(stm) = rnode.source else { unreachable!() };
+                        Ok(Item::new_string(Last {
+                            head: rnode.head,
+                            source: stm.into(),
+                            skip,
+                            count
+                        }))
+                    },
+                    Err(err) => Err(StreamError::new(err, rnode))
+                }
+            },
+        _ => Err(StreamError::new("expected: source.last or source.last(count)", rnode))
+    }
+}
+
+fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, BaseError> {
+    match stm.length() {
+        Length::Exact(len) if !len.is_zero() => {
+            let mut it = stm.iter();
+            it.skip_n(len - 1u32)?;
+            it.next()
+                .expect("1 item should remain after skip(len - 1)")
+                .map_err(BaseError::from)
+        },
+        Length::Infinite => Err("stream is infinite".into()),
+        _ => {
+            let mut iter = stm.iter();
+            let mut last = match iter.next() {
+                Some(Ok(item)) => item,
+                Some(Err(err)) => return Err(err.into()),
+                None => return Err("stream is empty".into())
+            };
+            for res in iter {
+                check_stop!();
+                last = res?;
+            }
+            Ok(last)
         }
     }
 }
 
-impl Stream for Last {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+fn eval_last_count<I: ItemType>(stm: &dyn Stream<I>, count: &UNumber) -> Result<RetType<I>, BaseError> {
+    match stm.length() {
+        Length::Exact(len) if &len < count => Ok(RetType::PassThrough),
+        Length::Exact(len) => Ok(RetType::Skip(len - count)),
+        Length::Infinite => Err("stream is infinite".into()),
+        _ => {
+            let size = match count.to_usize() {
+                Some(size) => size,
+                None => return Err("length too large".into())
+            };
+            let mut vec = VecDeque::with_capacity(size);
+            for res in stm.iter() {
+                check_stop!();
+                let item = res?;
+                if vec.len() == size {
+                    vec.pop_front();
+                }
+                vec.push_back(item);
+            }
+            Ok(RetType::Listed(Vec::from(vec)))
+        }
+    }
+}
+
+enum RetType<I> {
+    Listed(Vec<I>),
+    PassThrough,
+    Skip(UNumber)
+}
+
+#[derive(Clone)]
+struct Last<I: ItemType> {
+    head: Head,
+    source: BoxedStream<I>,
+    count: UNumber,
+    skip: UNumber
+}
+
+impl<I: ItemType> Stream<I> for Last<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         let mut it = self.source.iter();
         match it.skip_n(self.skip.to_owned()) {
             Ok(None) => it,
@@ -105,7 +135,7 @@ impl Stream for Last {
     }
 }
 
-impl Describe for Last {
+impl<I: ItemType> Describe for Last<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec, env)
     }
@@ -156,5 +186,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("last", Last::eval);
+    keywords.insert("last", eval_last);
 }

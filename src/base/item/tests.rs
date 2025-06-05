@@ -1,6 +1,8 @@
 use crate::base::*;
 use crate::parser::parse;
 
+use std::fmt::Debug;
+
 macro_rules! test_eval {
     ($input:expr => err) => { assert!(parse($input).unwrap().eval_default().is_err()); };
     ($input:expr => $output:expr) => { assert_eq!(eval!($input).to_string(), $output); };
@@ -14,10 +16,11 @@ macro_rules! test_len {
     ($input:expr => $len:literal) => { test_len_exact($input, $len); };
     ($input:expr => $len:expr) => {
         let item = eval!($input);
-        let (Item::Stream(stm) | Item::String(stm)) = &item else {
-            panic!("test_skip_n: expected stream or string, found {:?}", item)
-        };
-        assert_eq!(stm.length(), $len);
+        match &item {
+            Item::Stream(stm) => assert_eq!(stm.length(), $len),
+            Item::String(stm) => assert_eq!(stm.length(), $len),
+            _ => panic!("test_skip_n: expected stream or string, found {:?}", item)
+        }
     }
 }
 
@@ -28,10 +31,14 @@ pub(crate) use test_len;
 #[cfg(test)]
 #[track_caller]
 pub(crate) fn test_len_exact(input: &str, len: usize) {
-    let item = eval!(input);
-    let (Item::Stream(stm) | Item::String(stm)) = &item else {
-        panic!("test_skip_n: expected stream or string, found {:?}", item)
-    };
+    match &eval!(input) {
+        Item::Stream(stm) => test_len_exact_impl(&**stm, len),
+        Item::String(stm) => test_len_exact_impl(&**stm, len),
+        item => panic!("test_len_exact_impl: expected stream or string, found {:?}", item)
+    }
+}
+
+fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) {
     assert_eq!(stm.iter().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.length(), &Length::Exact(len.into())));
     assert!(Length::possibly_eq(&stm.iter().len_remain(), &Length::Exact(len.into())));
@@ -41,10 +48,14 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
 #[cfg(test)]
 #[track_caller]
 pub(crate) fn test_skip_n(input: &str) {
-    let item = eval!(input);
-    let (Item::Stream(stm) | Item::String(stm)) = &item else {
-        panic!("test_skip_n: expected stream or string, found {:?}", item)
-    };
+    match &eval!(input) {
+        Item::Stream(stm) => test_skip_n_impl(&**stm),
+        Item::String(stm) => test_skip_n_impl(&**stm),
+        item => panic!("test_len_exact_impl: expected stream or string, found {:?}", item)
+    }
+}
+
+fn test_skip_n_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
     const TEST: u32 = 5;
 
     assert_eq!(stm.iter().len_remain(), stm.length());

@@ -8,7 +8,7 @@ use crate::base::*;
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
-pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
+pub trait SIterator<I = Item>: Iterator<Item = Result<I, StreamError>> {
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. The return value must be consistent with the actual behaviour of the stream.
     ///
@@ -56,16 +56,16 @@ pub trait SIterator: Iterator<Item = Result<Item, StreamError>> {
     }
 }
 
-impl<T, U, V> SIterator for std::iter::Map<T, U>
+impl<I, T, U, V> SIterator<I> for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<Item, StreamError>
+      U: FnMut(V) -> Result<I, StreamError>
 { }
 
-impl SIterator for std::iter::Once<Result<Item, StreamError>> { }
+impl<I> SIterator<I> for std::iter::Once<Result<I, StreamError>> { }
 
-impl SIterator for std::iter::Empty<Result<Item, StreamError>> { }
+impl<I> SIterator<I> for std::iter::Empty<Result<I, StreamError>> { }
 
-impl SIterator for std::iter::Repeat<Result<Item, StreamError>> {
+impl<I: Clone> SIterator<I> for std::iter::Repeat<Result<I, StreamError>> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
@@ -75,8 +75,8 @@ impl SIterator for std::iter::Repeat<Result<Item, StreamError>> {
     }
 }
 
-impl<F> SIterator for std::iter::RepeatWith<F>
-where F: FnMut() -> Result<Item, StreamError>
+impl<I: Clone, F> SIterator<I> for std::iter::RepeatWith<F>
+where F: FnMut() -> Result<I, StreamError>
 {
     fn len_remain(&self) -> Length {
         Length::Infinite
@@ -87,19 +87,51 @@ where F: FnMut() -> Result<Item, StreamError>
     }
 }
 
+pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> {
+    parent: &'node (dyn Stream<I1> + 'static),
+    source: Box<dyn SIterator<I1> + 'node>,
+    func: F
+}
+
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SMap<'node, I1, I2, F> {
+    pub(crate) fn new(stream: &'node (dyn Stream<I1> + 'static), func: F) -> Self {
+        SMap{parent: stream, source: stream.iter(), func}
+    }
+}
+
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'node, I1, I2, F> {
+    type Item = Result<I2, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = iter_try_expr!(self.source.next()?);
+        let res = (self.func)(item);
+        Some(res.map_err(|err| StreamError::new(err, I1::from_box(self.parent.clone_box()))))
+    }
+}
+
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SIterator<I2> for SMap<'node, I1, I2, F> {
+    fn len_remain(&self) -> Length {
+        self.source.len_remain()
+    }
+
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.source.skip_n(n)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_simple_iters() {
-        let mut iter = std::iter::empty();
+        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(iter.next(), None);
-        let mut iter = std::iter::empty();
+        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
         assert_eq!(iter.skip_n(UNumber::zero()), Ok(None));
         assert_eq!(iter.next(), None);
-        let mut iter = std::iter::empty();
+        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
         assert_eq!(iter.skip_n(UNumber::one()), Ok(Some(UNumber::one())));
 
         let mut iter = std::iter::once(Ok(Item::default()));
@@ -149,41 +181,5 @@ mod tests {
         assert_eq!(iter.next(), None);
         let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
         assert_eq!(iter.skip_n(3u32.into()), Ok(Some(UNumber::one())));
-    }
-}
-
-
-/// The iterator returned by [`dyn Stream::string_iter()`](trait.Stream.html#impl-dyn+Stream). The 
-/// semantics of `next()` are the same as in the case of [`SIterator`], with the difference that 
-/// the return type in success is [`Char`]. If the conversion can not be done, the error message 
-/// indicates a malformed string.
-pub struct StringIterator<'node> {
-    iter: Box<dyn SIterator + 'node>,
-    parent: &'node (dyn Stream + 'static)
-}
-
-impl<'node> StringIterator<'node> {
-    pub fn new(item: &'node (dyn Stream + 'static)) -> Self {
-        StringIterator{iter: item.iter(), parent: item}
-    }
-}
-
-impl<'node> std::ops::Deref for StringIterator<'node> {
-    type Target = dyn SIterator + 'node;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.iter
-    }
-}
-
-impl Iterator for StringIterator<'_> {
-    type Item = Result<Char, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match iter_try_expr!(self.iter.next()?) {
-            Item::Char(ch) => Some(Ok(ch)),
-            item => Some(Err(StreamError::new(format!("malformed string: contains {:?}", item),
-                Item::String(self.parent.clone_box()))))
-        }
     }
 }

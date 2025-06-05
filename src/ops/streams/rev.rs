@@ -1,39 +1,39 @@
 use crate::base::*;
 
-#[derive(Clone)]
-pub struct Rev {
-    head: Head,
-    source: BoxedStream,
-    length: UNumber
+fn eval_rev(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let enode = node.eval_all(env)?;
+    try_with!(enode, enode.check_no_args()?);
+    let rnode = enode.resolve_source()?;
+    match rnode.source {
+        Item::Stream(stm) => eval_rev_impl(rnode.head, stm),
+        Item::String(stm) => eval_rev_impl(rnode.head, stm),
+        _ => Err(StreamError::new("expected stream or string", rnode))
+    }
 }
 
-impl Rev {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let enode = node.eval_all(env)?;
-        try_with!(enode, enode.check_no_args()?);
-        let rnode = enode.resolve_source()?;
-        let is_string = rnode.source.is_string();
-        let (Item::Stream(source) | Item::String(source)) = &rnode.source else {
-            return Err(StreamError::new("expected stream or string", rnode));
-        };
-        match source.length() {
-            Length::Infinite
-                => Err(StreamError::new("input is infinite", rnode)),
-            Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) => {
-                let (Item::Stream(source) | Item::String(source)) = rnode.source else { unreachable!() };
-                Ok(Item::new_stream_or_string(Rev{head: rnode.head, source: source.into(), length: len}, is_string))
-            },
-            _ => {
-                let mut vec = source.listout()?;
-                vec.reverse();
-                Ok(Item::new_stream_or_string(List::from(vec), is_string))
-            }
+fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<Item, StreamError> {
+    match source.length() {
+        Length::Infinite
+            => Err(StreamError::new("input is infinite", I::from_box(source))),
+        Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) =>
+            Ok(I::from_box(Box::new(Rev{head, source: source.into(), length: len}))),
+        _ => {
+            let mut vec = I::listout(&*source)?;
+            vec.reverse();
+            Ok(I::from_vec(vec))
         }
     }
 }
 
-impl Stream for Rev {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+#[derive(Clone)]
+pub struct Rev<I: ItemType> {
+    head: Head,
+    source: BoxedStream<I>,
+    length: UNumber
+}
+
+impl<I: ItemType> Stream<I> for Rev<I> {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(RevIter {
             source: &*self.source,
             start: self.length.clone(),
@@ -46,20 +46,20 @@ impl Stream for Rev {
     }
 }
 
-impl Describe for Rev {
+impl<I: ItemType> Describe for Rev<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
     }
 }
 
-struct RevIter<'node> {
-    source: &'node (dyn Stream + 'static),
+struct RevIter<'node, I: ItemType> {
+    source: &'node (dyn Stream<I> + 'static),
     start: UNumber,
-    cached: Vec<Item>
+    cached: Vec<I>
 }
 
-impl Iterator for RevIter<'_> {
-    type Item = Result<Item, StreamError>;
+impl<I: ItemType> Iterator for RevIter<'_, I> {
+    type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.cached.pop() {
@@ -76,7 +76,7 @@ impl Iterator for RevIter<'_> {
                     let mut iter = self.source.iter();
                     iter_try_expr!(iter.skip_n(new_start.clone()));
                     self.start = new_start;
-                    self.cached =iter_try_expr!(iter.take(diff).collect());
+                    self.cached = iter_try_expr!(iter.take(diff).collect());
                     Ok(self.cached.pop()).transpose()
                 }
             }
@@ -84,7 +84,7 @@ impl Iterator for RevIter<'_> {
     }
 }
 
-impl SIterator for RevIter<'_> {
+impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let len = self.cached.len();
         match n.to_usize() {
@@ -130,5 +130,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("rev", Rev::eval);
+    keywords.insert("rev", eval_rev);
 }

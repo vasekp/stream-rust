@@ -6,10 +6,15 @@ fn eval_alpha(node: Node, env: &Env) -> Result<Item, StreamError> {
         return Err(StreamError::new("expected: alpha(alphabet, expr)", rnode));
     };
     let alpha = try_with!(rnode, {
-        let Expr::Imm(Item::Stream(stm) | Item::String(stm)) = &alpha else {
-            return Err(BaseError::from(format!("expected stream or string, found {:?}", alpha)));
-        };
-        stm.listout()?.try_into()?
+        match alpha {
+            Expr::Imm(Item::Stream(stm)) => stm.listout()?
+                .into_iter()
+                .map(Item::into_char)
+                .collect::<Result<Vec<_>, _>>()?
+                .try_into()?,
+            Expr::Imm(Item::String(stm)) => stm.listout()?.try_into()?,
+            _ => return Err(BaseError::from(format!("expected stream or string, found {:?}", alpha)))
+        }
     });
     let mut new_env = env.clone();
     new_env.alpha = Rc::new(alpha);
