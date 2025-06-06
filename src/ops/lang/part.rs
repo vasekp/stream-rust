@@ -27,8 +27,12 @@ fn eval_enode(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
             match node.source {
                 Some(Item::Stream(source)) =>
                     Ok(Item::new_stream(Part{source: source.into(), indices: stm.into(), rest: node.args, env: env.clone(), head: node.head})),
-                Some(Item::String(source)) =>
-                    Ok(Item::new_stream(Part{source: source.into(), indices: stm.into(), rest: node.args, env: env.clone(), head: node.head})),
+                Some(Item::String(source)) if node.args.is_empty() =>
+                    Ok(Item::new_string(StringPart{source: source.into(), indices: stm.into(), head: node.head})),
+                Some(Item::String(_)) => {
+                    node.args.insert(0, Item::Stream(stm));
+                    Err(StreamError::new("expected only one level of parts", node))
+                },
                 _ => {
                     node.args.insert(0, Item::Stream(stm));
                     Err(StreamError::new("expected stream or string", node))
@@ -66,21 +70,21 @@ fn eval_index_impl<I: ItemType>(source: &dyn Stream<I>, index: &Number) -> Resul
 }
 
 #[derive(Clone)]
-struct Part<I: ItemType> {
-    source: BoxedStream<I>,
+struct Part {
+    source: BoxedStream,
     indices: BoxedStream,
     rest: Vec<Item>,
     env: Env,
     head: Head
 }
 
-impl<I: ItemType> Stream for Part<I> {
+impl Stream for Part {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(PartIter{parent: self, iter: self.indices.iter()})
     }
 }
 
-impl<I: ItemType> Describe for Part<I> {
+impl Describe for Part {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         Node::describe_helper(&self.head, Some(&self.source),
             std::iter::once(ProxyItem::Stream(&*self.indices))
@@ -89,19 +93,16 @@ impl<I: ItemType> Describe for Part<I> {
     }
 }
 
-struct PartIter<'node, I: ItemType> {
-    parent: &'node Part<I>,
+struct PartIter<'node> {
+    parent: &'node Part,
     iter: Box<dyn SIterator + 'node>
 }
 
-impl<I: ItemType> Iterator for PartIter<'_, I> {
+impl Iterator for PartIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let part = self.iter.next()?;
-        let Ok(part) = part else {
-            return Some(part);
-        };
+        let part = iter_try_expr!(self.iter.next()?);
         // TODO: smarter - number tracks increments, stream unfolds?
         let mut args = self.parent.rest.clone();
         args.insert(0, part);
@@ -114,7 +115,53 @@ impl<I: ItemType> Iterator for PartIter<'_, I> {
     }
 }
 
-impl<I: ItemType> SIterator for PartIter<'_, I> {
+impl SIterator for PartIter<'_> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.skip_n(n)
+    }
+
+    fn len_remain(&self) -> Length {
+        self.iter.len_remain()
+    }
+}
+
+#[derive(Clone)]
+struct StringPart {
+    source: BoxedStream<Char>,
+    indices: BoxedStream,
+    head: Head
+}
+
+impl Stream<Char> for StringPart {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+        Box::new(StringPartIter{parent: self, iter: self.indices.iter()})
+    }
+}
+
+impl Describe for StringPart {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), [&self.indices], prec, env)
+    }
+}
+
+struct StringPartIter<'node> {
+    parent: &'node StringPart,
+    iter: Box<dyn SIterator + 'node>
+}
+
+impl Iterator for StringPartIter<'_> {
+    type Item = Result<Char, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match iter_try_expr!(self.iter.next()?) {
+            Item::Number(index) => Some(eval_index_impl(&*self.parent.source, &index)
+                .map_err(|err| StreamError::new(err, Item::from(self.parent.source.clone())))),
+            _ => todo!()
+        }
+    }
+}
+
+impl SIterator<Char> for StringPartIter<'_> {
     fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.skip_n(n)
     }
@@ -141,7 +188,7 @@ mod tests {
         test_eval!("[[1,2],[3,4]][2][1]" => "3");
         test_eval!("[[1,2],[3,4]].part(2,1)" => "3");
         test_eval!("\"abc\"[2]" => "'b'");
-        test_eval!("\"abc\"[[2,3]]" => "['b', 'c']");
+        test_eval!("\"abcdef\"[3..5]" => "\"cde\"");
 
         test_eval!("seq(5,2)[100.repeat]" => "[203, 203, 203, 203, 203, ...]");
         test_eval!("seq(5,2)[2*seq+1]" => "[9, 13, 17, 21, 25, ...]");
