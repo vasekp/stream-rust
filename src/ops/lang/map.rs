@@ -4,6 +4,8 @@ fn eval_map(node: Node, env: &Env) -> Result<Item, StreamError> {
     match node.eval_source(env)? {
         RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
             Ok(Item::new_stream(Map{head, source: source.into(), body, env: env.clone()})),
+        RNodeS { head, source: Item::String(source), args: RArgs::One(Expr::Eval(body)) } =>
+            Ok(Item::new_string(CharMap{head, source: source.into(), body, env: env.clone()})),
         node => Err(StreamError::new("expected: source:body", node))
     }
 }
@@ -37,6 +39,37 @@ impl Stream for Map {
     }
 }
 
+#[derive(Clone)]
+struct CharMap {
+    source: BoxedStream<Char>,
+    body: Node,
+    head: Head,
+    env: Env
+}
+
+impl Describe for CharMap {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_with_env(&self.env, &self.head, Some(&self.source), [&self.body], prec, env)
+    }
+}
+
+impl Stream<Char> for CharMap {
+    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+        Box::new(SMap::new(&*self.source, |ch| {
+            self.body.clone()
+                .with_source(Item::Char(ch).into())
+                .and_then(|node| Expr::from(node).eval(&self.env))
+                .and_then(|item| item.into_char()
+                    .map_err(|err| StreamError::new(err, Item::from(self.source.clone()))))
+                .map_err(BaseError::from)
+        }))
+    }
+
+    fn length(&self) -> Length {
+        self.source.length()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -49,7 +82,8 @@ mod tests {
         test_eval!("seq:{#1}" => "[<!>");
         test_eval!("seq:{range(#)}" => "[[1], [1, 2], ...]");
         test_eval!("seq.map{#+#1}(3)" => "[4, 5, 6, 7, 8, ...]");
-        test_eval!("\"abc\":{#}" => err);
+        test_eval!("\"abc\":{#}" => "\"abc\"");
+        test_eval!("\"a1b2c\":{if(#.isdigit,'-',#)}" => "\"a-b-c\"");
         test_len!("[1,2,3]:{#}" => 3);
         test_len!("[]:{#}" => 0);
         test_skip_n("range(10^10):{#}");
