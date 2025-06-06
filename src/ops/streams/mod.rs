@@ -13,6 +13,8 @@ mod flatten;
 mod sort;
 mod sortby;
 mod fold;
+mod zip;
+mod r#enum;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     seq::init(keywords);
@@ -30,4 +32,6 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     sort::init(keywords);
     sortby::init(keywords);
     fold::init(keywords);
+    zip::init(keywords);
+    r#enum::init(keywords);
 }
