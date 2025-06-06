@@ -16,6 +16,7 @@ mod fold;
 mod zip;
 mod r#enum;
 mod ddup;
+mod contains;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     seq::init(keywords);
@@ -36,4 +37,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     zip::init(keywords);
     r#enum::init(keywords);
     ddup::init(keywords);
+    contains::init(keywords);
 }
