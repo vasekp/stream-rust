@@ -70,6 +70,13 @@ impl Item {
         }
     }
 
+    pub fn into_num(self) -> Result<Number, BaseError> {
+        match self {
+            Item::Number(x) => Ok(x),
+            _ => Err(format!("expected number, found {:?}", &self).into())
+        }
+    }
+
     pub fn to_bool(&self) -> Result<bool, BaseError> {
         match self {
             Item::Bool(x) => Ok(*x),
