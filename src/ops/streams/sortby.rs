@@ -9,7 +9,7 @@ fn eval_sortby(node: Node, env: &Env) -> Result<Item, StreamError> {
             let mut vals_keys = stm.listout()?
                 .into_iter()
                 .map(|item| -> Result<(Item, Item), StreamError> {
-                    Node::from(func.clone())
+                    func.clone()
                         .with_source(item.clone().into())?
                         .eval(env)
                         .map(|res| (item, res))

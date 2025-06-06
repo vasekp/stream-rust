@@ -99,7 +99,7 @@ impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SMap<'node, I1
     }
 }
 
-impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'node, I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'_, I1, I2, F> {
     type Item = Result<I2, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -109,7 +109,7 @@ impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for S
     }
 }
 
-impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SIterator<I2> for SMap<'node, I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SIterator<I2> for SMap<'_, I1, I2, F> {
     fn len_remain(&self) -> Length {
         self.source.len_remain()
     }
