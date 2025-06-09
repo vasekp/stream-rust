@@ -63,7 +63,7 @@ impl Iterator for PiIter<'_> {
         }
         loop {
             check_stop!(iter);
-            let (n, carry) = self.inner.next().unwrap();
+            let (n, carry) = iter_try_expr!(self.inner.next().unwrap());
             if carry {
                 for x in self.cached.iter_mut().rev() {
                     *x = *x + 1;
@@ -122,12 +122,13 @@ impl PiIterInner {
 }
 
 impl Iterator for PiIterInner {
-    type Item = (u32, bool);
+    type Item = Result<(u32, bool), StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use num::traits::Euclid;
         self.power *= self.radix;
         for x in &mut self.cdigits {
+            check_stop!(iter);
             *x *= self.radix;
         }
         let bits = usize::try_from(self.power.bits() - 1)
@@ -135,6 +136,7 @@ impl Iterator for PiIterInner {
         self.cdigits.resize(bits, self.power.clone());
         let mut carry = UNumber::zero();
         for (ix, x) in self.cdigits.iter_mut().enumerate().rev() {
+            check_stop!(iter);
             let num = if ix == 0 { UNumber::one() } else { UNumber::from(ix) };
             let den = if ix == 0 { UNumber::from(self.radix) } else { &num * 2u32 + 1u32 };
             let (quot, rem) = (&*x + &carry).div_rem_euclid(&den);
@@ -142,7 +144,7 @@ impl Iterator for PiIterInner {
             carry = quot * num;
         }
         let (div, rem) = carry.div_rem_euclid(&UNumber::from(self.radix));
-        Some((rem.to_u32().unwrap(), !div.is_zero()))
+        Some(Ok((rem.to_u32().unwrap(), !div.is_zero())))
     }
 }
 
