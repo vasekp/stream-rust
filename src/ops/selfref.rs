@@ -146,17 +146,17 @@ mod tests {
         test_describe!("self{[#]~1}[2]" => "1");
 
         // Hamming weights
-        test_eval!("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1+#)}" => "\"abbcbccdbccdcddebccd...");
+        test_eval!("self{([0,1]~#.skip(2)).riffle(1+#)}" : 33 => "[0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, ...]");
         // Thue-Morse
-        test_eval!("'a'.repeat+self{([0,1]~#.skip(2)).riffle(1-#)}" => "\"abbabaabbaababbabaab...");
+        test_eval!("self{([0,1]~#.skip(2)).riffle(1-#)}" : 33 => "[0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, ...]");
         // Paperfolding sequence
-        test_eval!("'a'.repeat+self{[0,1].repeat.riffle(#)}" => "\"aabaabbaaabbabbaaaba...");
+        test_eval!("self{[0,1].repeat.riffle(#)}" : 33 => "[0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, ...]");
         // Trailing zeroes
-        test_eval!("'a'.repeat+self{0.repeat.riffle(#+1)}" => "\"abacabadabacabaeabac...");
+        test_eval!("self{0.repeat.riffle(#+1)}" : 32 => "[0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5, ...]");
         // Binary length
-        test_eval!("'a'.repeat+self{(0~(#+1)).riffle(#+1)}" => "\"abbccccddddddddeeeee...");
+        test_eval!("self{(1~(#+1)).riffle(#+1)}" : 32 => "[1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, ...]");
         // Hanoi towers
-        test_eval!("self{[12,23,31].repeat.riffle([13,32,21].repeat.riffle(#))}" => "[12, 13, 23, 12, 31, ...]");
+        test_eval!("self{[12,23,31].repeat.riffle([13,32,21].repeat.riffle(#))}" : 16 => "[12, 13, 23, 12, 31, 32, 12, 13, 23, 21, 31, 23, 12, 13, 23, 12, ...]");
     }
 }
 

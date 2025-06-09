@@ -4,17 +4,18 @@ use crate::parser::parse;
 use std::fmt::Debug;
 
 macro_rules! test_eval {
-    ($input:expr => err) => { assert!(parse($input).unwrap().eval_default().is_err()); };
-    ($input:expr => $output:expr) => { assert_eq!(eval!($input).to_string(), $output); };
+    ($input:literal => err) => { assert!(parse($input).unwrap().eval_default().is_err()); };
+    ($input:literal => $output:literal) => { assert_eq!(eval!($input).to_string(), $output); };
+    ($input:literal : $N:expr => $output:expr) => { assert_eq!(format!("{:1$}", eval!($input), $N), $output); };
 }
 
 macro_rules! test_describe {
-    ($input:expr => $output:expr) => { assert_eq!(eval!($input).describe(), $output); };
+    ($input:literal => $output:literal) => { assert_eq!(eval!($input).describe(), $output); };
 }
 
 macro_rules! test_len {
-    ($input:expr => $len:literal) => { test_len_exact($input, $len); };
-    ($input:expr => $len:expr) => {
+    ($input:literal => $len:literal) => { test_len_exact($input, $len); };
+    ($input:literal => $len:expr) => {
         let item = eval!($input);
         match &item {
             Item::Stream(stm) => assert_eq!(stm.length(), $len),
