@@ -2,20 +2,28 @@ use crate::base::*;
 
 fn eval_pi(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_no_source()?;
-    match rnode.args {
-        RArgs::Zero => Ok(Item::new_stream(Pi{head: rnode.head})),
-        _ => return Err(StreamError::new("expected: pi", rnode))
+    match &rnode.args {
+        RArgs::Zero => Ok(Item::new_stream(Pi{head: rnode.head, radix: None})),
+        RArgs::One(Item::Number(radix)) if *radix >= Number::from(2) => {
+            if let Some(radix) = radix.to_u32() {
+                Ok(Item::new_stream(Pi{head: rnode.head, radix: Some(radix)}))
+            } else {
+                Err(StreamError::new("radix much be between 2 and 65535", rnode))
+            }
+        }
+        _ => Err(StreamError::new("expected: pi", rnode))
     }
 }
 
 #[derive(Clone)]
 pub struct Pi {
     head: Head,
+    radix: Option<u32>,
 }
 
 impl Stream for Pi {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(PiIter::new())
+        Box::new(PiIter::new(self))
     }
 
     fn length(&self) -> Length {
@@ -25,25 +33,28 @@ impl Stream for Pi {
 
 impl Describe for Pi {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, None::<&Item>, None::<&Item>, prec, env)
+        Node::describe_helper(&self.head, None::<&Item>, self.radix.iter().copied().map(Item::new_number), prec, env)
     }
 }
 
-struct PiIter {
+struct PiIter<'node> {
+    parent: &'node Pi,
     inner: PiIterInner,
     cached: Vec<u32>
 }
 
-impl PiIter {
-    fn new() -> PiIter {
+impl PiIter<'_> {
+    fn new(node: &Pi) -> PiIter<'_> {
+        let radix = node.radix.unwrap_or(10);
         PiIter {
-            inner: PiIterInner::new(),
-            cached: vec![]
+            parent: node,
+            inner: PiIterInner::new(radix),
+            cached: if radix <= 3 { vec![0] } else { vec![] }
         }
     }
 }
 
-impl Iterator for PiIter {
+impl Iterator for PiIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -56,11 +67,11 @@ impl Iterator for PiIter {
             if carry {
                 for x in self.cached.iter_mut().rev() {
                     *x = *x + 1;
-                    if *x == 10 { *x = 0; continue; } else { break; }
+                    if *x == self.inner.radix { *x = 0; continue; } else { break; }
                 }
             }
             self.cached.push(n);
-            if n == 9 {
+            if n == self.inner.radix - 1 {
                 continue;
             }
             if self.cached.len() >= 2 {
@@ -70,7 +81,7 @@ impl Iterator for PiIter {
     }
 }
 
-impl SIterator for PiIter {
+impl SIterator for PiIter<'_> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
@@ -81,30 +92,32 @@ impl SIterator for PiIter {
                 self.inner.skip_n(n);
                 Ok(None)
             },
-            None => Err(StreamError::new("numerical overflow", Expr::new_node("pi", vec![]))) // TODO
+            None => Err(StreamError::new("numerical overflow", Item::new_stream(self.parent.clone())))
         }
     }
 }
 
 struct PiIterInner {
+    radix: u32,
     power: UNumber,
     cdigits: Vec<UNumber>,
 }
 
 impl PiIterInner {
-    fn new() -> PiIterInner {
+    fn new(radix: u32) -> PiIterInner {
         PiIterInner {
+            radix,
             power: 2u32.into(),
             cdigits: vec![2u32.into()]
         }
     }
 
     fn skip_n(&mut self, n: u32) {
-        let mul = UNumber::from(10u32).pow(n);
+        let mul = UNumber::from(self.radix).pow(n);
         for x in &mut self.cdigits {
             *x *= &mul;
         }
-        self.power *= UNumber::from(10u32).pow(n);
+        self.power *= mul;
     }
 }
 
@@ -113,9 +126,9 @@ impl Iterator for PiIterInner {
 
     fn next(&mut self) -> Option<Self::Item> {
         use num::traits::Euclid;
-        self.power *= 10u32;
+        self.power *= self.radix;
         for x in &mut self.cdigits {
-            *x *= 10u32;
+            *x *= self.radix;
         }
         let bits = usize::try_from(self.power.bits() - 1)
             .expect("usize should be enough");
@@ -123,12 +136,12 @@ impl Iterator for PiIterInner {
         let mut carry = UNumber::zero();
         for (ix, x) in self.cdigits.iter_mut().enumerate().rev() {
             let num = if ix == 0 { UNumber::one() } else { UNumber::from(ix) };
-            let den = if ix == 0 { UNumber::from(10u32) } else { &num * 2u32 + 1u32 };
+            let den = if ix == 0 { UNumber::from(self.radix) } else { &num * 2u32 + 1u32 };
             let (quot, rem) = (&*x + &carry).div_rem_euclid(&den);
             *x = rem;
             carry = quot * num;
         }
-        let (div, rem) = carry.div_rem_euclid(&UNumber::from(10u32));
+        let (div, rem) = carry.div_rem_euclid(&UNumber::from(self.radix));
         Some((rem.to_u32().unwrap(), !div.is_zero()))
     }
 }
@@ -143,6 +156,12 @@ mod tests {
         test_eval!("pi[32]" => "5");
         test_eval!("pi[33]" => "0");
         test_eval!("pi.skip(1000)" : 20 => "[9, 3, 8, 0, 9, 5, 2, 5, 7, 2, 0, 1, 0, 6, 5, 4, 8, 5, 8, 6, ...]");
+        test_eval!("pi(2)" : 30 => "[1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, ...]");
+        test_eval!("pi(3)" : 30 => "[1, 0, 0, 1, 0, 2, 1, 1, 0, 1, 2, 2, 2, 2, 0, 1, 0, 2, 1, 1, 0, 0, 2, 1, 1, 1, 1, 1, 0, 2, ...]");
+        test_eval!("pi(4)" : 30 => "[3, 0, 2, 1, 0, 0, 3, 3, 3, 1, 2, 2, 2, 2, 0, 2, 0, 2, 0, 1, 1, 2, 2, 0, 3, 0, 0, 2, 0, 3, ...]");
+        test_eval!("pi(16)" : 30 => "[3, 2, 4, 3, 15, 6, 10, 8, 8, 8, 5, 10, 3, 0, 8, 13, 3, 1, 3, 1, 9, 8, 10, 2, 14, 0, 3, 7, 0, 7, ...]");
+        test_eval!("pi(10000)" => "[3, 1415, 9265, 3589, 7932, ...]");
+        test_eval!("pi(65535)" => "[3, 9279, 17992, 54480, 37699, ...]");
     }
 }
 
