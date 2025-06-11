@@ -316,3 +316,21 @@ impl<I> std::ops::DerefMut for OwnedStreamIter<I> {
         self.iter.deref_mut()
     }
 }
+
+impl<I> Iterator for OwnedStreamIter<I> {
+    type Item = Result<I, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl<I> SIterator<I> for OwnedStreamIter<I> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.skip_n(n)
+    }
+
+    fn len_remain(&self) -> Length {
+        self.iter.len_remain()
+    }
+}
