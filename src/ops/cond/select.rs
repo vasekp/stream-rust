@@ -34,8 +34,8 @@ impl Stream for Select {
         Box::new(SelectIter{cond: &self.cond, source: self.source.iter(), env: &self.env})
     }
 
-    fn length(&self) -> Length {
-        Length::at_most(self.source.length())
+    fn len(&self) -> Length {
+        Length::at_most(self.source.len())
     }
 }
 

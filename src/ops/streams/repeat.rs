@@ -54,7 +54,7 @@ impl<I: ItemType> Stream<I> for RepeatItem<I> {
         }
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         use Length::*;
         match &self.count {
             Some(count) => Exact(count.to_owned()),
@@ -83,7 +83,7 @@ impl<I: ItemType> Iterator for RepeatItemIter<'_, I> {
 }
 
 impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if n > self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
@@ -109,16 +109,16 @@ impl<I: ItemType> Stream<I> for RepeatStream<I> {
         Box::new(RepeatStreamIter {
             stream: &*self.stream,
             iter: self.stream.iter(),
-            len: self.stream.length(),
+            len: self.stream.len(),
             resets_rem: self.count.as_ref()
                 .map(|count| count - 1u32)
         })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         use Length::*;
         if self.count == Some(UNumber::zero()) { return Exact(UNumber::zero()); }
-        match (self.stream.length(), &self.count) {
+        match (self.stream.len(), &self.count) {
             (_, None) | (Infinite, _) => Infinite,
             (Exact(len), Some(count)) => Exact(len * count),
             (AtMost(len), Some(count)) => AtMost(len * count),
@@ -161,10 +161,10 @@ impl<I: ItemType> Iterator for RepeatStreamIter<'_, I> {
 }
 
 impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        let Some(n) = self.iter.skip_n(n)? else { return Ok(None); };
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        let Some(n) = self.iter.advance(n)? else { return Ok(None); };
 
-        // If skip_n returned Some, iter is depleted. Restart.
+        // If advance returned Some, iter is depleted. Restart.
         if let Some(ref mut count) = self.resets_rem {
             if count.is_zero() {
                 return Ok(Some(n));
@@ -175,7 +175,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
 
         // This point is special: we know that iter() is now newly initiated, so we can use it to
         // determine the length regardless of whether it's statically known.
-        let (full_length, mut n) = match self.iter.skip_n(n.clone())? {
+        let (full_length, mut n) = match self.iter.advance(n.clone())? {
             None => return Ok(None),
             Some(remain) => (n - &remain, remain)
         };
@@ -202,7 +202,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
         }
         self.iter = self.stream.iter();
         debug_assert!(n < full_length);
-        self.iter.skip_n(n)
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {
@@ -262,17 +262,17 @@ mod tests {
         test_len!("[1,2].repeat(1)" => 2);
         test_len!("[1,2].repeat(3)" => 6);
         test_len!("seq.repeat(0)" => 0);
-        test_skip_n("1.repeat");
-        test_skip_n("1.repeat(10^10)");
-        test_skip_n("[].repeat");
-        test_skip_n("[].repeat(10^10)");
-        test_skip_n("[1,2].repeat");
-        test_skip_n("[1,2].repeat(10^10)");
-        test_skip_n("range(10^10).repeat(10^10)");
-        test_skip_n("seq.repeat");
-        test_skip_n("seq.repeat(0)");
-        test_skip_n("seq.repeat(1)");
-        test_skip_n("seq.repeat(2)");
+        test_advance("1.repeat");
+        test_advance("1.repeat(10^10)");
+        test_advance("[].repeat");
+        test_advance("[].repeat(10^10)");
+        test_advance("[1,2].repeat");
+        test_advance("[1,2].repeat(10^10)");
+        test_advance("range(10^10).repeat(10^10)");
+        test_advance("seq.repeat");
+        test_advance("seq.repeat(0)");
+        test_advance("seq.repeat(1)");
+        test_advance("seq.repeat(2)");
 
         test_describe!("1.repeat" => "1.repeat");
         test_describe!("1.repeat(1)" => "[1]");

@@ -50,13 +50,13 @@ fn eval_index_impl<I: ItemType>(source: &dyn Stream<I>, index: &Number) -> Resul
     if index.is_zero() {
         return Err("index must be greater than zero".into());
     }
-    match source.length() {
+    match source.len() {
         Length::Exact(len) | Length::AtMost(len) if len < index =>
             return Err("index past end of stream".into()),
         _ => ()
     }
     let mut iter = source.iter();
-    if iter.skip_n(index - 1u32)?.is_some() {
+    if iter.advance(index - 1u32)?.is_some() {
         drop(iter);
         return Err("index past end of stream".into());
     }
@@ -116,8 +116,8 @@ impl Iterator for PartIter<'_> {
 }
 
 impl SIterator for PartIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.iter.skip_n(n)
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {
@@ -162,8 +162,8 @@ impl Iterator for StringPartIter<'_> {
 }
 
 impl SIterator<Char> for StringPartIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.iter.skip_n(n)
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {

@@ -44,11 +44,11 @@ impl Stream for Riffle {
         })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         use Length::*;
-        let len1 = self.source.length();
+        let len1 = self.source.len();
         let len2 = match &self.filler {
-            Item::Stream(stm) => stm.length(),
+            Item::Stream(stm) => stm.len(),
             _ => Infinite
         };
         Length::intersection(len1.map(|u| 2u32 * u - 1u32), len2.map(|v| 2u32 * v + 1u32))
@@ -93,22 +93,22 @@ impl Iterator for RiffleIter<'_> {
 }
 
 impl SIterator for RiffleIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let common = Length::intersection(self.source.len_remain(), self.filler.len_remain());
         let skip = match Length::intersection(common, Length::Exact(&n / 2u32)) {
             Length::Exact(len) => len,
             _ => UNumber::zero()
         };
         let mut remain = if !skip.is_zero() {
-            self.filler.skip_n(skip.clone())?;
+            self.filler.advance(skip.clone())?;
             let n_new = n - 2u32 * &skip;
             match self.which {
                 RiffleState::Source => {
-                    self.source.skip_n(skip - 1u32)?;
+                    self.source.advance(skip - 1u32)?;
                     self.source_next = self.source.next();
                 },
                 RiffleState::Filler => {
-                    self.source.skip_n(skip)?;
+                    self.source.advance(skip)?;
                 }
             };
             n_new
@@ -166,21 +166,21 @@ mod tests {
         test_len!("seq.riffle(['a'])" => 3);
         test_len!("seq.riffle([])" => 1);
         test_len!("[].riffle(0)" => 0);
-        test_skip_n("seq.riffle(seq)");
-        test_skip_n("seq.riffle(range(100))");
-        test_skip_n("seq.riffle([])");
-        test_skip_n("seq.riffle(0)");
-        test_skip_n("range(100).riffle(seq)");
-        test_skip_n("range(100).riffle(0)");
-        test_skip_n("range(100).riffle(range(50))");
-        test_skip_n("range(100).riffle(range(99))");
-        test_skip_n("range(100).riffle(range(100))");
-        test_skip_n("range(100).riffle(range(101))");
-        test_skip_n("range(100).riffle(range(200))");
-        test_skip_n("range(100).riffle([])");
-        test_skip_n("[].riffle(range(3))");
-        test_skip_n("[].riffle(range(1))");
-        test_skip_n("[].riffle([])");
+        test_advance("seq.riffle(seq)");
+        test_advance("seq.riffle(range(100))");
+        test_advance("seq.riffle([])");
+        test_advance("seq.riffle(0)");
+        test_advance("range(100).riffle(seq)");
+        test_advance("range(100).riffle(0)");
+        test_advance("range(100).riffle(range(50))");
+        test_advance("range(100).riffle(range(99))");
+        test_advance("range(100).riffle(range(100))");
+        test_advance("range(100).riffle(range(101))");
+        test_advance("range(100).riffle(range(200))");
+        test_advance("range(100).riffle([])");
+        test_advance("[].riffle(range(3))");
+        test_advance("[].riffle(range(1))");
+        test_advance("[].riffle([])");
         test_describe!("seq.riffle(['a'])" => "seq.riffle(['a'])");
     }
 }

@@ -26,7 +26,7 @@ impl Stream for Pi {
         Box::new(PiIter::new(self))
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Infinite
     }
 }
@@ -86,10 +86,10 @@ impl SIterator for PiIter<'_> {
         Length::Infinite
     }
 
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         match n.to_u32() {
             Some(n) => {
-                self.inner.skip_n(n);
+                self.inner.advance(n);
                 Ok(None)
             },
             None => Err(StreamError::new("numerical overflow", Item::new_stream(self.parent.clone())))
@@ -112,7 +112,7 @@ impl PiIterInner {
         }
     }
 
-    fn skip_n(&mut self, n: u32) {
+    fn advance(&mut self, n: u32) {
         let mul = UNumber::from(self.radix).pow(n);
         for x in &mut self.cdigits {
             *x *= &mul;

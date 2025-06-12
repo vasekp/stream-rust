@@ -65,8 +65,8 @@ impl Stream for Windows {
         Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_ref(), env: &self.env})
     }
 
-    fn length(&self) -> Length {
-        self.source.length().map(|len|
+    fn len(&self) -> Length {
+        self.source.len().map(|len|
             if len < &UNumber::from(self.size) {
                 UNumber::zero()
             } else {
@@ -103,12 +103,12 @@ impl Iterator for WindowsIter<'_> {
 }
 
 impl SIterator for WindowsIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         match n.to_usize() {
             Some(num) if num < self.size => { self.deque.drain(0..num); },
             _ => {
                 self.deque.clear();
-                if let Some(rem) = self.iter.skip_n(n - (self.size - 1))? {
+                if let Some(rem) = self.iter.advance(n - (self.size - 1))? {
                     return Ok(Some(rem + (self.size - 1)));
                 }
             }
@@ -143,7 +143,7 @@ mod tests {
         test_eval!("(1..5).windows(4)[1]" => "[1, 2, 3, 4]");
         test_eval!("(1..5).windows(4)[2]" => "[2, 3, 4, 5]");
         test_eval!("(1..5).windows(4)[3]" => err);
-        test_skip_n("(1..(10^10)).windows(5)");
+        test_advance("(1..(10^10)).windows(5)");
         test_eval!("seq.windows(3, plus)" => "[6, 9, 12, 15, 18, ...]");
         test_eval!("(seq^2).windows(3, {#2-#1})" => "[3, 5, 7, 9, 11, ...]");
     }

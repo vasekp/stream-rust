@@ -97,7 +97,7 @@ impl Stream for BackRef {
         }
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Unknown
     }
 }
@@ -140,7 +140,7 @@ mod tests {
         test_len!("self{#.riffle(#)}" => 0);
         test_len!("self{#.repeat}" => 0);
         test_len!("self{\"pokus\".chars+(\"ab\".chars~#)}" => 5);
-        test_skip_n("self{1~(#+1)}");
+        test_advance("self{1~(#+1)}");
         test_describe!("self{#}" => "self({#})");
         test_describe!("self{[#]~1}" => "self({[#]~1})");
         test_describe!("self{[#]~1}[2]" => "1");

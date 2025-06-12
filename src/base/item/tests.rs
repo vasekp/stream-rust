@@ -18,8 +18,8 @@ macro_rules! test_len {
     ($input:literal => $len:expr) => {
         let item = eval!($input);
         match &item {
-            Item::Stream(stm) => assert_eq!(stm.length(), $len),
-            Item::String(stm) => assert_eq!(stm.length(), $len),
+            Item::Stream(stm) => assert_eq!(stm.len(), $len),
+            Item::String(stm) => assert_eq!(stm.len(), $len),
             _ => panic!("test_len: expected stream or string, found {:?}", item)
         }
     }
@@ -41,18 +41,18 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
 
 fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) {
     assert_eq!(stm.iter().map(Result::unwrap).count(), len);
-    assert!(Length::possibly_eq(&stm.length(), &Length::Exact(len.into())));
+    assert!(Length::possibly_eq(&stm.len(), &Length::Exact(len.into())));
     assert!(Length::possibly_eq(&stm.iter().len_remain(), &Length::Exact(len.into())));
     assert_eq!(len == 0, stm.is_empty());
 }
 
 #[cfg(test)]
 #[track_caller]
-pub(crate) fn test_skip_n(input: &str) {
+pub(crate) fn test_advance(input: &str) {
     match &eval!(input) {
-        Item::Stream(stm) => test_skip_n_impl(&**stm),
-        Item::String(stm) => test_skip_n_impl(&**stm),
-        item => panic!("test_skip_n: expected stream or string, found {:?}", item)
+        Item::Stream(stm) => test_advance_impl(&**stm),
+        Item::String(stm) => test_advance_impl(&**stm),
+        item => panic!("test_advance: expected stream or string, found {:?}", item)
     }
 }
 
@@ -60,12 +60,12 @@ const TEST: u32 = 5;
 
 #[cfg(test)]
 #[track_caller]
-fn test_skip_n_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
-    assert_eq!(stm.iter().len_remain(), stm.length());
+fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
+    assert_eq!(stm.iter().len_remain(), stm.len());
 
-    // skip(0) = no-op on fresh iterator
+    // advance(0) = no-op on fresh iterator
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
-    assert_eq!(i1.next(), match i2.skip_n(UNumber::zero()).unwrap() {
+    assert_eq!(i1.next(), match i2.advance(UNumber::zero()).unwrap() {
         Some(_) => None,
         None => i2.next() // same None, same element or same error
     });
@@ -73,47 +73,47 @@ fn test_skip_n_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
     if !stm.is_empty() {
         assert_ne!(stm.iter().next().transpose().unwrap(), None); // fails if the first item fails
 
-        // skip(1) = next() on fresh iterator
+        // advance(1) = next() on fresh iterator
         let (mut i1, mut i2) = (stm.iter(), stm.iter());
         i1.next();
-        assert_eq!(i1.next(), match i2.skip_n(UNumber::one()).unwrap() {
+        assert_eq!(i1.next(), match i2.advance(UNumber::one()).unwrap() {
             Some(_) => None,
             None => i2.next()
         });
 
-        assert_eq!(stm.iter().len_remain(), stm.length());
+        assert_eq!(stm.iter().len_remain(), stm.len());
 
-        match stm.length() {
-            Length::Exact(len) => test_skip_n_exact_impl(stm, len, true),
+        match stm.len() {
+            Length::Exact(len) => test_advance_exact_impl(stm, len, true),
             Length::Infinite => {
                 let many = 10000000000u64;
 
-                // skip() following skip()
+                // advance() following advance()
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
-                assert_eq!(i1.skip_n(UNumber::from(many)).unwrap(), None);
+                assert_eq!(i1.advance(UNumber::from(many)).unwrap(), None);
                 assert_eq!(i1.len_remain(), Length::Infinite);
-                assert_eq!(i1.skip_n(UNumber::from(many)).unwrap(), None);
-                assert_eq!(i2.skip_n(UNumber::from(many * 2)).unwrap(), None);
+                assert_eq!(i1.advance(UNumber::from(many)).unwrap(), None);
+                assert_eq!(i2.advance(UNumber::from(many * 2)).unwrap(), None);
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
 
-                // skip(0) = no-op later in stream
+                // advance(0) = no-op later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
-                assert_eq!(i1.skip_n(UNumber::from(many)).unwrap(), None);
-                assert_eq!(i1.skip_n(UNumber::zero()).unwrap(), None);
-                assert_eq!(i2.skip_n(UNumber::from(many)).unwrap(), None);
+                assert_eq!(i1.advance(UNumber::from(many)).unwrap(), None);
+                assert_eq!(i1.advance(UNumber::zero()).unwrap(), None);
+                assert_eq!(i2.advance(UNumber::from(many)).unwrap(), None);
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
 
-                // skip(1) = next() later in stream
+                // advance(1) = next() later in stream
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
-                assert_eq!(i1.skip_n(UNumber::from(many)).unwrap(), None);
-                assert_eq!(i1.skip_n(UNumber::one()).unwrap(), None);
-                assert_eq!(i2.skip_n(UNumber::from(many)).unwrap(), None);
+                assert_eq!(i1.advance(UNumber::from(many)).unwrap(), None);
+                assert_eq!(i1.advance(UNumber::one()).unwrap(), None);
+                assert_eq!(i2.advance(UNumber::from(many)).unwrap(), None);
                 assert_ne!(i2.next().transpose().unwrap(), None);
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap());
 
                 // test actually comparing a few elements after a small skip
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
-                assert_eq!(i1.skip_n(TEST.into()).unwrap(), None);
+                assert_eq!(i1.advance(TEST.into()).unwrap(), None);
                 for _ in 0..TEST {
                     i2.next().unwrap().unwrap();
                 }
@@ -123,10 +123,10 @@ fn test_skip_n_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
             },
             _ => {
                 let mut iter = stm.iter();
-                if let Some(rem) = iter.skip_n(UNumber::from(TEST + 1)).unwrap() {
+                if let Some(rem) = iter.advance(UNumber::from(TEST + 1)).unwrap() {
                     assert!(rem.to_u32().unwrap() <= TEST + 1);
                     let len_real = TEST + 1 - rem.to_u32().unwrap();
-                    test_skip_n_exact_impl(stm, UNumber::from(len_real), false);
+                    test_advance_exact_impl(stm, UNumber::from(len_real), false);
                     return;
                 }
 
@@ -137,62 +137,62 @@ fn test_skip_n_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
                 let next = iter.next().unwrap();
 
                 let mut iter = stm.iter();
-                assert_eq!(iter.skip_n(TEST.into()), Ok(None));
+                assert_eq!(iter.advance(TEST.into()), Ok(None));
                 assert_eq!(iter.next().unwrap(), next);
 
                 const HALF: u32 = TEST / 2;
                 const REST: u32 = TEST - HALF;
                 let mut iter = stm.iter();
-                assert_eq!(iter.skip_n(HALF.into()), Ok(None));
-                assert_eq!(iter.skip_n(UNumber::zero()), Ok(None));
-                assert_eq!(iter.skip_n(REST.into()), Ok(None));
+                assert_eq!(iter.advance(HALF.into()), Ok(None));
+                assert_eq!(iter.advance(UNumber::zero()), Ok(None));
+                assert_eq!(iter.advance(REST.into()), Ok(None));
                 assert_eq!(iter.next().unwrap(), next);
 
                 const { assert!(REST > 1); }
                 let mut iter = stm.iter();
-                assert_eq!(iter.skip_n(HALF.into()), Ok(None));
+                assert_eq!(iter.advance(HALF.into()), Ok(None));
                 assert!(matches!(iter.next(), Some(Ok(_))));
-                assert_eq!(iter.skip_n((REST - 1).into()), Ok(None));
+                assert_eq!(iter.advance((REST - 1).into()), Ok(None));
                 assert_eq!(iter.next().unwrap(), next);
 
                 let mut iter = stm.iter();
                 const { assert!(TEST >= 2); }
                 assert!(matches!(iter.next(), Some(Ok(_))));
-                assert_eq!(iter.skip_n((TEST - 2).into()), Ok(None));
+                assert_eq!(iter.advance((TEST - 2).into()), Ok(None));
                 assert!(matches!(iter.next(), Some(Ok(_))));
                 assert_eq!(iter.next().unwrap(), next);
 
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
-                assert_eq!(i1.skip_n(TEST.into()), Ok(None));
-                assert_eq!(i1.skip_n(TEST.into()), i2.skip_n((2*TEST).into()));
+                assert_eq!(i1.advance(TEST.into()), Ok(None));
+                assert_eq!(i1.advance(TEST.into()), i2.advance((2*TEST).into()));
             }
         }
     } else {
         assert_eq!(stm.iter().len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(stm.iter().next(), None);
-        assert_eq!(stm.iter().skip_n(UNumber::one()).unwrap(), Some(UNumber::one()));
+        assert_eq!(stm.iter().advance(UNumber::one()).unwrap(), Some(UNumber::one()));
     }
 }
 
 #[cfg(test)]
 #[track_caller]
-fn test_skip_n_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumber, test_len_remain: bool) {
+fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumber, test_len_remain: bool) {
     if len.is_zero() {
         return;
     }
 
-    // skip(len - 1) leaves exactly one element
+    // advance(len - 1) leaves exactly one element
     let mut it = stm.iter();
-    assert_eq!(it.skip_n(&len - 1u32).unwrap(), None);
+    assert_eq!(it.advance(&len - 1u32).unwrap(), None);
     if test_len_remain {
         assert_eq!(it.len_remain(), Length::Exact(UNumber::one()));
     }
     assert_ne!(it.next().transpose().unwrap(), None);
     assert_eq!(it.next(), None);
 
-    // skip(len) leaves nothing
+    // advance(len) leaves nothing
     let mut it = stm.iter();
-    match it.skip_n(len.clone()).unwrap() {
+    match it.advance(len.clone()).unwrap() {
         None => {
             if test_len_remain {
                 assert_eq!(it.len_remain(), Length::Exact(UNumber::zero()));
@@ -202,62 +202,62 @@ fn test_skip_n_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumbe
         Some(rem) => assert_eq!(rem, UNumber::zero())
     }
 
-    // skip(len + N) reports N remaining elements
+    // advance(len + N) reports N remaining elements
     let mut it = stm.iter();
-    assert_eq!(it.skip_n(&len + 1u32).unwrap(), Some(UNumber::one()));
+    assert_eq!(it.advance(&len + 1u32).unwrap(), Some(UNumber::one()));
     let mut it = stm.iter();
-    assert_eq!(it.skip_n(&len + 100u32).unwrap(), Some(100u32.into()));
+    assert_eq!(it.advance(&len + 100u32).unwrap(), Some(100u32.into()));
 
-    // skip() following skip()
+    // advance() following advance()
     let mut half = (&len - 1u32) / 2u32;
     let mut rest = &len - 1u32 - &half;
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
-    assert_eq!(i1.skip_n(half.clone()).unwrap(), None);
+    assert_eq!(i1.advance(half.clone()).unwrap(), None);
     if test_len_remain {
         assert_eq!(i1.len_remain(), Length::Exact(&len - &half));
     }
-    assert_eq!(i1.skip_n(rest.clone()).unwrap(), None);
+    assert_eq!(i1.advance(rest.clone()).unwrap(), None);
     if test_len_remain {
         assert_eq!(i1.len_remain(), Length::Exact(UNumber::one()));
     }
-    assert_eq!(i2.skip_n(&len - 1u32).unwrap(), None);
+    assert_eq!(i2.advance(&len - 1u32).unwrap(), None);
     if test_len_remain {
         assert_eq!(i2.len_remain(), Length::Exact(UNumber::one()));
     }
     assert_eq!(i1.next(), i2.next());
 
-    // skip(0) = no-op later in stream
+    // advance(0) = no-op later in stream
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
-    assert_eq!(i1.skip_n(half.clone()).unwrap(), None);
-    assert_eq!(i1.skip_n(UNumber::zero()).unwrap(), None);
-    assert_eq!(i2.skip_n(half.clone()).unwrap(), None);
+    assert_eq!(i1.advance(half.clone()).unwrap(), None);
+    assert_eq!(i1.advance(UNumber::zero()).unwrap(), None);
+    assert_eq!(i2.advance(half.clone()).unwrap(), None);
     if test_len_remain {
         assert_eq!(i1.len_remain(), i2.len_remain());
     }
     assert_eq!(i1.next(), i2.next());
 
-    // skip(1) = next() later in stream
+    // advance(1) = next() later in stream
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
-    assert_eq!(i1.skip_n(half.clone()).unwrap(), None);
-    assert_eq!(i1.skip_n(UNumber::one()).unwrap(), None);
-    assert_eq!(i2.skip_n(half.clone()).unwrap(), None);
+    assert_eq!(i1.advance(half.clone()).unwrap(), None);
+    assert_eq!(i1.advance(UNumber::one()).unwrap(), None);
+    assert_eq!(i2.advance(half.clone()).unwrap(), None);
     assert_ne!(i2.next().transpose().unwrap(), None);
     if test_len_remain {
         assert_eq!(i1.len_remain(), i2.len_remain());
     }
     assert_eq!(i1.next(), i2.next());
 
-    // skip() from within past end
+    // advance() from within past end
     half.inc();
     rest.inc(); // now half + rest = len + 1
     let mut it = stm.iter();
-    assert_eq!(it.skip_n(half.clone()).unwrap(), None);
-    assert_eq!(it.skip_n(rest.clone()).unwrap(), Some(UNumber::one()));
+    assert_eq!(it.advance(half.clone()).unwrap(), None);
+    assert_eq!(it.advance(rest.clone()).unwrap(), Some(UNumber::one()));
 
     // test actually comparing a few elements after a small skip
     if len > (2 * TEST).into() {
         let (mut i1, mut i2) = (stm.iter(), stm.iter());
-        assert_eq!(i1.skip_n(TEST.into()).unwrap(), None);
+        assert_eq!(i1.advance(TEST.into()).unwrap(), None);
         for _ in 0..TEST {
             i2.next().unwrap().unwrap();
         }

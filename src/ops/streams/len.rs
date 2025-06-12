@@ -11,7 +11,7 @@ fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, BaseError> {
-    match stm.length() {
+    match stm.len() {
         Length::Exact(len) => Ok(len),
         Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {
             let mut len = 0usize;

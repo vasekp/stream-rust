@@ -37,8 +37,8 @@ impl<I: ItemType> Stream for SplitBy<I> {
         Box::new(SplitByIter{source: self.source.iter(), cond: &self.cond, env: &self.env, done: false})
     }
 
-    fn length(&self) -> Length {
-        Length::at_most(self.source.length())
+    fn len(&self) -> Length {
+        Length::at_most(self.source.len())
     }
 }
 

@@ -8,7 +8,7 @@ impl Stream<Char> for LiteralString {
         Box::new(self.0.iter().map(Char::clone).map(Result::Ok))
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::from(self.0.len())
     }
 }

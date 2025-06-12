@@ -28,8 +28,8 @@ impl<I: ItemType> Stream<I> for LenAM<I> {
         Box::new(LenAMIter { iter: self.src.iter() })
     }
 
-    fn length(&self) -> Length {
-        Length::at_most(self.src.length())
+    fn len(&self) -> Length {
+        Length::at_most(self.src.len())
     }
 }
 
@@ -46,8 +46,8 @@ impl<I: ItemType> Iterator for LenAMIter<'_, I> {
 }
 
 impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.iter.skip_n(n)
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {
@@ -83,7 +83,7 @@ impl<I: ItemType> Stream<I> for LenUF<I> {
         Box::new(LenUFIter { iter: self.src.iter() })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::UnknownFinite
     }
 }
@@ -101,8 +101,8 @@ impl<I: ItemType> Iterator for LenUFIter<'_, I> {
 }
 
 impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.iter.skip_n(n)
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {
@@ -138,7 +138,7 @@ impl<I: ItemType> Stream<I> for LenUU<I> {
         Box::new(LenUUIter { iter: self.src.iter() })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Unknown
     }
 }
@@ -156,8 +156,8 @@ impl<I: ItemType> Iterator for LenUUIter<'_, I> {
 }
 
 impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.iter.skip_n(n)
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {

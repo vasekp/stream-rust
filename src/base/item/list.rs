@@ -8,7 +8,7 @@ impl Stream for List {
         Box::new(self.0.iter().map(|x| Ok(x.clone())))
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::from(self.0.len())
     }
 }

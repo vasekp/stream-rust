@@ -26,8 +26,8 @@ impl Stream for Enum {
         Box::new(EnumIter{iter: self.stream.iter(), index: UNumber::zero()})
     }
 
-    fn length(&self) -> Length {
-        self.stream.length()
+    fn len(&self) -> Length {
+        self.stream.len()
     }
 }
 
@@ -47,9 +47,9 @@ impl Iterator for EnumIter<'_> {
 }
 
 impl SIterator for EnumIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.index += &n;
-        self.iter.skip_n(n)
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {
@@ -65,9 +65,9 @@ mod tests {
         use crate::parser::parse;
         test_eval!("\"abc\".chars.enum" => "[['a', 1], ['b', ...], ...]");
         test_eval!("\"abc\".enum" => err);
-        test_skip_n("seq.enum");
-        test_skip_n("(1..(10^20)).enum");
-        test_skip_n("[].enum");
+        test_advance("seq.enum");
+        test_advance("(1..(10^20)).enum");
+        test_advance("[].enum");
         test_describe!("seq.enum" => "seq.enum");
     }
 }

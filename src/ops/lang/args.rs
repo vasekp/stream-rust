@@ -7,7 +7,7 @@ fn eval_args(node: Node, env: &Env) -> Result<Item, StreamError> {
     let Expr::Imm(Item::Stream(stm)) = args_arg else {
         return Err(StreamError::new(format!("expected stream, found {:?}", args_arg), node));
     };
-    if stm.length() == Length::Infinite {
+    if stm.len() == Length::Infinite {
         return Err(StreamError::new("stream is infinite", node));
     }
     let args = stm.listout()?;

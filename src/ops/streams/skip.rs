@@ -28,15 +28,15 @@ struct Skip<I: ItemType> {
 impl<I: ItemType> Stream<I> for Skip<I> {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         let mut iter = self.source.iter();
-        match iter.skip_n(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
+        match iter.advance(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
             Ok(None) => iter,
             Ok(Some(_)) => Box::new(std::iter::empty()),
             Err(err) => Box::new(std::iter::once(Err(err)))
         }
     }
 
-    fn length(&self) -> Length {
-        self.source.length()
+    fn len(&self) -> Length {
+        self.source.len()
             .map(|x| match &self.count {
                 Some(count) => x.checked_sub(count).unwrap_or_default(),
                 None => if x.is_zero() { x.to_owned() } else { x - 1u32 }
@@ -76,8 +76,8 @@ mod tests {
         test_len!("(1..3).skip(3)" => 0);
         test_len!("(1..3).skip(4)" => 0);
         test_len!("(1..3).skip(5)" => 0);
-        test_skip_n("seq.skip(100)");
-        test_skip_n("(1..10^10).skip(10^9)");
+        test_advance("seq.skip(100)");
+        test_advance("(1..10^10).skip(10^9)");
         test_describe!("(1..3).skip(0)" => "(1..3).skip(0)");
         test_describe!("(1..3).skip(4)" => "(1..3).skip(4)");
         test_describe!("\"abc\".skip" => "\"abc\".skip");

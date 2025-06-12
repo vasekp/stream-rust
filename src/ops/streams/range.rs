@@ -85,7 +85,7 @@ impl Stream for Range {
         })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         match Range::len_helper(self.from.as_ref(), &self.to, self.step.as_ref()) {
             Some(num) => Length::Exact(num),
             None => Length::Infinite
@@ -140,7 +140,7 @@ impl Iterator for RangeIter<'_> {
 }
 
 impl SIterator for RangeIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if Range::empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             return Ok(Some(n))
         };
@@ -220,18 +220,18 @@ mod tests {
         test_len!("range(0,-3,-3)" => 2);
         test_len!("range(0,-3,-4)" => 1);
         test_len!("'a'..'z'" => 26);
-        test_skip_n("range(0)");
-        test_skip_n("range(10^10)");
-        test_skip_n("range(-10^10)");
-        test_skip_n("range(0,3)");
-        test_skip_n("range(3,0)");
-        test_skip_n("range(0,3,2)");
-        test_skip_n("range(0,3,3)");
-        test_skip_n("range(0,3,4)");
-        test_skip_n("range(0,4,2)");
-        test_skip_n("range(0,3,0)");
-        test_skip_n("range(0,3,-2)");
-        test_skip_n("range(0,-3,-2)");
+        test_advance("range(0)");
+        test_advance("range(10^10)");
+        test_advance("range(-10^10)");
+        test_advance("range(0,3)");
+        test_advance("range(3,0)");
+        test_advance("range(0,3,2)");
+        test_advance("range(0,3,3)");
+        test_advance("range(0,3,4)");
+        test_advance("range(0,4,2)");
+        test_advance("range(0,3,0)");
+        test_advance("range(0,3,-2)");
+        test_advance("range(0,-3,-2)");
 
         test_describe!("range(5)" => "range(5)");
         test_describe!("range(0)" => "[]");

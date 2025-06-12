@@ -161,8 +161,8 @@ impl Item {
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
             (Stream(x1), Stream(x2)) => {
-                let l1 = x1.length();
-                let l2 = x2.length();
+                let l1 = x1.len();
+                let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
                 for (x, y) in x1.iter().zip(x2.iter()) {
                     check_stop!();
@@ -171,8 +171,8 @@ impl Item {
                 true
             },
             (String(x1), String(x2)) => {
-                let l1 = x1.length();
-                let l2 = x2.length();
+                let l1 = x1.len();
+                let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
                 for (x, y) in x1.iter().zip(x2.iter()) {
                     check_stop!();
@@ -311,15 +311,15 @@ impl PartialEq for Item {
             (Bool(x1), Bool(x2)) => x1 == x2,
             (Char(x1), Char(x2)) => x1 == x2,
             (Stream(x1), Stream(x2)) => {
-                let l1 = x1.length();
-                let l2 = x2.length();
+                let l1 = x1.len();
+                let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
                 x1.iter().zip(x2.iter())
                     .all(|(x, y)| x == y)
             },
             (String(x1), String(x2)) => {
-                let l1 = x1.length();
-                let l2 = x2.length();
+                let l1 = x1.len();
+                let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
                 x1.iter().zip(x2.iter())
                     .all(|(x, y)| x == y)

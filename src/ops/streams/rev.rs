@@ -12,7 +12,7 @@ fn eval_rev(node: Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<Item, StreamError> {
-    match source.length() {
+    match source.len() {
         Length::Infinite
             => Err(StreamError::new("input is infinite", Item::from(source))),
         Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) =>
@@ -42,7 +42,7 @@ impl<I: ItemType> Stream<I> for Rev<I> {
         })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Exact(self.length.clone())
     }
 }
@@ -75,7 +75,7 @@ impl<I: ItemType> Iterator for RevIter<'_, I> {
                         None => (UNumber::zero(), self.start.to_usize().expect("start < CACHE_LEN should fit into usize"))
                     };
                     let mut iter = self.source.iter();
-                    iter_try_expr!(iter.skip_n(new_start.clone()));
+                    iter_try_expr!(iter.advance(new_start.clone()));
                     self.start = new_start;
                     self.cached = iter_try_expr!(iter.take(diff).collect());
                     Ok(self.cached.pop()).transpose()
@@ -86,7 +86,7 @@ impl<I: ItemType> Iterator for RevIter<'_, I> {
 }
 
 impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let len = self.cached.len();
         match n.to_usize() {
             Some(n) if n <= len => {
@@ -125,8 +125,8 @@ mod tests {
         test_eval!("[].rev" => "[]");
         test_eval!("\"\".rev" => "\"\"");
         test_eval!("seq.rev" => err);
-        test_skip_n("range(1000).rev");
-        test_skip_n("range(10^10).rev");
+        test_advance("range(1000).rev");
+        test_advance("range(10^10).rev");
     }
 }
 

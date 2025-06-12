@@ -1,6 +1,6 @@
 use crate::base::*;
 
-/// The enum returned by [`Stream::length()`].
+/// The enum returned by [`Stream::len()`].
 #[derive(Debug, Clone, PartialEq)]
 pub enum Length {
     /// The length is known exactly, including empty streams.

@@ -42,8 +42,8 @@ impl<I: ItemType> Stream<I> for First<I> {
         Box::new(FirstIter { source: self.source.iter(), count_rem: self.count.clone() })
     }
 
-    fn length(&self) -> Length {
-        Length::intersection(self.source.length(), Length::Exact(self.count.to_owned()))
+    fn len(&self) -> Length {
+        Length::intersection(self.source.len(), Length::Exact(self.count.to_owned()))
     }
 }
 
@@ -71,14 +71,14 @@ impl<I: ItemType> SIterator<I> for FirstIter<'_, I> {
         Length::intersection(self.source.len_remain(), Length::Exact(self.count_rem.to_owned()))
     }
 
-    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if n > self.count_rem {
             n -= &self.count_rem;
             self.count_rem = UNumber::zero();
             Ok(Some(n))
         } else {
             self.count_rem -= &n;
-            self.source.skip_n(n)
+            self.source.advance(n)
         }
     }
 }
@@ -109,9 +109,9 @@ mod tests {
         test_len!("(1..3).first(2)" => 2);
         test_len!("(1..3).first(3)" => 3);
         test_len!("(1..3).first(4)" => 3);
-        test_skip_n("seq.first(10^10)");
-        test_skip_n("range(10^9).first(10^10)");
-        test_skip_n("range(10^11).first(10^10)");
+        test_advance("seq.first(10^10)");
+        test_advance("range(10^9).first(10^10)");
+        test_advance("range(10^11).first(10^10)");
         test_describe!("(1..3).first" => "1");
         test_describe!("(1..3).first(4)" => "(1..3).first(4)");
         test_describe!("(1..3).take(4)" => "(1..3).take(4)");

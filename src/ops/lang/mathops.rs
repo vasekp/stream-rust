@@ -179,10 +179,10 @@ impl Stream for MathOp {
         Box::new(MathOpIter{head: &self.node.head, args, alpha: &self.alpha, func: self.func})
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         self.node.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) => stm.length(),
+                Item::Stream(stm) => stm.len(),
                 _ => Length::Infinite
             })
             .reduce(Length::intersection)
@@ -224,10 +224,10 @@ impl Iterator for MathOpIter<'_> {
 }
 
 impl SIterator for MathOpIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut remain = UNumber::zero();
         for iter in &mut self.args {
-            if let Some(r) = iter.skip_n(n.clone())? {
+            if let Some(r) = iter.advance(n.clone())? {
                 remain = std::cmp::max(remain, r);
             }
         }
@@ -334,18 +334,18 @@ impl Stream<Char> for StringOp {
         Box::new(StringOpIter{first, rest, alpha: &self.alpha, func: self.func})
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         self.node_rem.args.iter()
             .map(|item| match item {
-                Item::Stream(stm) => stm.length(),
-                Item::String(stm) => stm.length(),
+                Item::Stream(stm) => stm.len(),
+                Item::String(stm) => stm.len(),
                 _ => Length::Infinite
             })
             .map(|len| match len {
                 Length::Infinite => Length::Infinite,
                 _ => Length::Unknown
             })
-            .fold(self.first.length(), Length::intersection)
+            .fold(self.first.len(), Length::intersection)
     }
 
     fn is_empty(&self) -> bool {
@@ -392,7 +392,7 @@ impl Iterator for StringOpIter<'_> {
 }
 
 impl SIterator<Char> for StringOpIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut n_chars = UNumber::zero();
         let mut remain = n;
         while !remain.is_zero() {
@@ -408,7 +408,7 @@ impl SIterator<Char> for StringOpIter<'_> {
             remain.dec();
         }
         for iter in self.rest.iter_mut() {
-            if let Some(r) = iter.skip_n(n_chars.clone())? {
+            if let Some(r) = iter.advance(n_chars.clone())? {
                 remain = std::cmp::max(remain, r);
             }
         }
@@ -505,10 +505,10 @@ mod tests {
         test_len!("5+[1,2,3]+seq+5" => 3);
         test_len!("[1,2,3]+seq+[5]" => 1);
         test_len!("[1,2,3]+[]+seq" => 0);
-        test_skip_n("range(10^10)+seq+5");
-        test_skip_n("range(10^10)+range(10^11)");
-        test_skip_n("seq+[]");
-        test_skip_n("seq*seq");
+        test_advance("range(10^10)+seq+5");
+        test_advance("range(10^10)+range(10^11)");
+        test_advance("seq+[]");
+        test_advance("seq*seq");
 
         test_describe!("1+2+3+4-5*6*7/8" => "-16");
         assert_eq!(parse("1+2+3+4-5*6*7/8").unwrap().describe(), "(1+2+3+4)-(5*6*7)/8");
@@ -518,12 +518,12 @@ mod tests {
         test_len!("\"a b c!\"+1..3+1" => 6);
         test_len!("\"\"+seq" => 0);
         test_len!("'x'.repeat+'a'..'c'" => 3);
-        test_skip_n(r#""abcdefghijk"+seq+"abcdefghijklmn""#);
-        test_skip_n(r#""ab".repeat(10)+seq"#);
-        test_skip_n(r#""a b".repeat(10)+seq"#);
-        test_skip_n(r#""a b".repeat(10)+range('a','e')"#);
-        test_skip_n("'u'.repeat+'a'..'c'");
-        test_skip_n("' '.repeat+'a'..'c'");
+        test_advance(r#""abcdefghijk"+seq+"abcdefghijklmn""#);
+        test_advance(r#""ab".repeat(10)+seq"#);
+        test_advance(r#""a b".repeat(10)+seq"#);
+        test_advance(r#""a b".repeat(10)+range('a','e')"#);
+        test_advance("'u'.repeat+'a'..'c'");
+        test_advance("' '.repeat+'a'..'c'");
         test_eval!("(('a'.repeat+\"bc\")~\"xyz\")[2]" => "'d'");
         test_eval!("(('a'.repeat+\"bc\")~\"xyz\")[3]" => "'x'");
         test_eval!("(('a'.repeat+\"bc\")~\"xyz\")[4]" => "'y'");

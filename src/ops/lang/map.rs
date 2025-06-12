@@ -34,8 +34,8 @@ impl Stream for Map {
         }))
     }
 
-    fn length(&self) -> Length {
-        self.source.length()
+    fn len(&self) -> Length {
+        self.source.len()
     }
 }
 
@@ -65,8 +65,8 @@ impl Stream<Char> for CharMap {
         }))
     }
 
-    fn length(&self) -> Length {
-        self.source.length()
+    fn len(&self) -> Length {
+        self.source.len()
     }
 }
 
@@ -86,8 +86,8 @@ mod tests {
         test_eval!("\"a1b2c\":{if(#.isdigit,'-',#)}" => "\"a-b-c\"");
         test_len!("[1,2,3]:{#}" => 3);
         test_len!("[]:{#}" => 0);
-        test_skip_n("range(10^10):{#}");
-        test_skip_n("seq:{#}");
+        test_advance("range(10^10):{#}");
+        test_advance("seq:{#}");
         test_describe!("[1,2,3]:{#}" => "[1, 2, 3]:{#}");
         test_describe!("seq:{#}" => "seq:{#}");
         test_describe!("seq.map{#}" => "seq.map({#})");

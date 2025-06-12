@@ -57,10 +57,10 @@ fn eval_last(node: Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, BaseError> {
-    match stm.length() {
+    match stm.len() {
         Length::Exact(len) if !len.is_zero() => {
             let mut it = stm.iter();
-            it.skip_n(len - 1u32)?;
+            it.advance(len - 1u32)?;
             it.next()
                 .expect("1 item should remain after skip(len - 1)")
                 .map_err(BaseError::from)
@@ -83,7 +83,7 @@ fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, BaseError> {
 }
 
 fn eval_last_count<I: ItemType>(stm: &dyn Stream<I>, count: &UNumber) -> Result<RetType<I>, BaseError> {
-    match stm.length() {
+    match stm.len() {
         Length::Exact(len) if &len < count => Ok(RetType::PassThrough),
         Length::Exact(len) => Ok(RetType::Skip(len - count)),
         Length::Infinite => Err("stream is infinite".into()),
@@ -123,14 +123,14 @@ struct Last<I: ItemType> {
 impl<I: ItemType> Stream<I> for Last<I> {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         let mut it = self.source.iter();
-        match it.skip_n(self.skip.to_owned()) {
+        match it.advance(self.skip.to_owned()) {
             Ok(None) => it,
             Ok(Some(_)) => Box::new(std::iter::empty()),
             Err(err) => Box::new(std::iter::once(Err(err)))
         }
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Exact(self.count.to_owned())
     }
 }
@@ -177,8 +177,8 @@ mod tests {
         test_len!("(1..3).last(2)" => 2);
         test_len!("(1..3).last(3)" => 3);
         test_len!("(1..3).last(4)" => 3);
-        test_skip_n("range(10^9).last(10^10)");
-        test_skip_n("range(10^11).last(10^10)");
+        test_advance("range(10^9).last(10^10)");
+        test_advance("range(10^11).last(10^10)");
         test_describe!("(1..3).last" => "3");
         test_describe!("(1..3).last(4)" => "1..3");
         test_describe!("(1..3).last(2)" => "(1..3).last(2)");

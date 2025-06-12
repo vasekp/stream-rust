@@ -57,7 +57,7 @@ impl Stream for NestSource {
         Box::new(NestIterSource{body: &self.body, prev: self.source.clone(), env: &self.env})
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Infinite
     }
 }
@@ -68,7 +68,7 @@ impl Stream for NestArgs {
         Box::new(NestIterArgs{body: &self.body, prev: args, env: &self.env})
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Infinite
     }
 }

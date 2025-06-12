@@ -38,9 +38,9 @@ impl Stream for Zip {
         Box::new(ZipIter{iters})
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         self.streams.iter()
-            .map(|stm| stm.length())
+            .map(|stm| stm.len())
             .reduce(Length::intersection)
             .unwrap() // at least 1 arg
     }
@@ -63,10 +63,10 @@ impl Iterator for ZipIter<'_> {
 }
 
 impl SIterator for ZipIter<'_> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut remain = UNumber::zero();
         for iter in &mut self.iters {
-            if let Some(r) = iter.skip_n(n.clone())? {
+            if let Some(r) = iter.advance(n.clone())? {
                 remain = std::cmp::max(remain, r);
             }
         }
@@ -96,9 +96,9 @@ mod tests {
         test_eval!("zip(seq)" => "[[1], [2], [...], ...]");
         test_len!("seq.zip([])" => 0);
         test_len!("seq.zip(1..10)" => 10);
-        test_skip_n("seq.zip(seq)");
-        test_skip_n("seq.zip(1..(10^20))");
-        test_skip_n("seq.zip([])");
+        test_advance("seq.zip(seq)");
+        test_advance("seq.zip(1..(10^20))");
+        test_advance("seq.zip([])");
         //test_describe!("seq.zip(seq)" => "seq.zip(seq)"); // TODO
     }
 }

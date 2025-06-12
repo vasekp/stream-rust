@@ -39,8 +39,8 @@ impl Stream for Fold {
         Box::new(FoldIter{body: &self.body, source: self.source.iter(), prev: args, env: &self.env})
     }
 
-    fn length(&self) -> Length {
-        self.source.length()
+    fn len(&self) -> Length {
+        self.source.len()
     }
 }
 

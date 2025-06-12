@@ -28,8 +28,8 @@ impl Stream for Chars {
         self.source.map_iter(|ch| Ok(Item::Char(ch)))
     }
 
-    fn length(&self) -> Length {
-        self.source.length()
+    fn len(&self) -> Length {
+        self.source.len()
     }
 }
 
@@ -62,8 +62,8 @@ impl Stream<Char> for Str {
         self.source.map_iter(Item::into_char)
     }
 
-    fn length(&self) -> Length {
-        self.source.length()
+    fn len(&self) -> Length {
+        self.source.len()
     }
 }
 

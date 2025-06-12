@@ -68,11 +68,11 @@ impl<I: ItemType> Stream<I> for Join<I> {
         Box::new(JoinIter{elems: &self.elems, index: 0, inner: None})
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         self.elems.iter()
             .map(|item| match item {
                 Joinable::Single(_) => Length::Exact(UNumber::one()),
-                Joinable::Stream(stm) => stm.length()
+                Joinable::Stream(stm) => stm.len()
             })
             .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
     }
@@ -112,11 +112,11 @@ impl<I: ItemType> Iterator for JoinIter<'_, I> {
 }
 
 impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
-    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();
             if let Some(inner) = &mut self.inner {
-                let Some(m) = inner.skip_n(n)? else { return Ok(None); };
+                let Some(m) = inner.advance(n)? else { return Ok(None); };
                 n = m;
             }
             self.index += 1;
@@ -133,7 +133,7 @@ impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
         self.elems[self.index..].iter()
             .map(|item| match item {
                 Joinable::Single(_) => Length::Exact(UNumber::one()),
-                Joinable::Stream(stm) => stm.length()
+                Joinable::Stream(stm) => stm.len()
             })
             .fold(len, |acc, e| acc + e)
     }
@@ -182,9 +182,9 @@ mod tests {
         test_len!("\"ab\"~'ch'" => 3);
         test_len!("\"ab\"~'ch'" => 3);
         test_len!("\"\"~\"\"" => 0);
-        test_skip_n("range(10^10)~range(10^9)");
-        test_skip_n("range(10^10)~range(-10^10)~range(10^9)");
-        test_skip_n("('a'..'z').repeat(10^10)~['A'].repeat(10^10)");
+        test_advance("range(10^10)~range(10^9)");
+        test_advance("range(10^10)~range(-10^10)~range(10^9)");
+        test_advance("('a'..'z').repeat(10^10)~['A'].repeat(10^10)");
 
         test_describe!("1~2" => "1~2");
         test_describe!("[1]~[2]" => "[1]~[2]");

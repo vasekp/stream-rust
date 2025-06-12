@@ -23,7 +23,7 @@ impl Stream for Seq {
         })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         Length::Infinite
     }
 }
@@ -66,7 +66,7 @@ impl SIterator for SeqIter<'_> {
         Length::Infinite
     }
 
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         match self.step {
             Some(step) => self.value += step * Number::from(n),
             None => self.value += Number::from(n)
@@ -89,8 +89,8 @@ mod tests {
         test_eval!("seq(2, -3)" => "[2, -1, -4, -7, -10, ...]");
         test_eval!("seq(2, 3)[10^10]" => "29999999999");
         test_eval!("seq(2, 0)[10^10]" => "2");
-        test_skip_n("seq(2,0)");
-        test_skip_n("seq(2,3)");
+        test_advance("seq(2,0)");
+        test_advance("seq(2,3)");
         test_describe!("seq()" => "seq");
         test_describe!("seq(-1)" => "seq(-1)");
         test_describe!("seq(-1,2)" => "seq(-1, 2)");

@@ -23,19 +23,19 @@ pub trait Stream<I = Item>: DynClone + Describe {
     /// consistent with the actual behaviour of the stream.
     ///
     /// The default implementation forwards to [`SIterator::len_remain()`].
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         self.iter().len_remain()
     }
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
-    /// looking at [`length()`](Stream::length). If the information is insufficient, constructs the
+    /// looking at [`len()`](Stream::length). If the information is insufficient, constructs the
     /// iterator and tries answering using [`SIterator::len_remain()`]. As a last resort, the 
     /// iterator is consumed.
     ///
     /// This function can't return an error. If the first call to `iter().next()` produces an
     /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
     fn is_empty(&self) -> bool {
-        match self.length() {
+        match self.len() {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
             Length::Exact(_) | Length::Infinite => false,
             _ => {
@@ -78,7 +78,7 @@ impl<I: ItemType> dyn Stream<I> {
 impl dyn Stream<Item> {
     pub(crate) fn listout_impl(&self) -> Result<Vec<Item>, StreamError> {
         let mut vec = Vec::new();
-        match &self.length() {
+        match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
                 if let Some(len) = len.to_usize() {
                     vec.reserve(len);
@@ -161,7 +161,7 @@ impl dyn Stream<Item> {
 impl dyn Stream<Char> {
     pub(crate) fn listout_impl(&self) -> Result<Vec<Char>, StreamError> {
         let mut vec = Vec::new();
-        match &self.length() {
+        match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
                 if let Some(len) = len.to_usize() {
                     vec.reserve(len);
@@ -326,8 +326,8 @@ impl<I> Iterator for OwnedStreamIter<I> {
 }
 
 impl<I> SIterator<I> for OwnedStreamIter<I> {
-    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        self.iter.skip_n(n)
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.advance(n)
     }
 
     fn len_remain(&self) -> Length {

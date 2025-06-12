@@ -20,9 +20,9 @@ mod tests {
         test_len!("[1,2,3]" => 3);
         test_len!("[1]" => 1);
         test_len!("[]" => 0);
-        test_skip_n("[1,2,3]");
-        test_skip_n("[1]");
-        test_skip_n("[]");
+        test_advance("[1,2,3]");
+        test_advance("[1]");
+        test_advance("[]");
         test_describe!("[1,2,3]" => "[1, 2, 3]");
         test_describe!("[]" => "[]");
         test_describe!("list(1)" => "[1]");

@@ -36,7 +36,7 @@ impl Stream for Flatten {
         })
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         if self.is_empty() {
             Length::Exact(UNumber::zero())
         } else {
@@ -87,7 +87,7 @@ impl Iterator for FlattenIter<'_> {
 }
 
 impl SIterator for FlattenIter<'_> {
-    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();
             if n.is_zero() {
@@ -95,7 +95,7 @@ impl SIterator for FlattenIter<'_> {
             }
             if self.depth.is_some_and(|d| self.iters.len() == d) {
                 let Some(iter) = self.iters.last_mut() else { unreachable!() };
-                let Some(m) = iter.skip_n(n)? else { return Ok(None); };
+                let Some(m) = iter.advance(n)? else { return Ok(None); };
                 self.iters.pop();
                 n = m;
             } else {
@@ -140,11 +140,11 @@ mod tests {
         test_eval!("[0].nest{[#]}.flatten(3)" => "[0, 0, [0], [...], ...]");
         test_eval!("[0].nest{[#]}.flatten(10^10)" => "[0, 0, 0, 0, 0, ...]");
         test_eval!("[\"ab\",\"cd\"].flatten" => "[\"ab\", \"cd\"]");
-        test_skip_n("[1,range(3)].repeat(10).flatten");
-        test_skip_n("[1,[2,[3]]].repeat(10).flatten");
-        test_skip_n("[1,[2,[3]]].repeat(10).flatten(1)");
-        test_skip_n("[1,[2,[3]]].repeat(10).flatten(2)");
-        test_skip_n("[1,[2,[3]]].repeat(10).flatten(10)");
+        test_advance("[1,range(3)].repeat(10).flatten");
+        test_advance("[1,[2,[3]]].repeat(10).flatten");
+        test_advance("[1,[2,[3]]].repeat(10).flatten(1)");
+        test_advance("[1,[2,[3]]].repeat(10).flatten(2)");
+        test_advance("[1,[2,[3]]].repeat(10).flatten(10)");
     }
 }
 

@@ -39,7 +39,7 @@ impl Stream<Char> for Cat {
         }
     }
 
-    fn length(&self) -> Length {
+    fn len(&self) -> Length {
         if self.is_empty() {
             Length::Exact(UNumber::zero())
         } else {
@@ -88,14 +88,14 @@ impl Iterator for CatIter<'_> {
 }
 
 impl SIterator<Char> for CatIter<'_> {
-    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();
             if n.is_zero() {
                 return Ok(None);
             }
             if let Some(ref mut iter) = &mut self.inner {
-                let Some(m) = iter.skip_n(n)? else { return Ok(None); };
+                let Some(m) = iter.advance(n)? else { return Ok(None); };
                 self.inner = None;
                 n = m;
             } else {
@@ -176,10 +176,10 @@ impl Iterator for RiffleCatIter<'_> {
 }
 
 impl SIterator<Char> for RiffleCatIter<'_> {
-    fn skip_n(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();
-            n = match self.inner.skip_n(n) {
+            n = match self.inner.advance(n) {
                 Ok(Some(n)) => n,
                 ret => return ret
             };
@@ -225,10 +225,10 @@ mod tests {
         test_eval!("\"abc\".chars.cat(' ')" => "\"a b c\"");
         test_eval!("['a'].repeat.cat(\", \")" => "\"a, a, a, a, a, a, a,...");
         test_eval!("\"abc\".chars.cat(' '.repeat)" => err);
-        test_skip_n("['a', 'b'].cat(' ')");
-        test_skip_n("[\"abcde\"].repeat(10).cat");
-        test_skip_n("[\"abcde\"].repeat.cat(\", \")");
-        test_skip_n("\"abcde\".repeat.chars.cat(' ')");
+        test_advance("['a', 'b'].cat(' ')");
+        test_advance("[\"abcde\"].repeat(10).cat");
+        test_advance("[\"abcde\"].repeat.cat(\", \")");
+        test_advance("\"abcde\".repeat.chars.cat(' ')");
     }
 }
 

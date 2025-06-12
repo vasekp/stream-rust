@@ -27,8 +27,8 @@ impl Stream for DDup {
         Box::new(DDupIter{iter: self.source.iter(), seen: vec![]})
     }
 
-    fn length(&self) -> Length {
-        Length::at_most(self.source.length())
+    fn len(&self) -> Length {
+        Length::at_most(self.source.len())
     }
 }
 

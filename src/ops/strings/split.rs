@@ -47,8 +47,8 @@ impl Stream for SplitString {
         Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false})
     }
 
-    fn length(&self) -> Length {
-        Length::at_most(self.source.length())
+    fn len(&self) -> Length {
+        Length::at_most(self.source.len())
     }
 }
 
@@ -64,8 +64,8 @@ impl Iterator for SplitStringIter<'_> {
             check_stop!(iter);
             cache.push(iter_try_expr!(item));
             for sep in self.sep {
-                if sep.len() > cache.len() { continue; }
-                let bkpt = cache.len() - sep.len();
+                if (**sep).len() > cache.len() { continue; }
+                let bkpt = cache.len() - (**sep).len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
                     return Some(Ok(Item::new_string(LiteralString::from(cache))));
@@ -107,8 +107,8 @@ impl Stream for SplitStream {
         Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false})
     }
 
-    fn length(&self) -> Length {
-        Length::at_most(self.source.length())
+    fn len(&self) -> Length {
+        Length::at_most(self.source.len())
     }
 }
 
