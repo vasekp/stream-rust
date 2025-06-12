@@ -41,17 +41,13 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
     let st = try_with!(rnode, s.iter().map(|ch| -> Result<u8, BaseError> {
         check_stop!();
         match ch? {
-            Char::Single(c) if c.is_ascii() && (valid_digit(c as u8) || c == '-') => Ok(c as u8),
+            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-') => Ok(c as u8),
             _ => Err(BaseError::from("invalid character"))
         }})
         .collect::<Result<Vec<_>, _>>()?);
     let num = Number::parse_bytes(&st, radix)
         .ok_or_else(|| StreamError::new("invalid input", rnode))?;
     Ok(Item::Number(num))
-}
-
-fn valid_digit(c: u8) -> bool {
-    (b'0'..=b'9').contains(&c) || (b'a'..=b'z').contains(&c) || (b'A'..=b'Z').contains(&c)
 }
 
 #[cfg(test)]

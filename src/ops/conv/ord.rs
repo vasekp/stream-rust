@@ -16,7 +16,7 @@ fn eval_chr(node: Node, env: &Env) -> Result<Item, StreamError> {
     let Some(Item::Number(ix)) = &node.source else {
         return Err(StreamError::new("expected: number.chr", node));
     };
-    let ch = try_with!(node, env.alphabet().chr(ix, CharCase::Indeterminate));
+    let ch = env.alphabet().chr(ix, CharCase::Indeterminate);
     Ok(Item::new_char(ch))
 }
 

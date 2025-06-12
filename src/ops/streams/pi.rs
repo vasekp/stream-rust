@@ -66,7 +66,7 @@ impl Iterator for PiIter<'_> {
             let (n, carry) = iter_try_expr!(self.inner.next().unwrap());
             if carry {
                 for x in self.cached.iter_mut().rev() {
-                    *x = *x + 1;
+                    *x += 1;
                     if *x == self.inner.radix { *x = 0; continue; } else { break; }
                 }
             }
