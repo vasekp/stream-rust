@@ -40,6 +40,7 @@ impl MathOp {
                     "-" => Self::minus_func,
                     "*" => Self::mul_func,
                     "/" => Self::div_func,
+                    "%" => Self::mod_func,
                     "^" => Self::pow_func,
                     _ => unreachable!("math op '{op}'")
                 },
@@ -124,6 +125,21 @@ impl MathOp {
                     Err("division by zero".into())
                 } else {
                     Ok(Item::new_number(lhs / rhs))
+                }
+            },
+            _ => Err("exactly 2 arguments required".into())
+        }
+    }
+
+    fn mod_func(items: &[Item], _alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
+        use num::traits::Euclid;
+        match items {
+            [lhs, rhs] => {
+                let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);
+                if rhs.is_zero() {
+                    Err("division by zero".into())
+                } else {
+                    Ok(Item::new_number(lhs.rem_euclid(rhs)))
                 }
             },
             _ => Err("exactly 2 arguments required".into())
@@ -430,6 +446,9 @@ mod tests {
         test_eval!("0^0" => "1");
         test_eval!("0^1" => "0");
         test_eval!("1^(-1)" => err);
+        test_eval!("157%10" => "7");
+        test_eval!("(-157)%10" => "3");
+        test_eval!("(-157)%(-10)" => "3");
 
         test_eval!("'a'+'b'+'c'" => "'f'");
         test_eval!("'E'+3+'a'" => "'I'");
@@ -527,5 +546,6 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     keywords.insert("*", eval_op);
     keywords.insert("times", eval_op);
     keywords.insert("/", eval_op);
+    keywords.insert("%", eval_op);
     keywords.insert("^", eval_op);
 }

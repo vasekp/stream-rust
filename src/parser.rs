@@ -69,7 +69,7 @@ impl Token<'_> {
             [b'(' | b'[' | b'{'] => Open,
             [b')' | b']' | b'}'] => Close,
             [b','] => Comma,
-            [b'#' | b'$' | b'%'] => Special,
+            [b'#' | b'$' | b'%'] => Special, // '%' can double as an operator
             _ => return Err(ParseError::new("invalid character", slice))
         };
         Ok(Token(class, slice))
@@ -510,7 +510,7 @@ impl<'str> Parser<'str> {
                     }
                     src.chain(Link::new(LangItem::Part, args))
                 },
-                (mut expr, Token(TC::Oper, op)) => {
+                (mut expr, Token(TC::Oper, op) | Token(TC::Special, op @ "%")) => {
                     let (prec, multi) = op_rules(op)?;
                     loop {
                         let Some(mut entry) = stack.pop() else {
@@ -794,6 +794,7 @@ fn test_parser() {
     assert!(parse("{a}{b}").is_err());
 
     assert_eq!(parse("1..2"), Ok(Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(2)])));
+    assert_eq!(parse("1%2"), Ok(Expr::new_op("%", vec![Expr::new_number(1), Expr::new_number(2)])));
 }
 
 #[test]

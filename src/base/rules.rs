@@ -17,12 +17,13 @@ pub(crate) fn op_rules(op: &str) -> Result<(u32, bool), ParseError> {
         ">>=" => Ok((5, true)),
         "<<=" => Ok((5, true)),
         "~" => Ok((6, true)),
-        "+" => Ok((7, true)),
-        "-" => Ok((7, false)),
-        "*" => Ok((8, true)),
-        "/" => Ok((8, false)),
-        "^" => Ok((9, false)),
-        ".." => Ok((10, false)),
+        "%" => Ok((7, false)),
+        "+" => Ok((8, true)),
+        "-" => Ok((8, false)),
+        "*" => Ok((9, true)),
+        "/" => Ok((9, false)),
+        "^" => Ok((10, false)),
+        ".." => Ok((11, false)),
         _ => Err(ParseError::new("undefined operator", op))
     }
 }
