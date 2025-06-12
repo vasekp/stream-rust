@@ -19,6 +19,7 @@ mod ddup;
 mod contains;
 mod index;
 mod pi;
+mod windows;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     seq::init(keywords);
@@ -42,4 +43,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     contains::init(keywords);
     index::init(keywords);
     pi::init(keywords);
+    windows::init(keywords);
 }

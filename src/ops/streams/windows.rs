@@ -1,0 +1,131 @@
+use crate::base::*;
+
+use std::collections::VecDeque;
+
+fn eval_windows(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?.resolve_source()?;
+    match node {
+        RNodeS { source: Item::Stream(_), args: RArgs::One(Item::Number(ref size)), .. } => {
+            let size = try_with!(node, check_win_size(size)?);
+            let Item::Stream(stm) = node.source else { unreachable!() };
+            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size}))
+        },
+        _ => Err(StreamError::new("expected: source.windows(size)", node))
+    }
+}
+
+fn check_win_size(size: &Number) -> Result<usize, BaseError> {
+    if size.is_negative() {
+        return Err("size must be positive".into());
+    }
+    match size.to_usize() {
+        Some(size @ 2..) => Ok(size),
+        Some(0..=1) => Err("size must be at least 2".into()),
+        _ => Err("size too large".into())
+    }
+}
+
+#[derive(Clone)]
+struct Windows {
+    head: Head,
+    source: BoxedStream,
+    size: usize,
+}
+
+
+impl Describe for Windows {
+    fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        Node::describe_helper(&self.head, Some(&self.source), [&UNumber::from(self.size)], prec, env)
+    }
+}
+
+impl Stream for Windows {
+    fn iter(&self) -> Box<dyn SIterator + '_> {
+        let mut iter = self.source.iter();
+        let res = (&mut iter).take(self.size - 1)
+            .collect::<Result<VecDeque<_>, _>>();
+        let deque = match res {
+            Ok(deque) => deque,
+            Err(err) => return Box::new(std::iter::once(Err(err)))
+        };
+        Box::new(WindowsIter{iter, size: self.size, deque})
+    }
+
+    fn length(&self) -> Length {
+        self.source.length().map(|len|
+            if len < &UNumber::from(self.size) {
+                UNumber::zero()
+            } else {
+                len - (self.size - 1)
+            })
+    }
+}
+
+struct WindowsIter<'node> {
+    iter: Box<dyn SIterator + 'node>,
+    size: usize,
+    deque: VecDeque<Item>,
+}
+
+impl Iterator for WindowsIter<'_> {
+    type Item = Result<Item, StreamError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = iter_try_expr!(self.iter.next()?);
+        let first = self.deque.pop_front().unwrap(); // for size ≥ 2, deque has ≥ 1 element
+        self.deque.push_back(next);
+        let vec = std::iter::once(first)
+            .chain(self.deque.iter().cloned())
+            .collect::<Vec<_>>();
+        Some(Ok(Item::from(vec)))
+    }
+}
+
+impl SIterator for WindowsIter<'_> {
+    fn skip_n(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        match n.to_usize() {
+            Some(num) if num < self.size => { self.deque.drain(0..num); },
+            _ => {
+                self.deque.clear();
+                if let Some(rem) = self.iter.skip_n(n - (self.size - 1))? {
+                    return Ok(Some(rem + (self.size - 1)));
+                }
+            }
+        }
+        for _ in self.deque.len()..(self.size - 1) {
+            let Some(next) = self.iter.next().transpose()? else {
+                return Ok(Some((self.size - 1 - self.deque.len()).into()));
+            };
+            self.deque.push_back(next);
+        }
+        Ok(None)
+    }
+
+    fn len_remain(&self) -> Length {
+        self.iter.len_remain()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_windows() {
+        use super::*;
+        use crate::parser::parse;
+        test_eval!("seq.windows(3)" : 10 => "[[1, 2, 3], [2, 3, 4], [3, ...], ...]");
+        test_eval!("seq.windows(2)" : 10 => "[[1, 2], [2, 3], [3, 4], [...], ...]");
+        test_eval!("seq.windows(1)" => err);
+        test_len!("(1..10).windows(5)" => 6);
+        test_len!("(1..10).windows(9)" => 2);
+        test_len!("(1..10).windows(10)" => 1);
+        test_eval!("(1..10).windows(11)" => "[]");
+        test_eval!("(1..5).windows(4)[1]" => "[1, 2, 3, 4]");
+        test_eval!("(1..5).windows(4)[2]" => "[2, 3, 4, 5]");
+        test_eval!("(1..5).windows(4)[3]" => err);
+        test_skip_n("(1..(10^10)).windows(5)");
+    }
+}
+
+pub fn init(keywords: &mut crate::keywords::Keywords) {
+    keywords.insert("windows", eval_windows);
+}
