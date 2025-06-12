@@ -3,46 +3,94 @@ use crate::base::*;
 use std::collections::VecDeque;
 
 fn eval_index(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match &rnode {
-        RNodeS { source: Item::Stream(stm), args: RArgs::One(item), .. } => {
-            for (ix, elm) in stm.iter().enumerate() {
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_args_nonempty()?);
+    match &node.source {
+        Some(Item::Stream(stm)) => {
+            let mut queries = node.args.into_iter()
+                .map(Query::Pending)
+                .collect::<Vec<_>>();
+            let mut rem = queries.len();
+            'a: for (ix, elm) in stm.iter().enumerate() {
                 check_stop!();
-                if elm?.try_eq(item)? {
-                    return Ok(Item::new_number(ix + 1));
+                let elm = elm?;
+                for query in &mut queries {
+                    if let Query::Pending(item) = query {
+                        if elm.try_eq(item)? {
+                            *query = Query::Found(ix);
+                            rem -= 1;
+                        }
+                    }
+                    if rem == 0 { break 'a; }
                 }
             }
-            Ok(Item::new_stream(EmptyStream))
-        },
-        RNodeS { source: Item::String(stm), args: RArgs::One(Item::Char(ch)), .. } => {
-            for (ix, elm) in stm.iter().enumerate() {
-                check_stop!();
-                if &elm? == ch {
-                    return Ok(Item::new_number(ix + 1));
-                }
+            let mut res = queries.into_iter()
+                .map(|q| match q {
+                    Query::Found(ix) => Item::new_number(ix + 1),
+                    Query::Pending(_) => Item::new_stream(EmptyStream)
+                })
+                .collect::<Vec<_>>();
+            if res.len() == 1 {
+                Ok(res.pop().unwrap()) // len == 1
+            } else {
+                Ok(Item::from(res))
             }
-            Ok(Item::new_stream(EmptyStream))
         },
-        RNodeS { source: Item::String(stm), args: RArgs::One(Item::String(other)), .. } => {
-            let needle = other.listout()?;
-            let len = needle.len();
-            let mut deque = VecDeque::with_capacity(len);
-            for (ix, elm) in stm.iter().enumerate() {
+        Some(Item::String(stm)) => {
+            let mut queries = try_with!(node, node.args.iter()
+                .map(|item| match item {
+                    Item::Char(ch) => Ok(Query::Pending(vec![ch.clone()])),
+                    Item::String(s) if !s.is_empty() => Ok(Query::Pending(s.listout()?)),
+                    item => Err(BaseError::from(format!("expected character or nonempty string, found {:?}", item)))
+                })
+                .collect::<Result<Vec<_>, _>>()?);
+            let longest = queries.iter()
+                .map(|q| match q { Query::Pending(vec) => vec.len(), _ => unreachable!() })
+                .reduce(std::cmp::max)
+                .unwrap(); // len ≥ 1
+            let mut rem = queries.len();
+            let mut deque = VecDeque::with_capacity(longest);
+            'a: for (ix, elm) in stm.iter().enumerate() {
                 check_stop!();
-                if deque.len() == needle.len() {
+                if deque.len() == longest {
                     deque.pop_front();
                 }
                 deque.push_back(elm?);
-                let (lhs1, lhs2) = deque.as_slices();
-                let (rhs1, rhs2) = needle[..].split_at(lhs1.len());
-                if lhs1 == rhs1 && lhs2 == rhs2 {
-                    return Ok(Item::new_number(ix + 2 - len));
+                for query in &mut queries {
+                    if let Query::Pending(item) = query {
+                        let len = item.len();
+                        let found = if len == 1 {
+                            deque.back().unwrap() == &item[0]
+                        } else {
+                            deque.range(longest - len..).eq(item)
+                        };
+                        if found {
+                            *query = Query::Found(ix + 1 - len);
+                            rem -= 1;
+                        }
+                    }
+                    if rem == 0 { break 'a; }
                 }
             }
-            Ok(Item::new_stream(EmptyStream))
+            let mut res = queries.into_iter()
+                .map(|q| match q {
+                    Query::Found(ix) => Item::new_number(ix + 1),
+                    Query::Pending(_) => Item::new_stream(EmptyStream)
+                })
+                .collect::<Vec<_>>();
+            if res.len() == 1 {
+                Ok(res.pop().unwrap())
+            } else {
+                Ok(Item::from(res))
+            }
         },
-        _ => Err(StreamError::new("expected: stream.index(item) or string.index(char) or string.index(string)", rnode))
+        _ => Err(StreamError::new("expected: stream.index(item...) or string.index(char or string...)", node))
     }
+}
+
+enum Query<I> {
+    Pending(I),
+    Found(usize)
 }
 
 #[cfg(test)]
@@ -57,12 +105,15 @@ mod tests {
         test_eval!("[].index([])" => "[]");
         test_eval!("[[]].index([])" => "1");
         test_eval!("\"abc\".index('b')" => "2");
+        test_eval!("\"abc\".index(\"\")" => err);
         test_eval!("\"abc\".index(1)" => err);
         test_eval!("\"abc\".index(\"bc\")" => "2");
         test_eval!("\"abc\".index(\"abc\")" => "1");
         test_eval!("\"abc\".index(\"abcd\")" => "[]");
         test_eval!("\"abc\".index(\"zabc\")" => "[]");
         test_eval!("\"abcdefghijklmnopqrstuvwxyz\".repeat().index(\"yza\")" => "25");
+        test_eval!("(1..5).repeat(2).skip(1).index(1,5,7)" => "[5, 4, []]");
+        test_eval!("\"abcde\".index('b',\"b\",\"cd\",\"de\",\"ef\")" => "[2, 2, 3, 4, []]");
     }
 }
 
