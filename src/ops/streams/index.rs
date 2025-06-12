@@ -12,7 +12,7 @@ fn eval_index(node: Node, env: &Env) -> Result<Item, StreamError> {
                     return Ok(Item::new_number(ix + 1));
                 }
             }
-            Err(StreamError::new("item not found", rnode))
+            Ok(Item::new_stream(EmptyStream))
         },
         RNodeS { source: Item::String(stm), args: RArgs::One(Item::Char(ch)), .. } => {
             for (ix, elm) in stm.iter().enumerate() {
@@ -21,7 +21,7 @@ fn eval_index(node: Node, env: &Env) -> Result<Item, StreamError> {
                     return Ok(Item::new_number(ix + 1));
                 }
             }
-            Err(StreamError::new("character not found in string", rnode))
+            Ok(Item::new_stream(EmptyStream))
         },
         RNodeS { source: Item::String(stm), args: RArgs::One(Item::String(other)), .. } => {
             let needle = other.listout()?;
@@ -39,7 +39,7 @@ fn eval_index(node: Node, env: &Env) -> Result<Item, StreamError> {
                     return Ok(Item::new_number(ix + 2 - len));
                 }
             }
-            Err(StreamError::new("substring not found", rnode))
+            Ok(Item::new_stream(EmptyStream))
         },
         _ => Err(StreamError::new("expected: stream.index(item) or string.index(char) or string.index(string)", rnode))
     }
@@ -53,15 +53,15 @@ mod tests {
         use crate::parser::parse;
 
         test_eval!("seq(5).index(10)" => "6");
-        test_eval!("(1..5).index('a')" => err);
-        test_eval!("[].index([])" => err);
+        test_eval!("(1..5).index('a')" => "[]");
+        test_eval!("[].index([])" => "[]");
         test_eval!("[[]].index([])" => "1");
         test_eval!("\"abc\".index('b')" => "2");
         test_eval!("\"abc\".index(1)" => err);
         test_eval!("\"abc\".index(\"bc\")" => "2");
         test_eval!("\"abc\".index(\"abc\")" => "1");
-        test_eval!("\"abc\".index(\"abcd\")" => err);
-        test_eval!("\"abc\".index(\"zabc\")" => err);
+        test_eval!("\"abc\".index(\"abcd\")" => "[]");
+        test_eval!("\"abc\".index(\"zabc\")" => "[]");
         test_eval!("\"abcdefghijklmnopqrstuvwxyz\".repeat().index(\"yza\")" => "25");
     }
 }
