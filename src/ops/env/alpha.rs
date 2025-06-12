@@ -1,6 +1,12 @@
 use crate::base::*;
 
 fn eval_alpha(node: Node, env: &Env) -> Result<Item, StreamError> {
+    if node.source.is_none() && node.args.is_empty() {
+        let vec = env.alpha.iter()
+            .map(|ch| Item::Char(Char::from(ch)))
+            .collect::<Vec<_>>();
+        return Ok(Item::from(vec));
+    }
     let rnode = node.eval_nth_arg(0, env)?.resolve_no_source()?;
     let RNodeNS { args: RArgs::Two(alpha, _), .. } = &rnode else {
         return Err(StreamError::new("expected: alpha(alphabet, expr)", rnode));
@@ -32,6 +38,9 @@ mod tests {
         test_eval!("alpha(\"báC\", \"b Á c d\"+1)" => "\"á C b d\"");
         test_eval!("alpha(['b', 'á', 'c'], 'B' << 'Á' << 'C')" => "true");
         test_eval!("alpha(['a','b', 1], 0)" => err);
+        test_eval!("alpha" => "['a', 'b', 'c', 'd', 'e', ...]");
+        test_len!("alpha" => 26);
+        test_eval!("alpha(['Á', 'ch'], alpha)" => "['Á', 'ch']");
 
         test_describe!("alpha(\"cba\", \"abc\".nest{#+1}[3])" => "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");
         test_describe!("alpha(\"cba\", \"abc\".nest{#+1})[3]" => "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");
