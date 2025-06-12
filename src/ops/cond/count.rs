@@ -4,7 +4,7 @@ fn eval_count(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_source(env)?;
     let (stm, cond) = match &rnode {
         RNodeS { source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)), .. } => (stm, cond),
-        _ => return Err(StreamError::new("expected: stream.count{cond}", rnode))
+        _ => return Err(StreamError::new("expected: stream.countif{cond}", rnode))
     };
     let mut count = 0;
     try_with!(rnode, {
@@ -26,17 +26,17 @@ mod tests {
         use super::*;
         use crate::parser::parse;
 
-        test_eval!("range(5).count{true}" => "5");
-        test_eval!("range(5).count{false}" => "0");
-        test_eval!("range(-5,5).count{#<0}" => "5");
-        test_eval!("range(5).count{#}" => err);
-        test_eval!("range(5).count([].len)" => err);
-        test_eval!("[].count{1}" => "0");
-        test_eval!("[].count(1)" => err);
-        test_eval!("[].count([].len)" => "0");
+        test_eval!("range(5).countif{true}" => "5");
+        test_eval!("range(5).countif{false}" => "0");
+        test_eval!("range(-5,5).countif{#<0}" => "5");
+        test_eval!("range(5).countif{#}" => err);
+        test_eval!("range(5).countif([].len)" => err);
+        test_eval!("[].countif{1}" => "0");
+        test_eval!("[].countif(1)" => err);
+        test_eval!("[].countif([].len)" => "0");
     }
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("count", eval_count);
+    keywords.insert("countif", eval_count);
 }
