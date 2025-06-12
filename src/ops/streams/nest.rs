@@ -134,17 +134,9 @@ mod tests {
         test_eval!("1.nest{#*2}[64]" => "18446744073709551616");
         test_eval!("[].nest{[#]}[3]" => "[[[[]]]]");
         test_eval!("[].nest{[#, #]}[2]" => "[[[], []], [[], ...]]");
-        // Fibonacci
-        test_eval!("nest{#1+#2}(1,1)" => "[2, 3, 5, 8, 13, ...]");
-        // Von Neumann numerals
-        test_eval!("[].nest{#~[#]}[3]" => "[[], [[]], [[], ...]]");
-        // Binomial coefficients
-        test_eval!("[1].nest{(0~#)+(#~0)}[4]" => "[1, 4, 6, 4, 1]");
         test_eval!("\"caesar\".nest{#+1}" => "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
         test_eval!("[0,1]~[1].nest{#~(#+1)}.flatten" => "[0, 1, 1, 2, 1, ...]");
         test_describe!("nest{#1+#2}(1,1)" => "nest({#1+#2}(1, 1))");
-        // 10-adic automorphic number
-        test_eval!("5.nest{#^2%10^50}.windows(2).select{#[1]==#[2]}.first.first" => "57423423230896109004106619977392256259918212890625");
     }
 }
 

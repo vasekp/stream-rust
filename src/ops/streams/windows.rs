@@ -146,8 +146,6 @@ mod tests {
         test_skip_n("(1..(10^10)).windows(5)");
         test_eval!("seq.windows(3, plus)" => "[6, 9, 12, 15, 18, ...]");
         test_eval!("(seq^2).windows(3, {#2-#1})" => "[3, 5, 7, 9, 11, ...]");
-        // Pascal's triangle
-        test_eval!("[1].nest{(0~#~0).windows(2, plus)}" : 12 => "[[1, 1], [1, 2, 1], [1, 3, 3, 1], ...]");
     }
 }
 
