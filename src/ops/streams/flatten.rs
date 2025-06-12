@@ -37,15 +37,11 @@ impl Stream for Flatten {
     }
 
     fn len(&self) -> Length {
-        if self.is_empty() {
+        if self.source.is_empty() {
             Length::Exact(UNumber::zero())
         } else {
             Length::Unknown
         }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.source.is_empty()
     }
 }
 
