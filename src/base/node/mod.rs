@@ -143,14 +143,14 @@ impl Node {
         }
     }
 
-    /*pub(crate) fn with_args(mut self, args: Vec<Expr>) -> Result<Node, StreamError> {
+    pub(crate) fn with_args(mut self, args: Vec<Expr>) -> Result<Node, StreamError> {
         if !self.args.is_empty() {
             Err(StreamError::new("already has arguments", self))
         } else {
             self.args = args;
             Ok(self)
         }
-    }*/
+    }
 
     #[allow(unused)]
     pub(crate) fn resolve(self) -> RNode<Expr> {

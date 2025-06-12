@@ -3,14 +3,20 @@ use crate::base::*;
 use std::collections::VecDeque;
 
 fn eval_windows(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve_source()?;
+    let node = node.eval_nth_arg(0, env)?.eval_source(env)?;
     match node {
-        RNodeS { source: Item::Stream(_), args: RArgs::One(Item::Number(ref size)), .. } => {
+        RNodeS { source: Item::Stream(_), args: RArgs::One(Expr::Imm(Item::Number(ref size))), .. } => {
             let size = try_with!(node, check_win_size(size)?);
             let Item::Stream(stm) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size}))
+            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size, body: None, env: env.clone()}))
         },
-        _ => Err(StreamError::new("expected: source.windows(size)", node))
+        RNodeS { source: Item::Stream(_), args: RArgs::Two(Expr::Imm(Item::Number(ref size)), Expr::Eval(_)), .. } => {
+            let size = try_with!(node, check_win_size(size)?);
+            let RArgs::Two(_, Expr::Eval(body)) = node.args else { unreachable!() };
+            let Item::Stream(stm) = node.source else { unreachable!() };
+            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size, body: Some(body), env: env.clone()}))
+        },
+        _ => Err(StreamError::new("expected: source.windows(size) or source.windows(size, func)", node))
     }
 }
 
@@ -30,12 +36,20 @@ struct Windows {
     head: Head,
     source: BoxedStream,
     size: usize,
+    body: Option<Node>,
+    env: Env,
 }
 
 
 impl Describe for Windows {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), [&UNumber::from(self.size)], prec, env)
+        if let Some(body) = &self.body {
+            Node::describe_with_env(&self.env, &self.head, Some(&self.source),
+                [&Expr::from(Item::new_number(self.size)), &Expr::from(body.clone())],
+                prec, env)
+        } else {
+            Node::describe_helper(&self.head, Some(&self.source), [&UNumber::from(self.size)], prec, env)
+        }
     }
 }
 
@@ -48,7 +62,7 @@ impl Stream for Windows {
             Ok(deque) => deque,
             Err(err) => return Box::new(std::iter::once(Err(err)))
         };
-        Box::new(WindowsIter{iter, size: self.size, deque})
+        Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_ref(), env: &self.env})
     }
 
     fn length(&self) -> Length {
@@ -65,6 +79,8 @@ struct WindowsIter<'node> {
     iter: Box<dyn SIterator + 'node>,
     size: usize,
     deque: VecDeque<Item>,
+    body: Option<&'node Node>,
+    env: &'node Env,
 }
 
 impl Iterator for WindowsIter<'_> {
@@ -74,10 +90,15 @@ impl Iterator for WindowsIter<'_> {
         let next = iter_try_expr!(self.iter.next()?);
         let first = self.deque.pop_front().unwrap(); // for size ≥ 2, deque has ≥ 1 element
         self.deque.push_back(next);
-        let vec = std::iter::once(first)
-            .chain(self.deque.iter().cloned())
-            .collect::<Vec<_>>();
-        Some(Ok(Item::from(vec)))
+        let iter = std::iter::once(first)
+            .chain(self.deque.iter().cloned());
+        if let Some(body) = self.body {
+            Some(body.clone()
+                .with_args(iter.map(Expr::from).collect())
+                .and_then(|expr| expr.eval(self.env)))
+        } else {
+            Some(Ok(Item::from(iter.collect::<Vec<_>>())))
+        }
     }
 }
 
@@ -123,6 +144,10 @@ mod tests {
         test_eval!("(1..5).windows(4)[2]" => "[2, 3, 4, 5]");
         test_eval!("(1..5).windows(4)[3]" => err);
         test_skip_n("(1..(10^10)).windows(5)");
+        test_eval!("seq.windows(3, plus)" => "[6, 9, 12, 15, 18, ...]");
+        test_eval!("(seq^2).windows(3, {#2-#1})" => "[3, 5, 7, 9, 11, ...]");
+        // Pascal's triangle
+        test_eval!("[1].nest{(0~#~0).windows(2, plus)}" : 12 => "[[1, 1], [1, 2, 1], [1, 3, 3, 1], ...]");
     }
 }
 
