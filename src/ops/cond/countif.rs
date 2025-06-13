@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_count(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_countif(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_source(env)?;
     let (stm, cond) = match &rnode {
         RNodeS { source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)), .. } => (stm, cond),
@@ -22,7 +22,7 @@ fn eval_count(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_count() {
+    fn test_countif() {
         use super::*;
         use crate::parser::parse;
 
@@ -38,5 +38,5 @@ mod tests {
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("countif", eval_count);
+    keywords.insert("countif", eval_countif);
 }
