@@ -30,8 +30,7 @@ impl Describe for ULCase {
 
 impl Stream<Char> for ULCase {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        let func = self.func;
-        self.source.map_iter(move |ch| Ok(func(&ch)))
+        self.source.map_iter(|ch| Ok((self.func)(&ch)))
     }
 
     fn len(&self) -> Length {
