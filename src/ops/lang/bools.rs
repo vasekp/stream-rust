@@ -21,10 +21,10 @@ fn eval_or(mut node: Node, env: &Env) -> Result<Item, StreamError> {
 fn eval_not_xor(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
-    let res = try_with!(node, match (&node.head, &node.args[..]) {
-        (Head::Oper(op), [one]) if op == "!" => one.to_bool().map(|b| !b),
-        (Head::Symbol(sym), [one]) if sym == "not" => one.to_bool().map(|b| !b),
-        (Head::Symbol(sym), _) if sym == "not" => Err("exactly 1 operand required".into()),
+    let res = try_with!(node, match (&node.head.as_str(), &node.args[..]) {
+        (Some("!"), [one]) => one.to_bool().map(|b| !b),
+        (Some("not"), [one]) => one.to_bool().map(|b| !b),
+        (Some("not"), _) => Err("exactly 1 operand required".into()),
         (_, any) => any.iter().try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))
     }?);
     Ok(Item::Bool(res))

@@ -16,23 +16,15 @@ impl CmpOp {
     }
 
     fn find_fn(head: &Head) -> CmpFunc {
-        match head {
-            Head::Oper(op) =>
-                match op.as_str() {
-                    "==" => Self::eq_func,
-                    "<>" => Self::ineq_func,
-                    "<" => Self::lt_func,
-                    ">" => Self::gt_func,
-                    "<=" => Self::le_func,
-                    ">=" => Self::ge_func,
-                    _ => unreachable!("cmp op '{op}'")
-                },
-            Head::Symbol(sym) =>
-                match sym.as_str() {
-                    "equal" => Self::eq_func,
-                    _ => unreachable!("cmp op '{sym}'")
-                },
-            _ => unreachable!()
+        match head.as_str().expect("head should be symbol or oper") {
+            "==" => Self::eq_func,
+            "equal" => Self::eq_func,
+            "<>" => Self::ineq_func,
+            "<" => Self::lt_func,
+            ">" => Self::gt_func,
+            "<=" => Self::le_func,
+            ">=" => Self::ge_func,
+            op => panic!("cmp: unhandled op '{op}'")
         }
     }
 

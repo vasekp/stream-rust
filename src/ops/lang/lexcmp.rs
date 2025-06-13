@@ -18,16 +18,12 @@ impl LexOp {
     }
 
     fn find_fn(head: &Head) -> CritFunc {
-        match head {
-            Head::Oper(op) =>
-                match op.as_str() {
-                    "<<" => |ord| ord == Ordering::Less,
-                    ">>" => |ord| ord == Ordering::Greater,
-                    "<<=" => |ord| ord != Ordering::Greater,
-                    ">>=" => |ord| ord != Ordering::Less,
-                    _ => unreachable!("lex-cmp op '{op}'")
-                },
-            _ => unreachable!()
+        match head.as_str().expect("head should be symbol or oper") {
+            "<<" => |ord| ord == Ordering::Less,
+            ">>" => |ord| ord == Ordering::Greater,
+            "<<=" => |ord| ord != Ordering::Greater,
+            ">>=" => |ord| ord != Ordering::Less,
+            op => panic!("lex-cmp: unhandled op '{op}'")
         }
     }
 
