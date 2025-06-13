@@ -14,6 +14,9 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
                 (Item::Stream(s1), Item::Stream(s2)) => (read_stream(&**s1)?, read_stream(&**s2)?),
                 _ => return Err(StreamError::new("expected: (char/string, char/string) or (stream, stream)", node))
             };
+            if orig.len() != repl.len() {
+                return Err(StreamError::new("the replacements lists must be of same length", node));
+            }
             if orig.iter().any(Vec::is_empty) {
                 return Err(StreamError::new("the sought string can't be empty", node));
             }
@@ -160,6 +163,10 @@ mod tests {
     fn test_replace() {
         use super::*;
         use crate::parser::parse;
+        test_eval!("\"abc\".replace('a', \"a\")" => "\"abc\"");
+        test_eval!("\"abc\".replace(['a', 'b'], [\"a\", '1'])" => "\"a1c\"");
+        test_eval!("\"abc\".replace(\"\", \"\")" => err);
+        test_eval!("\"abc\".replace(['a', 'b'], [\"a\"])" => err);
         test_eval!("\"abcde\".replace('b', \"bb\")" => "\"abbcde\"");
         test_eval!("\"abcde\".replace(['b', 'e'], ['q', \"\"])" => "\"aqcd\"");
         test_eval!("seq.replace(3,[])" => "[1, 2, [], 4, 5, ...]");
