@@ -81,6 +81,14 @@ impl Alphabet {
         Ok(self.chr(&Number::from(index1 + index2), case))
     }
 
+    pub(crate) fn iter(&self) -> Box<dyn Iterator<Item = Char> + '_> {
+        match self {
+            Alphabet::Std26 => Box::new((0..26).into_iter()
+                .map(|i| Char::from((b'a' + i) as char))),
+            Alphabet::Listed{vec, ..} => Box::new(vec.iter().cloned())
+        }
+    }
+
     /// Compares two characters
     pub fn cmp(&self, x: &Char, y: &Char) -> Result<std::cmp::Ordering, BaseError> {
         let (ox, oy) = (self.ord(x)?, self.ord(y)?);

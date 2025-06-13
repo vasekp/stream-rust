@@ -33,24 +33,16 @@ impl MathOp {
     }
 
     fn find_fn(head: &Head) -> MathFunc {
-        match head {
-            Head::Oper(op) =>
-                match op.as_str() {
-                    "+" => Self::plus_func,
-                    "-" => Self::minus_func,
-                    "*" => Self::mul_func,
-                    "/" => Self::div_func,
-                    "%" => Self::mod_func,
-                    "^" => Self::pow_func,
-                    _ => unreachable!("math op '{op}'")
-                },
-            Head::Symbol(sym) =>
-                match sym.as_str() {
-                    "plus" => Self::plus_func,
-                    "times" => Self::mul_func,
-                    _ => unreachable!("math op '{sym}'")
-                },
-            _ => unreachable!()
+        match head.as_str().expect("head should be symbol or oper") {
+            "+" => Self::plus_func,
+            "plus" => Self::plus_func,
+            "-" => Self::minus_func,
+            "*" => Self::mul_func,
+            "times" => Self::mul_func,
+            "/" => Self::div_func,
+            "%" => Self::mod_func,
+            "^" => Self::pow_func,
+            sym => panic!("mathops: unhandled head '{sym}'")
         }
     }
 
@@ -265,19 +257,11 @@ impl StringOp {
     }
 
     fn find_fn(head: &Head) -> Result<StringFunc, BaseError> {
-        match head {
-            Head::Oper(op) =>
-                match op.as_str() {
-                    "+" => Ok(Self::plus_func),
-                    "-" => Ok(Self::minus_func),
-                    _ => Err(format!("operation {op} not available for strings").into())
-                },
-            Head::Symbol(sym) =>
-                match sym.as_str() {
-                    "plus" => Ok(Self::plus_func),
-                    _ => Err(format!("operation {sym} not available for strings").into())
-                },
-            _ => unreachable!()
+        match head.as_str().expect("head should be symbol or oper") {
+            "+" => Ok(Self::plus_func),
+            "plus" => Ok(Self::plus_func),
+            "-" => Ok(Self::minus_func),
+            sym => Err(format!("operation {sym} not available for strings").into())
         }
     }
 
