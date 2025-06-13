@@ -83,8 +83,7 @@ impl Alphabet {
 
     pub(crate) fn iter(&self) -> Box<dyn Iterator<Item = Char> + '_> {
         match self {
-            Alphabet::Std26 => Box::new((0..26).into_iter()
-                .map(|i| Char::from((b'a' + i) as char))),
+            Alphabet::Std26 => Box::new((0..26).map(|i| Char::from((b'a' + i) as char))),
             Alphabet::Listed{vec, ..} => Box::new(vec.iter().cloned())
         }
     }

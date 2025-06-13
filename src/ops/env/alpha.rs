@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_alpha(node: Node, env: &Env) -> Result<Item, StreamError> {
     if node.source.is_none() && node.args.is_empty() {
         let vec = env.alpha.iter()
-            .map(|ch| Item::Char(Char::from(ch)))
+            .map(Item::Char)
             .collect::<Vec<_>>();
         return Ok(Item::from(vec));
     }
