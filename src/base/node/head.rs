@@ -12,6 +12,15 @@ pub enum Head {
     Lang(LangItem)
 }
 
+impl Head {
+    pub(crate) fn as_str(&self) -> Option<&str> {
+        match self {
+            Head::Symbol(s) | Head::Oper(s) => Some(s.as_str()),
+            _ => None
+        }
+    }
+}
+
 impl<T> From<T> for Head where T: Into<String> {
     fn from(symbol: T) -> Head {
         Head::Symbol(symbol.into())
