@@ -5,6 +5,7 @@ mod env;
 mod strings;
 mod cond;
 mod conv;
+mod ana;
 
 #[cfg(test)]
 mod testutils;
@@ -17,6 +18,7 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     strings::init(keywords);
     cond::init(keywords);
     conv::init(keywords);
+    ana::init(keywords);
 
     #[cfg(test)]
     testutils::init(keywords);
@@ -46,7 +48,7 @@ fn misc_tests() {
 
     // Hamming weights
     test_eval!("self{([0,1]~#.skip(2)).riffle(1+#)}" : 33 => "[0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, ...]");
-    test_eval!("seq:numstr(2):rev:{#.chars.countif{#=='1'}}" : 32 => "[1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, ...]");
+    test_eval!("seq:numdig(2):count(1)" : 32 => "[1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, ...]");
     // Trailing zeroes
     test_eval!("self{0.repeat.riffle(#+1)}" : 32 => "[0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5, ...]");
     test_eval!("seq:{(#~#.nest{#/2}).while(iseven).len}" : 32 => "[0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 4, 0, 1, 0, 2, 0, 1, 0, 3, 0, 1, 0, 2, 0, 1, 0, 5, ...]");
@@ -54,9 +56,10 @@ fn misc_tests() {
     // Binary length
     test_eval!("self{(1~(#+1)).riffle(#+1)}" : 32 => "[1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, ...]");
     test_eval!("seq:{(#~#.nest{#/2}).while{#>0}.len}" : 32 => "[1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, ...]");
-    test_eval!("seq:numstr(2):len" : 32 => "[1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, ...]");
+    test_eval!("seq:numdig(2):len" : 32 => "[1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, ...]");
     // Thue-Morse
     test_eval!("self{([0,1]~#.skip(2)).riffle(1-#)}" : 33 => "[0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, ...]");
+    test_eval!("seq:numdig(2):count(1)%2" : 32 => "[1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, ...]");
     // Paperfolding sequence
     test_eval!("self{[0,1].repeat.riffle(#)}" : 33 => "[0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, ...]");
     // Hanoi towers
