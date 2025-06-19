@@ -4,6 +4,7 @@ pub trait ItemType: Clone + Describe + Into<Item> + 'static {
     fn from_vec(vec: Vec<Self>) -> Item;
     fn from_box(stm: Box<dyn Stream<Self>>) -> Item;
     fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError>;
+    fn try_eq(&self, other: &Self) -> Result<bool, StreamError>;
 }
 
 impl ItemType for Item {
@@ -18,6 +19,10 @@ impl ItemType for Item {
     fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
         stm.listout_impl()
     }
+
+    fn try_eq(&self, other: &Item) -> Result<bool, StreamError> {
+        self.try_eq(other)
+    }
 }
 
 impl ItemType for Char {
@@ -31,5 +36,9 @@ impl ItemType for Char {
 
     fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
         stm.listout_impl()
+    }
+
+    fn try_eq(&self, other: &Char) -> Result<bool, StreamError> {
+        Ok(self == other)
     }
 }
