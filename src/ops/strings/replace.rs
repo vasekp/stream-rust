@@ -3,7 +3,9 @@ use crate::base::*;
 use std::collections::VecDeque;
 
 fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve_source()?;
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_args_nonempty()?);
+    let node = node.resolve_source()?;
     match node {
         RNodeS { source: Item::String(_), args: RArgs::Two(ref x, ref y), .. } => {
             let (orig, repl) = match (x, y) {
@@ -20,8 +22,9 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
             if orig.iter().any(Vec::is_empty) {
                 return Err(StreamError::new("the sought string can't be empty", node));
             }
+            let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
             let Item::String(s) = node.source else { unreachable!() };
-            Ok(Item::new_string(StringReplace { head: node.head, source: s.into(), orig, repl }))
+            Ok(Item::new_string(StringReplace { head: node.head, source: s.into(), orig, repl, longest }))
         },
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(orig, repl) } =>
             Ok(Item::new_stream(StreamReplace { head, source: stm.into(), orig, repl })),
@@ -48,6 +51,7 @@ struct StringReplace {
     source: BoxedStream<Char>,
     orig: Vec<Vec<Char>>,
     repl: Vec<Vec<Char>>,
+    longest: usize,
 }
 
 impl Describe for StringReplace {
@@ -60,7 +64,7 @@ impl Describe for StringReplace {
 
 impl Stream<Char> for StringReplace {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(StringReplaceIter::new(self.source.iter(), &self.orig, &self.repl))
+        Box::new(StringReplaceIter::new(self))
     }
 
     fn len(&self) -> Length {
@@ -76,16 +80,20 @@ struct StringReplaceIter<'node> {
     source: Box<dyn SIterator<Char> + 'node>,
     orig: &'node Vec<Vec<Char>>,
     repl: &'node Vec<Vec<Char>>,
+    longest: usize,
     cache: VecDeque<Char>,
-    next_repl: Option<<Vec<Char> as IntoIterator>::IntoIter>,
+    queued: Option<(Box<dyn Iterator<Item = Char>>, bool)>,
 }
 
 impl<'node> StringReplaceIter<'node> {
-    fn new(source: Box<dyn SIterator<Char> + 'node>, orig: &'node Vec<Vec<Char>>, repl: &'node Vec<Vec<Char>>) -> Self {
+    fn new(parent: &'node StringReplace) -> Self {
         StringReplaceIter {
-            source, orig, repl,
+            source: parent.source.iter(),
+            orig: &parent.orig,
+            repl: &parent.repl,
+            longest: parent.longest,
             cache: VecDeque::new(),
-            next_repl: Some(vec![].into_iter())
+            queued: None,
         }
     }
 }
@@ -95,29 +103,36 @@ impl Iterator for StringReplaceIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(item) = self.cache.pop_front() {
-                return Some(Ok(item));
-            }
-            match &mut self.next_repl {
-                Some(iter) => if let Some(res) = iter.next() {
-                    return Some(Ok(res));
+            check_stop!(iter);
+            if let Some((deplete, done)) = &mut self.queued {
+                if let Some(item) = deplete.next() {
+                    return Some(Ok(item));
+                } else if *done {
+                    return None;
                 } else {
-                    self.next_repl = None;
-                },
-                None => return None
+                    self.queued = None;
+                }
             }
-            'a: for item in &mut self.source {
-                check_stop!(iter);
+            if self.cache.len() == self.longest {
+                if let Some(item) = self.cache.pop_front() {
+                    return Some(Ok(item));
+                }
+            }
+            if let Some(item) = self.source.next() {
                 self.cache.push_back(iter_try_expr!(item));
-                for (patt, repl) in self.orig.iter().zip(self.repl.iter()) {
+                'a: for (patt, repl) in self.orig.iter().zip(self.repl.iter()) {
                     if patt.len() > self.cache.len() { continue; }
+                    /* Match found */
                     let bkpt = self.cache.len() - patt.len();
                     if self.cache.range(bkpt..).eq(patt) {
                         self.cache.truncate(bkpt);
-                        self.next_repl = Some(repl.clone().into_iter());
+                        self.queued = Some((Box::new(std::mem::take(&mut self.cache).into_iter()
+                                .chain(repl.clone().into_iter())), false));
                         break 'a;
                     }
                 }
+            } else {
+                self.queued = Some((Box::new(std::mem::take(&mut self.cache).into_iter()), true));
             }
         }
     }
@@ -170,6 +185,8 @@ mod tests {
         test_eval!("\"abcde\".replace('b', \"bb\")" => "\"abbcde\"");
         test_eval!("\"abcde\".replace(['b', 'e'], ['q', \"\"])" => "\"aqcd\"");
         test_eval!("seq.replace(3,[])" => "[1, 2, [], 4, 5, ...]");
+        test_eval!("\"abc\".replace()" => err);
+        test_eval!("'a'.repeat.replace('b','B')" => "\"aaaaaaaaaaaaaaaaaaaa...");
     }
 }
 
