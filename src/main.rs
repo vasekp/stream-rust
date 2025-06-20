@@ -6,6 +6,7 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 use rustyline as rl;
+use colored::Colorize;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rl: rl::Editor<(), _> = rl::Editor::with_history(
@@ -20,9 +21,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut sess = Session::new();
 
     while let Ok(input) = rl.readline("> ") {
-        if input == "list" {
+        if matches!(&input[..], "list" | "less") {
             let Some(Item::Stream(stm)) = sess.history().last() else {
-                println!("Can only use after a stream.");
+                println!("{}", "Can only use after a stream.".red());
                 continue;
             };
             let mut cmd = Command::new("less")
@@ -34,12 +35,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let mut stdin = cmd.stdin.take().expect("Failed to open stdin");
             for (ix, item) in stm.iter().enumerate() {
                 match item {
-                    Ok(item) =>
-                        if writeln!(stdin, "[{}]  {}", ix + 1, item).is_err() {
+                    Ok(item) => {
+                        let index = format!("[{}]", ix + 1).dimmed();
+                        if writeln!(stdin, "{}  {}", index, item).is_err() {
                             break;
-                        },
+                        }
+                    },
                     Err(err) => {
-                        let _ = writeln!(stdin, "error: {err}");
+                        let _ = writeln!(stdin, "{}", format!("error: {err}").red());
                         break;
                     }
                 }
@@ -56,9 +59,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Ok(SessionUpdate::History(index, item)) => {
                         println!("Item Describe: {}", item.describe());
                         let (s, _, err) = item.format(None, Some(80));
-                        println!("%{index}: {s}");
+                        println!("{} {s}", format!("%{index}:").dimmed());
                         if let Some(err) = err {
-                            println!("{err}");
+                            println!("{}", format!("{err}").red());
                         }
                     },
                     Ok(SessionUpdate::Globals(list)) => {
@@ -72,12 +75,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         println!();
                     },
-                    Err(err) => println!("{err}")
+                    Err(err) => println!("{}", format!("{err}").red())
                 }
             },
             Err(err) => {
                 err.display(&input);
-                println!("{err}");
+                println!("{}", format!("{err}").red());
             }
         }
         //println!();
