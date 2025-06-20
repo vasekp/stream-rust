@@ -1,20 +1,12 @@
 use crate::base::*;
-use crate::utils::TriState;
 
 fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     try_with!(node, node.check_args_nonempty()?);
 
-    let is_string = try_with!(node, node.args.iter()
-        .map(|item| match item {
-            Item::String(_) => TriState::True,
-            Item::Char(_) => TriState::Either,
-            _ => TriState::False
-        })
-        .try_fold(TriState::Either, TriState::join)
-        .map_err(|()| BaseError::from("mixed strings and non-strings"))?)
-        .can_be_true();
+    let is_string = node.args.iter()
+        .all(|item| matches!(item, Item::Char(_) | Item::String(_)));
 
     if is_string {
         let elems = node.args.into_iter()
@@ -157,8 +149,10 @@ mod tests {
 
         test_eval!("[1]~[2]" => "[1, 2]");
         test_eval!("[1]~[[2]]" => "[1, [2]]");
+        test_eval!("[1]~[]" => "[1]");
         test_eval!("[1]~2~'c'" => "[1, 2, 'c']");
         test_eval!("1~2~3" => "[1, 2, 3]");
+        test_eval!("1~[]" => "[1]");
         test_eval!("10~seq" => "[10, 1, 2, 3, 4, ...]");
         test_eval!("(0~1..0~2)" => "[0, 2]");
         test_eval!("(0~1..3~4)[3]" => "2");
@@ -169,10 +163,11 @@ mod tests {
         test_eval!("'a'~\"b\"~'c'" => "\"abc\"");
         test_eval!("join([1],[2])" => "[1, 2]");
         test_eval!("[1].join([1],[2])" => err);
-        test_eval!("\"a\"~1" => err);
-        test_eval!("\"a\"~[1]" => err);
-        test_eval!("\"a\"~['b']" => err);
-        test_eval!("[1]~\"a\"" => err);
+        test_eval!("\"a\"~1" => "[\"a\", 1]");
+        test_eval!("\"a\"~[1]" => "[\"a\", 1]");
+        test_eval!("\"a\"~['b']" => "[\"a\", 'b']");
+        test_eval!("[1]~\"a\"" => "[1, \"a\"]");
+        test_eval!("\"\"~[]" => "[\"\"]");
 
         test_len!("[1,2,3]~4~[5]~[[5,6]]" => 6);
         test_len!("1~2~3" => 3);
@@ -181,7 +176,10 @@ mod tests {
         test_len!("\"ab\"~\"cd\"" => 4);
         test_len!("\"ab\"~'ch'" => 3);
         test_len!("\"ab\"~'ch'" => 3);
+        test_len!("\"ab\"~1" => 2);
         test_len!("\"\"~\"\"" => 0);
+        test_len!("[]~[]" => 0);
+        test_len!("\"\"~[]" => 1);
         test_advance("range(10^10)~range(10^9)");
         test_advance("range(10^10)~range(-10^10)~range(10^9)");
         test_advance("('a'..'z').repeat(10^10)~['A'].repeat(10^10)");
