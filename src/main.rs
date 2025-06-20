@@ -2,6 +2,9 @@ use streamlang as stream;
 use stream::base::*;
 use stream::session::*;
 
+use std::io::Write;
+use std::process::{Command, Stdio};
+
 use rustyline as rl;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,6 +20,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut sess = Session::new();
 
     while let Ok(input) = rl.readline("> ") {
+        if input == "list" {
+            let Some(Item::Stream(stm)) = sess.history().last() else {
+                println!("Can only use after a stream.");
+                continue;
+            };
+            let mut cmd = Command::new("less")
+                .args(["-R"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::inherit())
+                .spawn()
+                .expect("Failed to run less.");
+            let mut stdin = cmd.stdin.take().expect("Failed to open stdin");
+            for (ix, item) in stm.iter().enumerate() {
+                match item {
+                    Ok(item) =>
+                        if writeln!(stdin, "[{}]  {}", ix + 1, item).is_err() {
+                            break;
+                        },
+                    Err(err) => {
+                        let _ = writeln!(stdin, "error: {err}");
+                        break;
+                    }
+                }
+            }
+            drop(stdin);
+            cmd.wait().expect("Error in wait().");
+            continue;
+        }
         match stream::parse(&input) {
             Ok(expr) => {
                 //println!("Expr Debug: {expr:?}");
@@ -31,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     },
                     Ok(SessionUpdate::Globals(list)) => {
-                        print!("Globals updates: ");
+                        print!("Globals updated: ");
                         let mut iter = list.into_iter();
                         if let Some(first) = iter.next() {
                             print!("{first}");

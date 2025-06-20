@@ -122,6 +122,10 @@ impl Session {
             }
         })
     }
+
+    pub fn history(&self) -> &Vec<Item> {
+        &self.hist
+    }
 }
 
 impl Default for Session {
