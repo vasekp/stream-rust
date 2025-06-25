@@ -37,6 +37,7 @@ impl CharClass {
 enum TokenClass {
     Number,
     BaseNum,
+    CBaseNum,
     Bool(bool),
     Ident,
     String,
@@ -57,7 +58,9 @@ impl Token<'_> {
         use TokenClass::*;
         const OPERS: &[u8] = b"+-*/^~&|!<=>";
         let class = match slice.as_bytes() {
-            [b'0'..=b'9', ..] => if slice.contains('_') { BaseNum } else { Number },
+            [b'0'..=b'9', ..] if slice.contains('_') => BaseNum,
+            [b'0', b'x' | b'b' | b'o', ..] => CBaseNum,
+            [b'0'..=b'9', ..] => Number,
             b"true" => Bool(true),
             b"false" => Bool(false),
             [b'a'..=b'z' | b'A'..=b'Z' | b'_', ..] => Ident,
@@ -250,12 +253,14 @@ fn test_tokenizer() {
     // tailing space ignored
     assert_eq!(tk.next(), None);
 
-    let mut it = Tokenizer::new("a.b0_1(3_012,#4,true@q)");
+    let mut it = Tokenizer::new("a.b0_1(3_012,0b012,#4,true@q)");
     assert_eq!(it.next(), Some(Ok(Token(Ident, "a"))));
     assert_eq!(it.next(), Some(Ok(Token(Chain, "."))));
     assert_eq!(it.next(), Some(Ok(Token(Ident, "b0_1"))));
     assert_eq!(it.next(), Some(Ok(Token(Open, "("))));
     assert_eq!(it.next(), Some(Ok(Token(BaseNum, "3_012"))));
+    assert_eq!(it.next(), Some(Ok(Token(Comma, ","))));
+    assert_eq!(it.next(), Some(Ok(Token(CBaseNum, "0b012")))); // error later
     assert_eq!(it.next(), Some(Ok(Token(Comma, ","))));
     assert_eq!(it.next(), Some(Ok(Token(Special, "#"))));
     assert_eq!(it.next(), Some(Ok(Token(Number, "4"))));
@@ -284,7 +289,6 @@ fn test_tokenizer() {
     assert_eq!(it.next(), None);
 }
 
-
 fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
     match slice.split('_').collect::<Vec<_>>()[..] {
         [base_str, value_str] if !value_str.is_empty() => {
@@ -297,6 +301,22 @@ fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
                 .ok_or(ParseError::new(format!("invalid digits in base {base}"), value_str))
         },
         _ => Err(ParseError::new("malformed number", slice))
+    }
+}
+
+fn parse_c_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
+    let base = match slice.as_bytes()[1] {
+        b'x' => 16,
+        b'o' => 8,
+        b'b' => 2,
+        _ => return Err(ParseError::new("malformed number", slice))
+    };
+    let value_str = &slice.as_bytes()[2..];
+    if value_str.is_empty() {
+        Err(ParseError::new("malformed number", slice))
+    } else {
+        Number::parse_bytes(value_str, base)
+            .ok_or(ParseError::new(format!("invalid digits in base {base}"), slice))
     }
 }
 
@@ -315,6 +335,16 @@ fn test_basenum() {
     assert!(parse_basenum("2_102").is_err()); // invalid digits in base 2
     assert_eq!(parse_basenum("10_999999999999999999999999"), Ok("999999999999999999999999".parse().unwrap()));
     assert_eq!(parse_basenum("16_fffFFffFFfFfFFFFffFF"), Ok("1208925819614629174706175".parse().unwrap()));
+
+    assert_eq!(parse_c_basenum("0b111"), Ok(Number::from(7)));
+    assert!(parse_c_basenum("0b112").is_err());
+    assert!(parse_c_basenum("0b").is_err());
+    assert!(parse_c_basenum("0c123").is_err());
+    assert_eq!(parse_c_basenum("0x111"), Ok(Number::from(273)));
+    assert_eq!(parse_c_basenum("0xFf"), Ok(Number::from(255)));
+    assert!(parse_c_basenum("0xFG").is_err());
+    assert_eq!(parse_c_basenum("0o123"), Ok(Number::from(83)));
+    assert!(parse_c_basenum("0o789").is_err());
 }
 
 fn parse_string(slice: &str) -> Result<String, ParseError<'_>> {
@@ -418,6 +448,7 @@ impl<'str> Parser<'str> {
             Token(TC::Number, value) => Ok(Expr::new_number(value.parse::<Number>()
                 .map_err(|_| ParseError::new("invalid number", value))?)),
             Token(TC::BaseNum, value) => Ok(Expr::new_number(parse_basenum(value)?)),
+            Token(TC::CBaseNum, value) => Ok(Expr::new_number(parse_c_basenum(value)?)),
             Token(TC::Bool(value), _) => Ok(Expr::new_bool(value)),
             Token(TC::Char, value) => Ok(Expr::new_char(parse_char(value)?)),
             Token(TC::String, value) => Ok(Expr::new_string(&parse_string(value)?)),
@@ -675,6 +706,13 @@ fn test_parser() {
     assert!(parse("(1").is_err());
     assert!(parse("1)").is_err());
     assert!(parse("(1;2)").is_err());
+
+    assert_eq!(parse("555"), Ok(Expr::new_number(555)));
+    assert_eq!(parse("10_555"), Ok(Expr::new_number(555)));
+    assert_eq!(parse("8_555"), Ok(Expr::new_number(365)));
+    assert_eq!(parse("0o555"), Ok(Expr::new_number(365)));
+    assert_eq!(parse("0555"), Ok(Expr::new_number(555)));
+    assert!(parse("0z555").is_err());
 
     assert_eq!(parse("a.b..c.d"), Ok(Expr::new_op("..", vec![
         Expr::new_node("a", vec![]).chain(Link::new("b", vec![])),
