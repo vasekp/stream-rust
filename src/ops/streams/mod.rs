@@ -20,6 +20,7 @@ mod contains;
 mod index;
 mod pi;
 mod windows;
+mod pad;
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {
     seq::init(keywords);
@@ -44,4 +45,5 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
     index::init(keywords);
     pi::init(keywords);
     windows::init(keywords);
+    pad::init(keywords);
 }

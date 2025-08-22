@@ -70,6 +70,22 @@ impl<I: ItemType> dyn Stream<I> {
         I::listout(self)
     }
 
+    pub(crate) fn try_count(&self) -> Result<UNumber, StreamError> {
+        match self.len() {
+            Length::Exact(len) => Ok(len),
+            Length::Infinite => Err(StreamError::new("stream is infinite", Item::from(self.clone_box()))),
+            _ => {
+                let mut ret: usize = 0;
+                for res in self.iter() {
+                    check_stop!();
+                    res?;
+                    ret += 1;
+                }
+                Ok(ret.into())
+            }
+        }
+    }
+
     pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> Result<I2, BaseError> + 'node>(&'node self, func: F) -> Box<dyn SIterator<I2> + 'node> {
         Box::new(SMap::new(self, func))
     }
