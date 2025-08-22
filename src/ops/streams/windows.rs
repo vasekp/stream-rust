@@ -136,6 +136,8 @@ mod tests {
         test_eval!("seq.windows(3)" : 10 => "[[1, 2, 3], [2, 3, 4], [3, ...], ...]");
         test_eval!("seq.windows(2)" : 10 => "[[1, 2], [2, 3], [3, 4], [...], ...]");
         test_eval!("seq.windows(1)" => err);
+        test_eval!("seq.windows(0)" => err);
+        test_eval!("seq.windows(-1)" => err);
         test_len!("(1..10).windows(5)" => 6);
         test_len!("(1..10).windows(9)" => 2);
         test_len!("(1..10).windows(10)" => 1);

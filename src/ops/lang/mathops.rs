@@ -377,13 +377,13 @@ impl Iterator for StringOpIter<'_> {
 
 impl SIterator<Char> for StringOpIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        let mut n_chars = UNumber::zero();
+        let mut n_chars: usize = 0;
         let mut remain = n;
         while !remain.is_zero() {
             match self.first.next() {
                 Some(Ok(ch)) => {
                     if self.alpha.contains(&ch) {
-                        n_chars.inc();
+                        n_chars += 1;
                     }
                 },
                 Some(Err(err)) => return Err(err),
@@ -392,7 +392,7 @@ impl SIterator<Char> for StringOpIter<'_> {
             remain.dec();
         }
         for iter in self.rest.iter_mut() {
-            if let Some(r) = iter.advance(n_chars.clone())? {
+            if let Some(r) = iter.advance(n_chars.into())? {
                 remain = std::cmp::max(remain, r);
             }
         }
