@@ -140,6 +140,8 @@ pub enum Subst {
     InputList,
     /// History item (`%`, `%ix`)
     History(Option<usize>),
+    /// Input counter (`$#`)
+    Counter,
 }
 
 #[allow(clippy::to_string_trait_impl)]
@@ -151,6 +153,7 @@ impl ToString for Subst {
             Subst::InputList => "##".into(),
             Subst::History(Some(ix)) => format!("%{ix}"),
             Subst::History(None) => "%".into(),
+            Subst::Counter => "$#".into(),
         }
     }
 }

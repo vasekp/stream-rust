@@ -7,6 +7,7 @@ use std::collections::HashMap;
 pub struct Session {
     hist: Vec<Item>,
     vars: HashMap<String, Rhs>,
+    counter: usize,
 }
 
 impl Session {
@@ -15,6 +16,7 @@ impl Session {
         Session {
             hist: Vec::new(),
             vars: HashMap::new(),
+            counter: 1,
         }
     }
 
@@ -49,6 +51,7 @@ impl Session {
                     self.vars.insert(name.to_owned(), rhs);
                     names.push(name);
                 }
+                self.counter += 1;
                 Ok(SessionUpdate::Globals(names))
             },
             Expr::Eval(Node { head: Head::Symbol(sym), source: None, args }) if sym == "clear" => {
@@ -68,11 +71,13 @@ impl Session {
                         updated.push(name);
                     }
                 }
+                self.counter += 1;
                 Ok(SessionUpdate::Globals(updated))
             },
             _ => {
                 let item = self.apply_context(expr)?.eval_default()?;
                 self.hist.push(item);
+                self.counter += 1;
                 Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
             }
         }
@@ -94,6 +99,8 @@ impl Session {
                             .map(Expr::from)
                             .ok_or("history is empty")?))
                 },
+                Expr::Repl(Subst::Counter) =>
+                    Ok(Expr::new_number(self.counter)),
                 Expr::Eval(mut node) => {
                     match node {
                         Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } if sym.starts_with('$') => {
@@ -182,5 +189,13 @@ mod tests {
         assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
         assert_eq!(sess.process(parse("with(a=1,{a})").unwrap()).unwrap().unwrap(), &Item::new_number(1));
         assert!(sess.process(parse("with(a=1,$a)").unwrap()).is_err());
+
+        let mut sess = Session::new();
+        assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(1));
+        assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(2));
+        assert_eq!(sess.process(parse("$a=$#").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(4));
+        assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
+        assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
     }
 }

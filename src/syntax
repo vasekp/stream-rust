@@ -3,7 +3,7 @@ Term: ExprPart (. ExprPart | : ExprPart | [ Args ] )*
 Args: [[Expr ,]* Expr]
 ExprPart: Number | BaseNum | Bool | Char | String | List | ( Expr ) | Special | Link
 List: [ [[Expr ,]* Expr] ]
-Special: #|% [Number]
+Special: # | % [Number] | $#
 Link: Ident [ ( Args ) | @ ExprPart | BlockLink ] | BlockLink
 BlockLink: { Expr } [ ( Args ) | @ ExprPart ]
 Number: (0-9)+

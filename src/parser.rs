@@ -132,6 +132,15 @@ impl<'str> Tokenizer<'str> {
     pub fn next_tr(&mut self) -> Result<Option<Token<'str>>, ParseError<'str>> {
         self.next().transpose()
     }
+
+    pub fn merge(&self, prev: Token<'str>, next: Token<'str>, cls: TokenClass) -> Token<'str> {
+        let prev_start = unsafe { prev.1.as_ptr().offset_from(self.input.as_ptr()) } as usize;
+        let prev_end = prev_start + prev.1.len();
+        let next_start = unsafe { next.1.as_ptr().offset_from(self.input.as_ptr()) } as usize;
+        let next_end = next_start + next.1.len();
+        assert_eq!(prev_end, next_start);
+        Token(cls, &self.input[prev_start..next_end])
+    }
 }
 
 impl<'str> Iterator for Tokenizer<'str> {
@@ -453,7 +462,7 @@ impl<'str> Parser<'str> {
             Token(TC::Char, value) => Ok(Expr::new_char(parse_char(value)?)),
             Token(TC::String, value) => Ok(Expr::new_string(&parse_string(value)?)),
             Token(TC::Open, bkt @ "[") => Ok(Expr::new_node(LangItem::List, self.read_args(bkt)?)),
-            Token(TC::Ident, _) | Token(TC::Special, "$") => {
+            Token(TC::Ident, _) => {
                 self.tk.unread(tok);
                 Ok(self.read_link()?.unwrap().into()) // cannot be None after unread()
             },
@@ -461,6 +470,16 @@ impl<'str> Parser<'str> {
                 Ok(self.read_block_link(bkt)?.into())
             },
             Token(TC::Open, bkt @ "(") => Ok(self.read_arg(bkt)?),
+            Token(TC::Special, "$") => {
+                match self.tk.next_tr()? {
+                    Some(next @ Token(TC::Ident, _)) => {
+                        self.tk.unread(self.tk.merge(tok, next, TC::Ident));
+                        Ok(self.read_link()?.unwrap().into()) // cannot be None after unread()
+                    },
+                    Some(Token(TC::Special, "#")) => Ok(Expr::Repl(Subst::Counter)),
+                    _ => Err(ParseError::new("must be followed by identifier or #", tok.1))
+                }
+            },
             Token(TC::Special, chr) => {
                 let subst = match chr {
                     "#" => Subst::Input,
@@ -778,6 +797,7 @@ fn test_parser() {
     assert!(parse("###").is_err());
     assert!(parse("#a").is_err());
     assert!(parse("#%").is_err());
+    assert_eq!(parse("$#"), Ok(Expr::Repl(Subst::Counter)));
     assert_eq!(parse("$name"), Ok(Expr::new_node("$name", vec![])));
     assert_eq!(parse("a.$b@$c(1)"), Ok(Expr::new_node("a", vec![])
             .chain(Link::new(LangItem::Args, vec![
