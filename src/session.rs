@@ -36,12 +36,17 @@ impl Session {
                 let mut names = Vec::with_capacity(args.len());
                 for arg in args {
                     let name = match arg {
-                        Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
-                            if args.is_empty() && sym.starts_with('$')
-                        => sym,
+                        Expr::Eval(Node { head: Head::Symbol(ref sym), source: None, ref args })
+                            if args.is_empty() && sym.starts_with('$') => {
+                                if sym.as_bytes()[1].is_ascii_digit() {
+                                    return Err(StreamError::new("reserved variable name", arg));
+                                } else {
+                                    sym
+                                }
+                            },
                         _ => return Err(StreamError::new("expected global variable ($name)", arg))
                     };
-                    names.push(name);
+                    names.push(name.to_owned());
                 }
                 let last = names.pop();
                 for name in &names {
@@ -189,6 +194,7 @@ mod tests {
         assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
         assert_eq!(sess.process(parse("with(a=1,{a})").unwrap()).unwrap().unwrap(), &Item::new_number(1));
         assert!(sess.process(parse("with(a=1,$a)").unwrap()).is_err());
+        assert!(sess.process(parse("$1=1").unwrap()).is_err());
 
         let mut sess = Session::new();
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(1));

@@ -12,5 +12,5 @@ Bool: true | false
 Char: ' [char | "]* '
 char: (any except ', ", \) | \ (n|r|t|\|'|")
 String: " [char | ']* "
-Ident: [$] (_|a-z|A-Z) (0-9|a-z|A-Z|_)*
+Ident: (_|a-z|A-Z) (0-9|a-z|A-Z|_)* | $ (0-9|a-z|A-Z|_)*
 Op: (+|-|*|/|%|^|~|<|=|>|==|<>|<<|<<=|==|>>=|>>|..|&|!||)

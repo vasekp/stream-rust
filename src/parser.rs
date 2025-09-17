@@ -472,12 +472,12 @@ impl<'str> Parser<'str> {
             Token(TC::Open, bkt @ "(") => Ok(self.read_arg(bkt)?),
             Token(TC::Special, "$") => {
                 match self.tk.next_tr()? {
-                    Some(next @ Token(TC::Ident, _)) => {
+                    Some(next @ Token(TC::Ident | TC::Number, _)) => {
                         self.tk.unread(self.tk.merge(tok, next, TC::Ident));
                         Ok(self.read_link()?.unwrap().into()) // cannot be None after unread()
                     },
                     Some(Token(TC::Special, "#")) => Ok(Expr::Repl(Subst::Counter)),
-                    _ => Err(ParseError::new("must be followed by identifier or #", tok.1))
+                    _ => Err(ParseError::new("must be followed by identifier, number or #", tok.1))
                 }
             },
             Token(TC::Special, chr) => {
@@ -804,7 +804,8 @@ fn test_parser() {
                     Expr::new_node("$b", vec![]),
                     Expr::new_node("$c", vec![Expr::new_number(1)])]))));
     assert!(parse("$").is_err());
-    assert!(parse("$1").is_err());
+    assert_eq!(parse("$1"), Ok(Expr::new_node("$1", vec![])));
+    assert_eq!(parse("$1x"), Ok(Expr::new_node("$1x", vec![])));
     assert!(parse("$$").is_err());
     assert!(parse("$a$").is_err());
     assert!(parse("#(1)").is_err());
