@@ -55,8 +55,6 @@ mod tests {
     #[test]
     fn test_sortby() {
         use super::*;
-        use crate::parser::parse;
-
         test_eval!("[5,2,9,3,5].sortby{-#}" => "[9, 5, 5, 3, 2]");
         test_eval!("[\"one\", \"two\", \"three\"].sortby(rev)" => "[\"three\", \"one\", \"two\"]");
     }

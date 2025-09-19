@@ -104,7 +104,6 @@ mod tests {
     #[test]
     fn test_class() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("[1,true,'2',\"3\",[]]:isnum" => "[true, false, false, false, false]");
         test_eval!("[1,true,'2',\"3\",[]]:isbool" => "[false, true, false, false, false]");

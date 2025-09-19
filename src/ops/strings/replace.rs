@@ -177,7 +177,6 @@ mod tests {
     #[test]
     fn test_replace() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("\"abc\".replace('a', \"a\")" => "\"abc\"");
         test_eval!("\"abc\".replace(['a', 'b'], [\"a\", '1'])" => "\"a1c\"");
         test_eval!("\"abc\".replace(\"\", \"\")" => err);

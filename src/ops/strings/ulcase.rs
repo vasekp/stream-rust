@@ -42,7 +42,6 @@ mod tests {
     #[test]
     fn test_chars_string() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("['A',' ','Ch','ň','ß']:ucase" => "['A', ' ', 'CH', 'Ň', 'SS']");
         test_eval!("['A',' ','Ch','Ň','ẞ']:lcase" => "['a', ' ', 'ch', 'ň', 'ß']");
         test_eval!("\"Hello, world!\".lcase" => "\"hello, world!\"");

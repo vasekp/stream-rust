@@ -24,7 +24,6 @@ mod tests {
     #[test]
     fn test_with() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("with(len=1, global(range(3).len))" => "3");
         test_eval!("with(a=1, a.global{#+#1}(a))" => "2");

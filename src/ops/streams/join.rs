@@ -137,8 +137,6 @@ mod tests {
 
     #[test]
     fn test_join() {
-        use crate::parser::parse;
-
         test_eval!("[10]~seq" => "[10, 1, 2, 3, 4, ...]");
         test_eval!("range(2)~seq" => "[1, 2, 1, 2, 3, ...]");
         test_eval!("range(10^10).{#~#~#}.len" => "30000000000");

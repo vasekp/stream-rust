@@ -69,7 +69,6 @@ mod tests {
     #[test]
     fn test_while() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("range(5).while{true}" => "[1, 2, 3, 4, 5]");
         test_eval!("range(5).while{false}" => "[]");
         test_eval!("range(5).while{#<3}" => "[1, 2]");

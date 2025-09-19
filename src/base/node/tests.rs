@@ -2,7 +2,6 @@ use crate::base::*;
 
 #[test]
 fn test_block() {
-    use crate::parser::parse;
     test_eval!("{#1}(3,4)" => "3");
     test_eval!("{#2}(3,4)" => "4");
     test_eval!("{#3}(3,4)" => err);

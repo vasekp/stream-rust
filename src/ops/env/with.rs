@@ -55,7 +55,7 @@ mod tests {
     #[test]
     fn test_with() {
         use super::*;
-        use crate::parser::parse;
+
         test_eval!("with(a=1, a)" => "1");
         test_eval!("with(1)" => err);
         test_eval!("with(a=1, b)" => err);

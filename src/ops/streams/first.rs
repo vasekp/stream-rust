@@ -89,8 +89,6 @@ mod tests {
 
     #[test]
     fn test_first() {
-        use crate::parser::parse;
-
         test_eval!("(1..3).first" => "1");
         test_eval!("(1..3).first(0)" => "[]");
         test_eval!("(1..3).first(1)" => "[1]");

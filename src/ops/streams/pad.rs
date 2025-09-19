@@ -212,7 +212,6 @@ mod tests {
     #[test]
     fn test_padleft() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("[].padleft(0, 0)" => "[]");
         test_eval!("[].padleft(3, 0)" => "[0, 0, 0]");
         test_eval!("(1..2).padleft(3, '0')" => "['0', 1, 2]");

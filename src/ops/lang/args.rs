@@ -24,8 +24,6 @@ mod tests {
 
     #[test]
     fn test_list() {
-        use crate::parser::parse;
-
         test_eval!("range@[3]" => "[1, 2, 3]");
         test_eval!("range@range(3)" => "[1]");
         test_eval!("range@range(3)" => "[1]");

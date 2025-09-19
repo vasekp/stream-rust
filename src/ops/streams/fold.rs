@@ -71,7 +71,6 @@ mod tests {
     #[test]
     fn test_fold() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("seq.fold{#*#1}(1)" => "[1, 2, 6, 24, 120, ...]");
         test_eval!("(1..20).fold{#*#1}(1).last" => "2432902008176640000");
         test_eval!("seq.fold{#+#1}(0)" => "[1, 3, 6, 10, 15, ...]");

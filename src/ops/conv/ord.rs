@@ -25,7 +25,6 @@ mod tests {
     #[test]
     fn test_ord() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("'z'.ord" => "26");
         test_eval!("\"abc\".ord" => err);
         test_eval!("\"abc\".chars:ord" => "[1, 2, 3]");
@@ -36,7 +35,6 @@ mod tests {
     #[test]
     fn test_chr() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("((-2)..2):chr" => "['x', 'y', 'z', 'a', 'b']");
         test_eval!("\"abc\".chars:ord:{#+13}:chr.string" => "\"nop\"");
         test_eval!("alpha(['á', 'ch'],100.chr)" => "'ch'");

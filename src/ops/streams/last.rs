@@ -147,8 +147,6 @@ mod tests {
 
     #[test]
     fn test_last() {
-        use crate::parser::parse;
-
         test_eval!("(1..3).last" => "3");
         test_eval!("(1..3).last(0)" => "[]");
         test_eval!("(1..3).last(1)" => "[3]");

@@ -171,8 +171,6 @@ mod tests {
 
     #[test]
     fn test_range() {
-        use crate::parser::parse;
-
         test_eval!("range(3)" => "[1, 2, 3]");
         test_eval!("range(0)" => "[]");
         test_eval!("range(3, 3)" => "[3]");

@@ -43,7 +43,6 @@ mod tests {
     #[test]
     fn test_sort() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("[5,2,9,3,5].sort" => "[2, 3, 5, 5, 9]");
         //test_eval!("\"bac\".sort" => err);

@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn test_nest() {
         use super::*;
-        use crate::parser::parse;
+
         test_eval!("1.nest{#+1}" => "[2, 3, 4, 5, 6, ...]");
         test_eval!("1.nest({#})" => "[1, 1, 1, 1, 1, ...]");
         test_eval!("'T'.nest{#+2}" => "['V', 'X', 'Z', 'B', 'D', ...]");

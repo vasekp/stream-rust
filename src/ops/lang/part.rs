@@ -177,7 +177,6 @@ mod tests {
 
     #[test]
     fn test_part() {
-        use crate::parser::parse;
         test_eval!("range(3)[1]" => "1");
         test_eval!("range(3)[3]" => "3");
         test_eval!("range(3)[4]" => err);

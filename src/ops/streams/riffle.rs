@@ -149,7 +149,6 @@ mod tests {
 
     #[test]
     fn test_riffle() {
-        use crate::parser::parse;
         test_eval!("seq.riffle(seq + 3)" => "[1, 4, 2, 5, 3, ...]");
         test_eval!("0.repeat.riffle(1)" => "[0, 1, 0, 1, 0, ...]");
         test_eval!("[1,2,3].riffle('a')" => "[1, 'a', 2, 'a', 3]");

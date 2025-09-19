@@ -92,7 +92,6 @@ mod tests {
     #[test]
     fn test_contains() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("seq.contains(5)" => "true");
         test_eval!("(1..5).contains('a')" => "false");

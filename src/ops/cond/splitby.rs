@@ -80,7 +80,6 @@ mod tests {
     #[test]
     fn test_split() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("\"abc\ndef\".splitby(iswhite)" => "[\"abc\", \"def\"]");
         test_eval!("range(10).splitby(iseven)" => "[[1], [3], [...], ...]");
     }

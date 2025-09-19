@@ -212,8 +212,6 @@ mod tests {
 
     #[test]
     fn test_cat() {
-        use crate::parser::parse;
-
         test_eval!("['a', \"b\", \"cde\"].cat" => "\"abcde\"");
         test_eval!("[\"x\", 'y', 1].cat" => "\"xy<!>");
         test_eval!("[\"ab\",\"\",\"\",\"cd\"].cat" => "\"abcd\"");

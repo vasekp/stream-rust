@@ -115,7 +115,6 @@ mod tests {
     #[test]
     fn test_rnd() {
         use super::*;
-        use crate::parser::parse; // TODO
         test_eval!("(1..6).rnd(0)" => "[3, 5, 4, 4, 2, ...]");
         test_eval!("(1..6).rnd(-1)" => "[6, 6, 1, 2, 4, ...]");
         test_eval!("[].rnd(1)" => err);

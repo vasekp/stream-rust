@@ -83,7 +83,6 @@ mod tests {
     #[test]
     fn test_cmp() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("1==1" => "true");
         test_eval!("1==1==1" => "true");

@@ -117,8 +117,6 @@ mod tests {
 
     #[test]
     fn test_rev() {
-        use crate::parser::parse;
-
         test_eval!("range(3).rev" => "[3, 2, 1]");
         test_eval!("\"abc\".rev" => "\"cba\"");
         test_eval!("\"abc\".repeat(10^8).rev" => "\"cbacbacbacbacbacbacb...");

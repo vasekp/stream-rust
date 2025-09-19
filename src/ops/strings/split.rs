@@ -146,7 +146,6 @@ mod tests {
     #[test]
     fn test_split() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("\"Hello, world!\".split(\", \")" => "[\"Hello\", \"world!\"]");
         test_eval!("\"Hello, world!\".split(',', ' ')" => "[\"Hello\", \"\", \"world!\"]");
         test_eval!("\"abbacca\".split('b', \"bb\", \"cc\")" => "[\"a\", \"\", \"a\", \"a\"]");

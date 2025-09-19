@@ -62,7 +62,6 @@ mod tests {
     #[test]
     fn test_riffle() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("\"abc\".chars.enum" => "[['a', 1], ['b', ...], ...]");
         test_eval!("\"abc\".enum" => err);
         test_advance("seq.enum");

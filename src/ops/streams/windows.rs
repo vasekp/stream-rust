@@ -132,7 +132,6 @@ mod tests {
     #[test]
     fn test_windows() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("seq.windows(3)" : 10 => "[[1, 2, 3], [2, 3, 4], [3, ...], ...]");
         test_eval!("seq.windows(2)" : 10 => "[[1, 2], [2, 3], [3, 4], [...], ...]");
         test_eval!("seq.windows(1)" => err);

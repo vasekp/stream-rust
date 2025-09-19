@@ -87,7 +87,6 @@ mod tests {
     #[test]
     fn test_riffle() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("zip(seq,seq)" => "[[1, 1], [2, ...], ...]");
         test_eval!("zip(1..3,'a'..'c',\"xyz\".chars)" => "[[1, 'a', 'x'], [...], ...]");
         test_eval!("zip(1..3,'a'..'c',\"xyz\".chars)[3]" => "[3, 'c', 'z']");

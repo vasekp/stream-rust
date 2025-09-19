@@ -12,7 +12,6 @@ mod tests {
 
     #[test]
     fn test_list() {
-        use crate::parser::parse;
         test_eval!("[1,2,3]" => "[1, 2, 3]");
         test_eval!("list(1,2,3)" => "[1, 2, 3]");
         test_eval!("list()" => "[]");

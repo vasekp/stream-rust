@@ -72,7 +72,6 @@ mod tests {
     #[test]
     fn test_chars_string() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("\"abc\".chars" => "['a', 'b', 'c']");
         test_eval!("\"\".chars" => "[]");

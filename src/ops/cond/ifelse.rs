@@ -19,7 +19,6 @@ mod tests {
     #[test]
     fn test_if() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("if(true, \"\", [])" => "\"\"");
         test_eval!("if(false, \"\", [])" => "[]");

@@ -24,7 +24,6 @@ mod tests {
     #[test]
     fn test_countif() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("range(5).countif{true}" => "5");
         test_eval!("range(5).countif{false}" => "0");

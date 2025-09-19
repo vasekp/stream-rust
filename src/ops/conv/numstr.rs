@@ -78,7 +78,6 @@ mod tests {
     #[test]
     fn test_numstr() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("(2^100).numstr" => "\"12676506002282294014...");
         test_eval!("(-15).numstr" => "\"-15\"");
         test_eval!("(16^20-2).numstr(16)" => "\"FFFFFFFFFFFFFFFFFFFE\"");
@@ -99,7 +98,6 @@ mod tests {
     #[test]
     fn test_strnum() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("\"-123\".strnum" => "-123");
         test_eval!("\"\".strnum" => err);
         test_eval!("\"-\".strnum" => err);

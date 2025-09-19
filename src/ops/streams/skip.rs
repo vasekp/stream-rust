@@ -56,8 +56,6 @@ mod tests {
 
     #[test]
     fn test_skip() {
-        use crate::parser::parse;
-
         test_eval!("(1..3).skip(0)" => "[1, 2, 3]");
         test_eval!("(1..3).skip(1)" => "[2, 3]");
         test_eval!("(1..3).skip(2)" => "[3]");

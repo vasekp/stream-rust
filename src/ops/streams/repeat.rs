@@ -223,8 +223,6 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        use crate::parser::parse;
-
         test_eval!("1.repeat" => "[1, 1, 1, 1, 1, ...]");
         test_eval!("1.repeat(1)" => "[1]");
         test_eval!("1.repeat(3)" => "[1, 1, 1]");

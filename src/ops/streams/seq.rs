@@ -81,7 +81,6 @@ mod tests {
 
     #[test]
     fn test_seq() {
-        use crate::parser::parse;
         test_eval!("1.seq" => err);
         test_eval!("seq(0)" => "[0, 1, 2, 3, 4, ...]");
         test_eval!("seq(2, 3)" => "[2, 5, 8, 11, 14, ...]");

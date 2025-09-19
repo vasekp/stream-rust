@@ -30,7 +30,6 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
 #[test]
 fn misc_tests() {
     use crate::base::*;
-    use crate::parser::parse;
 
     // Double factorial
     test_eval!("seq:{range(#,1,-2).fold{#*#1}(1).last}" : 10 => "[1, 2, 3, 8, 15, 48, 105, 384, 945, 3840, ...]");

@@ -1,10 +1,9 @@
 use crate::base::*;
-use crate::parser::parse;
 
 use std::fmt::Debug;
 
 macro_rules! test_eval {
-    ($input:literal => err) => { assert!(parse($input).unwrap().eval_default().is_err()); };
+    ($input:literal => err) => { assert!(crate::parser::parse($input).unwrap().eval_default().is_err()); };
     ($input:literal => $output:literal) => { assert_eq!(eval!($input).to_string(), $output); };
     ($input:literal : $N:expr => $output:expr) => { assert_eq!(format!("{:1$}", eval!($input), $N), $output); };
 }

@@ -98,7 +98,6 @@ mod tests {
     #[test]
     fn test_index() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("seq(5).index(10)" => "6");
         test_eval!("(1..5).index('a')" => "[]");

@@ -110,7 +110,6 @@ mod tests {
     #[test]
     fn test_counts() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("[1,2,3].repeat(5).count(2)" => "5");
         test_eval!("[1,2,3].repeat(5).counts(2,2,4)" => "[5, 5, 0]");
         test_eval!("\"This is a test string\".counts('i', \" \", \"is\", \"st\", 'st')" => "[3, 4, 2, 2, 0]");

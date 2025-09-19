@@ -33,7 +33,7 @@ mod tests {
     #[test]
     fn test_alpha() {
         use super::*;
-        use crate::parser::parse;
+
         test_eval!("alpha(\"bÁC\"~'ch', 'b' << 'á' << 'c' << 'ch')" => "true");
         test_eval!("alpha(\"báC\", \"b Á c d\"+1)" => "\"á C b d\"");
         test_eval!("alpha(['b', 'á', 'c'], 'B' << 'Á' << 'C')" => "true");

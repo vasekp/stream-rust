@@ -64,7 +64,6 @@ mod tests {
     #[test]
     fn test_numdig() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("(2^100).numdig" => "[1, 2, 6, 7, 6, ...]");
         test_eval!("(-15).numdig" => err);
         test_eval!("0.numdig" => "[0]");
@@ -86,7 +85,6 @@ mod tests {
     #[test]
     fn test_dignum() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("[1, 6].dignum" => "16");
         test_eval!("[0, 0].dignum" => "0");
         test_eval!("[10].dignum" => err);

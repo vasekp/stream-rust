@@ -70,7 +70,6 @@ mod tests {
     #[test]
     fn test_select() {
         use super::*;
-        use crate::parser::parse;
         test_eval!("range(5).select{true}" => "[1, 2, 3, 4, 5]");
         test_eval!("range(5).select{false}" => "[]");
         test_eval!("range(5).select{#}" => "[<!>");

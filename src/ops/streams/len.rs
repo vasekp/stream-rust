@@ -31,7 +31,6 @@ mod tests {
     #[test]
     fn test_len() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("[].len" => "0");
         test_eval!("range(10).len" => "10");

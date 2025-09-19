@@ -76,7 +76,6 @@ mod tests {
 
     #[test]
     fn test_map() {
-        use crate::parser::parse;
         test_eval!("[1,2,3]:{#*10}" => "[10, 20, 30]");
         test_eval!("seq:{#^2}" => "[1, 4, 9, 16, 25, ...]");
         test_eval!("seq:{#1}" => "[<!>");

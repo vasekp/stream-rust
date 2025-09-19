@@ -128,8 +128,6 @@ mod tests {
 
     #[test]
     fn test_flatten() {
-        use crate::parser::parse;
-
         test_eval!("[1, [2, [3]]].flatten" => "[1, 2, 3]");
         test_eval!("[1, [2, [3]]].flatten(1)" => "[1, 2, [3]]");
         test_eval!("[0].nest{[#]}.flatten" => "[0, 0, 0, 0, 0, ...]");

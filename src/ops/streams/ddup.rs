@@ -66,8 +66,6 @@ mod tests {
     #[test]
     fn test_ddup() {
         use super::*;
-        use crate::parser::parse;
-
         test_eval!("seq.ddup" => "[1, 2, 3, 4, 5, ...]");
         test_eval!("(seq/5).ddup" => "[0, 1, 2, 3, 4, ...]");
         test_eval!("(1..3):{1..#}.flatten.ddup" => "[1, 2, 3]");

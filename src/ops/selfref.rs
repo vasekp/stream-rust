@@ -120,7 +120,6 @@ mod tests {
 
     #[test]
     fn test_selfref() {
-        use crate::parser::parse;
         test_eval!("self{#}" => "[]");
         test_eval!("self{#+1}" => "[]");
         test_eval!("self{#.repeat}" => "[]");

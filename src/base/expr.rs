@@ -160,7 +160,7 @@ impl ToString for Subst {
 
 #[allow(unused_macros)] // This warning is unsubstantiated
 macro_rules! eval {
-    ($input:expr) => { parse($input).unwrap().eval_default().unwrap() }
+    ($input:expr) => { crate::parser::parse($input).unwrap().eval_default().unwrap() }
 }
 
 pub(crate) use eval;
