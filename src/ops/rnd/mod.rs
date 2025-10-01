@@ -57,7 +57,7 @@ struct RndIter<'node> {
 
 impl<'node> RndIter<'node> {
     fn new(parent: &'node RndStream) -> Self {
-        let digits = parent.len.iter_u64_digits().collect::<Vec<_>>();
+        let digits = parent.len.iter_u64_digits().collect::<Vec<_>>(); // TODO move one-off work upward
         let last = digits.last().expect("digits should be nonempty");
         let max_quot = if last == &u64::MAX { 1 } else { u64::MAX / (last + 1) };
         RndIter {

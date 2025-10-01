@@ -7,6 +7,7 @@ mod cond;
 mod conv;
 mod ana;
 mod rnd;
+mod combi;
 
 #[cfg(test)]
 mod testutils;
@@ -21,6 +22,7 @@ pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
     conv::init(keywords);
     ana::init(keywords);
     rnd::init(keywords);
+    combi::init(keywords);
 
     #[cfg(test)]
     testutils::init(keywords);

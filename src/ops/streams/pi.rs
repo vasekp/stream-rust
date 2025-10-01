@@ -109,7 +109,7 @@ impl PiIterInner {
         PiIterInner {
             radix,
             power: 2u32.into(),
-            cdigits: vec![2u32.into()]
+            cdigits: vec![2u32]
         }
     }
 
