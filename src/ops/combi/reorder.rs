@@ -19,7 +19,7 @@ fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
     let Some(Item::Stream(stm)) = node.source else {
         return Err(StreamError::new("expected: stream.reorder(index...)", node));
     };
-    let max_index = indices.iter().max().unwrap_or(&UNumber::zero()).to_owned();
+    let max_index = indices.iter().max().map(Clone::clone).unwrap_or_default();
     if let Length::Exact(len) | Length::AtMost(len) = stm.len() {
         if max_index > len {
             let node = ENode { source: Some(Item::Stream(stm)), ..node };
@@ -47,8 +47,8 @@ impl Stream for ReorderStream {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(ReorderIter {
             parent: self,
-            iter: self.source.iter(),
-            state: ReorderState::Args { vec_iter: self.indices.iter(), iter_pos: UNumber::zero() },
+            iter: RandomAccess::new(&*self.source),
+            state: ReorderState::Args { vec_iter: self.indices.iter() },
             pos: UNumber::zero()
         })
     }
@@ -60,14 +60,14 @@ impl Stream for ReorderStream {
 
 struct ReorderIter<'node> {
     parent: &'node ReorderStream,
-    iter: Box<dyn SIterator + 'node>,
+    iter: RandomAccess<'node, Item>,
     state: ReorderState<'node>,
     pos: UNumber,
 }
 
 enum ReorderState<'node> {
-    Args { vec_iter: std::slice::Iter<'node, UNumber>, iter_pos: UNumber },
-    Missed { iter_pos: UNumber },
+    Args { vec_iter: std::slice::Iter<'node, UNumber> },
+    Missed { index: UNumber },
     Rest
 }
 
@@ -78,22 +78,9 @@ impl Iterator for ReorderIter<'_> {
         loop {
             check_stop!(iter);
             match &mut self.state {
-                ReorderState::Args{vec_iter, iter_pos} => {
+                ReorderState::Args{vec_iter} => {
                     if let Some(next) = vec_iter.next() {
-                        let skip_res = if next > iter_pos {
-                            iter_try_expr!(self.iter.advance(next - &*iter_pos - 1u32))
-                        } else {
-                            self.iter = self.parent.source.iter();
-                            iter_try_expr!(self.iter.advance(next - 1u32))
-                        };
-                        if skip_res.is_some() {
-                            return Some(Err(StreamError::new(format!("index past end ({next})"),
-                                Node::new("*part", 
-                                    Some(Item::Stream((*self.parent.source).clone_box()).into()),
-                                    vec![Expr::new_number(next.to_owned())]))));
-                        }
-                        *iter_pos = next.to_owned();
-                        match self.iter.next() {
+                        match self.iter.nth_from_start(next - 1u32) {
                             Some(Ok(item)) => {
                                 self.pos.inc();
                                 return Some(Ok(item))
@@ -109,25 +96,26 @@ impl Iterator for ReorderIter<'_> {
                     }
                     if self.parent.max_index.to_usize()
                             .is_some_and(|max| max == self.parent.indices.len()) {
-                        iter_try_expr!(self.iter.advance(&self.parent.max_index - &*iter_pos));
+                        iter_try_expr!(self.iter.move_to(self.parent.max_index.to_owned()));
                         self.state = ReorderState::Rest;
                     } else {
-                        self.iter = self.parent.source.iter();
-                        self.state = ReorderState::Missed{iter_pos: UNumber::zero()};
+                        self.state = ReorderState::Missed{index: UNumber::one()};
                     }
                 },
-                ReorderState::Missed{iter_pos} => {
-                    if *iter_pos >= self.parent.max_index {
+                ReorderState::Missed{index} => {
+                    if *index > self.parent.max_index {
+                        iter_try_expr!(self.iter.move_to(&*index - 1u32));
                         self.state = ReorderState::Rest;
                         continue;
                     }
-                    let next = self.iter.next();
-                    iter_pos.inc();
-                    if self.parent.indices.contains(iter_pos) {
+                    if self.parent.indices.contains(index) {
+                        index.inc();
                         continue;
                     } else {
+                        let ret = self.iter.nth_from_start(&*index - 1u32);
+                        index.inc();
                         self.pos.inc();
-                        return next;
+                        return ret;
                     }
                 },
                 ReorderState::Rest => {
@@ -152,7 +140,7 @@ impl SIterator for ReorderIter<'_> {
                 return Ok(None);
             }
             match &mut self.state {
-                ReorderState::Args{vec_iter, iter_pos} => {
+                ReorderState::Args{vec_iter} => {
                     while !n.is_zero() && vec_iter.next().is_some() {
                         n.dec();
                         self.pos.inc();
@@ -160,18 +148,17 @@ impl SIterator for ReorderIter<'_> {
                     if n.is_zero() {
                         return Ok(None);
                     }
-                    self.iter = self.parent.source.iter();
-                    self.state = ReorderState::Missed{iter_pos: UNumber::zero()};
+                    self.state = ReorderState::Missed{index: UNumber::one()};
                 },
-                ReorderState::Missed{iter_pos} => {
-                    let new_pos = &*iter_pos + &n;
+                ReorderState::Missed{index} => {
+                    let new_index = &*index + &n;
                     let skipped = self.parent.indices.iter()
-                        .filter(|ix| (&*iter_pos..&new_pos).contains(&&(*ix - 1u32)))
+                        .filter(|ix| (&*index..&new_index).contains(ix))
                         .count();
                     self.pos += &n - skipped;
                     match self.iter.advance(n) {
                         Ok(None) => {
-                            *iter_pos = new_pos;
+                            *index = new_index;
                             n = skipped.into()
                         },
                         Ok(Some(remain)) => return Ok(Some(remain + skipped)),
@@ -200,6 +187,7 @@ mod tests {
         test_eval!("('a'..'e').reorder(5)" => "['e', 'a', 'b', 'c', 'd']");
         test_eval!("('a'..'e').reorder(0)" => err);
         test_eval!("('a'..'e').reorder(6)" => err);
+        test_eval!("('a'..'e').reorder()" => "['a', 'b', 'c', 'd', 'e']");
         test_eval!("('a'..'e').lenAM.reorder(6)" => err);
         test_eval!("('a'..'e').lenUF.reorder(6)" => "[<!>");
         test_eval!("('a'..'e').reorder(3,2)" => "['c', 'b', 'a', 'd', 'e']");
@@ -214,6 +202,7 @@ mod tests {
         test_advance("range(10).reorder(5,2)");
         test_advance("range(10).reorder(5,6)");
         test_advance("range(10).reorder(5,7)");
+        test_advance("range(10).reorder");
         test_advance("range(10).reorder(3,1,2,4,5)");
         test_advance("range(10).reorder(1,2,3,4,5,6,7,8,9,10)");
         test_advance("range(10).reorder(10,9,8,7,6,5,4,3,2,1)");
