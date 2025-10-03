@@ -89,7 +89,7 @@ impl Iterator for ReorderIter<'_> {
                             None => {
                                 return Some(Err(StreamError::new(format!("index past end ({next})"),
                                     Node::new("*part", 
-                                        Some(Item::Stream((*self.parent.source).clone_box()).into()),
+                                        Some(self.parent.source.clone_item().into()),
                                         vec![Expr::new_number(next.to_owned())]))));
                             }
                         }

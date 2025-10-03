@@ -40,7 +40,7 @@ fn read_stream(stm: &(dyn Stream + 'static)) -> Result<Vec<Vec<Char>>, StreamErr
             match item? {
                 Item::Char(ch) => Ok(vec![ch]),
                 Item::String(s) => s.listout(),
-                item => Err(StreamError::new(format!("expected character or string, found {item:?}"), Item::Stream(stm.clone_box())))
+                item => Err(StreamError::new(format!("expected character or string, found {item:?}"), stm.clone_item()))
             }})
         .collect()
 }

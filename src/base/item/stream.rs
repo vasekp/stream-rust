@@ -66,6 +66,10 @@ impl<I: ItemType> dyn Stream<I> {
         dyn_clone::clone_box(self)
     }
 
+    pub(crate) fn clone_item(&self) -> Item {
+        self.clone_box().into()
+    }
+
     pub(crate) fn listout(&self) -> Result<Vec<I>, StreamError> {
         I::listout(self)
     }
@@ -73,7 +77,7 @@ impl<I: ItemType> dyn Stream<I> {
     pub(crate) fn try_count(&self) -> Result<UNumber, StreamError> {
         match self.len() {
             Length::Exact(len) => Ok(len),
-            Length::Infinite => Err(StreamError::new("stream is infinite", Item::from(self.clone_box()))),
+            Length::Infinite => Err(StreamError::new("stream is infinite", self.clone_item())),
             _ => {
                 let mut ret: usize = 0;
                 for res in self.iter() {
@@ -99,10 +103,10 @@ impl dyn Stream<Item> {
                 if let Some(len) = len.to_usize() {
                     vec.reserve(len);
                 } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::new("stream is too long", Item::Stream(self.clone_box())));
+                    return Err(StreamError::new("stream is too long", self.clone_item()));
                 }
             },
-            Length::Infinite => return Err(StreamError::new("stream is infinite", Item::Stream(self.clone_box()))),
+            Length::Infinite => return Err(StreamError::new("stream is infinite", self.clone_item())),
             _ => ()
         };
         for res in self.iter() {
@@ -182,10 +186,10 @@ impl dyn Stream<Char> {
                 if let Some(len) = len.to_usize() {
                     vec.reserve(len);
                 } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::new("string is too long", Item::String(self.clone_box())));
+                    return Err(StreamError::new("string is too long", self.clone_item()));
                 }
             },
-            Length::Infinite => return Err(StreamError::new("string is infinite", Item::String(self.clone_box()))),
+            Length::Infinite => return Err(StreamError::new("string is infinite", self.clone_item())),
             _ => ()
         };
         for res in self.iter() {
