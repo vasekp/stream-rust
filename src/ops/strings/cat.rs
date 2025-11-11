@@ -98,7 +98,7 @@ impl SIterator<Char> for CatIter<'_> {
                 let res = self.outer.next();
                 match res {
                     Some(Ok(Item::String(s))) => self.inner = Some(s.into_iter()),
-                    Some(Ok(_)) => n.dec(),
+                    Some(Ok(_)) => n -= 1,
                     Some(Err(err)) => return Err(err),
                     None => return Ok(Some(n))
                 }

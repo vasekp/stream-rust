@@ -50,7 +50,7 @@ pub trait SIterator<I = Item>: Iterator<Item = Result<I, StreamError>> {
                 Some(Err(err)) => return Err(err),
                 None => return Ok(Some(n))
             }
-            n.dec();
+            n -= 1;
         }
         Ok(None)
     }

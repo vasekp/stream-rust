@@ -103,7 +103,7 @@ impl SIterator for FlattenIter<'_> {
                     Some(Ok(Item::Stream(stm))) => {
                         self.iters.push(stm.into_iter());
                     },
-                    Some(Ok(_)) => n.dec(),
+                    Some(Ok(_)) => n -= 1,
                     Some(Err(err)) => return Err(err),
                     None => {
                         if self.iters.is_empty() {

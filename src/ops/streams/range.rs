@@ -60,14 +60,14 @@ impl Range {
         if Self::empty_helper(from, to, step) {
             return Some(UNumber::zero());
         }
-        match step.map(|step| (step, step.to_i32())) {
-            None | Some((_, Some(1))) => Some(UNumber::try_from(match from {
+        match step.map(|step| (step, i32::try_from(&step))) {
+            None | Some((_, Ok(1))) => Some(UNumber::try_from(match from {
                     Some(from) => to - from + 1,
                     None => to.to_owned() })
                 .expect("expected to > from when step > 0")),
-            Some((_, Some(-1))) => Some(UNumber::try_from(from.expect("step should not be Some if from is not") - to + 1)
+            Some((_, Ok(-1))) => Some(UNumber::try_from(from.expect("step should not be Some if from is not") - to + 1)
                 .expect("expected to < from when step < 0")),
-            Some((_, Some(0))) => None,
+            Some((_, Ok(0))) => None,
             Some((step, _)) => Some(UNumber::try_from((to - from.expect("step should not be Some if from is not")) / step + 1)
                 .expect("to-from / step sign mismatch")),
         }

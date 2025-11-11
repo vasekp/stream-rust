@@ -58,7 +58,7 @@ impl<I: ItemType> Iterator for FirstIter<'_, I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.count_rem.is_zero() {
-            self.count_rem.dec();
+            self.count_rem -= 1;
             self.source.next()
         } else {
             None

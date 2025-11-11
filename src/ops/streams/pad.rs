@@ -84,7 +84,7 @@ impl<I: ItemType> Iterator for PadLeftIter<'_, I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.pad_remain.is_zero() {
-            self.pad_remain.dec();
+            self.pad_remain -= 1;
             Some(Ok(self.padding.clone()))
         } else {
             self.source.next()

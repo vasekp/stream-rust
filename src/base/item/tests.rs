@@ -124,8 +124,8 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
             _ => {
                 let mut iter = stm.iter();
                 if let Some(rem) = iter.advance(UNumber::from(TEST + 1)).unwrap() {
-                    assert!(rem.to_u32().unwrap() <= TEST + 1);
-                    let len_real = TEST + 1 - rem.to_u32().unwrap();
+                    assert!(rem.try_into().unwrap() <= TEST + 1);
+                    let len_real = TEST + 1 - rem.try_into().unwrap();
                     test_advance_exact_impl(stm, UNumber::from(len_real), false);
                     return;
                 }

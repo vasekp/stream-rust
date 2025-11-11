@@ -119,7 +119,7 @@ impl SIterator for RiffleIter<'_> {
             if self.next().transpose()?.is_none() {
                 return Ok(Some(remain));
             }
-            remain.dec();
+            remain -= 1;
         }
         Ok(None)
     }

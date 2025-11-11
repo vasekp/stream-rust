@@ -114,7 +114,7 @@ impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
             self.index += 1;
             let Some(next) = self.elems.get(self.index - 1) else { return Ok(Some(n)); };
             match next {
-                Joinable::Single(_) => n.dec(),
+                Joinable::Single(_) => n -= 1,
                 Joinable::Stream(stm) => self.inner = Some(stm.iter())
             }
         }

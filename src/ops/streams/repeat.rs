@@ -10,11 +10,11 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
             => (source, Some(unsign(count))),
         _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
     };
-    match (&item, count.as_ref().and_then(UNumber::to_u32)) {
+    match (&item, count.as_ref().and_then(u32::try_from)) {
         (Item::String(stm), _) if stm.is_empty() => Ok(item),
         (Item::Stream(stm), _) if stm.is_empty() => Ok(item),
         (Item::Char(_) | Item::String(_), Some(0)) => Ok(Item::empty_string()),
-        (_, Some(0)) => Ok(Item::empty_stream()),
+        (_, Ok(0)) => Ok(Item::empty_stream()),
         (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item),
         (Item::Stream(_), _) => {
             let Item::Stream(stm) = item else { unreachable!() };
@@ -28,7 +28,7 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
             let Item::Char(ch) = item else { unreachable!() };
             Ok(Item::new_string(RepeatItem{head: rnode.head, item: ch, count}))
         },
-        (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item]))),
+        (_, Ok(1)) => Ok(Item::new_stream(List::from(vec![item]))),
         _ => Ok(Item::new_stream(RepeatItem{head: rnode.head, item, count}))
     }
 }
@@ -74,7 +74,7 @@ impl<I: ItemType> Iterator for RepeatItemIter<'_, I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if !self.count_rem.is_zero() {
-            self.count_rem.dec();
+            self.count_rem -= 1;
             Some(Ok(self.item.clone()))
         } else {
             None
@@ -153,7 +153,7 @@ impl<I: ItemType> Iterator for RepeatStreamIter<'_, I> {
             if count.is_zero() {
                 return None;
             }
-            count.dec();
+            count -= 1;
         }
         self.iter = self.stream.iter();
         self.iter.next()
@@ -169,7 +169,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
             if count.is_zero() {
                 return Ok(Some(n));
             }
-            count.dec();
+            count -= 1;
         }
         self.iter = self.stream.iter();
 
@@ -198,7 +198,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
             if count.is_zero() {
                 return Ok(Some(n));
             }
-            count.dec();
+            count -= 1;
         }
         self.iter = self.stream.iter();
         debug_assert!(n < full_length);

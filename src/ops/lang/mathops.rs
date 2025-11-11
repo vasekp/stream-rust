@@ -145,7 +145,7 @@ impl MathOp {
                 if exp.is_negative() {
                     return Err("negative exponent".into());
                 }
-                let Some(exp) = exp.to_u32() else {
+                let Ok(exp) = exp.try_into() else {
                     return Err("exponent too large".into());
                 };
                 Ok(Item::new_number(base.pow(exp)))
@@ -389,7 +389,7 @@ impl SIterator<Char> for StringOpIter<'_> {
                 Some(Err(err)) => return Err(err),
                 None => break
             }
-            remain.dec();
+            remain -= 1;
         }
         for iter in self.rest.iter_mut() {
             if let Some(r) = iter.advance(n_chars.into())? {
