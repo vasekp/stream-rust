@@ -38,7 +38,7 @@ impl<I: ItemType> Stream<I> for Skip<I> {
     fn len(&self) -> Length {
         self.source.len()
             .map(|x| match &self.count {
-                Some(count) => x.checked_sub(count).unwrap_or_default(),
+                Some(count) => if count < x { x - count } else { UNumber::zero() },
                 None => if x.is_zero() { x.to_owned() } else { x - 1u32 }
             })
     }

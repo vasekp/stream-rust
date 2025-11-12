@@ -10,11 +10,11 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
             => (source, Some(unsign(count))),
         _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
     };
-    match (&item, count.as_ref().and_then(u32::try_from)) {
+    match (&item, count.as_ref().and_then(|x| u32::try_from(x).ok())) {
         (Item::String(stm), _) if stm.is_empty() => Ok(item),
         (Item::Stream(stm), _) if stm.is_empty() => Ok(item),
         (Item::Char(_) | Item::String(_), Some(0)) => Ok(Item::empty_string()),
-        (_, Ok(0)) => Ok(Item::empty_stream()),
+        (_, Some(0)) => Ok(Item::empty_stream()),
         (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item),
         (Item::Stream(_), _) => {
             let Item::Stream(stm) = item else { unreachable!() };
@@ -28,7 +28,7 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
             let Item::Char(ch) = item else { unreachable!() };
             Ok(Item::new_string(RepeatItem{head: rnode.head, item: ch, count}))
         },
-        (_, Ok(1)) => Ok(Item::new_stream(List::from(vec![item]))),
+        (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item]))),
         _ => Ok(Item::new_stream(RepeatItem{head: rnode.head, item, count}))
     }
 }
@@ -153,7 +153,7 @@ impl<I: ItemType> Iterator for RepeatStreamIter<'_, I> {
             if count.is_zero() {
                 return None;
             }
-            count -= 1;
+            *count -= 1;
         }
         self.iter = self.stream.iter();
         self.iter.next()
@@ -169,7 +169,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
             if count.is_zero() {
                 return Ok(Some(n));
             }
-            count -= 1;
+            *count -= 1;
         }
         self.iter = self.stream.iter();
 
@@ -198,7 +198,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
             if count.is_zero() {
                 return Ok(Some(n));
             }
-            count -= 1;
+            *count -= 1;
         }
         self.iter = self.stream.iter();
         debug_assert!(n < full_length);

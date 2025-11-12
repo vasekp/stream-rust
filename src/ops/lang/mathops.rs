@@ -124,7 +124,7 @@ impl MathOp {
     }
 
     fn mod_func(items: &[Item], _alpha: &Rc<Alphabet>) -> Result<Item, BaseError> {
-        use num::traits::Euclid;
+        use ibig::ops::RemEuclid;
         match items {
             [lhs, rhs] => {
                 let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);

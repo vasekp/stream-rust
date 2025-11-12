@@ -166,14 +166,14 @@ impl<I: ItemType> Iterator for PadRightIter<'_, I> {
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(ref mut iter) = self.source {
             if let Some(res) = iter.next() {
-                self.pos.inc();
+                self.pos += 1;
                 return Some(res);
             } else {
                 self.source = None;
             }
         }
         if &self.pos < self.len {
-            self.pos.inc();
+            self.pos += 1;
             Some(Ok(self.padding.clone()))
         } else {
             None

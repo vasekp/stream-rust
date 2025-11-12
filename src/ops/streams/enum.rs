@@ -41,7 +41,7 @@ impl Iterator for EnumIter<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = iter_try_expr!(self.iter.next()?);
-        self.index.inc();
+        self.index += 1;
         Some(Ok(vec![item, Item::new_number(self.index.clone())].into()))
     }
 }

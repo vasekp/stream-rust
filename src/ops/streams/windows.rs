@@ -24,9 +24,9 @@ fn check_win_size(size: &Number) -> Result<usize, BaseError> {
     if size.is_negative() {
         return Err("size must be positive".into());
     }
-    match size.to_usize() {
-        Some(size @ 2..) => Ok(size),
-        Some(0..=1) => Err("size must be at least 2".into()),
+    match size.try_into() {
+        Ok(size @ 2..) => Ok(size),
+        Ok(0..=1) => Err("size must be at least 2".into()),
         _ => Err("size too large".into())
     }
 }
@@ -104,8 +104,8 @@ impl Iterator for WindowsIter<'_> {
 
 impl SIterator for WindowsIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        match n.to_usize() {
-            Some(num) if num < self.size => { self.deque.drain(0..num); },
+        match (&n).try_into() {
+            Ok(num) if num < self.size => { self.deque.drain(0..num); },
             _ => {
                 self.deque.clear();
                 if let Some(rem) = self.iter.advance(n - (self.size - 1))? {

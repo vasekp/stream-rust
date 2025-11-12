@@ -60,7 +60,7 @@ impl Range {
         if Self::empty_helper(from, to, step) {
             return Some(UNumber::zero());
         }
-        match step.map(|step| (step, i32::try_from(&step))) {
+        match step.map(|step| (step, i32::try_from(step))) {
             None | Some((_, Ok(1))) => Some(UNumber::try_from(match from {
                     Some(from) => to - from + 1,
                     None => to.to_owned() })
@@ -130,7 +130,7 @@ impl Iterator for RangeIter<'_> {
                 };
                 match &self.parent.step {
                     Some(step) => self.value += step,
-                    None => self.value.inc()
+                    None => self.value += 1
                 }
                 Some(Ok(ret))
         } else {

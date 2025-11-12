@@ -48,8 +48,8 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
     let (s, radix) = match &rnode {
         RNodeS { source: Item::String(s), args: RArgs::Zero, .. } => (s, 10),
         RNodeS { source: Item::String(s), args: RArgs::One(Item::Number(radix)), .. } =>
-            match radix.to_u32() {
-                Some(radix) if (2..=36).contains(&radix) => (s, radix),
+            match radix.try_into() {
+                Ok(radix) if (2..=36).contains(&radix) => (s, radix),
                 _ => return Err(StreamError::new("radix must be between 2 and 36", rnode))
             },
         _ => return Err(StreamError::new("expected: string.strnum or string.strnum(radix)", rnode))
@@ -67,7 +67,7 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
-    match radix.to_u32() {
+    match radix.try_into() {
         Some(radix) if (2..=36).contains(&radix) => Ok(radix),
         _ => Err("radix must be between 2 and 256".into())
     }

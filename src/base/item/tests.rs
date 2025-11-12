@@ -124,8 +124,8 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
             _ => {
                 let mut iter = stm.iter();
                 if let Some(rem) = iter.advance(UNumber::from(TEST + 1)).unwrap() {
-                    assert!(rem.try_into().unwrap() <= TEST + 1);
-                    let len_real = TEST + 1 - rem.try_into().unwrap();
+                    assert!(rem <= UNumber::from(TEST + 1));
+                    let len_real = TEST + 1 - u32::try_from(rem).unwrap();
                     test_advance_exact_impl(stm, UNumber::from(len_real), false);
                     return;
                 }
@@ -248,8 +248,8 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
     assert_eq!(i1.next(), i2.next());
 
     // advance() from within past end
-    half.inc();
-    rest.inc(); // now half + rest = len + 1
+    half += 1;
+    rest += 1; // now half + rest = len + 1
     let mut it = stm.iter();
     assert_eq!(it.advance(half.clone()).unwrap(), None);
     assert_eq!(it.advance(rest.clone()).unwrap(), Some(UNumber::one()));

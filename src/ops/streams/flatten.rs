@@ -32,7 +32,7 @@ impl Stream for Flatten {
         Box::new(FlattenIter {
             outer: self.source.iter(),
             iters: vec![],
-            depth: self.depth.as_ref().and_then(UNumber::to_usize),
+            depth: self.depth.as_ref().and_then(|d| d.try_into().ok())
         })
     }
 

@@ -1,5 +1,5 @@
 use crate::base::*;
 
 pub(crate) fn unsign(num: Number) -> UNumber {
-    num.into_parts().1
+    num.abs().try_into().expect("must be ≥ 0 after abs()")
 }

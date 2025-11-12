@@ -112,7 +112,7 @@ impl PiIterInner {
         }
     }
 
-    fn advance(&mut self, n: u32) {
+    fn advance(&mut self, n: usize) {
         let mul = UNumber::from(self.radix).pow(n);
         for x in &mut self.cdigits {
             *x *= &mul;
@@ -131,8 +131,7 @@ impl Iterator for PiIterInner {
             check_stop!(iter);
             *x *= self.radix;
         }
-        let bits = (self.power.bits() - 1).try_into()
-            .expect("usize should be enough");
+        let bits = self.power.bit_len() - 1;
         self.cdigits.resize(bits, self.power.clone());
         let mut carry = UNumber::zero();
         for (ix, x) in self.cdigits.iter_mut().enumerate().rev() {

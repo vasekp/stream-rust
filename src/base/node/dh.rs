@@ -33,7 +33,7 @@ where U: Describe {
     for string in it {
         ret += sep;
         ret += &string;
-        count.inc();
+        count += 1;
     }
     (ret, count)
 }

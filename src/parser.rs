@@ -297,15 +297,15 @@ fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
             if !matches!(base, 2..=36) {
                 return Err(ParseError::new("invalid base", base_str));
             }
-            Number::parse_bytes(value_str.as_bytes(), base)
-                .ok_or(ParseError::new(format!("invalid digits in base {base}"), value_str))
+            Number::from_str_radix(value_str, base)
+                .map_err(|_| ParseError::new(format!("invalid digits in base {base}"), value_str))
         },
         _ => Err(ParseError::new("malformed number", slice))
     }
 }
 
 fn parse_c_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
-    let base = match slice.as_bytes()[1] {
+    /*let base = match slice.as_bytes()[1] {
         b'x' => 16,
         b'o' => 8,
         b'b' => 2,
@@ -315,9 +315,11 @@ fn parse_c_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
     if value_str.is_empty() {
         Err(ParseError::new("malformed number", slice))
     } else {
-        Number::parse_bytes(value_str, base)
+        Number::from_str_radix(value_str, base)
             .ok_or(ParseError::new(format!("invalid digits in base {base}"), slice))
-    }
+    }*/
+    Number::from_str_with_radix_prefix(slice)
+        .map_err(|_| ParseError::new(format!("invalid digits"), slice))
 }
 
 #[test]

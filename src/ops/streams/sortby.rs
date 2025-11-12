@@ -38,7 +38,7 @@ fn sortby_impl(vals: &mut [(Item, Item)], alpha: &Rc<Alphabet>) -> Result<(), Ba
             for ix in 0..rest.len() {
                 if rest[ix].1.lex_cmp(pivot, alpha)? == Ordering::Less {
                     rest.swap(ix, div_ix);
-                    div_ix.inc();
+                    div_ix += 1;
                 }
             }
             vals.swap(0, div_ix);

@@ -55,7 +55,7 @@ impl Iterator for SeqIter<'_> {
         let ret = Item::new_number(self.value.clone());
         match self.step {
             Some(step) => self.value += step,
-            None => self.value.inc()
+            None => self.value += 1
         }
         Some(Ok(ret))
     }
