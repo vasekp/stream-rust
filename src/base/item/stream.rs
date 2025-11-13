@@ -28,7 +28,7 @@ pub trait Stream<I = Item>: DynClone + Describe {
     }
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
-    /// looking at [`len()`](Stream::length). If the information is insufficient, constructs the
+    /// looking at [`len()`](Stream::len). If the information is insufficient, constructs the
     /// iterator and tries answering using [`SIterator::len_remain()`]. As a last resort, the
     /// iterator is consumed. This usually does not need to be overridden.
     ///

@@ -33,7 +33,7 @@ impl Stream for PermStream {
         Box::new(PermIter {
             source: &self.source,
             src_len: &self.len,
-            self_len: self.len.as_ref().and_then(fallible_factorial),
+            self_len: self.len.as_ref().and_then(|x| x.to_u32().map(crate::utils::factorial)),
             order: vec![],
             num_read: UNumber::zero()
         })
@@ -41,19 +41,12 @@ impl Stream for PermStream {
 
     fn len(&self) -> Length {
         match &self.len {
-            Some(len) => match fallible_factorial(len) {
-                Some(res) => Length::Exact(res),
+            Some(len) => match len.to_u32() {
+                Some(x) => Length::Exact(crate::utils::factorial(x)),
                 None => Length::UnknownFinite
             },
             None => Length::Infinite
         }
-    }
-}
-
-fn fallible_factorial(x: &UNumber) -> Option<UNumber> {
-    match x.to_u32() {
-        Some(x) => Some(crate::utils::factorial(x)),
-        None => None
     }
 }
 

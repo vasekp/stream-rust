@@ -19,7 +19,7 @@ fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
     let Some(Item::Stream(stm)) = node.source else {
         return Err(StreamError::new("expected: stream.reorder(index...)", node));
     };
-    let max_index = indices.iter().max().map(Clone::clone).unwrap_or_default();
+    let max_index = indices.iter().max().cloned().unwrap_or_default();
     if let Length::Exact(len) | Length::AtMost(len) = stm.len() {
         if max_index > len {
             let node = ENode { source: Some(Item::Stream(stm)), ..node };
