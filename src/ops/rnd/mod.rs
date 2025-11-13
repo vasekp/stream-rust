@@ -1,6 +1,6 @@
 use crate::base::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use rand::{Rng, SeedableRng, rngs::SmallRng};
+use rand::{RngCore, SeedableRng, rngs::SmallRng};
 
 fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
@@ -57,9 +57,11 @@ struct RndIter<'node> {
 
 impl<'node> RndIter<'node> {
     fn new(parent: &'node RndStream) -> Self {
-        let digits = parent.len.iter_u64_digits().collect::<Vec<_>>(); // TODO move one-off work upward
+        let digits = parent.len.iter_u32_digits().collect::<Vec<_>>(); // TODO move one-off work upward
         let last = digits.last().expect("digits should be nonempty");
-        let max_quot = if last == &u64::MAX { 1 } else { u64::MAX / (last + 1) };
+        let max_quot = if digits.len() == 1 { u32::MAX / last }
+            else if last == &u32::MAX { 1 }
+            else { u32::MAX / (last + 1) };
         RndIter {
             source: &*parent.source,
             len: &parent.len,
@@ -79,14 +81,16 @@ impl Iterator for RndIter<'_> {
         Hash::hash(&self.pos, &mut hasher);
         let seed = hasher.finish();
         let mut rng = SmallRng::seed_from_u64(seed);
-        let mut digits = Vec::with_capacity(self.num_digits);
-        for _ in 0..self.num_digits {
-            digits.push(rng.random());
-        }
-        let rnd = UNumber::from_slice(&digits[..]);
-        if rnd >= self.cutoff {
-            println!("drop");
-        }
+        let rnd = loop {
+            let mut digits = Vec::with_capacity(self.num_digits);
+            for _ in 0..self.num_digits {
+                digits.push(rng.next_u32());
+            }
+            let rnd = UNumber::from_slice(&digits[..]);
+            if rnd < self.cutoff {
+                break rnd;
+            }
+        };
         let rem = rnd % self.len;
         let mut iter = self.source.iter();
         match iter.advance(rem) {
@@ -120,6 +124,8 @@ mod tests {
         test_eval!("[].rnd(1)" => err);
         test_eval!("\"abc\".rnd(1)" => err);
         test_eval!("seq.rnd(1)" => err);
+        // test fairness of rejection sampling
+        test_eval!("(range(2^64*3/4).rnd(0)/2^62).first(1000).counts(0,1,2)" => "[324, 336, 340]");
         test_advance("range(10^10).rnd(1)");
     }
 }
