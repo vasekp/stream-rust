@@ -13,7 +13,18 @@ fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
             let mut hasher = DefaultHasher::default();
             Hash::hash(&seed, &mut hasher);
             Hash::hash(&b':', &mut hasher);
-            Ok(Item::new_stream(RndStream { source: stm.into(), head, seed, len, hasher }))
+            let digits = len.iter_u32_digits().collect::<Vec<_>>();
+            let top_digit = digits.last().expect("digits should be nonempty");
+            let max_quot = if digits.len() == 1 { u32::MAX / top_digit }
+                else if top_digit == &u32::MAX { 1 }
+                else { u32::MAX / (top_digit + 1) };
+            Ok(Item::new_stream(RndStream {
+                source: stm.into(),
+                head, seed, hasher,
+                num_digits: digits.len(),
+                cutoff: max_quot * &len,
+                len
+            }))
         },
         _ => Err(StreamError::new("expected: stream.rnd(seed)", node))
     }
@@ -24,8 +35,10 @@ struct RndStream {
     source: BoxedStream,
     head: Head,
     seed: Number,
+    hasher: DefaultHasher,
     len: UNumber,
-    hasher: DefaultHasher
+    num_digits: usize,
+    cutoff: UNumber,
 }
 
 impl Describe for RndStream {
@@ -47,29 +60,13 @@ impl Stream for RndStream {
 }
 
 struct RndIter<'node> {
-    source: &'node dyn Stream,
-    len: &'node UNumber,
-    hasher: &'node DefaultHasher,
-    num_digits: usize,
-    cutoff: UNumber,
+    parent: &'node RndStream,
     pos: UNumber,
 }
 
 impl<'node> RndIter<'node> {
     fn new(parent: &'node RndStream) -> Self {
-        let digits = parent.len.iter_u32_digits().collect::<Vec<_>>(); // TODO move one-off work upward
-        let last = digits.last().expect("digits should be nonempty");
-        let max_quot = if digits.len() == 1 { u32::MAX / last }
-            else if last == &u32::MAX { 1 }
-            else { u32::MAX / (last + 1) };
-        RndIter {
-            source: &*parent.source,
-            len: &parent.len,
-            hasher: &parent.hasher,
-            num_digits: digits.len(),
-            cutoff: max_quot * &parent.len,
-            pos: UNumber::zero()
-        }
+        RndIter { parent, pos: UNumber::zero() }
     }
 }
 
@@ -77,22 +74,24 @@ impl Iterator for RndIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut hasher = self.hasher.clone();
+        let mut hasher = self.parent.hasher.clone();
         Hash::hash(&self.pos, &mut hasher);
         let seed = hasher.finish();
         let mut rng = SmallRng::seed_from_u64(seed);
         let rnd = loop {
-            let mut digits = Vec::with_capacity(self.num_digits);
-            for _ in 0..self.num_digits {
+            let mut digits = Vec::with_capacity(self.parent.num_digits);
+            for _ in 0..self.parent.num_digits {
                 digits.push(rng.next_u32());
             }
             let rnd = UNumber::from_slice(&digits[..]);
-            if rnd < self.cutoff {
+            if rnd < self.parent.cutoff {
                 break rnd;
+            } else {
+                eprintln!("drop");
             }
         };
-        let rem = rnd % self.len;
-        let mut iter = self.source.iter();
+        let rem = rnd % &self.parent.len;
+        let mut iter = self.parent.source.iter();
         match iter.advance(rem) {
             Ok(None) => (),
             Ok(Some(_)) => unreachable!("iterator ended before its length"),
