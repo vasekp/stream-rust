@@ -81,6 +81,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("while", eval_while);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("while", eval_while);
 }

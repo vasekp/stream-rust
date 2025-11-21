@@ -2,8 +2,8 @@ mod with;
 mod alpha;
 mod global;
 
-pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
-    with::init(keywords);
-    alpha::init(keywords);
-    global::init(keywords);
+pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
+    with::init(symbols);
+    alpha::init(symbols);
+    global::init(symbols);
 }

@@ -183,6 +183,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("last", eval_last);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("last", eval_last);
 }

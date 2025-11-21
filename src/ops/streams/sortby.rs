@@ -60,6 +60,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("sortby", eval_sortby);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("sortby", eval_sortby);
 }

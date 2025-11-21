@@ -109,6 +109,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("contains", eval_contains);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("contains", eval_contains);
 }

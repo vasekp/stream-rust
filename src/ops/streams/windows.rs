@@ -150,6 +150,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("windows", eval_windows);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("windows", eval_windows);
 }

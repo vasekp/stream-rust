@@ -83,12 +83,12 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("&", eval_and);
-    keywords.insert("and", eval_and);
-    keywords.insert("|", eval_or);
-    keywords.insert("or", eval_or);
-    keywords.insert("!", eval_not_xor);
-    keywords.insert("xor", eval_not_xor);
-    keywords.insert("not", eval_not_xor);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("&", eval_and);
+    symbols.insert("and", eval_and);
+    symbols.insert("|", eval_or);
+    symbols.insert("or", eval_or);
+    symbols.insert("!", eval_not_xor);
+    symbols.insert("xor", eval_not_xor);
+    symbols.insert("not", eval_not_xor);
 }

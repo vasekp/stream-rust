@@ -87,6 +87,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("select", eval_select);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("select", eval_select);
 }

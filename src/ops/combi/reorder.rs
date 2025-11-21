@@ -209,6 +209,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("reorder", eval_reorder);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("reorder", eval_reorder);
 }

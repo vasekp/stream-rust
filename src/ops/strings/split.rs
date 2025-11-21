@@ -162,6 +162,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("split", eval_split);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("split", eval_split);
 }

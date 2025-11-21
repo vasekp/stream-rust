@@ -189,6 +189,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("replace", eval_replace);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("replace", eval_replace);
 }

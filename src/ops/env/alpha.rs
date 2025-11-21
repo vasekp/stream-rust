@@ -47,6 +47,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("alpha", eval_alpha);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("alpha", eval_alpha);
 }

@@ -116,7 +116,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("first", eval_first);
-    keywords.insert("take", eval_first);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("first", eval_first);
+    symbols.insert("take", eval_first);
 }

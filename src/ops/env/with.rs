@@ -46,8 +46,8 @@ fn eval_with(node: Node, env: &Env) -> Result<Item, StreamError> {
     body.eval(&env)
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("with", eval_with);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("with", eval_with);
 }
 
 #[cfg(test)]

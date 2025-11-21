@@ -75,7 +75,7 @@ pub enum LangItem {
 }
 
 impl LangItem {
-    pub(crate) fn keyword(&self) -> &'static str {
+    pub(crate) fn symbol(&self) -> &'static str {
         use LangItem::*;
         match self {
             List => "*list",

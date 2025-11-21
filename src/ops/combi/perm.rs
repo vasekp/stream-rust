@@ -155,6 +155,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("perm", eval_perm);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("perm", eval_perm);
 }

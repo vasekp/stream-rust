@@ -102,6 +102,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("zip", eval_zip);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("zip", eval_zip);
 }

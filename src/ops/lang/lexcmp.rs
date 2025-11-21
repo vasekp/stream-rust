@@ -69,9 +69,9 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("<<", LexOp::eval);
-    keywords.insert(">>", LexOp::eval);
-    keywords.insert("<<=", LexOp::eval);
-    keywords.insert(">>=", LexOp::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("<<", LexOp::eval);
+    symbols.insert(">>", LexOp::eval);
+    symbols.insert("<<=", LexOp::eval);
+    symbols.insert(">>=", LexOp::eval);
 }

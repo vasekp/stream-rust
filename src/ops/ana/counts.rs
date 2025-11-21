@@ -121,9 +121,9 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("counts", eval_counts);
-    keywords.insert("count", eval_counts);
-    keywords.insert("tally", eval_counts);
-    keywords.insert("freq", eval_counts);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("counts", eval_counts);
+    symbols.insert("count", eval_counts);
+    symbols.insert("tally", eval_counts);
+    symbols.insert("freq", eval_counts);
 }

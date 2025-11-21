@@ -146,6 +146,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("self", SelfRef::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("self", SelfRef::eval);
 }

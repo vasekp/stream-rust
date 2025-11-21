@@ -15,8 +15,8 @@ fn eval_global(mut node: Node, env: &Env) -> Result<Item, StreamError> {
     Node::from(body).eval(&Default::default())
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("global", eval_global);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("global", eval_global);
 }
 
 #[cfg(test)]

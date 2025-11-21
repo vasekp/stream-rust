@@ -89,7 +89,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("chars", Chars::eval);
-    keywords.insert("string", Str::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("chars", Chars::eval);
+    symbols.insert("string", Str::eval);
 }

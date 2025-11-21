@@ -94,8 +94,8 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("*map", eval_map);
-    keywords.insert("map", eval_map);
-    keywords.insert("foreach", eval_map);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("*map", eval_map);
+    symbols.insert("map", eval_map);
+    symbols.insert("foreach", eval_map);
 }

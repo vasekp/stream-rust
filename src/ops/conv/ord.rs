@@ -41,7 +41,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("ord", eval_ord);
-    keywords.insert("chr", eval_chr);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("ord", eval_ord);
+    symbols.insert("chr", eval_chr);
 }

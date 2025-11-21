@@ -128,20 +128,20 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("isnum", eval_class);
-    keywords.insert("isbool", eval_class);
-    keywords.insert("ischar", eval_class);
-    keywords.insert("isstream", eval_class);
-    keywords.insert("isstring", eval_class);
-    keywords.insert("isodd", eval_class);
-    keywords.insert("iseven", eval_class);
-    keywords.insert("isempty", eval_class);
-    keywords.insert("isalpha", eval_class);
-    keywords.insert("isascii", eval_class);
-    keywords.insert("isdigit", eval_class);
-    keywords.insert("iswhite", eval_class);
-    keywords.insert("isupper", eval_class);
-    keywords.insert("islower", eval_class);
-    keywords.insert("isnumeric", eval_class);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("isnum", eval_class);
+    symbols.insert("isbool", eval_class);
+    symbols.insert("ischar", eval_class);
+    symbols.insert("isstream", eval_class);
+    symbols.insert("isstring", eval_class);
+    symbols.insert("isodd", eval_class);
+    symbols.insert("iseven", eval_class);
+    symbols.insert("isempty", eval_class);
+    symbols.insert("isalpha", eval_class);
+    symbols.insert("isascii", eval_class);
+    symbols.insert("isdigit", eval_class);
+    symbols.insert("iswhite", eval_class);
+    symbols.insert("isupper", eval_class);
+    symbols.insert("islower", eval_class);
+    symbols.insert("isnumeric", eval_class);
 }

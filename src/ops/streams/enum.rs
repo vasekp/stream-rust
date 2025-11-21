@@ -71,6 +71,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("enum", eval_enum);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("enum", eval_enum);
 }

@@ -209,7 +209,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("*part", eval_part);
-    keywords.insert("part", eval_part);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("*part", eval_part);
+    symbols.insert("part", eval_part);
 }

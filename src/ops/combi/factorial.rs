@@ -142,9 +142,9 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("factorial", eval_factorial);
-    keywords.insert("binom", eval_binom);
-    keywords.insert("comb", eval_comb);
-    keywords.insert("rcomb", eval_rcomb);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("factorial", eval_factorial);
+    symbols.insert("binom", eval_binom);
+    symbols.insert("comb", eval_comb);
+    symbols.insert("rcomb", eval_rcomb);
 }

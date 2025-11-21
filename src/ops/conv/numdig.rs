@@ -99,7 +99,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("numdig", eval_numdig);
-    keywords.insert("dignum", eval_dignum);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("numdig", eval_numdig);
+    symbols.insert("dignum", eval_dignum);
 }

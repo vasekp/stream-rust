@@ -124,13 +124,13 @@ fn eval_assign(node: Node, _env: &Env) -> Result<Item, StreamError> {
     Err(StreamError::new("assignment not possible here, use == for comparisons", node))
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("==", CmpOp::eval);
-    keywords.insert("equal", CmpOp::eval);
-    keywords.insert("<>", CmpOp::eval);
-    keywords.insert("<", CmpOp::eval);
-    keywords.insert(">", CmpOp::eval);
-    keywords.insert("<=", CmpOp::eval);
-    keywords.insert(">=", CmpOp::eval);
-    keywords.insert("=", eval_assign);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("==", CmpOp::eval);
+    symbols.insert("equal", CmpOp::eval);
+    symbols.insert("<>", CmpOp::eval);
+    symbols.insert("<", CmpOp::eval);
+    symbols.insert(">", CmpOp::eval);
+    symbols.insert("<=", CmpOp::eval);
+    symbols.insert(">=", CmpOp::eval);
+    symbols.insert("=", eval_assign);
 }

@@ -174,6 +174,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("pi", eval_pi);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("pi", eval_pi);
 }

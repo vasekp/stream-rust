@@ -116,8 +116,8 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("index", eval_index);
-    keywords.insert("find", eval_index);
-    keywords.insert("pos", eval_index);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("index", eval_index);
+    symbols.insert("find", eval_index);
+    symbols.insert("pos", eval_index);
 }

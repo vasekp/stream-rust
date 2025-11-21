@@ -129,6 +129,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("rnd", eval_rnd);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("rnd", eval_rnd);
 }

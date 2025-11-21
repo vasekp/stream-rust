@@ -86,6 +86,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("fold", eval_fold);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("fold", eval_fold);
 }

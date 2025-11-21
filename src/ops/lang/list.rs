@@ -28,7 +28,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("*list", eval_list);
-    keywords.insert("list", eval_list);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("*list", eval_list);
+    symbols.insert("list", eval_list);
 }

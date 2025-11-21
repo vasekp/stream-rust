@@ -243,7 +243,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("range", Range::eval);
-    keywords.insert("..", Range::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("range", Range::eval);
+    symbols.insert("..", Range::eval);
 }

@@ -49,7 +49,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("ucase", eval_ulcase);
-    keywords.insert("lcase", eval_ulcase);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("ucase", eval_ulcase);
+    symbols.insert("lcase", eval_ulcase);
 }

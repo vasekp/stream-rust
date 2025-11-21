@@ -52,6 +52,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("sort", eval_sort);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("sort", eval_sort);
 }

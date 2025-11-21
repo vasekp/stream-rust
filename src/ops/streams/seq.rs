@@ -97,7 +97,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("seq", Seq::eval);
-    keywords.insert("iota", Seq::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("seq", Seq::eval);
+    symbols.insert("iota", Seq::eval);
 }

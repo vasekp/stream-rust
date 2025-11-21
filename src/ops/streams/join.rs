@@ -189,7 +189,7 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("join", eval_join);
-    keywords.insert("~", eval_join);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("join", eval_join);
+    symbols.insert("~", eval_join);
 }

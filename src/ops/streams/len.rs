@@ -44,6 +44,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("len", eval_len);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("len", eval_len);
 }

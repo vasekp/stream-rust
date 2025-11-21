@@ -165,8 +165,8 @@ impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("lenAM", eval_len_am);
-    keywords.insert("lenUF", eval_len_uf);
-    keywords.insert("lenUU", eval_len_uu);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("lenAM", eval_len_am);
+    symbols.insert("lenUF", eval_len_uf);
+    symbols.insert("lenUU", eval_len_uu);
 }

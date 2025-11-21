@@ -7,13 +7,13 @@ mod cmp;
 mod lexcmp;
 mod bools;
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    list::init(keywords);
-    part::init(keywords);
-    map::init(keywords);
-    mathops::init(keywords);
-    args::init(keywords);
-    cmp::init(keywords);
-    lexcmp::init(keywords);
-    bools::init(keywords);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    list::init(symbols);
+    part::init(symbols);
+    map::init(symbols);
+    mathops::init(symbols);
+    args::init(symbols);
+    cmp::init(symbols);
+    lexcmp::init(symbols);
+    bools::init(symbols);
 }

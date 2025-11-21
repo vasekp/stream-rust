@@ -140,6 +140,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("nest", eval_nest);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("nest", eval_nest);
 }

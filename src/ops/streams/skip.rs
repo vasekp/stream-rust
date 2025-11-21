@@ -83,6 +83,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("skip", eval_skip);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("skip", eval_skip);
 }

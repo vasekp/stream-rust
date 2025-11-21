@@ -1,6 +1,6 @@
 pub mod base;
 mod parser;
-mod keywords;
+mod symbols;
 mod utils;
 mod ops;
 pub mod session;

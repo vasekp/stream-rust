@@ -74,6 +74,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("ddup", eval_ddup);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("ddup", eval_ddup);
 }

@@ -523,13 +523,13 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("+", eval_op);
-    keywords.insert("plus", eval_op);
-    keywords.insert("-", eval_op);
-    keywords.insert("*", eval_op);
-    keywords.insert("times", eval_op);
-    keywords.insert("/", eval_op);
-    keywords.insert("%", eval_op);
-    keywords.insert("^", eval_op);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("+", eval_op);
+    symbols.insert("plus", eval_op);
+    symbols.insert("-", eval_op);
+    symbols.insert("*", eval_op);
+    symbols.insert("times", eval_op);
+    symbols.insert("/", eval_op);
+    symbols.insert("%", eval_op);
+    symbols.insert("^", eval_op);
 }

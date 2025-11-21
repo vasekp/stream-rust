@@ -226,6 +226,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("cat", Cat::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("cat", Cat::eval);
 }

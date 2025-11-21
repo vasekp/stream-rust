@@ -28,6 +28,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("if", eval_if);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("if", eval_if);
 }

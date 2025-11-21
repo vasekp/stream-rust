@@ -244,9 +244,9 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("padleft", eval_padl);
-    keywords.insert("padl", eval_padl);
-    keywords.insert("padright", eval_padr);
-    keywords.insert("padr", eval_padr);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("padleft", eval_padl);
+    symbols.insert("padl", eval_padl);
+    symbols.insert("padright", eval_padr);
+    symbols.insert("padr", eval_padr);
 }

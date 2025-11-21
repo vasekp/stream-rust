@@ -184,6 +184,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("riffle", Riffle::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("riffle", Riffle::eval);
 }

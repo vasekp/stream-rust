@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::keywords::find_keyword;
+use crate::symbols::find_symbol;
 
 mod enode;
 mod link;
@@ -40,7 +40,7 @@ impl Node {
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
     ///
-    /// The evaluation is done by finding the head of the node in a global keyword table.
+    /// The evaluation is done by finding the head of the node in a global symbol table.
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
@@ -62,14 +62,14 @@ impl Node {
                             }).eval(saved_env)
                         }
                     }
-                } else if let Some(func) = find_keyword(sym) {
+                } else if let Some(func) = find_symbol(sym) {
                     func(self, env)
                 } else {
                     Err(StreamError::new(format!("symbol '{sym}' not found"), self))
                 }
             },
             Head::Lang(ref lang) => {
-                let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
+                let ctor = find_symbol(lang.symbol()).expect("all LangItem symbols should exist");
                 ctor(self, env)
             },
             Head::Block(blk) => {

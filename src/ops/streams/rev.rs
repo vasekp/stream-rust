@@ -128,6 +128,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("rev", eval_rev);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("rev", eval_rev);
 }

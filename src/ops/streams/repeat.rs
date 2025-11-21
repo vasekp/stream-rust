@@ -288,6 +288,6 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("repeat", eval_repeat);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("repeat", eval_repeat);
 }
