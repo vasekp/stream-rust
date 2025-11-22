@@ -4,8 +4,10 @@ use once_cell::sync::Lazy;
 
 type Constructor = fn(Node, &'_ Env) -> Result<Item, StreamError>;
 
+type DocRecord = ();
+
 #[derive(Default)]
-pub(crate) struct Symbols(HashMap<&'static str, Constructor>);
+pub(crate) struct Symbols(HashMap<&'static str, (Constructor, DocRecord)>);
 
 static SYMBOLS: Lazy<Symbols> = Lazy::new(|| {
     let mut symbols = Default::default();
@@ -15,10 +17,10 @@ static SYMBOLS: Lazy<Symbols> = Lazy::new(|| {
 
 impl Symbols {
     pub(crate) fn insert(&mut self, name: &'static str, ctor: Constructor) {
-        self.0.insert(name, ctor);
+        self.0.insert(name, (ctor, ()));
     }
 
     pub(crate) fn find_ctor(name: &str) -> Option<Constructor> {
-        SYMBOLS.0.get(name).copied()
+        Some(SYMBOLS.0.get(name)?.0)
     }
 }
