@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::symbols::find_symbol;
+use crate::symbols::Symbols;
 
 mod enode;
 mod link;
@@ -62,14 +62,14 @@ impl Node {
                             }).eval(saved_env)
                         }
                     }
-                } else if let Some(func) = find_symbol(sym) {
+                } else if let Some(func) = Symbols::find_ctor(sym) {
                     func(self, env)
                 } else {
                     Err(StreamError::new(format!("symbol '{sym}' not found"), self))
                 }
             },
             Head::Lang(ref lang) => {
-                let ctor = find_symbol(lang.symbol()).expect("all LangItem symbols should exist");
+                let ctor = Symbols::find_ctor(lang.symbol()).expect("all LangItem symbols should exist");
                 ctor(self, env)
             },
             Head::Block(blk) => {
