@@ -46,10 +46,6 @@ fn eval_with(node: Node, env: &Env) -> Result<Item, StreamError> {
     body.eval(&env)
 }
 
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("with", eval_with);
-}
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -80,4 +76,8 @@ mod tests {
 
         test_describe!("with(a=1,[].nest{#:{1}})[3]" => "with(a=1, []:{1}:{1}:{1})");
     }
+}
+
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("with", eval_with);
 }

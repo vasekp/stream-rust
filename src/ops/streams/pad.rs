@@ -245,8 +245,6 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("padleft", eval_padl);
-    symbols.insert("padl", eval_padl);
-    symbols.insert("padright", eval_padr);
-    symbols.insert("padr", eval_padr);
+    symbols.insert(["padleft", "padl"], eval_padl);
+    symbols.insert(["padright", "padr"], eval_padr);
 }

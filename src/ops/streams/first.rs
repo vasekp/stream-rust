@@ -117,6 +117,5 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("first", eval_first);
-    symbols.insert("take", eval_first);
+    symbols.insert(["first", "take"], eval_first);
 }

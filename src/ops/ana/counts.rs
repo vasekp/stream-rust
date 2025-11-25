@@ -122,8 +122,5 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("counts", eval_counts);
-    symbols.insert("count", eval_counts);
-    symbols.insert("tally", eval_counts);
-    symbols.insert("freq", eval_counts);
+    symbols.insert(["counts", "count", "tally", "freq"], eval_counts);
 }

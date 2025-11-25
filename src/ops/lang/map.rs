@@ -96,6 +96,5 @@ mod tests {
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("*map", eval_map);
-    symbols.insert("map", eval_map);
-    symbols.insert("foreach", eval_map);
+    symbols.insert(["foreach", "map"], eval_map);
 }

@@ -117,7 +117,5 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("index", eval_index);
-    symbols.insert("find", eval_index);
-    symbols.insert("pos", eval_index);
+    symbols.insert(["index", "find", "pos"], eval_index);
 }

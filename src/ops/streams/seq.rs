@@ -98,6 +98,5 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("seq", Seq::eval);
-    symbols.insert("iota", Seq::eval);
+    symbols.insert(["seq", "iota"], Seq::eval);
 }
