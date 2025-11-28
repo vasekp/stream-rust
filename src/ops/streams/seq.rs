@@ -100,13 +100,14 @@ mod tests {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_with_docs(["seq", "iota"], Seq::eval, crate::docs::parse_docs("
 A stream of consecutive numbers. If `from` or `step` are not given, they default to 1.
-=
-= from
-= from,step
-> seq => [1, 2, 3, 4, 5, ...]
-> seq(0) => [0, 1, 2, 3, 4, ...]
-> seq(0, 2) => [0, 2, 4, 6, 8, ...]
-> seq(3, -1) => [3, 2, 1, 0, -1, ...]
-> seq('a', 1) => !unsupported arguments
+= ?
+= ?(from)
+= ?(from,step)
+> ? => [1, 2, 3, 4, 5, ...]
+> ?(0) => [0, 1, 2, 3, 4, ...]
+> ?(0, 2) => [0, 2, 4, 6, 8, ...]
+> ?(3, -1) => [3, 2, 1, 0, -1, ...]
+> ?('a', 1) => !unsupported arguments
+: range
 "));
 }

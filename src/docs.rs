@@ -2,14 +2,9 @@
 pub struct DocRecord {
     pub desc: Vec<&'static str>,
     pub symbols: Vec<&'static str>,
-    pub usage: Vec<Usage>,
+    pub usage: Vec<&'static str>,
     pub examples: Vec<Example>,
     pub see: Vec<&'static str>,
-}
-
-pub struct Usage {
-    pub source: Option<&'static str>,
-    pub args: &'static str,
 }
 
 pub struct Example {
@@ -40,21 +35,13 @@ pub(crate) fn parse_docs(input: &'static str) -> DocRecord {
         if line.is_empty() { continue; }
         match &line[0..1] {
             "-" => rec.desc.push(line[1..].trim()),
-            "=" => rec.usage.push(parse_usage(line[1..].trim())),
+            "=" => rec.usage.push(line[1..].trim()),
             ">" => rec.examples.push(parse_example(line[1..].trim())),
             ":" => rec.see.push(line[1..].trim()),
             _ => rec.desc.push(line),
         }
     }
     rec
-}
-
-fn parse_usage(line: &'static str) -> Usage {
-    let (source, args) = match line.split_once(';') {
-        Some((source, args)) => (Some(source), args),
-        None => (None, line)
-    };
-    Usage{source, args}
 }
 
 fn parse_example(line: &'static str) -> Example {

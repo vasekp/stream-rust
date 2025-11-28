@@ -24,7 +24,8 @@ impl Symbols {
     }
 
     pub(crate) fn insert_with_docs(&mut self, names: impl AsSlice<&'static str>,
-            ctor: Constructor, docs: DocRecord) {
+            ctor: Constructor, mut docs: DocRecord) {
+        docs.symbols = names.as_slice().iter().copied().collect();
         let rec = Arc::new((ctor, Some(docs)));
         for sym in names.as_slice() {
             self.0.insert(sym, Arc::clone(&rec));
@@ -57,7 +58,7 @@ fn test_doc_examples() {
         if !visited.insert(Arc::as_ptr(rec)) { continue; }
         let Some(docs) = &rec.1 else { continue; };
         for ex in &docs.examples {
-            let Ok(expr) = parse(&ex.input) else {
+            let Ok(expr) = parse(&ex.input.replace("?", sym)) else {
                 panic!("failed to parse example in {}: {:?}", sym, ex);
             };
             let res = expr.eval_default();
