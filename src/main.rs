@@ -1,6 +1,7 @@
 use streamlang as stream;
 use stream::base::*;
 use stream::session::*;
+use stream::find_docs;
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -49,6 +50,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             drop(stdin);
             cmd.wait().expect("Error in wait().");
+            continue;
+        }
+        if matches!(&input[0..1], "?") {
+            let sym = input[1..].trim();
+            // TODO check validity
+            if let Some(docs) = find_docs(sym) {
+                print!("{}", sym.bold());
+                let synonyms = &docs.symbols;
+                if synonyms.len() > 1 {
+                    print!(" (synonyms: ");
+                    let mut iter = synonyms.iter().filter(|x| *x != &sym);
+                    if let Some(s) = iter.next() {
+                        print!("{}", s);
+                    }
+                    for s in iter {
+                        print!(", {}", s);
+                    }
+                    print!(")");
+                }
+                println!();
+                if !docs.usage.is_empty() {
+                    println!();
+                    println!("{}", "Usage:".bright_yellow());
+                    for usage in &docs.usage {
+                        println!("{}", usage.replace("?", sym));
+                    }
+                    println!();
+                    for s in &docs.desc {
+                        println!("{}", s);
+                    }
+                }
+                if !docs.examples.is_empty() {
+                    println!();
+                    println!("{}", "Examples:".bright_yellow());
+                    let mut index = 1;
+                    for example in &docs.examples {
+                        println!("> {}", example.input.replace("?", sym));
+                        match example.output {
+                            Ok(out) => {
+                                print!("{}", format!("%{}: ", index).dimmed());
+                                println!("{}", out);
+                                index += 1;
+                            },
+                            Err(err) => {
+                                println!("{}", format!("! {}", err).bright_red());
+                            }
+                        }
+                    }
+                }
+                let mut iter = docs.see.iter();
+                if let Some(see) = iter.next() {
+                    println!();
+                    print!("{}", "See also: ".bright_yellow());
+                    print!("{}", see);
+                    for see in iter {
+                        print!(", {}", see);
+                    }
+                    println!();
+                }
+            } else {
+                println!("{}", format!("No documentation found for '{sym}'").red());
+            }
             continue;
         }
         match stream::parse(&input) {

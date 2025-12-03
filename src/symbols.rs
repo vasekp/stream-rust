@@ -25,6 +25,10 @@ impl Symbols {
 
     pub(crate) fn insert_with_docs(&mut self, names: impl AsSlice<&'static str>,
             ctor: Constructor, mut docs: DocRecord) {
+        debug_assert!(!docs.desc.is_empty());
+        debug_assert!(docs.symbols.is_empty());
+        debug_assert!(!docs.usage.is_empty());
+        debug_assert!(!docs.examples.is_empty());
         docs.symbols = names.as_slice().iter().copied().collect();
         let rec = Arc::new((ctor, Some(docs)));
         for sym in names.as_slice() {
@@ -34,6 +38,10 @@ impl Symbols {
 
     pub(crate) fn find_ctor(name: &str) -> Option<Constructor> {
         Some(SYMBOLS.0.get(name)?.0)
+    }
+
+    pub(crate) fn find_docs(name: &str) -> Option<&DocRecord> {
+        SYMBOLS.0.get(name)?.1.as_ref()
     }
 }
 
