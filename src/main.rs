@@ -56,41 +56,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let sym = input[1..].trim();
             // TODO check validity
             if let Some(docs) = find_docs(sym) {
-                print!("{}", sym.bold());
+                print!("{}", sym.white().bold());
                 let synonyms = &docs.symbols;
                 if synonyms.len() > 1 {
                     print!(" (synonyms: ");
                     let mut iter = synonyms.iter().filter(|x| *x != &sym);
                     if let Some(s) = iter.next() {
-                        print!("{}", s);
+                        print!("{}", s.white());
                     }
                     for s in iter {
-                        print!(", {}", s);
+                        print!(", {}", s.white());
                     }
                     print!(")");
                 }
                 println!();
                 if !docs.usage.is_empty() {
                     println!();
-                    println!("{}", "Usage:".bright_yellow());
+                    println!("{}", "Usage:".yellow().bold());
                     for usage in &docs.usage {
-                        println!("{}", usage.replace("?", sym));
+                        println!("{}", format_cli(&usage, &sym).white());
                     }
-                    println!();
-                    for s in &docs.desc {
-                        println!("{}", s);
-                    }
+                }
+                println!();
+                for s in &docs.desc {
+                    println!("{}", format_cli(s, sym));
                 }
                 if !docs.examples.is_empty() {
                     println!();
-                    println!("{}", "Examples:".bright_yellow());
+                    println!("{}", "Examples:".yellow().bold());
                     let mut index = 1;
                     for example in &docs.examples {
-                        println!("> {}", example.input.replace("?", sym));
+                        println!("> {}", format_cli(example.input, &sym).white());
                         match example.output {
                             Ok(out) => {
-                                print!("{}", format!("%{}: ", index).dimmed());
-                                println!("{}", out);
+                                println!("{}",
+                                    format!("{} {}", format!("%{}:", index).dimmed(), out).white());
                                 index += 1;
                             },
                             Err(err) => {
@@ -102,10 +102,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let mut iter = docs.see.iter();
                 if let Some(see) = iter.next() {
                     println!();
-                    print!("{}", "See also: ".bright_yellow());
-                    print!("{}", see);
+                    print!("{}", "See also: ".yellow().bold());
+                    print!("{}", see.white().underline());
                     for see in iter {
-                        print!(", {}", see);
+                        print!(", {}", see.underline());
                     }
                     println!();
                 }
@@ -149,4 +149,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         //println!();
     }
     Ok(())
+}
+
+fn format_cli(s: &str, sym: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut partial = String::with_capacity(s.len());
+    let mut iter = s.chars().peekable();
+    let mut in_code = false;
+    while let Some(c) = iter.next() {
+        match c {
+            '?' => {
+                let mut s2 = String::with_capacity(10);
+                while let Some(c2) = iter.peek() {
+                    if c2.is_ascii_alphanumeric() {
+                        s2.push(*c2);
+                        iter.next();
+                    } else {
+                        break;
+                    }
+                }
+                if s2.is_empty() {
+                    partial += &sym.white().to_string();
+                } else {
+                    partial += &s2.white().underline().to_string();
+                }
+            },
+            '`' => {
+                if in_code {
+                    out += &partial.white().to_string();
+                } else {
+                    out += &partial;
+                }
+                in_code = !in_code;
+                partial.clear();
+            },
+            _ => partial.push(c)
+        }
+    }
+    if in_code {
+        panic!("unterminated '`' in doc string of {sym}");
+    } else {
+        out += &partial;
+    }
+    out
 }
