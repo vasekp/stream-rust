@@ -13,22 +13,6 @@ pub struct Example {
     pub output: Result<&'static str, &'static str>,
 }
 
-#[cfg(test)]
-impl std::fmt::Debug for Example {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.input)?;
-        if let Some(width) = self.width {
-            write!(f, " : {}", width)?;
-        }
-        write!(f, " => ")?;
-        if self.output.is_err() { write!(f, "!")?; }
-        match self.output {
-            Ok(s) | Err(s) => { write!(f, "{}", s)?; }
-        }
-        Ok(())
-    }
-}
-
 pub(crate) fn parse_docs(input: &'static str) -> DocRecord {
     let mut rec = DocRecord::default();
     for line in input.lines() {

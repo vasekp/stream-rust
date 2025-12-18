@@ -66,17 +66,46 @@ fn test_doc_examples() {
         if !visited.insert(Arc::as_ptr(rec)) { continue; }
         let Some(docs) = &rec.1 else { continue; };
         for ex in &docs.examples {
-            let Ok(expr) = parse(&ex.input.replace("?", sym)) else {
-                panic!("failed to parse example in {}: {:?}", sym, ex);
+            let input = ex.input.replace("??", sym);
+            let Ok(expr) = parse(&input) else {
+                panic!("failed to parse example in {}: {:?}", sym, input);
             };
             let res = expr.eval_default();
             match (&ex.width, ex.output) {
                 (None, Ok(out)) => assert_eq!(res.as_ref().map(Item::to_string),
-                    Ok(out.into()), "failed example in {}: {:?}", sym, ex),
+                    Ok(out.into()), "failed example in {}: {:?}", sym, input),
                 (Some(width), Ok(out)) => assert_eq!(res.map(|item| format!("{:1$}", item, width)),
-                    Ok(out.into()), "failed example in {}: {:?}", sym, ex),
-                (_, Err(_)) => assert!(res.is_err(), "failed example in {}: {:?}", sym, ex)
+                    Ok(out.into()), "failed example in {}: {:?}", sym, input),
+                (_, Err(_)) => assert!(res.is_err(), "failed example in {}: {:?}", sym, input)
             }
         }
+        for line in &docs.desc { check_refs(line, sym); }
+        for ex in &docs.examples { check_refs(ex.input, sym); }
+        //for see in &docs.see {
+        //    let Some(d2) = SYMBOLS.0.get(see) else {
+        //        panic!("{sym} has See also: {see} which does not exist");
+        //    };
+        //    if d2.1.is_none() {
+        //        panic!("{sym} has See also: {see} which does not have docs");
+        //    };
+        //}
+    }
+}
+
+#[cfg(test)]
+fn check_refs(line: &str, sym: &str) {
+    let mut iter = line.chars();
+    while let Some(c) = iter.next() {
+        if c != '?' { continue; }
+        let mut s = String::with_capacity(10);
+        while let Some(c2) = iter.next() {
+            if c2.is_ascii_alphanumeric() {
+                s.push(c2);
+            } else {
+                break;
+            }
+        }
+        if s.is_empty() { continue; }
+        eprintln!("{sym} => {s}");
     }
 }

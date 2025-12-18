@@ -160,6 +160,11 @@ fn format_cli(s: &str, sym: &str) -> String {
         match c {
             '?' => {
                 let mut s2 = String::with_capacity(10);
+                if iter.peek() == Some(&'?') {
+                    iter.next();
+                    partial += &sym.white().to_string();
+                    continue;
+                }
                 while let Some(c2) = iter.peek() {
                     if c2.is_ascii_alphanumeric() {
                         s2.push(*c2);
@@ -169,7 +174,7 @@ fn format_cli(s: &str, sym: &str) -> String {
                     }
                 }
                 if s2.is_empty() {
-                    partial += &sym.white().to_string();
+                    panic!("invalid docstring for {sym}: ?");
                 } else {
                     partial += &s2.white().underline().to_string();
                 }
