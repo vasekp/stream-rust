@@ -1,6 +1,6 @@
 use crate::base::ParseError;
 
-pub(crate) fn op_rules(op: &str) -> Result<(u32, bool), ParseError> {
+pub(crate) fn op_rules(op: &str) -> Result<(u32, bool), ParseError<'_>> {
     match op {
         "=" => Ok((1, true)),
         "|" => Ok((2, true)),
@@ -28,6 +28,6 @@ pub(crate) fn op_rules(op: &str) -> Result<(u32, bool), ParseError> {
     }
 }
 
-pub(crate) fn op_prec(op: &str) -> Result<u32, ParseError> {
+pub(crate) fn op_prec(op: &str) -> Result<u32, ParseError<'_>> {
     op_rules(op).map(|(prec, _multi)| prec)
 }

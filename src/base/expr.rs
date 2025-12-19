@@ -86,7 +86,7 @@ impl Expr {
         match func(self)? {
             Expr::Eval(mut node) => {
                 if let Head::Block(ref mut expr) = &mut node.head {
-                    *expr = Box::new(std::mem::take(expr).replace(func)?);
+                    **expr = std::mem::take(expr).replace(func)?;
                 }
                 if let Some(expr) = node.source.take() {
                     node.source = Some(Box::new((*expr).replace(func)?));
@@ -158,9 +158,10 @@ impl ToString for Subst {
     }
 }
 
-#[allow(unused_macros)] // This warning is unsubstantiated
+#[allow(unused_macros)]
 macro_rules! eval {
     ($input:expr) => { crate::parser::parse($input).unwrap().eval_default().unwrap() }
 }
 
+#[allow(unused)]
 pub(crate) use eval;
