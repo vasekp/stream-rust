@@ -45,7 +45,8 @@ impl Node {
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
     pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
-        match self.head {
+        env.tracer.borrow_mut().log(tracing::Event::Enter(&self));
+        let res = match self.head {
             Head::Symbol(ref sym) | Head::Oper(ref sym) => {
                 if let Some(rhs) = env.vars.get(sym) {
                     match rhs {
@@ -79,7 +80,9 @@ impl Node {
                     .collect::<Result<_, _>>()?;
                 blk.apply(&source, &args)?.eval(env)
             }
-        }
+        };
+        env.tracer.borrow_mut().log(tracing::Event::Leave(&res));
+        res
     }
 
     pub(crate) fn eval_all(self, env: &Env) -> Result<ENode, StreamError> {

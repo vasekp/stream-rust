@@ -8,6 +8,7 @@ mod node;
 mod env;
 mod error;
 mod alphabet;
+mod tracing;
 pub mod stop;
 
 pub(crate) use rules::*;

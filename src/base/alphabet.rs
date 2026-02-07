@@ -98,7 +98,10 @@ impl Alphabet {
         match **self {
             Alphabet::Listed{ref vec, ..} if !Rc::ptr_eq(self, &env.alpha)
                 => format!("alpha({}, {})", Self::format(vec),
-                    call(0, &Env{alpha: Rc::clone(self), vars: Rc::clone(&env.vars)})),
+                    call(0, &Env{
+                        alpha: Rc::clone(self),
+                        vars: Rc::clone(&env.vars),
+                        tracer: Rc::clone(&env.tracer)})),
             _ => call(prec, env)
         }
     }

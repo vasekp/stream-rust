@@ -1,6 +1,8 @@
 use crate::base::*;
+use super::tracing::Tracer;
 
 pub use std::rc::{Rc, Weak};
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 /// The environment in which expressions are evaluated (variable assignments made using `with`). 
@@ -9,6 +11,7 @@ use std::collections::HashMap;
 pub struct Env {
     pub vars: Rc<HashMap<String, Rhs>>,
     pub alpha: Rc<Alphabet>,
+    pub tracer: Rc<RefCell<Tracer>>,
 }
 
 impl Env {
