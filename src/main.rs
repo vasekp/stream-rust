@@ -51,6 +51,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             cmd.wait().expect("Error in wait().");
             continue;
         }
+        if input.len() > 8 && matches!(&input[..8], "tracing ") {
+            match &input[8..] {
+                "on" => sess.set_tracer(stream::base::tracing::TextTracer::default()),
+                "off" => sess.set_tracer(()),
+                _ => eprintln!("{}", "malformed command".red()),
+            }
+            continue;
+        }
         match stream::parse(&input) {
             Ok(expr) => {
                 //println!("Expr Debug: {expr:?}");

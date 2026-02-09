@@ -1,7 +1,20 @@
 use crate::base::*;
 
+pub trait Tracer {
+    fn log(&mut self, ev: Event<'_>);
+}
+
+pub enum Event<'a> {
+    Enter(&'a Node),
+    Leave(&'a Result<Item, StreamError>)
+}
+
+impl Tracer for () {
+    fn log(&mut self, _ev: Event<'_>) { }
+}
+
 #[derive(Default)]
-pub struct Tracer(Vec<PreTraced>);
+pub struct TextTracer(Vec<PreTraced>);
 
 struct PreTraced {
     input: String,
@@ -14,14 +27,8 @@ pub struct Traced {
     output: Result<String, String>,
 }
 
-#[derive(Debug)]
-pub enum Event<'a> {
-    Enter(&'a Node),
-    Leave(&'a Result<Item, StreamError>)
-}
-
-impl Tracer {
-    pub fn log(&mut self, ev: Event<'_>) {
+impl Tracer for TextTracer {
+    fn log(&mut self, ev: Event<'_>) {
         match ev {
             Event::Enter(node) =>
                 self.0.push(PreTraced {
@@ -42,7 +49,9 @@ impl Tracer {
             }
         }
     }
+}
 
+impl TextTracer {
     fn writeout(t: Traced) {
         Self::writeout_level(t, 0);
     }
