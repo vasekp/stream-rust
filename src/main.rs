@@ -8,6 +8,8 @@ use std::process::{Command, Stdio};
 use rustyline as rl;
 use colored::Colorize;
 
+mod tracer;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rl: rl::Editor<(), _> = rl::Editor::with_history(
     rl::config::Builder::new()
@@ -54,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     cmd.wait().expect("Error in wait().");
                 },
                 "trace" | "trace on" | "tracing" | "tracing on" =>
-                    sess.set_tracer(stream::base::tracing::TextTracer::default()),
+                    sess.set_tracer(tracer::TextTracer::default()),
                 "trace off" | "tracing off" =>
                     sess.set_tracer(()),
                 _ => eprintln!("{}", "malformed command".red()),

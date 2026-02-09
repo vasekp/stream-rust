@@ -6,3 +6,4 @@ mod ops;
 pub mod session;
 
 pub use parser::parse;
+pub use base::tracing;
