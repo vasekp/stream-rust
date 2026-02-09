@@ -45,41 +45,46 @@ impl Node {
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
     pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
-        match self.head {
-            Head::Symbol(ref sym) | Head::Oper(ref sym) => {
-                if let Some(rhs) = env.vars.get(sym) {
-                    match rhs {
-                        Rhs::Value(item) => {
-                            try_with!(self, self.check_no_source()?);
-                            try_with!(self, self.check_no_args()?);
-                            Ok(item.clone())
-                        },
-                        Rhs::Function(block, saved_env) => {
-                            Expr::Eval(Node {
-                                head: block.clone().into(),
-                                source: self.source,
-                                args: self.args
-                            }).eval(saved_env)
+        env.tracer.borrow_mut().log(tracing::Event::Enter(&self));
+        let res = (|| {
+            match self.head {
+                Head::Symbol(ref sym) | Head::Oper(ref sym) => {
+                    if let Some(rhs) = env.vars.get(sym) {
+                        match rhs {
+                            Rhs::Value(item) => {
+                                try_with!(self, self.check_no_source()?);
+                                try_with!(self, self.check_no_args()?);
+                                Ok(item.clone())
+                            },
+                            Rhs::Function(block, saved_env) => {
+                                Expr::Eval(Node {
+                                    head: block.clone().into(),
+                                    source: self.source,
+                                    args: self.args
+                                }).eval(saved_env)
+                            }
                         }
+                    } else if let Some(func) = find_keyword(sym) {
+                        func(self, env)
+                    } else {
+                        Err(StreamError::new(format!("symbol '{sym}' not found"), self))
                     }
-                } else if let Some(func) = find_keyword(sym) {
-                    func(self, env)
-                } else {
-                    Err(StreamError::new(format!("symbol '{sym}' not found"), self))
+                },
+                Head::Lang(ref lang) => {
+                    let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
+                    ctor(self, env)
+                },
+                Head::Block(blk) => {
+                    let source = self.source.map(|expr| expr.eval(env)).transpose()?;
+                    let args = self.args.into_iter()
+                        .map(|expr| expr.eval(env))
+                        .collect::<Result<_, _>>()?;
+                    blk.apply(&source, &args)?.eval(env)
                 }
-            },
-            Head::Lang(ref lang) => {
-                let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
-                ctor(self, env)
-            },
-            Head::Block(blk) => {
-                let source = self.source.map(|expr| expr.eval(env)).transpose()?;
-                let args = self.args.into_iter()
-                    .map(|expr| expr.eval(env))
-                    .collect::<Result<_, _>>()?;
-                blk.apply(&source, &args)?.eval(env)
             }
-        }
+        })();
+        env.tracer.borrow_mut().log(tracing::Event::Leave(&res));
+        res
     }
 
     pub(crate) fn eval_all(self, env: &Env) -> Result<ENode, StreamError> {
