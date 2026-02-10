@@ -75,6 +75,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         sess.set_tracer(());
                     }
                 },
+                Some("vars") => {
+                    if iter.next().is_some() {
+                        eprintln!("{}", "invalid command".red());
+                        continue;
+                    }
+                    for (name, rhs) in sess.vars() {
+                        println!("{}", format!("{} = {}", name, rhs.describe()).yellow());
+                    }
+                },
+                Some("show") => {
+                    let (Some(var), None) = (iter.next(), iter.next()) else {
+                        eprintln!("{}", "malformed command".red());
+                        continue;
+                    };
+                    // TODO check name
+                    let Some(rhs) = sess.vars().get(var) else {
+                        eprintln!("{}", "not defined".red());
+                        continue;
+                    };
+                    println!("{}", format!("{} = {}", var, rhs.describe()).yellow());
+                },
                 None => eprintln!("{}", "malformed command".red()),
                 _ => eprintln!("{}", "unknown command".red()),
             }

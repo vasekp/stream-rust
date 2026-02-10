@@ -61,3 +61,12 @@ pub enum Rhs {
     Value(Item),
     Function(Expr, Env)
 }
+
+impl Describe for Rhs {
+    fn describe_inner(&self, prec: u32, env_outer: &Env) -> String {
+        match self {
+            Rhs::Value(item) => item.describe(),
+            Rhs::Function(expr, env) => format!("{{{}}}", env.wrap_describe(|prec, env| expr.describe_inner(prec, env), prec, env_outer)),
+        }
+    }
+}
