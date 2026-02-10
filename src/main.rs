@@ -115,15 +115,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     },
                     Ok(SessionUpdate::Globals(list)) => {
-                        let mut s = "Globals updated: ".to_string();
-                        let mut iter = list.into_iter();
-                        if let Some(first) = iter.next() {
-                            s += &first.to_string();
+                        for name in list {
+                            match sess.vars().get(&name) {
+                                Some(rhs) => println!("{}", format!("{} = {}", name, rhs.describe()).yellow()),
+                                None => println!("{}", name.yellow().strikethrough()),
+                            }
                         }
-                        for name in iter {
-                            s += &format!(", {name}");
-                        }
-                        println!("{}", s.yellow());
                     },
                     Err(err) => println!("{}", format!("{err}").red())
                 }
