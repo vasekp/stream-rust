@@ -25,8 +25,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Ok(input) = rl.readline("> ") {
         let input = input.trim();
         if input.as_bytes()[0] == b':' {
-            match input[1..].trim() {
-                "list" | "less" => {
+            let mut iter = input[1..].split(' ').filter(|s| !s.is_empty());
+            match iter.next() {
+                Some("list") | Some("less") => {
+                    if iter.next().is_some() {
+                        eprintln!("{}", "invalid command".red());
+                        continue;
+                    }
                     let Some(Item::Stream(stm)) = sess.history().last() else {
                         println!("{}", "Can only use after a stream.".red());
                         continue;
@@ -55,11 +60,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     drop(stdin);
                     cmd.wait().expect("Error in wait().");
                 },
-                "trace" | "trace on" | "tracing" | "tracing on" =>
-                    sess.set_tracer(tracer::TextTracer::default()),
-                "trace off" | "tracing off" =>
-                    sess.set_tracer(()),
-                _ => eprintln!("{}", "malformed command".red()),
+                Some("trace") | Some("tracing") => {
+                    let state = match iter.next() {
+                        Some("on") | None => true,
+                        Some("off") => false,
+                        _ => {
+                            eprintln!("{}", "invalid command".red());
+                            continue;
+                        }
+                    };
+                    if state {
+                        sess.set_tracer(tracer::TextTracer::default());
+                    } else {
+                        sess.set_tracer(());
+                    }
+                },
+                None => eprintln!("{}", "malformed command".red()),
+                _ => eprintln!("{}", "unknown command".red()),
             }
             continue;
         }
