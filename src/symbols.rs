@@ -29,7 +29,7 @@ impl Symbols {
         debug_assert!(docs.symbols.is_empty());
         debug_assert!(!docs.usage.is_empty());
         debug_assert!(!docs.examples.is_empty());
-        docs.symbols = names.as_slice().iter().copied().collect();
+        docs.symbols = names.as_slice().to_vec();
         let rec = Arc::new((ctor, Some(docs)));
         for sym in names.as_slice() {
             self.0.insert(sym, Arc::clone(&rec));
@@ -90,6 +90,10 @@ fn test_doc_examples() {
         //    };
         //}
     }
+}
+
+pub fn find_docs(name: &str) -> Option<&DocRecord> {
+    Symbols::find_docs(name)
 }
 
 #[cfg(test)]

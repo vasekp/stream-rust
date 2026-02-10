@@ -85,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!();
                     println!("{}", "Usage:".yellow().bold());
                     for usage in &docs.usage {
-                        println!("{}", format_cli(&usage, &sym).white());
+                        println!("{}", format_cli(usage, sym).white());
                     }
                 }
                 println!();
@@ -97,7 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", "Examples:".yellow().bold());
                     let mut index = 1;
                     for example in &docs.examples {
-                        println!("> {}", format_cli(example.input, &sym).white());
+                        println!("> {}", format_cli(example.input, sym).white());
                         match example.output {
                             Ok(out) => {
                                 println!("{}",
