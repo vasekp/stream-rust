@@ -65,7 +65,10 @@ impl<I: ItemType> Stream<I> for RepeatItem<I> {
 
 impl<I: ItemType> Describe for RepeatItem<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.item), &self.count, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.item)
+            .push_args(&self.count)
+            .finish(prec)
     }
 }
 
@@ -130,7 +133,10 @@ impl<I: ItemType> Stream<I> for RepeatStream<I> {
 
 impl<I: ItemType> Describe for RepeatStream<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.stream), &self.count, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.stream)
+            .push_args(&self.count)
+            .finish(prec)
     }
 }
 

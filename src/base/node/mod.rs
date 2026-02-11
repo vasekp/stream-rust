@@ -6,13 +6,14 @@ mod link;
 mod head;
 mod checks;
 mod rnode;
-mod dh;
+mod db;
 
 pub(crate) use enode::ENode;
 pub use link::Link;
 pub(crate) use checks::Checks;
 pub use head::{Head, LangItem};
 pub(crate) use rnode::*;
+pub(crate) use db::DescribeBuilder;
 
 #[cfg(test)]
 mod tests;
@@ -181,49 +182,48 @@ impl Node {
         }
     }
 
-    pub(crate) fn describe_helper<T, U>(
-        head: &Head,
-        source: Option<&T>,
-        args: impl IntoIterator<Item = U>,
-        prec: u32,
-        env: &Env)
-    -> String
-        where T: Describe, U: Describe
-    {
-        dh::describe_helper(head, source, args.into_iter(), prec, env)
-    }
-
-    pub(crate) fn describe_with_env<T, U>(
+    pub(crate) fn describe_with_env<'a, T, U>(
         env_inner: &Env,
         head: &Head,
         source: Option<&T>,
-        args: impl IntoIterator<Item = U>,
+        args: impl IntoIterator<Item = &'a U>,
         prec: u32,
         env_outer: &Env)
     -> String
-        where T: Describe, U: Describe
+        where T: Describe, U: Describe + 'a
     {
         env_inner.wrap_describe(|prec, env|
-            dh::describe_helper(head, source, args.into_iter(), prec, env), prec, env_outer)
+            DescribeBuilder::new(head, env)
+                .set_source_opt(&source)
+                .push_args(args)
+                .finish(prec),
+            prec, env_outer)
     }
 
-    pub(crate) fn describe_with_alpha<T, U>(
+    pub(crate) fn describe_with_alpha<'a, T, U>(
         alpha: &Rc<Alphabet>,
         head: &Head,
         source: Option<&T>,
-        args: impl IntoIterator<Item = U>,
+        args: impl IntoIterator<Item = &'a U>,
         prec: u32,
-        env: &Env)
+        env_outer: &Env)
     -> String
-        where T: Describe, U: Describe
+        where T: Describe, U: Describe + 'a
     {
         alpha.wrap_describe(|prec, env|
-            dh::describe_helper(head, source, args.into_iter(), prec, env), prec, env)
+            DescribeBuilder::new(head, env)
+                .set_source_opt(&source)
+                .push_args(args)
+                .finish(prec),
+            prec, env_outer)
     }
 }
 
 impl Describe for Node {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        dh::describe_helper(&self.head, self.source.as_deref(), self.args.iter(), prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source_opt(&self.source.as_deref())
+            .push_args(&self.args)
+            .finish(prec)
     }
 }

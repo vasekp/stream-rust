@@ -18,7 +18,9 @@ struct DDup {
 
 impl Describe for DDup {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .finish(prec)
     }
 }
 
@@ -71,6 +73,7 @@ mod tests {
         test_eval!("(1..3):{1..#}.flatten.ddup" => "[1, 2, 3]");
         test_eval!("(1..3).repeat(5).ddup" => "[1, 2, 3]");
         test_len!("[]" => 0);
+        test_describe!("seq.ddup" => "seq.ddup");
     }
 }
 

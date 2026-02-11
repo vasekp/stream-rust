@@ -23,7 +23,10 @@ impl Flatten {
 
 impl Describe for Flatten {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), self.depth.as_ref(), prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_args(&self.depth)
+            .finish(prec)
     }
 }
 
@@ -139,6 +142,8 @@ mod tests {
         test_advance("[1,[2,[3]]].repeat(10).flatten(1)");
         test_advance("[1,[2,[3]]].repeat(10).flatten(2)");
         test_advance("[1,[2,[3]]].repeat(10).flatten(10)");
+        test_describe!("[1, [2, [3]]].flatten" => "[1, [2, [3]]].flatten");
+        test_describe!("[1, [2, [3]]].flatten(1)" => "[1, [2, [3]]].flatten(1)");
     }
 }
 

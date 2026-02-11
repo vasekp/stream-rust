@@ -36,7 +36,9 @@ impl SelfRef {
 
 impl Describe for SelfRef {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, None::<&Item>, [&self.body], prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .push_arg(&self.body)
+            .finish(prec)
     }
 }
 

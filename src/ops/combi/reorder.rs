@@ -39,7 +39,10 @@ struct ReorderStream {
 
 impl Describe for ReorderStream {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), &self.indices, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_args(&self.indices)
+            .finish(prec)
     }
 }
 
@@ -206,6 +209,7 @@ mod tests {
         test_advance("range(10).reorder(3,1,2,4,5)");
         test_advance("range(10).reorder(1,2,3,4,5,6,7,8,9,10)");
         test_advance("range(10).reorder(10,9,8,7,6,5,4,3,2,1)");
+        test_describe!("range(10).reorder(5,2)" => "range(10).reorder(5, 2)");
     }
 }
 

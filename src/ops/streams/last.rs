@@ -137,7 +137,10 @@ impl<I: ItemType> Stream<I> for Last<I> {
 
 impl<I: ItemType> Describe for Last<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), [&self.count], prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_arg(&self.count)
+            .finish(prec)
     }
 }
 

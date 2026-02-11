@@ -48,7 +48,10 @@ impl Describe for Windows {
                 [&Expr::from(Item::new_number(self.size)), &Expr::from(body.clone())],
                 prec, env)
         } else {
-            Node::describe_helper(&self.head, Some(&self.source), [&UNumber::from(self.size)], prec, env)
+            DescribeBuilder::new(&self.head, env)
+                .set_source(&self.source)
+                .push_arg(&self.size)
+                .finish(prec)
         }
     }
 }

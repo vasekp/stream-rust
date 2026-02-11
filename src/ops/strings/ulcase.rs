@@ -24,7 +24,9 @@ struct ULCase {
 
 impl Describe for ULCase {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .finish(prec)
     }
 }
 
@@ -46,6 +48,7 @@ mod tests {
         test_eval!("['A',' ','Ch','Ň','ẞ']:lcase" => "['a', ' ', 'ch', 'ň', 'ß']");
         test_eval!("\"Hello, world!\".lcase" => "\"hello, world!\"");
         test_eval!("\"Hello, world!\".ucase" => "\"HELLO, WORLD!\"");
+        test_describe!("\"Hello, world!\".lcase" => "\"Hello, world!\".lcase");
     }
 }
 

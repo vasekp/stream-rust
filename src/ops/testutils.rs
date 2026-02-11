@@ -19,7 +19,9 @@ struct LenAM<I: ItemType> {
 
 impl<I: ItemType> Describe for LenAM<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.src)
+            .finish(prec)
     }
 }
 
@@ -74,7 +76,9 @@ struct LenUF<I: ItemType> {
 
 impl<I: ItemType> Describe for LenUF<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.src)
+            .finish(prec)
     }
 }
 
@@ -129,7 +133,9 @@ struct LenUU<I: ItemType> {
 
 impl<I: ItemType> Describe for LenUU<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.src), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.src)
+            .finish(prec)
     }
 }
 

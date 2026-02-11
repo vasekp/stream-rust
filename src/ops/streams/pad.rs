@@ -37,9 +37,11 @@ struct PadLeft<I: ItemType> {
 
 impl<I: ItemType> Describe for PadLeft<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source),
-            [&Item::Number(self.len.clone().into()), &self.padding.clone().into()],
-            prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_arg(&self.len)
+            .push_arg(&self.padding)
+            .finish(prec)
     }
 }
 
@@ -121,9 +123,11 @@ struct PadRight<I: ItemType> {
 
 impl<I: ItemType> Describe for PadRight<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source),
-            [&Item::Number(self.len.clone().into()), &self.padding.clone().into()],
-            prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_arg(&self.len)
+            .push_arg(&self.padding)
+            .finish(prec)
     }
 }
 
@@ -225,6 +229,7 @@ mod tests {
         test_advance("[].padleft(100, 0)");
         test_advance("range(50,100).padleft(100, 0)");
         test_advance("range(100).padleft(100, 0)");
+        test_describe!("(1..2).padleft(3, '0')" => "(1..2).padleft(3, '0')");
 
         test_eval!("[].padright(0, 0)" => "[]");
         test_eval!("[].padright(3, 0)" => "[0, 0, 0]");

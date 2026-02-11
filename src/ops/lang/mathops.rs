@@ -296,12 +296,14 @@ impl StringOp {
 
 impl Describe for StringOp {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
+        let vec = std::iter::once(ProxyItem::String(&*self.first))
+                .chain(self.node_rem.args.iter().map(ProxyItem::from))
+                .collect::<Vec<_>>();
         Node::describe_with_alpha(
             &self.alpha,
             &self.node_rem.head,
             None::<&Item>,
-            std::iter::once(ProxyItem::String(&*self.first))
-                .chain(self.node_rem.args.iter().map(ProxyItem::from)),
+            &vec,
             prec, env)
     }
 }
