@@ -54,7 +54,7 @@ enum TokenClass {
 struct Token<'str>(TokenClass, &'str str);
 
 impl Token<'_> {
-    fn new(slice: &str) -> Result<Token, ParseError> {
+    fn new(slice: &str) -> Result<Token<'_>, ParseError<'_>> {
         use TokenClass::*;
         const OPERS: &[u8] = b"+-*/^~&|!<=>";
         let class = match slice.as_bytes() {

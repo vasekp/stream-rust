@@ -1,14 +1,17 @@
 use crate::base::*;
+use super::tracing::Tracer;
 
 pub use std::rc::{Rc, Weak};
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 /// The environment in which expressions are evaluated (variable assignments made using `with`). 
 /// This is passed as an argument to [`Expr::eval()`].
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Env {
     pub vars: Rc<HashMap<String, Rhs>>,
     pub alpha: Rc<Alphabet>,
+    pub tracer: Rc<RefCell<dyn Tracer>>,
 }
 
 impl Env {
@@ -40,6 +43,16 @@ impl Env {
             ret += &rec;
         }
         ret
+    }
+}
+
+impl Default for Env {
+    fn default() -> Env {
+        Env {
+            vars: Default::default(),
+            alpha: Default::default(),
+            tracer: Rc::new(RefCell::new(()))
+        }
     }
 }
 

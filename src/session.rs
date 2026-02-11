@@ -1,4 +1,5 @@
 use crate::base::*;
+use crate::base::tracing::Tracer;
 
 use std::collections::HashMap;
 
@@ -7,6 +8,7 @@ use std::collections::HashMap;
 pub struct Session {
     hist: Vec<Item>,
     vars: HashMap<String, Rhs>,
+    env: Env,
     counter: usize,
 }
 
@@ -16,6 +18,7 @@ impl Session {
         Session {
             hist: Vec::new(),
             vars: HashMap::new(),
+            env: Default::default(),
             counter: 1,
         }
     }
@@ -31,7 +34,7 @@ impl Session {
                     Expr::Eval(Node { head: Head::Block(block), source: None, args })
                         if args.is_empty()
                         => Rhs::Function(*block, Env::default()),
-                    expr => Rhs::Value(expr.eval_default()?)
+                    expr => Rhs::Value(expr.eval(&self.env)?)
                 };
                 let mut names = Vec::with_capacity(args.len());
                 for arg in args {
@@ -80,7 +83,7 @@ impl Session {
                 Ok(SessionUpdate::Globals(updated))
             },
             _ => {
-                let item = self.apply_context(expr)?.eval_default()?;
+                let item = self.apply_context(expr)?.eval(&self.env)?;
                 self.hist.push(item);
                 self.counter += 1;
                 Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
@@ -137,6 +140,10 @@ impl Session {
 
     pub fn history(&self) -> &Vec<Item> {
         &self.hist
+    }
+
+    pub fn set_tracer(&mut self, tracer: impl Tracer + 'static) {
+        self.env.tracer = Rc::new(std::cell::RefCell::new(tracer));
     }
 }
 
