@@ -177,12 +177,11 @@ impl Node {
     -> String
         where T: Describe, U: Describe + 'a
     {
-        env_inner.wrap_describe(|prec, env|
-            DescribeBuilder::new(head, env)
-                .set_source_opt(&source)
-                .push_args(args)
-                .finish(prec),
-            prec, env_outer)
+        DescribeBuilder::new(head, env_inner)
+            .set_outer_env(env_outer)
+            .set_source_opt(&source)
+            .push_args(args)
+            .finish(prec)
     }
 
     pub(crate) fn describe_with_alpha<'a, T, U>(
@@ -195,12 +194,13 @@ impl Node {
     -> String
         where T: Describe, U: Describe + 'a
     {
-        alpha.wrap_describe(|prec, env|
-            DescribeBuilder::new(head, env)
-                .set_source_opt(&source)
-                .push_args(args)
-                .finish(prec),
-            prec, env_outer)
+        let mut env_inner = env_outer.clone();
+        env_inner.alpha = Rc::clone(alpha);
+        DescribeBuilder::new(head, &env_inner)
+            .set_outer_env(env_outer)
+            .set_source_opt(&source)
+            .push_args(args)
+            .finish(prec)
     }
 }
 

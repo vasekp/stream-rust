@@ -4,6 +4,7 @@ pub(crate) struct DescribeBuilder<'a> {
     head: &'a Head,
     inner_prec: u32,
     env: &'a Env,
+    env_outer: Option<&'a Env>,
     source: Option<String>,
     args: Vec<String>,
 }
@@ -18,6 +19,7 @@ impl<'a> DescribeBuilder<'a> {
         Self {
             head,
             env,
+            env_outer: None,
             inner_prec,
             source: None,
             args: Vec::new(),
@@ -46,7 +48,20 @@ impl<'a> DescribeBuilder<'a> {
         self
     }
 
-    pub(crate) fn finish(&mut self, outer_prec: u32) -> String {
+    pub(crate) fn set_outer_env(&mut self, env: &'a Env) -> &mut Self {
+        self.env_outer = Some(env);
+        self
+    }
+
+    pub(crate) fn finish(&self, prec: u32) -> String {
+        if let Some(env) = self.env_outer {
+            Env::wrap_describe(env, self.env, |prec| self.to_string(prec), prec)
+        } else {
+            self.to_string(prec)
+        }
+    }
+
+    fn to_string(&self, outer_prec: u32) -> String {
         let mut ret = String::new();
         match self.head {
             Head::Symbol(_) | Head::Block(_) => {

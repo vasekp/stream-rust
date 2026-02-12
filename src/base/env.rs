@@ -13,12 +13,17 @@ pub struct Env {
 }
 
 impl Env {
-    pub(crate) fn wrap_describe(&self, call: impl FnOnce(u32, &Env) -> String, prec: u32, env: &Env) -> String {
-        self.alpha.wrap_describe(|prec, _| call(prec, self), prec, env) // TODO check?
-    }
-
     /// The alphabet used for ordering characters and arithmetic operations on them.
     pub fn alphabet(&self) -> &Rc<Alphabet> { &self.alpha }
+
+    pub(crate) fn wrap_describe(outer: &Env, inner: &Env, call: impl FnOnce(u32) -> String, prec: u32) -> String {
+        if Rc::ptr_eq(&outer.alpha, &inner.alpha) || (matches!(*outer.alpha, Alphabet::Std26) &&
+        matches!(*inner.alpha, Alphabet::Std26)) {
+            call(prec)
+        } else {
+            format!("alpha({}, {})", inner.alpha.describe(), call(0))
+        }
+    }
 }
 
 impl Default for Env {
