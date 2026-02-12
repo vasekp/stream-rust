@@ -142,8 +142,8 @@ impl Session {
         &self.hist
     }
 
-    pub fn set_tracer(&mut self, tracer: impl Tracer + 'static) {
-        self.env.tracer = Rc::new(std::cell::RefCell::new(tracer));
+    pub fn set_tracer(&mut self, tracer: Rc<std::cell::RefCell<impl Tracer + 'static>>) {
+        self.env.tracer = tracer;
     }
 
     pub fn vars(&self) -> &HashMap<String, Rhs> {

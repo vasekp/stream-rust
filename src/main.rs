@@ -21,6 +21,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Error setting Ctrl-C handler");
 
     let mut sess = Session::new();
+    let tracer = Rc::new(std::cell::RefCell::new(tracer::TextTracer::default()));
+    sess.set_tracer(Rc::clone(&tracer));
 
     while let Ok(input) = rl.readline("> ") {
         let input = input.trim();
@@ -69,11 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             continue;
                         }
                     };
-                    if state {
-                        sess.set_tracer(tracer::TextTracer::default());
-                    } else {
-                        sess.set_tracer(());
-                    }
+                    tracer.borrow_mut().toggle(state);
                 },
                 Some("vars") => {
                     if iter.next().is_some() {
