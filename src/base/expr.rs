@@ -82,9 +82,10 @@ impl Expr {
         }
     }
 
-    pub fn replace(self, func: &impl Fn(Expr) -> Result<Expr, StreamError>) -> Result<Expr, StreamError> {
+    pub fn replace(self, func: &impl Fn(Expr) -> Result<std::ops::ControlFlow<Expr, Node>, StreamError>) -> Result<Expr, StreamError> {
+        use std::ops::ControlFlow;
         match func(self)? {
-            Expr::Eval(mut node) => {
+            ControlFlow::Continue(mut node) => {
                 if let Head::Block(ref mut expr) = &mut node.head {
                     **expr = std::mem::take(expr).replace(func)?;
                 }
@@ -97,7 +98,7 @@ impl Expr {
                     .collect::<Result<_, _>>()?;
                 Ok(Expr::Eval(node))
             },
-            expr => Ok(expr)
+            ControlFlow::Break(expr) => Ok(expr),
         }
     }
 }

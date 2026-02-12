@@ -22,7 +22,7 @@ pub fn init(keywords: &mut crate::keywords::Keywords) {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_with() {
+    fn test_global() {
         use super::*;
 
         test_eval!("with(len=1, global(range(3).len))" => "3");
