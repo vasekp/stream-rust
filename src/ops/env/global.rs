@@ -11,7 +11,7 @@ fn eval_global(mut node: Node, env: &Env) -> Result<Item, StreamError> {
         (Some(source), Expr::Eval(body)) => body.with_source(source.eval(env)?.into())?,
         (_, expr @ Expr::Repl(_)) => return Err(StreamError::new("out of context", expr))
     };
-    Ok(body.eval(&Default::default())?.into())
+    body.eval(&Default::default())
 }
 
 pub fn init(keywords: &mut crate::keywords::Keywords) {

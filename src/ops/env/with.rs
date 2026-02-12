@@ -25,14 +25,14 @@ fn eval_with(mut node: Node, env: &Env) -> Result<Item, StreamError> {
             Expr::Eval(Node { head: Head::Block(block), source: None, args })
                 if args.is_empty()
                 => Rhs::Function(*block),
-            expr => Rhs::Value(expr.eval(&env)?)
+            expr => Rhs::Value(expr.eval(env)?)
         });
         for name in names {
             replace.insert(name, Rc::clone(&rhs));
         }
     };
     let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
-    body.eval(&env)
+    body.eval(env)
 }
 
 fn with_replacer(expr: Expr, replace: &HashMap::<String, Rc<Rhs>>)
@@ -84,7 +84,7 @@ fn with_replacer(expr: Expr, replace: &HashMap::<String, Rc<Rhs>>)
                 None => Ok(ControlFlow::Continue(node)),
             }
         },
-        _ => Ok(ControlFlow::Continue(node.into()))
+        _ => Ok(ControlFlow::Continue(node))
     }
 }
 
