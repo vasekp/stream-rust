@@ -33,5 +33,5 @@ impl Default for Env {
 #[derive(Clone)]
 pub enum Rhs {
     Value(Item),
-    Function(Expr, Env)
+    Function(Expr)
 }

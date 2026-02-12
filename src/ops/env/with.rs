@@ -24,7 +24,7 @@ fn eval_with(mut node: Node, env: &Env) -> Result<Item, StreamError> {
         let rhs = Rc::new(match body {
             Expr::Eval(Node { head: Head::Block(block), source: None, args })
                 if args.is_empty()
-                => Rhs::Function(*block, env.clone()),
+                => Rhs::Function(*block),
             expr => Rhs::Value(expr.eval(&env)?)
         });
         for name in names {
@@ -74,7 +74,7 @@ fn with_replacer(expr: Expr, replace: &HashMap::<String, Rc<Rhs>>)
                         Ok(ControlFlow::Break(item.clone().into()))
                     }
                 },
-                Some(Rhs::Function(block, _)) => {
+                Some(Rhs::Function(block)) => {
                     Ok(ControlFlow::Continue(Node {
                         head: Expr::new_node("global", vec![block.clone()]).into(),
                         source: source.take(),

@@ -31,9 +31,8 @@ impl Session {
             Expr::Eval(Node { head: Head::Oper(op), source: None, mut args }) if op == "=" => {
                 let rhs = args.pop().expect("= should have at least 2 args");
                 let rhs = match self.apply_context(rhs)? {
-                    Expr::Eval(Node { head: Head::Block(block), source: None, args })
-                        if args.is_empty()
-                        => Rhs::Function(*block, Env::default()),
+                    Expr::Eval(Node { head: Head::Block(block), source: None, args }) if args.is_empty()
+                        => Rhs::Function(*block),
                     expr => Rhs::Value(expr.eval(&self.env)?)
                 };
                 let mut names = Vec::with_capacity(args.len());
@@ -121,7 +120,7 @@ impl Session {
                                         Ok(ControlFlow::Break(Expr::Imm(item.clone())))
                                     }
                                 },
-                                Some(Rhs::Function(block, _)) => {
+                                Some(Rhs::Function(block)) => {
                                     Ok(ControlFlow::Break(Expr::Eval(Node {
                                         head: Expr::new_node("global", vec![block.clone()]).into(),
                                         source: source.take(),
