@@ -49,22 +49,7 @@ impl Node {
         let res = (|| {
             match self.head {
                 Head::Symbol(ref sym) | Head::Oper(ref sym) => {
-                    if let Some(rhs) = env.vars.get(sym) {
-                        match rhs {
-                            Rhs::Value(item) => {
-                                try_with!(self, self.check_no_source()?);
-                                try_with!(self, self.check_no_args()?);
-                                Ok(item.clone())
-                            },
-                            Rhs::Function(block, saved_env) => {
-                                Expr::Eval(Node {
-                                    head: block.clone().into(),
-                                    source: self.source,
-                                    args: self.args
-                                }).eval(saved_env)
-                            }
-                        }
-                    } else if let Some(func) = find_keyword(sym) {
+                    if let Some(func) = find_keyword(sym) {
                         func(self, env)
                     } else {
                         Err(StreamError::new(format!("symbol '{sym}' not found"), self))
