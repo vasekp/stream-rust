@@ -57,12 +57,18 @@ impl<T, const N: usize> AsSlice<T> for [T; N] {
     fn as_slice(&self) -> &[T] { self }
 }
 
+#[cfg(test)]
+#[derive(Debug)]
+struct DocError;
+
+#[cfg(test)]
 #[test]
-fn test_doc_examples() {
+fn test_doc_examples() -> Result<(), DocError> {
     use crate::parser::parse;
     use std::collections::HashSet;
     use crate::docs;
     let mut visited = HashSet::new();
+    let mut res = Ok(());
     for (sym, rec) in &SYMBOLS.0 {
         if !visited.insert(Arc::as_ptr(rec)) { continue; }
         let Some(docs) = &rec.1 else { continue; };
@@ -83,17 +89,17 @@ fn test_doc_examples() {
                 (_, Err(_)) => assert!(res.is_err(), "failed example in {}: {:?}", sym, input)
             }
         }
-        for line in &docs.desc { check_refs(line, sym); }
-        for ex in &docs.examples { check_refs(ex.input, sym); }
-        //for see in &docs.see {
-        //    let Some(d2) = SYMBOLS.0.get(see) else {
-        //        panic!("{sym} has See also: {see} which does not exist");
-        //    };
-        //    if d2.1.is_none() {
-        //        panic!("{sym} has See also: {see} which does not have docs");
-        //    };
-        //}
+        for line in &docs.desc {
+            res = res.and(check_refs(line, sym));
+        }
+        for ex in &docs.examples {
+            res = res.and(check_refs(ex.input, sym));
+        }
+        for see in &docs.see {
+            res = res.and(check_ref(see, sym));
+        }
     }
+    res
 }
 
 pub fn find_docs(name: &str) -> Option<&DocRecord> {
@@ -101,14 +107,30 @@ pub fn find_docs(name: &str) -> Option<&DocRecord> {
 }
 
 #[cfg(test)]
-fn check_refs(line: &str, sym: &str) {
+fn check_refs(line: &str, sym: &str) -> Result<(), DocError> {
     use crate::docs;
     use crate::docs::RefStringItem;
+    let mut res = Ok(());
     for part in docs::parse_line(line, sym) {
         for rsym in part.content.iter()
             .filter_map(|item| match item { RefStringItem::Ref(rsym) => Some(rsym), _ => None })
             .filter(|rsym| *rsym != sym) {
-                eprintln!("{sym} => {rsym}");
+                res = res.and(check_ref(rsym, sym));
         }
+    }
+    res
+}
+
+#[cfg(test)]
+fn check_ref(sym: &str, referrer: &str) -> Result<(), DocError> {
+    let Some(docs) = SYMBOLS.0.get(sym) else {
+        eprintln!("{referrer} references {sym} which does not exist");
+        return Err(DocError);
+    };
+    if docs.1.is_none() {
+        eprintln!("{referrer} references {sym} which does not have docs");
+        Err(DocError)
+    } else {
+        Ok(())
     }
 }

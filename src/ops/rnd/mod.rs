@@ -88,7 +88,7 @@ impl Iterator for RndIter<'_> {
             if rnd < self.parent.cutoff {
                 break rnd;
             } else {
-                eprintln!("drop");
+                //eprintln!("drop");
             }
         };
         let rem = rnd % &self.parent.len;
