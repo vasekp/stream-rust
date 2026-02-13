@@ -96,7 +96,7 @@ impl Alphabet {
 
     pub(crate) fn describe(&self) -> String {
         match self {
-            Self::Std26 => todo!(),
+            Self::Std26 => "[]".to_string(),
             Self::Listed{vec, ..} => {
                 let mut iter = vec.iter();
                 let mut ret = '['.to_string();
@@ -120,7 +120,7 @@ impl TryFrom<Vec<Char>> for Alphabet {
     fn try_from(src_vec: Vec<Char>) -> Result<Alphabet, BaseError> {
         let mut map = HashMap::new();
         if src_vec.is_empty() {
-            return Err("alphabet is empty".into());
+            return Ok(Alphabet::default());
         }
         let mut res_vec = Vec::with_capacity(src_vec.len());
         for (ix, chr) in src_vec.into_iter().enumerate() {
@@ -185,6 +185,6 @@ mod tests {
         assert!(Alphabet::try_from(vec![Char::from('a'), Char::from('A')]).is_err());
         assert!(Alphabet::try_from(vec![Char::from('İ'), Char::from("i\u{307}")]).is_err());
         assert!(Alphabet::try_from(vec![Char::from("ch"), Char::from("Ch")]).is_err());
-        assert!(Alphabet::try_from(vec![]).is_err());
+        assert!(matches!(Alphabet::try_from(vec![]), Ok(Alphabet::Std26)));
     }
 }

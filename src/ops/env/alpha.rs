@@ -44,6 +44,10 @@ mod tests {
 
         test_describe!("alpha(\"cba\", \"abc\".nest{#+1}[3])" => "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");
         test_describe!("alpha(\"cba\", \"abc\".nest{#+1})[3]" => "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");
+        test_describe!("alpha(\"abcd\", \"abc\"+1)" => "alpha(['a', 'b', 'c', 'd'], \"abc\"+1)");
+        test_describe!("alpha([], \"abc\"+1)" => "\"abc\"+1");
+        test_describe!("alpha(\"abcd\", alpha([], \"abc\"+1))" => "\"abc\"+1");
+        test_describe!("alpha(\"abcd\", alpha(\"\", \"abc\"+1))" => "\"abc\"+1");
     }
 }
 
