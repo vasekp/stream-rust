@@ -31,7 +31,7 @@ impl LexOp {
         let mut iter = items.iter();
         let mut prev = iter.next().unwrap(); // args checked to be nonempty in eval()
         for next in iter {
-            if !func(prev.lex_cmp(next, env.alphabet())?) {
+            if !func(prev.lex_cmp(next, &env.alpha)?) {
                 return Ok(false);
             }
             prev = next;
