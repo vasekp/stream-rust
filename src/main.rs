@@ -2,6 +2,7 @@ use streamlang as stream;
 use stream::base::*;
 use stream::session::*;
 use stream::find_docs;
+use stream::docs;
 
 use std::io::Write;
 use std::process::{Command, Stdio};
@@ -203,50 +204,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn format_cli(s: &str, sym: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut partial = String::with_capacity(s.len());
-    let mut iter = s.chars().peekable();
-    let mut in_code = false;
-    while let Some(c) = iter.next() {
-        match c {
-            '?' => {
-                let mut s2 = String::with_capacity(10);
-                if iter.peek() == Some(&'?') {
-                    iter.next();
-                    partial += &sym.white().to_string();
-                    continue;
-                }
-                while let Some(c2) = iter.peek() {
-                    if c2.is_ascii_alphanumeric() {
-                        s2.push(*c2);
-                        iter.next();
-                    } else {
-                        break;
-                    }
-                }
-                if s2.is_empty() {
-                    panic!("invalid docstring for {sym}: ?");
-                } else {
-                    partial += &s2.white().underline().to_string();
-                }
-            },
-            '`' => {
-                if in_code {
-                    out += &partial.white().to_string();
-                } else {
-                    out += &partial;
-                }
-                in_code = !in_code;
-                partial.clear();
-            },
-            _ => partial.push(c)
-        }
+fn format_cli(line: &str, sym: &str) -> String {
+    use stream::docs::ChunkType;
+    let mut ret = String::new();
+    for (typ, s) in docs::parse_line(line, sym) {
+        ret += &match typ {
+            ChunkType::Base => s,
+            ChunkType::Code => s.white().to_string(),
+            ChunkType::Ref => s.white().underline().to_string(),
+        };
     }
-    if in_code {
-        panic!("unterminated '`' in doc string of {sym}");
-    } else {
-        out += &partial;
-    }
-    out
+    ret
 }
