@@ -205,14 +205,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn format_cli(line: &str, sym: &str) -> String {
-    use stream::docs::ChunkType;
+    use docs::{LinePart, RefStringItem};
     let mut ret = String::new();
-    for (typ, s) in docs::parse_line(line, sym) {
-        ret += &match typ {
-            ChunkType::Base => s,
-            ChunkType::Code => s.white().to_string(),
-            ChunkType::Ref => s.white().underline().to_string(),
-        };
+    for LinePart { content, is_code } in docs::parse_line(line, sym) {
+        let mut part = String::new();
+        for item in content {
+            match item {
+                RefStringItem::Base(s) => part += &s,
+                RefStringItem::Ref(s) => part += &s.white().underline(),
+            }
+        }
+        if is_code {
+            ret += &part.white().underline().to_string();
+        } else {
+            ret += &part.to_string();
+        }
     }
     ret
 }
