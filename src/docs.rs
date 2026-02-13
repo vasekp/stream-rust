@@ -97,6 +97,18 @@ pub fn parse_line(line: &str, sym: &str) -> Vec<LinePart> {
     out
 }
 
+impl LinePart {
+    pub fn flatten(&self) -> String {
+        let mut ret = String::new();
+        for item in &self.content {
+            match item {
+                RefStringItem::Base(s) | RefStringItem::Ref(s) => ret += s
+            }
+        }
+        ret
+    }
+}
+
 #[cfg(test)]
 #[test]
 fn test_parse_line() {
@@ -115,4 +127,11 @@ fn test_parse_line() {
         LinePart { content: vec![ RefStringItem::Base("ghi".to_string()) ], is_code: false },
         LinePart { content: vec![ RefStringItem::Base("jkl".to_string()), RefStringItem::Ref("sym".to_string()) ], is_code: false },
     ]);
+}
+
+#[cfg(test)]
+#[test]
+fn test_flatten() {
+    let [line] = &parse_line("test ?ref ?()", "sym")[..] else { panic!("should return only 1 item") };
+    assert_eq!(line.flatten(), "test ref sym()");
 }

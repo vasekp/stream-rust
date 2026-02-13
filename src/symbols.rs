@@ -61,12 +61,16 @@ impl<T, const N: usize> AsSlice<T> for [T; N] {
 fn test_doc_examples() {
     use crate::parser::parse;
     use std::collections::HashSet;
+    use crate::docs;
     let mut visited = HashSet::new();
     for (sym, rec) in &SYMBOLS.0 {
         if !visited.insert(Arc::as_ptr(rec)) { continue; }
         let Some(docs) = &rec.1 else { continue; };
         for ex in &docs.examples {
-            let input = ex.input.replace("??", sym);
+            let [line] = &docs::parse_line(&ex.input, sym)[..] else {
+                panic!("malformed example in {}: {}", sym, ex.input);
+            };
+            let input = line.flatten();
             let Ok(expr) = parse(&input) else {
                 panic!("failed to parse example in {}: {:?}", sym, input);
             };
