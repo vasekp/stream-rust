@@ -117,5 +117,21 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["index", "find", "pos"], eval_index);
+    symbols.insert_with_docs(["index", "find", "pos"], eval_index, crate::docs::parse_docs(r#"
+Attempts to find `item` in `stream`, or `char` or `substring` in `string`, and return its position within.
+If the match is not found, evaluates to `[]`.
+If multiple arguments are provided, evaluates to a stream of the results.
+= stream.?(item)
+= stream.?(item, ...)
+= string.?(char)
+= string.?(substring)
+= string.?(char|substring, ...)
+> [10, 11, 12, 13].?(13) => 4
+> [10, 11, 12, 13].?(1) => []
+> [10, 11, 12, 13].?(1, 10, 15) => [[], 1, []]
+> "abcde".?('d') => 4
+> "abcde".?("cd") => 3
+> "abcde".?("def") => []
+: contains
+"#));
 }

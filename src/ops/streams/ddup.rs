@@ -78,5 +78,10 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("ddup", eval_ddup);
+    symbols.insert_with_docs("ddup", eval_ddup, crate::docs::parse_docs(r#"
+A stream with only the first appearance of any repeated item kept.
+= stream.?
+> [1, 2, 1, 2, 3].? => [1, 2, 3]
+> "abracadabra".?chars.?.?string => "abrcd"
+"#));
 }

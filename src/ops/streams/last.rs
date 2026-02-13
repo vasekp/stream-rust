@@ -187,5 +187,18 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("last", eval_last);
+    symbols.insert_with_docs("last", eval_last, crate::docs::parse_docs(r#"
+Up to the last `count` items of `stream`, or up to the last `count` characters of `string`.
+If `count` is not given, only gives the last item or the last character (no stream / string).
+= stream.?
+= stream.?(count)
+= string.?
+= string.?(count)
+> [1, 2, 3].? => 3
+> [1, 2, 3].?(2) => [2, 3]
+> ?seq.? => !stream is infinite
+> "abc".? => 'c'
+> "abc".?(2) => "bc"
+: first
+"#));
 }
