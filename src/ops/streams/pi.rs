@@ -34,7 +34,9 @@ impl Stream for Pi {
 
 impl Describe for Pi {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, None::<&Item>, self.radix.iter().copied().map(Item::new_number), prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .push_args(&self.radix)
+            .finish(prec)
     }
 }
 
@@ -171,6 +173,8 @@ mod tests {
         test_eval!("pi(10000)" => "[3, 1415, 9265, 3589, 7932, ...]");
         test_eval!("pi(65535)" => "[3, 9279, 17992, 54480, 37699, ...]");
         test_advance("pi.take(1000)");
+        test_describe!("pi" => "pi");
+        test_describe!("pi(3)" => "pi(3)");
     }
 }
 

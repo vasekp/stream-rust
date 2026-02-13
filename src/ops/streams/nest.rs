@@ -42,13 +42,18 @@ fn eval_nest(node: Node, env: &Env) -> Result<Item, StreamError> {
 
 impl Describe for NestSource {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_with_env(&self.env, &self.head, Some(&self.source), [&self.body], prec, env)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+            .set_source(&self.source)
+            .push_arg(&self.body)
+            .finish(prec)
     }
 }
 
 impl Describe for NestArgs {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_with_env(&self.env, &self.head, None::<&Item>, [&self.body], prec, env)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+            .push_arg(&self.body)
+            .finish(prec)
     }
 }
 
@@ -137,6 +142,7 @@ mod tests {
         test_eval!("\"caesar\".nest{#+1}" => "[\"dbftbs\", \"ecguct\", \"fdhvdu\", \"geiwev\", \"hfjxfw\", ...]");
         test_eval!("[0,1]~[1].nest{#~(#+1)}.flatten" => "[0, 1, 1, 2, 1, ...]");
         test_describe!("nest{#1+#2}(1,1)" => "nest({#1+#2}(1, 1))");
+        test_describe!("[].nest{[#]}" => "[].nest({[#]})");
     }
 }
 

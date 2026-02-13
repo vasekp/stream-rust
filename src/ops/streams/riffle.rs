@@ -24,7 +24,10 @@ impl Riffle {
 
 impl Describe for Riffle {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), [&self.filler], prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_arg(&self.filler)
+            .finish(prec)
     }
 }
 

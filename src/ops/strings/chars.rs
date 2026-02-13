@@ -19,7 +19,9 @@ impl Chars {
 
 impl Describe for Chars {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .finish(prec)
     }
 }
 
@@ -53,7 +55,9 @@ impl Str {
 
 impl Describe for Str {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .finish(prec)
     }
 }
 
@@ -86,6 +90,9 @@ mod tests {
         test_eval!("seq.string" => "\"<!>");
         test_eval!("range('a','c').string" => "\"abc\"");
         test_eval!("\"abc\".string" => err);
+
+        test_describe!("\"abc\".chars" => "\"abc\".chars");
+        test_describe!("['a', 'b', 'c'].string" => "['a', 'b', 'c'].string");
     }
 }
 

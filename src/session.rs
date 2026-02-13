@@ -31,9 +31,8 @@ impl Session {
             Expr::Eval(Node { head: Head::Oper(op), source: None, mut args }) if op == "=" => {
                 let rhs = args.pop().expect("= should have at least 2 args");
                 let rhs = match self.apply_context(rhs)? {
-                    Expr::Eval(Node { head: Head::Block(block), source: None, args })
-                        if args.is_empty()
-                        => Rhs::Function(*block, Env::default()),
+                    Expr::Eval(Node { head: Head::Block(block), source: None, args }) if args.is_empty()
+                        => Rhs::Function(*block),
                     expr => Rhs::Value(expr.eval(&self.env)?)
                 };
                 let mut names = Vec::with_capacity(args.len());
@@ -93,22 +92,23 @@ impl Session {
 
     fn apply_context(&mut self, expr: Expr) -> Result<Expr, StreamError> {
         expr.replace(&|sub_expr| {
+            use std::ops::ControlFlow;
             match sub_expr {
                 Expr::Repl(Subst::History(index)) => match index {
-                    Some(ix @ 1..) => Ok(try_with!(sub_expr,
+                    Some(ix @ 1..) => Ok(ControlFlow::Break(try_with!(sub_expr,
                         self.hist.get(ix - 1)
                             .cloned()
                             .map(Expr::from)
-                            .ok_or(format!("history item %{ix} does not exist"))?)),
+                            .ok_or(format!("history item %{ix} does not exist"))?))),
                     Some(0) => Err(StreamError::new("invalid history index", sub_expr)),
-                    None => Ok(try_with!(sub_expr,
+                    None => Ok(ControlFlow::Break(try_with!(sub_expr,
                         self.hist.last()
                             .cloned()
                             .map(Expr::from)
-                            .ok_or("history is empty")?))
+                            .ok_or("history is empty")?))),
                 },
                 Expr::Repl(Subst::Counter) =>
-                    Ok(Expr::new_number(self.counter)),
+                    Ok(ControlFlow::Break(Expr::new_number(self.counter))),
                 Expr::Eval(mut node) => {
                     match node {
                         Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } if sym.starts_with('$') => {
@@ -117,23 +117,23 @@ impl Session {
                                     if source.is_some() || !args.is_empty() {
                                         Err(StreamError::new("no source or arguments allowed", node))
                                     } else {
-                                        Ok(Expr::Imm(item.clone()))
+                                        Ok(ControlFlow::Break(Expr::Imm(item.clone())))
                                     }
                                 },
-                                Some(Rhs::Function(block, _)) => {
-                                    Ok(Expr::Eval(Node {
+                                Some(Rhs::Function(block)) => {
+                                    Ok(ControlFlow::Break(Expr::Eval(Node {
                                         head: Expr::new_node("global", vec![block.clone()]).into(),
                                         source: source.take(),
                                         args: std::mem::take(args)
-                                    }))
+                                    })))
                                 },
                                 None => Err(StreamError::new("variable not defined", node))
                             }
                         },
-                        _ => Ok(node.into())
+                        _ => Ok(ControlFlow::Continue(node))
                     }
                 },
-                _ => Ok(sub_expr)
+                sub_expr @ (Expr::Imm(_) | Expr::Repl(_)) => Ok(ControlFlow::Break(sub_expr))
             }
         })
     }

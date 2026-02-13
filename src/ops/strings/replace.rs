@@ -57,8 +57,12 @@ struct StringReplace {
 impl Describe for StringReplace {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         let orig = Item::from(self.orig.iter().cloned().map(Item::from).collect::<Vec<_>>());
-        let repl = Item::from(self.orig.iter().cloned().map(Item::from).collect::<Vec<_>>());
-        Node::describe_helper(&self.head, Some(&self.source), [&orig, &repl], prec, env)
+        let repl = Item::from(self.repl.iter().cloned().map(Item::from).collect::<Vec<_>>());
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_arg(&orig)
+            .push_arg(&repl)
+            .finish(prec)
     }
 }
 
@@ -158,7 +162,11 @@ struct StreamReplace {
 
 impl Describe for StreamReplace {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), [&self.orig, &self.repl], prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_arg(&self.orig)
+            .push_arg(&self.repl)
+            .finish(prec)
     }
 }
 
@@ -186,6 +194,8 @@ mod tests {
         test_eval!("seq.replace(3,[])" => "[1, 2, [], 4, 5, ...]");
         test_eval!("\"abc\".replace()" => err);
         test_eval!("'a'.repeat.replace('b','B')" => "\"aaaaaaaaaaaaaaaaaaaa...");
+        test_describe!("\"abc\".replace('a', \"a\")" => "\"abc\".replace([\"a\"], [\"a\"])");
+        test_describe!("\"abc\".replace(['a', 'b'], [\"a\", '1'])" => "\"abc\".replace([\"a\", \"b\"], [\"a\", \"1\"])");
     }
 }
 

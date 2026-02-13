@@ -7,7 +7,7 @@ pub struct Range {
     to: Number,
     step: Option<Number>,
     rtype: RangeType,
-    alpha: Rc<Alphabet>
+    env: Env,
 }
 
 #[derive(Clone, Copy)]
@@ -28,18 +28,16 @@ impl Range {
                 => (Some(from), to, Some(step), RangeType::Numeric),
             RNodeNS { args: RArgs::Two(Item::Char(ref from), Item::Char(ref to)), .. }
                 => {
-                    let abc = env.alphabet();
                     let case = from.case();
-                    let from_ix = try_with!(rnode, abc.ord(from)?);
-                    let to_ix = try_with!(rnode, abc.ord(to)?);
+                    let from_ix = try_with!(rnode, env.alpha.ord(from)?);
+                    let to_ix = try_with!(rnode, env.alpha.ord(to)?);
                     (Some(from_ix.into()), to_ix.into(), None, RangeType::Character(case))
                 },
             RNodeNS { args: RArgs::Three(Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)), .. }
                 => {
-                    let abc = env.alphabet();
                     let case = from.case();
-                    let from_ix = try_with!(rnode, abc.ord(from)?);
-                    let to_ix = try_with!(rnode, abc.ord(to)?);
+                    let from_ix = try_with!(rnode, env.alpha.ord(from)?);
+                    let to_ix = try_with!(rnode, env.alpha.ord(to)?);
                     (Some(from_ix.into()), to_ix.into(), Some(std::mem::take(step)), RangeType::Character(case))
                 },
             _ => return Err(StreamError::new("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)", rnode))
@@ -47,7 +45,7 @@ impl Range {
         if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
             Ok(Item::empty_stream())
         } else {
-            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, alpha: Rc::clone(env.alphabet())}))
+            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, env: env.clone()}))
         }
     }
 
@@ -96,17 +94,19 @@ impl Stream for Range {
 impl Describe for Range {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         match self.rtype {
-            RangeType::Numeric => Node::describe_helper(&self.head, None::<&Item>,
-                [self.from.as_ref(), Some(&self.to), self.step.as_ref()].into_iter().flatten(), 
-                prec, env),
+            RangeType::Numeric =>
+                DescribeBuilder::new(&self.head, env)
+                    .push_args(&self.from)
+                    .push_arg(&self.to)
+                    .push_args(&self.step)
+                    .finish(prec),
             RangeType::Character(case) => {
-                let abc = &self.alpha;
-                Node::describe_with_alpha(abc, &self.head, None::<&Item>, [
-                        Some(&ProxyItem::Char(&abc.chr(self.from.as_ref().expect("char range should have from"), case))),
-                        Some(&ProxyItem::Char(&abc.chr(&self.to, case))),
-                        self.step.as_ref().map(ProxyItem::Number).as_ref()
-                    ].into_iter().flatten(),
-                    prec, env)
+                let abc = &self.env.alpha;
+                DescribeBuilder::new_with_env(&self.head, env, &self.env)
+                    .push_arg(&abc.chr(self.from.as_ref().expect("char range should have from"), case))
+                    .push_arg(&abc.chr(&self.to, case))
+                    .push_args(&self.step)
+                    .finish(prec)
             }
         }
     }
@@ -126,7 +126,7 @@ impl Iterator for RangeIter<'_> {
             || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
                 let ret = match self.parent.rtype {
                     RangeType::Numeric => Item::new_number(self.value.clone()),
-                    RangeType::Character(case) => Item::new_char(self.parent.alpha.chr(&self.value, case))
+                    RangeType::Character(case) => Item::new_char(self.parent.env.alpha.chr(&self.value, case))
                 };
                 match &self.parent.step {
                     Some(step) => self.value += step,
@@ -237,6 +237,7 @@ mod tests {
         test_describe!("range(1,5,2)" => "range(1, 5, 2)");
         test_describe!("range('a','Z')" => "range('a', 'z')");
         test_describe!("range('A','z',2)" => "range('A', 'Z', 2)");
+        test_describe!("alpha(\"abz\", range('a','Z'))" => "alpha(['a', 'b', 'z'], range('a', 'z'))");
         test_describe!("1..5" => "1..5");
         test_describe!("(-1)..5" => "(-1)..5");
         test_describe!("-(1..5)" => "-1..5");

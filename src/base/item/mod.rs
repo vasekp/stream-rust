@@ -343,36 +343,3 @@ impl Clone for Item {
         }
     }
 }
-
-pub(crate) enum ProxyItem<'a> {
-    Number(&'a Number),
-    Bool(bool),
-    Char(&'a Char),
-    Stream(&'a (dyn Stream<Item> + 'static)),
-    String(&'a (dyn Stream<Char> + 'static)),
-}
-
-impl<'a> From<&'a Item> for ProxyItem<'a> {
-    fn from(item: &'a Item) -> Self {
-        match item {
-            Item::Number(ref val) => ProxyItem::Number(val),
-            Item::Bool(ref val) => ProxyItem::Bool(*val),
-            Item::Char(ref val) => ProxyItem::Char(val),
-            Item::Stream(ref val) => ProxyItem::Stream(&**val),
-            Item::String(ref val) => ProxyItem::String(&**val),
-        }
-    }
-}
-
-impl Describe for ProxyItem<'_> {
-    fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        use ProxyItem::*;
-        match self {
-            Number(n) => n.describe_inner(prec, env),
-            Bool(b) => format!("{b}"),
-            Char(c) => format!("{c}"),
-            Stream(s) => s.describe_inner(prec, env),
-            String(s) => s.describe_inner(prec, env),
-        }
-    }
-}

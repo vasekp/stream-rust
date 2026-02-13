@@ -17,7 +17,9 @@ struct Enum {
 
 impl Describe for Enum {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.stream), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.stream)
+            .finish(prec)
     }
 }
 

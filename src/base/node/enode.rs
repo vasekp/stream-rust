@@ -28,7 +28,10 @@ impl From<&ENode> for Node {
 
 impl Describe for ENode {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, self.source.as_ref(), &self.args, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source_opt(&self.source)
+            .push_args(&self.args)
+            .finish(prec)
     }
 }
 

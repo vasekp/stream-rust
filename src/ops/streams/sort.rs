@@ -7,7 +7,7 @@ fn eval_sort(node: Node, env: &Env) -> Result<Item, StreamError> {
     match &rnode {
         RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => {
             let mut vals = stm.listout()?;
-            try_with!(rnode, sort_impl(&mut vals[..], env.alphabet())?);
+            try_with!(rnode, sort_impl(&mut vals[..], &env.alpha)?);
             Ok(Item::new_stream(List::from(vals)))
         }
         _ => Err(StreamError::new("expected: stream.sort", rnode))

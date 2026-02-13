@@ -28,7 +28,10 @@ struct SplitByIter<'node, I: ItemType> {
 
 impl<I: ItemType> Describe for SplitBy<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), [&self.cond], prec, env)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+            .set_source(&self.source)
+            .push_arg(&self.cond)
+            .finish(prec)
     }
 }
 
@@ -82,6 +85,8 @@ mod tests {
         use super::*;
         test_eval!("\"abc\ndef\".splitby(iswhite)" => "[\"abc\", \"def\"]");
         test_eval!("range(10).splitby(iseven)" => "[[1], [3], [...], ...]");
+        test_describe!("range(10).splitby(iseven)" => "range(10).splitby(iseven)");
+        test_describe!("range(10).splitby{#<3}" => "range(10).splitby({#<3})");
     }
 }
 
