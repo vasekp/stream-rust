@@ -183,25 +183,6 @@ impl Node {
             .push_args(args)
             .finish(prec)
     }
-
-    pub(crate) fn describe_with_alpha<'a, T, U>(
-        alpha: &Rc<Alphabet>,
-        head: &Head,
-        source: Option<&T>,
-        args: impl IntoIterator<Item = &'a U>,
-        prec: u32,
-        env_outer: &Env)
-    -> String
-        where T: Describe, U: Describe + 'a
-    {
-        let mut env_inner = env_outer.clone();
-        env_inner.alpha = Rc::clone(alpha);
-        DescribeBuilder::new(head, &env_inner)
-            .set_outer_env(env_outer)
-            .set_source_opt(&source)
-            .push_args(args)
-            .finish(prec)
-    }
 }
 
 impl Describe for Node {

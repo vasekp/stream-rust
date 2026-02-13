@@ -26,6 +26,13 @@ impl<'a> DescribeBuilder<'a> {
         }
     }
 
+    pub(crate) fn new_with_env(head: &'a Head, env_outer: &'a Env, env_inner: &'a Env) -> Self {
+        Self {
+            env_outer: Some(env_outer),
+            ..Self::new(head, env_inner)
+        }
+    }
+
     pub(crate) fn set_source(&mut self, src: &impl Describe) -> &mut Self {
         self.source = Some(src.describe_inner(u32::MAX, self.env));
         self
