@@ -21,12 +21,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Error setting Ctrl-C handler");
 
     let mut sess = Session::new();
+    let tracer = Rc::new(std::cell::RefCell::new(tracer::TextTracer::default()));
+    sess.set_tracer(Rc::clone(&tracer));
 
     while let Ok(input) = rl.readline("> ") {
         let input = input.trim();
+        if input.is_empty() { continue; }
         if input.as_bytes()[0] == b':' {
-            match input[1..].trim() {
-                "list" | "less" => {
+            let mut iter = input[1..].split(' ').filter(|s| !s.is_empty());
+            match iter.next() {
+                Some("list") | Some("less") => {
+                    if iter.next().is_some() {
+                        eprintln!("{}", "invalid command".red());
+                        continue;
+                    }
                     let Some(Item::Stream(stm)) = sess.history().last() else {
                         println!("{}", "Can only use after a stream.".red());
                         continue;
@@ -55,11 +63,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     drop(stdin);
                     cmd.wait().expect("Error in wait().");
                 },
-                "trace" | "trace on" | "tracing" | "tracing on" =>
-                    sess.set_tracer(tracer::TextTracer::default()),
-                "trace off" | "tracing off" =>
-                    sess.set_tracer(()),
-                _ => eprintln!("{}", "malformed command".red()),
+                Some("trace") | Some("tracing") => {
+                    let state = match iter.next() {
+                        Some("on") | None => true,
+                        Some("off") => false,
+                        _ => {
+                            eprintln!("{}", "invalid command".red());
+                            continue;
+                        }
+                    };
+                    tracer.borrow_mut().toggle(state);
+                },
+                Some("vars") => {
+                    if iter.next().is_some() {
+                        eprintln!("{}", "invalid command".red());
+                        continue;
+                    }
+                    for (name, rhs) in sess.vars() {
+                        println!("{}", format!("{} = {}", name, rhs.describe()).yellow());
+                    }
+                },
+                Some("show") => {
+                    let (Some(var), None) = (iter.next(), iter.next()) else {
+                        eprintln!("{}", "malformed command".red());
+                        continue;
+                    };
+                    // TODO check name
+                    let Some(rhs) = sess.vars().get(var) else {
+                        eprintln!("{}", "not defined".red());
+                        continue;
+                    };
+                    println!("{}", format!("{} = {}", var, rhs.describe()).yellow());
+                },
+                None => eprintln!("{}", "malformed command".red()),
+                _ => eprintln!("{}", "unknown command".red()),
             }
             continue;
         }
@@ -77,15 +114,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     },
                     Ok(SessionUpdate::Globals(list)) => {
-                        let mut s = "Globals updated: ".to_string();
-                        let mut iter = list.into_iter();
-                        if let Some(first) = iter.next() {
-                            s += &first.to_string();
+                        for name in list {
+                            match sess.vars().get(&name) {
+                                Some(rhs) => println!("{}", format!("{} = {}", name, rhs.describe()).yellow()),
+                                None => println!("{}", name.yellow().strikethrough()),
+                            }
                         }
-                        for name in iter {
-                            s += &format!(", {name}");
-                        }
-                        println!("{}", s.yellow());
                     },
                     Err(err) => println!("{}", format!("{err}").red())
                 }
