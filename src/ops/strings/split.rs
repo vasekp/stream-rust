@@ -38,7 +38,10 @@ struct SplitStringIter<'node> {
 
 impl Describe for SplitString {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), &self.sep, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_args(&self.sep)
+            .finish(prec)
     }
 }
 
@@ -98,7 +101,10 @@ struct SplitStreamIter<'node> {
 
 impl Describe for SplitStream {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), &self.sep, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_args(&self.sep)
+            .finish(prec)
     }
 }
 

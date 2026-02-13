@@ -51,7 +51,9 @@ struct Join<I: ItemType> {
 
 impl<I: ItemType> Describe for Join<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, None::<&Item>, &self.elems, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .push_args(&self.elems)
+            .finish(prec)
     }
 }
 

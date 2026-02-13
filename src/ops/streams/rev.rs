@@ -49,7 +49,9 @@ impl<I: ItemType> Stream<I> for Rev<I> {
 
 impl<I: ItemType> Describe for Rev<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .finish(prec)
     }
 }
 
@@ -125,6 +127,7 @@ mod tests {
         test_eval!("seq.rev" => err);
         test_advance("range(1000).rev");
         test_advance("range(10^10).rev");
+        //test_describe!("\"abc\".rev" => "\"abc\".rev"); // TODO caching
     }
 }
 

@@ -94,29 +94,23 @@ impl Alphabet {
         Ok(ox.cmp(&oy))
     }
 
-    pub(crate) fn wrap_describe(self: &Rc<Self>, call: impl FnOnce(u32, &Env) -> String, prec: u32, env: &Env) -> String {
-        match **self {
-            Alphabet::Listed{ref vec, ..} if !Rc::ptr_eq(self, &env.alpha)
-                => format!("alpha({}, {})", Self::format(vec),
-                    call(0, &Env{
-                        alpha: Rc::clone(self),
-                        vars: Rc::clone(&env.vars),
-                        tracer: Rc::clone(&env.tracer)})),
-            _ => call(prec, env)
+    pub(crate) fn describe(&self) -> String {
+        match self {
+            Self::Std26 => "[]".to_string(),
+            Self::Listed{vec, ..} => {
+                let mut iter = vec.iter();
+                let mut ret = '['.to_string();
+                if let Some(chr) = iter.next() {
+                    ret += &chr.to_string();
+                }
+                for chr in iter {
+                    ret += ", ";
+                    ret += &chr.to_string();
+                }
+                ret.push(']');
+                ret
+            }
         }
-    }
-
-    fn format(vec: &[Char]) -> String {
-        let mut iter = vec.iter();
-        let first = iter.next().unwrap(); // nonemptiness checked in try_from
-        let mut ret = '['.to_string();
-        ret += &first.to_string();
-        for chr in iter {
-            ret += ", ";
-            ret += &chr.to_string();
-        }
-        ret.push(']');
-        ret
     }
 }
 
@@ -126,7 +120,7 @@ impl TryFrom<Vec<Char>> for Alphabet {
     fn try_from(src_vec: Vec<Char>) -> Result<Alphabet, BaseError> {
         let mut map = HashMap::new();
         if src_vec.is_empty() {
-            return Err("alphabet is empty".into());
+            return Ok(Alphabet::default());
         }
         let mut res_vec = Vec::with_capacity(src_vec.len());
         for (ix, chr) in src_vec.into_iter().enumerate() {
@@ -170,9 +164,6 @@ mod tests {
         assert_eq!(abc.c_plus_c(&Char::from('C'), &Char::from('e')), Ok(Char::from('H')));
         assert_eq!(abc.c_plus_c(&Char::from('x'), &Char::from('Y')), Ok(Char::from('w')));
         assert!(abc.c_plus_c(&Char::from('a'), &Char::from('á')).is_err());
-
-        let plus = crate::parser::parse("1+2").unwrap();
-        assert_eq!(abc.wrap_describe(|prec, env| plus.describe_inner(prec, env), u32::MAX, &Default::default()), "(1+2)");
     }
 
     #[test]
@@ -194,10 +185,6 @@ mod tests {
         assert!(Alphabet::try_from(vec![Char::from('a'), Char::from('A')]).is_err());
         assert!(Alphabet::try_from(vec![Char::from('İ'), Char::from("i\u{307}")]).is_err());
         assert!(Alphabet::try_from(vec![Char::from("ch"), Char::from("Ch")]).is_err());
-        assert!(Alphabet::try_from(vec![]).is_err());
-
-        let abc = Rc::new(Alphabet::try_from(vec![Char::from('b'), Char::from('á'), Char::from("Ch"), Char::from('a')]).unwrap());
-        let plus = crate::parser::parse("1+2").unwrap();
-        assert_eq!(abc.wrap_describe(|prec, env| plus.describe_inner(prec, env), u32::MAX, &Default::default()), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
+        assert!(matches!(Alphabet::try_from(vec![]), Ok(Alphabet::Std26)));
     }
 }

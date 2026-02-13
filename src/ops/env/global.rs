@@ -8,11 +8,10 @@ fn eval_global(mut node: Node, env: &Env) -> Result<Item, StreamError> {
         (None, Expr::Imm(item)) => return Ok(item),
         (Some(_), Expr::Imm(item)) => return Err(StreamError::new("no source accepted", item)),
         (None, Expr::Eval(body)) => body,
-        (Some(source), Expr::Eval(body)) => body.with_source(*source)?,
+        (Some(source), Expr::Eval(body)) => body.with_source(source.eval(env)?.into())?,
         (_, expr @ Expr::Repl(_)) => return Err(StreamError::new("out of context", expr))
     };
-    let body = body.eval_all(env)?;
-    Node::from(body).eval(&Default::default())
+    body.eval(&Default::default())
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
@@ -22,18 +21,19 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_with() {
+    fn test_global() {
         use super::*;
 
         test_eval!("with(len=1, global(range(3).len))" => "3");
-        test_eval!("with(a=1, a.global{#+#1}(a))" => "2");
+        test_eval!("with(a=1, a.global{#+#1}(a))" => err);
         test_eval!("with(a={#+#1}, 1.a(2))" => "3");
         test_eval!("with(a={#+#1}, global(1.a(2)))" => err);
         test_eval!("with(a={#+#1}, 1.global{a}(2))" => err);
         test_eval!("1.global{2}" => "2");
         test_eval!("1.global(2)" => err);
-        test_eval!("with(a=1, global{a})" => err);
-        test_eval!("with(a=1, global{with(a=2, a)})" => "2");
-        test_eval!("with(a=1, global{with(a=#1+1, a)}(a))" => "2");
+        test_eval!("with(a=1, global(a))" => err);
+        test_eval!("with(a=1, global(with(a=2, a)))" => "2");
+        test_eval!("with(a=1, {global(with(a=#1+1, a))}(a))" => "2");
+        test_eval!("global(times@[2,3])" => "6");
     }
 }

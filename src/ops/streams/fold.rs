@@ -29,7 +29,10 @@ fn eval_fold(node: Node, env: &Env) -> Result<Item, StreamError> {
 
 impl Describe for Fold {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_with_env(&self.env, &self.head, Some(&self.source), [&self.body], prec, env)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+            .set_source(&self.source)
+            .push_arg(&self.body)
+            .finish(prec)
     }
 }
 

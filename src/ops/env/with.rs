@@ -1,49 +1,91 @@
 use crate::base::*;
 
-fn eval_with(node: Node, env: &Env) -> Result<Item, StreamError> {
+use std::collections::HashMap;
+
+fn eval_with(mut node: Node, env: &Env) -> Result<Item, StreamError> {
     try_with!(node, node.check_no_source()?);
     if node.args.len() < 2 {
         return Err(StreamError::new("at least 2 arguments required", node));
     }
-    let mut args = node.args;
-    let body = args.pop().unwrap(); // just checked len > 2 > 1
-    let mut env = env.clone();
-    for arg in args {
-        let mut args = match arg {
-            Expr::Eval(Node { head: Head::Oper(op), source: None, args })
-                if op == "="
-            => args,
-            _ => return Err(StreamError::new("expected assignment", arg))
+    let (body, assigns) = (node.args.pop().unwrap(), node.args); // just checked len > 2 > 1
+    let mut replace = HashMap::<String, Rc<Rhs>>::new();
+    for assign in assigns {
+        let (mut body, names) = match assign {
+            Expr::Eval(Node { head: Head::Oper(op), source: None, mut args })
+                if op == "=" && args.len() >= 2
+            => (args.pop().unwrap(), args),
+            _ => return Err(StreamError::new("expected assignment", assign))
         };
-        let rhs = match args.pop().expect("= should have at least 2 args") {
+        let names = names.into_iter().map(|expr| match expr {
+            Expr::Eval(Node { head: Head::Symbol(sym), source: None, args }) if args.is_empty() => Ok(sym),
+            _ => Err(StreamError::new("expected variable name", expr))
+        }).collect::<Result<Vec<_>, _>>()?;
+        body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
+        let rhs = Rc::new(match body {
             Expr::Eval(Node { head: Head::Block(block), source: None, args })
                 if args.is_empty()
-                => Rhs::Function(*block, env.clone()),
-            expr => Rhs::Value(expr.eval(&env)?)
-        };
-        let mut new_vars = (*env.vars).clone();
-        let last = args.pop();
-        for name in args {
-            let name = match name {
-                Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
-                    if args.is_empty()
-                => sym,
-                _ => return Err(StreamError::new("expected variable name", name))
-            };
-            new_vars.insert(name, rhs.clone());
+                => Rhs::Function(*block),
+            expr => Rhs::Value(expr.eval(env)?)
+        });
+        for name in names {
+            replace.insert(name, Rc::clone(&rhs));
         }
-        if let Some(name) = last {
-            let name = match name {
-                Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
-                    if args.is_empty()
-                => sym,
-                _ => return Err(StreamError::new("expected variable name", name))
-            };
-            new_vars.insert(name, rhs);
-        }
-        env.vars = Rc::new(new_vars);
     };
-    body.eval(&env)
+    let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
+    body.eval(env)
+}
+
+fn with_replacer(expr: Expr, replace: &HashMap::<String, Rc<Rhs>>)
+    -> Result<std::ops::ControlFlow<Expr, Node>, StreamError>
+{
+    use std::ops::ControlFlow;
+    let Expr::Eval(mut node) = expr else { return Ok(ControlFlow::Break(expr)) };
+    match node {
+        Node { head: Head::Symbol(ref sym), .. } if sym == "global" =>
+            Ok(ControlFlow::Break(node.into())),
+        Node { head: Head::Symbol(sym), source: None, mut args } if sym == "with" && args.len() > 1 => {
+            let (mut body, assigns) = (args.pop().unwrap(), &mut args); // just checked len > 2 > 1
+            let mut replace = replace.clone();
+            for assign in assigns {
+                let Expr::Eval(Node { head: Head::Oper(op), source: None, args }) = assign
+                    else { return Err(StreamError::new("expected assignment", assign.clone())) };
+                if op != "=" { return Err(StreamError::new("expected assignment", assign.clone())); }
+                let mut body = args.pop().expect("Oper(=) should have at least 2 arguments");
+                body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
+                for expr in args.iter() {
+                    match expr {
+                        Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
+                        if args.is_empty() => { replace.remove(sym); },
+                        _ => return Err(StreamError::new("expected variable name", assign.clone()))
+                    }
+                }
+                args.push(body);
+            };
+            body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
+            args.push(body);
+            Ok(ControlFlow::Break(Expr::new_node(sym, args)))
+        },
+        Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } => {
+            match replace.get(sym).map(|rc| (**rc).clone()) {
+                Some(Rhs::Value(item)) => {
+                    if source.is_some() || !args.is_empty() {
+                        Err(StreamError::new("no source or arguments allowed", node))
+                    } else {
+                        Ok(ControlFlow::Break(item.clone().into()))
+                    }
+                },
+                Some(Rhs::Function(block)) => {
+                    Ok(ControlFlow::Continue(Node {
+                        head: Expr::new_node("global", vec![block.clone()]).into(),
+                        source: source.take(),
+                        args: std::mem::take(args)
+                    }))
+                },
+                None => Ok(ControlFlow::Continue(node)),
+            }
+        },
+        _ => Ok(ControlFlow::Continue(node))
+    }
 }
 
 #[cfg(test)]
@@ -74,7 +116,8 @@ mod tests {
         test_eval!("with(a=1, a={a}, a)" => "1");
         test_eval!("with(a=1, b={a}, a=2, b)" => "1");
 
-        test_describe!("with(a=1,[].nest{#:{1}})[3]" => "with(a=1, []:{1}:{1}:{1})");
+        test_describe!("1.nest{with(a={#+1},#.a)}[3]" => "4");
+        test_describe!("[1].nest{with(a={#+1},#:a)}[2]" => "[1]:{global(#+1)}:{global(#+1)}");
     }
 }
 

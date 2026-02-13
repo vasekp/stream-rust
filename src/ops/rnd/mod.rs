@@ -43,9 +43,10 @@ struct RndStream {
 
 impl Describe for RndStream {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source),
-            [ProxyItem::Number(&self.seed)],
-            prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .push_arg(&self.seed)
+            .finish(prec)
     }
 }
 
@@ -126,6 +127,7 @@ mod tests {
         // test fairness of rejection sampling
         test_eval!("(range(2^64*3/4).rnd(0)/2^62).first(1000).counts(0,1,2)" => "[324, 336, 340]");
         test_advance("range(10^10).rnd(1)");
+        test_describe!("(1..6).rnd(0)" => "(1..6).rnd(0)");
     }
 }
 

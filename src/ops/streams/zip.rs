@@ -26,7 +26,9 @@ struct Zip {
 
 impl Describe for Zip {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, None::<&Item>, &self.streams, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .push_args(&self.streams)
+            .finish(prec)
     }
 }
 
@@ -98,7 +100,7 @@ mod tests {
         test_advance("seq.zip(seq)");
         test_advance("seq.zip(1..(10^20))");
         test_advance("seq.zip([])");
-        //test_describe!("seq.zip(seq)" => "seq.zip(seq)"); // TODO
+        test_describe!("seq.zip(seq)" => "zip(seq, seq)");
     }
 }
 

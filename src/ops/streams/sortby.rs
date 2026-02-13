@@ -15,7 +15,7 @@ fn eval_sortby(node: Node, env: &Env) -> Result<Item, StreamError> {
                         .map(|res| (item, res))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            try_with!(rnode, sortby_impl(&mut vals_keys[..], env.alphabet())?);
+            try_with!(rnode, sortby_impl(&mut vals_keys[..], &env.alpha)?);
             let vals = vals_keys.into_iter()
                 .map(|(val, _)| val)
                 .collect::<Vec<_>>();

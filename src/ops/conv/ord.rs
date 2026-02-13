@@ -6,7 +6,7 @@ fn eval_ord(node: Node, env: &Env) -> Result<Item, StreamError> {
     let Some(Item::Char(ch)) = &node.source else {
         return Err(StreamError::new("expected: character.ord", node));
     };
-    let ix = try_with!(node, env.alphabet().ord(ch)?);
+    let ix = try_with!(node, env.alpha.ord(ch)?);
     Ok(Item::new_number(ix))
 }
 
@@ -16,7 +16,7 @@ fn eval_chr(node: Node, env: &Env) -> Result<Item, StreamError> {
     let Some(Item::Number(ix)) = &node.source else {
         return Err(StreamError::new("expected: number.chr", node));
     };
-    let ch = env.alphabet().chr(ix, CharCase::Indeterminate);
+    let ch = env.alpha.chr(ix, CharCase::Indeterminate);
     Ok(Item::new_char(ch))
 }
 

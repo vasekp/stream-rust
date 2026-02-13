@@ -6,7 +6,10 @@ use stream::tracing::*;
 use colored::Colorize;
 
 #[derive(Default)]
-pub struct TextTracer(Vec<PreTraced>);
+pub struct TextTracer {
+    rec: Vec<PreTraced>,
+    tracing: bool,
+}
 
 struct PreTraced {
     input: String,
@@ -21,20 +24,21 @@ pub struct Traced {
 
 impl Tracer for TextTracer {
     fn log(&mut self, ev: Event<'_>) {
+        if !self.tracing { return; }
         match ev {
             Event::Enter(node) =>
-                self.0.push(PreTraced {
+                self.rec.push(PreTraced {
                     input: node.describe(),
                     steps: Vec::new(),
                 }),
             Event::Leave(res) => {
-                let pt = self.0.pop().expect("unbalanced tracer calls");
+                let pt = self.rec.pop().expect("unbalanced tracer calls");
                 let t = Traced {
                     input: pt.input,
                     steps: pt.steps,
                     output: res.as_ref().map(Describe::describe).map_err(ToString::to_string),
                 };
-                match self.0.last_mut() {
+                match self.rec.last_mut() {
                     Some(tt) => tt.steps.push(t),
                     None => Self::writeout(t)
                 }
@@ -68,5 +72,12 @@ impl TextTracer {
 
     fn styled(s: &str) -> String {
         s.dimmed().to_string()
+    }
+
+    pub(crate) fn toggle(&mut self, on: bool) {
+        self.tracing = on;
+        if !on {
+            self.rec.clear();
+        }
     }
 }

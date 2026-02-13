@@ -13,21 +13,36 @@ pub trait Describe {
     fn describe_inner(&self, prec: u32, env: &Env) -> String;
 }
 
-impl Describe for Number {
-    fn describe_inner(&self, prec: u32, _env: &Env) -> String {
-        if prec > 0 && self.is_negative() {
-            format!("({})", self)
-        } else {
-            self.to_string()
+macro_rules! impl_describe_signed {
+    ($t: ty) => {
+        impl Describe for $t {
+            fn describe_inner(&self, prec: u32, _env: &Env) -> String {
+                if prec > 0 && self.is_negative() {
+                    format!("({})", self)
+                } else {
+                    self.to_string()
+                }
+            }
         }
     }
 }
 
-impl Describe for UNumber {
-    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
-        self.to_string()
+macro_rules! impl_describe_unsigned {
+    ($t: ty) => {
+        impl Describe for $t {
+            fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
+                self.to_string()
+            }
+        }
     }
 }
+
+impl_describe_signed!(Number);
+impl_describe_signed!(i32);
+
+impl_describe_unsigned!(UNumber);
+impl_describe_unsigned!(u32);
+impl_describe_unsigned!(usize);
 
 impl<T: Describe> Describe for &T {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {

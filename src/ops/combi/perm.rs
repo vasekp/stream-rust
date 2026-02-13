@@ -24,7 +24,9 @@ struct PermStream {
 
 impl Describe for PermStream {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        Node::describe_helper(&self.head, Some(&self.source), None::<&Item>, prec, env)
+        DescribeBuilder::new(&self.head, env)
+            .set_source(&self.source)
+            .finish(prec)
     }
 }
 
@@ -152,6 +154,7 @@ mod tests {
         test_advance("[2,4,6].perm");
         test_advance("range(10).perm");
         test_advance("seq.perm:first(5)");
+        test_describe!("[2,4,6].perm" => "[2, 4, 6].perm");
     }
 }
 
