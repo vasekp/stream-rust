@@ -95,6 +95,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     };
                     println!("{}", format!("{} = {}", var, rhs.describe()).yellow());
                 },
+                Some("desc" | "describe") => {
+                    if iter.next().is_some() {
+                        eprintln!("{}", "invalid command".red());
+                        continue;
+                    }
+                    let Some(item) = sess.history().last() else {
+                        println!("{}", "History is empty.".red());
+                        continue;
+                    };
+                    println!("{}", item.describe());
+                },
                 None => eprintln!("{}", "malformed command".red()),
                 _ => eprintln!("{}", "unknown command".red()),
             }
@@ -102,11 +113,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         match stream::parse(input) {
             Ok(expr) => {
-                //println!("Expr Debug: {expr:?}");
-                //println!("Expr Describe: {}", expr.describe());
                 match sess.process(expr) {
                     Ok(SessionUpdate::History(index, item)) => {
-                        //println!("Item Describe: {}", item.describe());
                         let (s, _, err) = item.format(None, Some(80));
                         println!("{} {s}", format!("%{index}:").dimmed());
                         if let Some(err) = err {
@@ -129,7 +137,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("{}", format!("{err}").red());
             }
         }
-        //println!();
     }
     Ok(())
 }
