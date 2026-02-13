@@ -26,6 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while let Ok(input) = rl.readline("> ") {
         let input = input.trim();
+        if input.is_empty() { continue; }
         if input.as_bytes()[0] == b':' {
             let mut iter = input[1..].split(' ').filter(|s| !s.is_empty());
             match iter.next() {
