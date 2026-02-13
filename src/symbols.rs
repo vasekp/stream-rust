@@ -102,18 +102,13 @@ pub fn find_docs(name: &str) -> Option<&DocRecord> {
 
 #[cfg(test)]
 fn check_refs(line: &str, sym: &str) {
-    let mut iter = line.chars();
-    while let Some(c) = iter.next() {
-        if c != '?' { continue; }
-        let mut s = String::with_capacity(10);
-        while let Some(c2) = iter.next() {
-            if c2.is_ascii_alphanumeric() {
-                s.push(c2);
-            } else {
-                break;
-            }
+    use crate::docs;
+    use crate::docs::RefStringItem;
+    for part in docs::parse_line(line, sym) {
+        for rsym in part.content.iter()
+            .filter_map(|item| match item { RefStringItem::Ref(rsym) => Some(rsym), _ => None })
+            .filter(|rsym| *rsym != sym) {
+                eprintln!("{sym} => {rsym}");
         }
-        if s.is_empty() { continue; }
-        eprintln!("{sym} => {s}");
     }
 }
