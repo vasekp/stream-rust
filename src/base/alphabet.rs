@@ -164,9 +164,6 @@ mod tests {
         assert_eq!(abc.c_plus_c(&Char::from('C'), &Char::from('e')), Ok(Char::from('H')));
         assert_eq!(abc.c_plus_c(&Char::from('x'), &Char::from('Y')), Ok(Char::from('w')));
         assert!(abc.c_plus_c(&Char::from('a'), &Char::from('á')).is_err());
-
-        //let plus = crate::parser::parse("1+2").unwrap();
-        //assert_eq!(abc.wrap_describe(|prec, env| plus.describe_inner(prec, env), u32::MAX, &Default::default()), "(1+2)");
     }
 
     #[test]
@@ -189,9 +186,5 @@ mod tests {
         assert!(Alphabet::try_from(vec![Char::from('İ'), Char::from("i\u{307}")]).is_err());
         assert!(Alphabet::try_from(vec![Char::from("ch"), Char::from("Ch")]).is_err());
         assert!(Alphabet::try_from(vec![]).is_err());
-
-        //let abc = Rc::new(Alphabet::try_from(vec![Char::from('b'), Char::from('á'), Char::from("Ch"), Char::from('a')]).unwrap());
-        //let plus = crate::parser::parse("1+2").unwrap();
-        //assert_eq!(abc.wrap_describe(|prec, env| plus.describe_inner(prec, env), u32::MAX, &Default::default()), "alpha(['b', 'á', 'Ch', 'a'], 1+2)");
     }
 }

@@ -7,7 +7,7 @@ pub struct Range {
     to: Number,
     step: Option<Number>,
     rtype: RangeType,
-    alpha: Rc<Alphabet>
+    env: Env,
 }
 
 #[derive(Clone, Copy)]
@@ -47,7 +47,7 @@ impl Range {
         if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
             Ok(Item::empty_stream())
         } else {
-            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, alpha: Rc::clone(env.alphabet())}))
+            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, env: env.clone()}))
         }
     }
 
@@ -103,8 +103,8 @@ impl Describe for Range {
                     .push_args(&self.step)
                     .finish(prec),
             RangeType::Character(case) => {
-                let abc = &self.alpha;
-                DescribeBuilder::new(&self.head, env)
+                let abc = &self.env.alpha;
+                DescribeBuilder::new_with_env(&self.head, env, &self.env)
                     .push_arg(&abc.chr(self.from.as_ref().expect("char range should have from"), case))
                     .push_arg(&abc.chr(&self.to, case))
                     .push_args(&self.step)
@@ -128,7 +128,7 @@ impl Iterator for RangeIter<'_> {
             || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
                 let ret = match self.parent.rtype {
                     RangeType::Numeric => Item::new_number(self.value.clone()),
-                    RangeType::Character(case) => Item::new_char(self.parent.alpha.chr(&self.value, case))
+                    RangeType::Character(case) => Item::new_char(self.parent.env.alpha.chr(&self.value, case))
                 };
                 match &self.parent.step {
                     Some(step) => self.value += step,
@@ -239,6 +239,7 @@ mod tests {
         test_describe!("range(1,5,2)" => "range(1, 5, 2)");
         test_describe!("range('a','Z')" => "range('a', 'z')");
         test_describe!("range('A','z',2)" => "range('A', 'Z', 2)");
+        test_describe!("alpha(\"abz\", range('a','Z'))" => "alpha(['a', 'b', 'z'], range('a', 'z'))");
         test_describe!("1..5" => "1..5");
         test_describe!("(-1)..5" => "(-1)..5");
         test_describe!("-(1..5)" => "-1..5");

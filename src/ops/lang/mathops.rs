@@ -157,7 +157,9 @@ impl MathOp {
 
 impl Describe for MathOp {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        self.node.describe_inner(prec, env)
+        DescribeBuilder::new_with_env(&self.node.head, env, &self.env)
+            .push_args(&self.node.args)
+            .finish(prec)
     }
 }
 
@@ -493,6 +495,7 @@ mod tests {
         test_describe!("1+2+3+4-5*6*7/8" => "-16");
         assert_eq!(parse("1+2+3+4-5*6*7/8").unwrap().describe(), "(1+2+3+4)-(5*6*7)/8");
         assert_eq!(parse("1+(2+3)").unwrap().describe(), "1+(2+3)");
+        test_describe!("alpha(\"abc\", 'a'+seq)" => "alpha(['a', 'b', 'c'], 'a'+seq)");
 
         test_len!("\"abc\"+seq" => 3);
         test_len!("\"a b c!\"+1..3+1" => 6);
@@ -516,6 +519,7 @@ mod tests {
         test_describe!("\"a b c!\"+1..3+1" => "\"a b c!\"+1..3+1");
         test_eval!("alpha(\"bac\", \"abc\"+1)" => "\"cab\"");
         test_describe!("alpha(\"bac\", \"abc\"+1)" => "alpha(['b', 'a', 'c'], \"abc\"+1)");
+        test_describe!("alpha(\"bac\", alpha(alpha.rev, \"abc\"+1))" => "alpha(['c', 'a', 'b'], \"abc\"+1)");
     }
 }
 
