@@ -105,11 +105,12 @@ mod tests {
         let mut iter = missing.into_iter();
         if let Some(sym) = iter.next() {
             print!("No documentation: {sym}");
+            for sym in iter {
+                print!(", {sym}");
+            }
+            println!();
+            res = Err(DocError);
         }
-        for sym in iter {
-            print!(", {sym}");
-        }
-        println!();
         res
     }
 
@@ -150,12 +151,8 @@ mod tests {
     }
 
     fn check_ref(sym: &str, referrer: &str) -> Result<(), DocError> {
-        let Some(docs) = SYMBOLS.0.get(sym) else {
-            eprintln!("{referrer} references {sym} which does not exist");
-            return Err(DocError);
-        };
-        if docs.1.is_none() {
-            eprintln!("{referrer} references {sym} which does not have docs");
+        if SYMBOLS.0.get(sym).is_none() {
+            println!("{referrer} references {sym} which does not exist");
             Err(DocError)
         } else {
             Ok(())

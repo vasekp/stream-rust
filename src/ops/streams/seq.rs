@@ -109,7 +109,6 @@ A stream of consecutive numbers. If `from` or `step` are not given, they default
 > ?(0) => [0, 1, 2, 3, 4, ...]
 > ?(0, 2) => [0, 2, 4, 6, 8, ...]
 > ?(3, -1) => [3, 2, 1, 0, -1, ...]
-> ?('a', 1) => !unsupported arguments
 : range
 "#));
 }
