@@ -165,7 +165,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     print!("{}", "See also: ".yellow().bold());
                     print!("{}", see.white().underline());
                     for see in iter {
-                        print!(", {}", see.underline());
+                        print!(", {}", see.white().underline());
                     }
                     println!();
                 }
@@ -212,11 +212,11 @@ fn format_cli(line: &str, sym: &str) -> String {
         for item in content {
             match item {
                 RefStringItem::Base(s) => part += &s,
-                RefStringItem::Ref(s) => part += &s.white().underline(),
+                RefStringItem::Ref(s) => part += &s.white().underline().to_string(),
             }
         }
         if is_code {
-            ret += &part.white().underline().to_string();
+            ret += &part.white().to_string();
         } else {
             ret += &part.to_string();
         }
