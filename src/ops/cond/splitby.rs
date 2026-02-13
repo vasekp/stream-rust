@@ -28,7 +28,7 @@ struct SplitByIter<'node, I: ItemType> {
 
 impl<I: ItemType> Describe for SplitBy<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new(&self.head, env)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
             .push_arg(&self.cond)
             .finish(prec)

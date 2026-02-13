@@ -55,11 +55,6 @@ impl<'a> DescribeBuilder<'a> {
         self
     }
 
-    pub(crate) fn set_outer_env(&mut self, env: &'a Env) -> &mut Self {
-        self.env_outer = Some(env);
-        self
-    }
-
     pub(crate) fn finish(&self, prec: u32) -> String {
         if let Some(env) = self.env_outer {
             Env::wrap_describe(env, self.env, |prec| self.to_string(prec), prec)

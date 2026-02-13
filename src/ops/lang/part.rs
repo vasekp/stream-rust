@@ -86,7 +86,7 @@ impl Stream for Part {
 
 impl Describe for Part {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new(&self.head, env)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
             .push_arg(&*self.indices)
             .push_args(&self.rest)

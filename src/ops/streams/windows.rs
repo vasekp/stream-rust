@@ -44,9 +44,11 @@ struct Windows {
 impl Describe for Windows {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         if let Some(body) = &self.body {
-            Node::describe_with_env(&self.env, &self.head, Some(&self.source),
-                [&Expr::from(Item::new_number(self.size)), &Expr::from(body.clone())],
-                prec, env)
+            DescribeBuilder::new_with_env(&self.head, env, &self.env)
+                .set_source(&self.source)
+                .push_arg(&self.size)
+                .push_arg(body)
+                .finish(prec)
         } else {
             DescribeBuilder::new(&self.head, env)
                 .set_source(&self.source)
@@ -150,6 +152,8 @@ mod tests {
         test_advance("(1..(10^10)).windows(5)");
         test_eval!("seq.windows(3, plus)" => "[6, 9, 12, 15, 18, ...]");
         test_eval!("(seq^2).windows(3, {#2-#1})" => "[3, 5, 7, 9, 11, ...]");
+        test_describe!("seq.windows(3)" => "seq.windows(3)");
+        test_describe!("alpha(\"abc\",seq.windows(2, {#1+#2}))" => "alpha(['a', 'b', 'c'], seq.windows(2, {#1+#2}))");
     }
 }
 

@@ -166,23 +166,6 @@ impl Node {
             None => Ok(RNodeNS { head: self.head, args: self.args.into() })
         }
     }
-
-    pub(crate) fn describe_with_env<'a, T, U>(
-        env_inner: &Env,
-        head: &Head,
-        source: Option<&T>,
-        args: impl IntoIterator<Item = &'a U>,
-        prec: u32,
-        env_outer: &Env)
-    -> String
-        where T: Describe, U: Describe + 'a
-    {
-        DescribeBuilder::new(head, env_inner)
-            .set_outer_env(env_outer)
-            .set_source_opt(&source)
-            .push_args(args)
-            .finish(prec)
-    }
 }
 
 impl Describe for Node {
