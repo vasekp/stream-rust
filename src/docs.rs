@@ -70,7 +70,11 @@ pub fn parse_line(line: &str, sym: &str) -> Vec<LinePart> {
                         break;
                     }
                 }
-                part.content.push(RefStringItem::Ref(if s2.is_empty() { sym.to_string() } else { s2 }));
+                if s2.is_empty() {
+                    part.content.push(RefStringItem::Base(sym.to_string()));
+                } else {
+                    part.content.push(RefStringItem::Ref(s2));
+                }
             },
             '`' => {
                 if !partial.is_empty() {
@@ -125,7 +129,7 @@ fn test_parse_line() {
         LinePart { content: vec![ RefStringItem::Base("abc".to_string()) ], is_code: true },
         LinePart { content: vec![ RefStringItem::Base("def".to_string()) ], is_code: true },
         LinePart { content: vec![ RefStringItem::Base("ghi".to_string()) ], is_code: false },
-        LinePart { content: vec![ RefStringItem::Base("jkl".to_string()), RefStringItem::Ref("sym".to_string()) ], is_code: false },
+        LinePart { content: vec![ RefStringItem::Base("jkl".to_string()), RefStringItem::Base("sym".to_string()) ], is_code: false },
     ]);
 }
 
