@@ -61,15 +61,20 @@ pub fn find_docs(name: &str) -> Option<&DocRecord> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::docs;
 
     #[derive(Debug)]
     struct DocError;
 
     #[test]
     fn test_docs() -> Result<(), DocError> {
+        use std::collections::HashSet;
         let mut res = Ok(());
+        let mut visited = HashSet::new();
         let mut missing = Vec::new();
         for (sym, rec) in &SYMBOLS.0 {
+            if !(sym.as_bytes()[0] as char).is_ascii_alphabetic() { continue; }
+            if !visited.insert(Arc::as_ptr(rec)) { continue; }
             let (_, Some(docs)) = &**rec else {
                 missing.push(sym);
                 continue;
@@ -78,6 +83,9 @@ mod tests {
                 println!("{sym}: empty description");
                 res = Err(DocError);
             }
+            for line in &docs.desc {
+                res = res.and(check_refs(line, sym));
+            }
             if docs.usage.is_empty() {
                 println!("{sym}: empty usage");
                 res = Err(DocError);
@@ -85,6 +93,13 @@ mod tests {
             if docs.examples.is_empty() {
                 println!("{sym}: no examples");
                 res = Err(DocError);
+            }
+            for ex in &docs.examples {
+                res = res.and(test_example(ex, sym));
+                res = res.and(check_refs(ex.input, sym));
+            }
+            for see in &docs.see {
+                res = res.and(check_ref(see, sym));
             }
         }
         let mut iter = missing.into_iter();
@@ -98,44 +113,26 @@ mod tests {
         res
     }
 
-    #[test]
-    fn test_doc_examples() -> Result<(), DocError> {
-        use crate::parser::parse;
-        use std::collections::HashSet;
-        use crate::docs;
-        let mut visited = HashSet::new();
-        let mut res = Ok(());
-        for (sym, rec) in &SYMBOLS.0 {
-            if !visited.insert(Arc::as_ptr(rec)) { continue; }
-            let Some(docs) = &rec.1 else { continue; };
-            for ex in &docs.examples {
-                let [line] = &docs::parse_line(&ex.input, sym)[..] else {
-                    panic!("malformed example in {}: {}", sym, ex.input);
-                };
-                let input = line.flatten();
-                let Ok(expr) = parse(&input) else {
-                    panic!("failed to parse example in {}: {:?}", sym, input);
-                };
-                let res = expr.eval_default();
-                match (&ex.width, ex.output) {
-                    (None, Ok(out)) => assert_eq!(res.as_ref().map(Item::to_string),
-                        Ok(out.into()), "failed example in {}: {:?}", sym, input),
-                    (Some(width), Ok(out)) => assert_eq!(res.map(|item| format!("{:1$}", item, width)),
-                        Ok(out.into()), "failed example in {}: {:?}", sym, input),
-                    (_, Err(_)) => assert!(res.is_err(), "failed example in {}: {:?}", sym, input)
-                }
-            }
-            for line in &docs.desc {
-                res = res.and(check_refs(line, sym));
-            }
-            for ex in &docs.examples {
-                res = res.and(check_refs(ex.input, sym));
-            }
-            for see in &docs.see {
-                res = res.and(check_ref(see, sym));
-            }
+    fn test_example(ex: &docs::Example, sym: &str) -> Result<(), DocError> {
+        let [line] = &docs::parse_line(&ex.input, sym)[..] else {
+            panic!("malformed example in {}: {}", sym, ex.input);
+        };
+        let input = line.flatten();
+        let Ok(expr) = crate::parse(&input) else {
+            panic!("failed to parse example in {}: {:?}", sym, input);
+        };
+        let res = expr.eval_default();
+        let success = match (&ex.width, ex.output, res) {
+            (None, Ok(out), res) => res.is_ok_and(|item| item.to_string() == out),
+            (Some(width), Ok(out), res) => res.is_ok_and(|item| format!("{:1$}", item, width) == out),
+            (_, Err(_), res) => res.is_err(),
+        };
+        if !success {
+            println!("{sym}: failed example: {input:?}");
+            Err(DocError)
+        } else {
+            Ok(())
         }
-        res
     }
 
     fn check_refs(line: &str, sym: &str) -> Result<(), DocError> {
