@@ -143,7 +143,7 @@ mod tests {
         for part in docs::parse_line(line, sym) {
             for rsym in part.content.iter()
                 .filter_map(|item| match item { RefStringItem::Ref(rsym) => Some(rsym), _ => None })
-                .filter(|rsym| *rsym != sym) {
+                .filter(|rsym| **rsym != sym) {
                     res = res.and(check_ref(rsym, sym));
             }
         }

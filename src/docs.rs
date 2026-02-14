@@ -29,7 +29,7 @@ pub(crate) fn parse_docs(input: &'static str) -> DocRecord {
 }
 
 fn parse_example(line: &'static str) -> Example {
-    let (first, second) = line.split_once(" => ").expect("{line} must respect the format 'input => output'");
+    let (first, second) = line.split_once(" => ").expect("{line} must respect the format 'lineput => output'");
     let (input, width) = match first.split_once(" : ") {
         Some((input, width)) => (input, Some(width.parse().expect("error parsing width specification in {first}"))),
         None => (first, None)
@@ -39,57 +39,53 @@ fn parse_example(line: &'static str) -> Example {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum RefStringItem {
-    Base(String),
-    Ref(String)
+pub enum RefStringItem<'line> {
+    Base(&'line str),
+    Ref(&'line str)
 }
 
 #[derive(Debug, PartialEq)]
-pub struct LinePart {
-    pub content: Vec<RefStringItem>,
+pub struct LinePart<'line> {
+    pub content: Vec<RefStringItem<'line>>,
     pub is_code: bool,
 }
 
-pub fn parse_line(line: &str, sym: &str) -> Vec<LinePart> {
-    let mut iter = line.chars().peekable();
-    let mut partial = String::with_capacity(line.len());
+pub fn parse_line<'line>(line: &'line str, sym: &'line str) -> Vec<LinePart<'line>> {
+    let mut iter = line.char_indices().peekable();
     let mut out = Vec::new();
     let mut part = LinePart { content: Vec::new(), is_code: false };
-    while let Some(c) = iter.next() {
+    let mut last_pos = 0;
+    while let Some((pos, c)) = iter.next() {
         match c {
             '?' => {
-                if !partial.is_empty() {
-                    part.content.push(RefStringItem::Base(std::mem::take(&mut partial)));
+                if pos != last_pos {
+                    part.content.push(RefStringItem::Base(&line[last_pos..pos]));
                 }
-                let mut s2 = String::with_capacity(10);
-                while let Some(c2) = iter.peek() {
-                    if c2.is_ascii_alphanumeric() {
-                        s2.push(*c2);
-                        iter.next();
-                    } else {
-                        break;
-                    }
-                }
-                if s2.is_empty() {
-                    part.content.push(RefStringItem::Base(sym.to_string()));
+                last_pos = pos + 1;
+                while iter.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() { }
+                let pos = iter.peek().map(|(pos, _)| *pos).unwrap_or_else(|| line.len());
+                if pos == last_pos {
+                    part.content.push(RefStringItem::Base(sym));
                 } else {
-                    part.content.push(RefStringItem::Ref(s2));
+                    part.content.push(RefStringItem::Ref(&line[last_pos..pos]));
+                    last_pos = pos;
                 }
             },
             '`' => {
-                if !partial.is_empty() {
-                    part.content.push(RefStringItem::Base(std::mem::take(&mut partial)));
+                if pos != last_pos {
+                    part.content.push(RefStringItem::Base(&line[last_pos..pos]));
                 }
+                last_pos = pos + 1;
                 if !part.content.is_empty() {
                     out.push(LinePart { content: std::mem::take(&mut part.content), is_code: part.is_code });
                 }
                 part.is_code = !part.is_code;
             },
-            _ => partial.push(c)
+            _ => ()
         }
     }
-    if !partial.is_empty() {
-        part.content.push(RefStringItem::Base(std::mem::take(&mut partial)));
+    if last_pos < line.len() {
+        part.content.push(RefStringItem::Base(&line[last_pos..]));
     }
     if part.is_code {
         panic!("unterminated '`' in doc string of {sym}");
@@ -101,7 +97,7 @@ pub fn parse_line(line: &str, sym: &str) -> Vec<LinePart> {
     out
 }
 
-impl LinePart {
+impl LinePart<'_> {
     pub fn flatten(&self) -> String {
         let mut ret = String::new();
         for item in &self.content {
@@ -116,20 +112,23 @@ impl LinePart {
 #[cfg(test)]
 #[test]
 fn test_parse_line() {
+    assert_eq!(parse_line("abc?def", "sym"), vec![
+        LinePart { content: vec![ RefStringItem::Base("abc"), RefStringItem::Ref("def") ], is_code: false },
+    ]);
     assert_eq!(parse_line("abc?def`ghi?jkl`mno", "sym"), vec![
-        LinePart { content: vec![ RefStringItem::Base("abc".to_string()), RefStringItem::Ref("def".to_string()) ], is_code: false },
-        LinePart { content: vec![ RefStringItem::Base("ghi".to_string()), RefStringItem::Ref("jkl".to_string()) ], is_code: true },
-        LinePart { content: vec![ RefStringItem::Base("mno".to_string()) ], is_code: false },
+        LinePart { content: vec![ RefStringItem::Base("abc"), RefStringItem::Ref("def") ], is_code: false },
+        LinePart { content: vec![ RefStringItem::Base("ghi"), RefStringItem::Ref("jkl") ], is_code: true },
+        LinePart { content: vec![ RefStringItem::Base("mno") ], is_code: false },
     ]);
     assert_eq!(parse_line("?abc def`?ghi jkl`", "sym"), vec![
-        LinePart { content: vec![ RefStringItem::Ref("abc".to_string()), RefStringItem::Base(" def".to_string()) ], is_code: false },
-        LinePart { content: vec![ RefStringItem::Ref("ghi".to_string()), RefStringItem::Base(" jkl".to_string()) ], is_code: true },
+        LinePart { content: vec![ RefStringItem::Ref("abc"), RefStringItem::Base(" def") ], is_code: false },
+        LinePart { content: vec![ RefStringItem::Ref("ghi"), RefStringItem::Base(" jkl") ], is_code: true },
     ]);
     assert_eq!(parse_line("`abc``def`ghi``jkl?", "sym"), vec![
-        LinePart { content: vec![ RefStringItem::Base("abc".to_string()) ], is_code: true },
-        LinePart { content: vec![ RefStringItem::Base("def".to_string()) ], is_code: true },
-        LinePart { content: vec![ RefStringItem::Base("ghi".to_string()) ], is_code: false },
-        LinePart { content: vec![ RefStringItem::Base("jkl".to_string()), RefStringItem::Base("sym".to_string()) ], is_code: false },
+        LinePart { content: vec![ RefStringItem::Base("abc") ], is_code: true },
+        LinePart { content: vec![ RefStringItem::Base("def") ], is_code: true },
+        LinePart { content: vec![ RefStringItem::Base("ghi") ], is_code: false },
+        LinePart { content: vec![ RefStringItem::Base("jkl"), RefStringItem::Base("sym") ], is_code: false },
     ]);
 }
 
