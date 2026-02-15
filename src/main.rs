@@ -217,14 +217,14 @@ fn format_cli(line: &str, sym: &str) -> String {
         let mut part = String::new();
         for item in content {
             match item {
-                RefStringItem::Base(s) => part += &s,
-                RefStringItem::Ref(s) => part += &s.white().underline().to_string(),
+                RefStringItem::Base(s) => part += s,
+                RefStringItem::Ref(s) => part += &s.white().underline(),
             }
         }
         if is_code {
-            ret += &part.white().to_string();
+            ret += &part.white();
         } else {
-            ret += &part.to_string();
+            ret += &part;
         }
     }
     ret

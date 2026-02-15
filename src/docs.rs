@@ -96,10 +96,8 @@ pub fn parse_line<'line>(line: &'line str, sym: &'line str) -> Vec<LinePart<'lin
     }
     if part.is_code {
         panic!("unterminated '`' in doc string of {sym}");
-    } else {
-        if !part.content.is_empty() {
-            out.push(LinePart { content: std::mem::take(&mut part.content), is_code: part.is_code });
-        }
+    } else if !part.content.is_empty() {
+        out.push(LinePart { content: std::mem::take(&mut part.content), is_code: part.is_code });
     }
     out
 }

@@ -65,7 +65,7 @@ impl TextTracer {
             }
         }
         match t.output {
-            Ok(out) => println!("{}", Self::styled(&out.to_string())),
+            Ok(out) => println!("{}", Self::styled(&out)),
             Err(err) => println!("{}", Self::styled(&format!("[!] {err}"))),
         }
     }
