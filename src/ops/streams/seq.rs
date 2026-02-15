@@ -100,7 +100,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs(["seq", "iota"], Seq::eval, crate::docs::parse_docs(r#"
+    symbols.insert_with_docs(["seq", "iota"], Seq::eval, r#"
 A stream of consecutive numbers. If `from` or `step` are not given, they default to 1.
 = ?
 = ?(from)
@@ -110,5 +110,5 @@ A stream of consecutive numbers. If `from` or `step` are not given, they default
 > ?(0, 2) => [0, 2, 4, 6, 8, ...]
 > ?(3, -1) => [3, 2, 1, 0, -1, ...]
 : range
-"#));
+"#);
 }

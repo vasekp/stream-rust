@@ -24,7 +24,8 @@ impl Symbols {
     }
 
     pub(crate) fn insert_with_docs(&mut self, names: impl AsSlice<&'static str>,
-            ctor: Constructor, mut docs: DocRecord) {
+            ctor: Constructor, doc_string: &'static str) {
+        let mut docs = DocRecord::from(doc_string);
         debug_assert!(docs.symbols.is_empty());
         docs.symbols = names.as_slice().to_vec();
         let rec = Arc::new((ctor, Some(docs)));

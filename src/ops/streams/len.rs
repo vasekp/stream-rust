@@ -45,12 +45,12 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("len", eval_len, crate::docs::parse_docs(r#"
+    symbols.insert_with_docs("len", eval_len, r#"
 Evaluates to the number of items in `stream`, or the number of characters in `string`.
 = stream.?
 = string.?
 > [2, 4, 6].? => 3
 > "abcde".? => 5
 > ?seq.? => !stream is infinite
-"#));
+"#);
 }

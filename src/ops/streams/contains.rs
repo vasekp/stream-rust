@@ -110,7 +110,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("contains", eval_contains, crate::docs::parse_docs(r#"
+    symbols.insert_with_docs("contains", eval_contains, r#"
 Evaluates to `true` if `stream` contains `item`, or if `string` contains `char` or `substring`, otherwise `false`.
 In case of multiple arguments, evaluates to a stream of one `true` or `false` per argument.
 = stream.?(item)
@@ -125,5 +125,5 @@ In case of multiple arguments, evaluates to a stream of one `true` or `false` pe
 > "abc".?("ab") => true
 > "abc".?("") => !substring can't be empty
 : index
-"#));
+"#);
 }

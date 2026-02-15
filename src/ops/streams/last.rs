@@ -187,7 +187,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("last", eval_last, crate::docs::parse_docs(r#"
+    symbols.insert_with_docs("last", eval_last, r#"
 Up to the last `count` items of `stream`, or up to the last `count` characters of `string`.
 If `count` is not given, only gives the last item or the last character (no stream / string).
 = stream.?
@@ -200,5 +200,5 @@ If `count` is not given, only gives the last item or the last character (no stre
 > "abc".? => 'c'
 > "abc".?(2) => "bc"
 : first
-"#));
+"#);
 }

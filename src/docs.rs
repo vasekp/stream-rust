@@ -19,20 +19,22 @@ pub struct Example {
     pub output: Result<&'static str, &'static str>,
 }
 
-pub(crate) fn parse_docs(input: &'static str) -> DocRecord {
-    let mut rec = DocRecord::default();
-    for line in input.lines() {
-        if line.is_empty() { continue; }
-        match &line[0..1] {
-            "=" => rec.usage.push(line[1..].trim()),
-            ">" => rec.examples.push(parse_example(line[1..].trim())),
-            ":" => rec.see.push(line[1..].trim()),
-            "*" => rec.desc.push((line[1..].trim(), DescType::Tip)),
-            "!" => rec.desc.push((line[1..].trim(), DescType::Warn)),
-            _ => rec.desc.push((line, DescType::Base)),
+impl From<&'static str> for DocRecord {
+    fn from(input: &'static str) -> DocRecord {
+        let mut rec = DocRecord::default();
+        for line in input.lines() {
+            if line.is_empty() { continue; }
+            match &line[0..1] {
+                "=" => rec.usage.push(line[1..].trim()),
+                ">" => rec.examples.push(parse_example(line[1..].trim())),
+                ":" => rec.see.push(line[1..].trim()),
+                "*" => rec.desc.push((line[1..].trim(), DescType::Tip)),
+                "!" => rec.desc.push((line[1..].trim(), DescType::Warn)),
+                _ => rec.desc.push((line, DescType::Base)),
+            }
         }
+        rec
     }
-    rec
 }
 
 fn parse_example(line: &'static str) -> Example {

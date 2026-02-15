@@ -245,7 +245,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs(["range", ".."], Range::eval, crate::docs::parse_docs(r#"
+    symbols.insert_with_docs(["range", ".."], Range::eval, r#"
 A stream of a range of values. If `from` or `step` are not given, they default to 1.
 Also works for characters, in this case `from` must be given. `step` remains numeric.
 A shorthand for `?range(from, to)` is `from..to`.
@@ -260,5 +260,5 @@ A shorthand for `?range(from, to)` is `from..to`.
 > 1..3 => [1, 2, 3]
 > 'a'..'c' => ['a', 'b', 'c']
 : seq
-"#));
+"#);
 }
