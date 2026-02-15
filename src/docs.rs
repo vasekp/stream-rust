@@ -1,10 +1,16 @@
 #[derive(Default)]
 pub struct DocRecord {
-    pub desc: Vec<&'static str>,
+    pub desc: Vec<(&'static str, DescType)>,
     pub symbols: Vec<&'static str>,
     pub usage: Vec<&'static str>,
     pub examples: Vec<Example>,
     pub see: Vec<&'static str>,
+}
+
+pub enum DescType {
+    Base,
+    Warn,
+    Tip,
 }
 
 pub struct Example {
@@ -18,11 +24,12 @@ pub(crate) fn parse_docs(input: &'static str) -> DocRecord {
     for line in input.lines() {
         if line.is_empty() { continue; }
         match &line[0..1] {
-            "-" => rec.desc.push(line[1..].trim()),
             "=" => rec.usage.push(line[1..].trim()),
             ">" => rec.examples.push(parse_example(line[1..].trim())),
             ":" => rec.see.push(line[1..].trim()),
-            _ => rec.desc.push(line),
+            "*" => rec.desc.push((line[1..].trim(), DescType::Tip)),
+            "!" => rec.desc.push((line[1..].trim(), DescType::Warn)),
+            _ => rec.desc.push((line, DescType::Base)),
         }
     }
     rec

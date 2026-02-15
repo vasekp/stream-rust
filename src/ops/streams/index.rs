@@ -121,6 +121,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Attempts to find `item` in `stream`, or `char` or `substring` in `string`, and return its position within.
 If the match is not found, evaluates to `[]`.
 If multiple arguments are provided, evaluates to a stream of the results.
+! Can halt for infinite stream which does not contain any match.
 = stream.?(item)
 = stream.?(item, ...)
 = string.?(char)

@@ -138,8 +138,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 println!();
-                for s in &docs.desc {
-                    println!("{}", format_cli(s, sym));
+                for (s, typ) in &docs.desc {
+                    use docs::DescType;
+                    let prefix = match typ {
+                        DescType::Base => Default::default(),
+                        DescType::Tip => "[*] ".bright_yellow(),
+                        DescType::Warn => "[!] ".bright_red(),
+                    };
+                    println!("{}{}" , prefix, format_cli(s, sym));
                 }
                 if !docs.examples.is_empty() {
                     println!();

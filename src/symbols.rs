@@ -83,7 +83,7 @@ mod tests {
                 println!("{sym}: empty description");
                 res = Err(DocError);
             }
-            for line in &docs.desc {
+            for (line, _) in &docs.desc {
                 res = res.and(check_refs(line, sym));
             }
             if docs.usage.is_empty() {
