@@ -218,11 +218,11 @@ fn format_cli(line: &str, sym: &str) -> String {
         for item in content {
             match item {
                 RefStringItem::Base(s) => part += s,
-                RefStringItem::Ref(s) => part += &s.white().underline(),
+                RefStringItem::Ref(s) => part += &s.white().underline().to_string(),
             }
         }
         if is_code {
-            ret += &part.white();
+            ret += &part.white().to_string();
         } else {
             ret += &part;
         }
