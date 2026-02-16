@@ -188,5 +188,12 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("riffle", Riffle::eval);
+    symbols.insert_with_docs("riffle", Riffle::eval, r#"
+A stream interlevaing `input` with copies of `riffle`.
+If `riffle` is also a stream, interleaves the two streams, until one of them ends.
+= input.?(riffle)
+> ?seq.?(0) => [1, 0, 2, 0, 3, ...]
+> ?range(1, 2).riffle(0) => [1, 0, 2]
+> ?seq.riffle(['a', 'b']) => [1, 'a', 2, 'b', 3]
+"#);
 }

@@ -147,5 +147,15 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("nest", eval_nest);
+    symbols.insert_with_docs("nest", eval_nest, r#"
+Input-form: a stream where `s[n]` is the result of `s[n-1].func` (`input.func` if first).
+Argument-form: a stream where `s[n]` is the result of `m` previous items as `func(..., s[n-1])`, 
+starting with `func(arg1, ..., argM)`.
+= input.?{func}
+= ?{func}(arg1, ..., argM)
+> 1.nest{#*2} => [2, 4, 8, 16, 32, ...]
+> nest{#1+#2}(1,1) => [2, 3, 5, 8, 13, ...]
+> "abc".nest{#+1} => ["bcd", "cde", "def", "efg", "fgh", ...]
+: fold
+"#);
 }

@@ -250,6 +250,24 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["padleft", "padl"], eval_padl);
-    symbols.insert(["padright", "padr"], eval_padr);
+    symbols.insert_with_docs(["padleft", "padl"], eval_padl, r#"
+The input `stream` (or `string`) left-padded to `length` using copies of `item` (or `char`, 
+respectively).
+If the input length is already `length` or more, returns unchanged.
+= stream.?(length, item)
+= string.?(length, char)
+> [1, 2].?(5, 0) => [0, 0, 0, 1, 2]
+> "ab".?(5, ' ') => "   ab"
+: padright
+"#);
+    symbols.insert_with_docs(["padright", "padr"], eval_padr, r#"
+The input `stream` (or `string`) right-padded to `length` using copies of `item` (or `char`, 
+respectively).
+If the input length is already `length` or more, returns unchanged.
+= stream.?(length, item)
+= string.?(length, char)
+> [1, 2].?(5, 0) => [1, 2, 0, 0, 0]
+> "ab".?(5, ' ') => "ab   "
+: padright
+"#);
 }
