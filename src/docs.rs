@@ -17,6 +17,7 @@ pub struct Example {
     pub input: &'static str,
     pub width: Option<usize>,
     pub output: Result<&'static str, &'static str>,
+    pub comment: Option<&'static str>,
 }
 
 impl From<&'static str> for DocRecord {
@@ -43,8 +44,12 @@ fn parse_example(line: &'static str) -> Example {
         Some((input, width)) => (input, Some(width.parse().expect("error parsing width specification in {first}"))),
         None => (first, None)
     };
-    let output = if &second[0..1] == "!" { Err(&second[1..]) } else { Ok(second) };
-    Example{input, width, output}
+    let (result, comment) = match second.split_once(" ; ") {
+        Some((r, c)) => (r, Some(c)),
+        None => (second, None),
+    };
+    let output = if &result[0..1] == "!" { Err(&result[1..]) } else { Ok(result) };
+    Example{input, width, output, comment}
 }
 
 #[derive(Debug, PartialEq)]

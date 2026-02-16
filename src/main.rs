@@ -152,7 +152,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("{}", "Examples:".yellow().bold());
                     let mut index = 1;
                     for example in &docs.examples {
-                        println!("> {}", format_cli(example.input, sym).white());
+                        print!("> {}", format_cli(example.input, sym).white());
+                        if let Some(comment) = example.comment {
+                            println!("{}", format!(" ; {comment}").white().dimmed().italic());
+                        } else {
+                            println!();
+                        }
                         match example.output {
                             Ok(out) => {
                                 println!("{}",
