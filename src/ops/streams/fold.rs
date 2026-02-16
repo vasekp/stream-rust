@@ -93,7 +93,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_with_docs("fold", eval_fold, r#"
 A stream `s` where `s[n]` is the result of `in[n].func(s[n-1])`. The argument `arg1` is used instead of the nonexistent `s[n-1]` for the first item.
 For `m > 1`, the arguments of `func` are the `m` prior results (in order). The original `arg1, ..., argM` are shifted left with each evaluation, the leftmost one dropped.
-= in.fold{func}(arg1, ..., argM)
+= in.?{func}(arg1, ..., argM)
 > ?seq.?{#+#1}(0) => [1, 3, 6, 10, 15, ...] ; partial sums
 > ?seq.?{#*#1}(1) => [1, 2, 6, 24, 120, ...] ; factorials
 > ?seq.?{#1~#}([]) : 9 => [[1], [1, 2], [1, 2, 3], ...] ; appending to a list

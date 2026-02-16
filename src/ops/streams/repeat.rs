@@ -302,10 +302,10 @@ If the `item` is a character or a string, evaluates to a string.
 If `count` is omitted, repeats indefinitely.
 = item.?(count)
 = item.?
-> 1.repeat => [1, 1, 1, 1, 1, ...]
-> 1.repeat(3) => [1, 1, 1]
-> [1, 2].repeat(2) => [1, 2, 1, 2]
-> 'a'.repeat(5) => "aaaaa"
-> "ab".repeat => "abababababababababab...
+> 1.? => [1, 1, 1, 1, 1, ...]
+> 1.?(3) => [1, 1, 1]
+> [1, 2].?(2) => [1, 2, 1, 2]
+> 'a'.?(5) => "aaaaa"
+> "ab".? => "abababababababababab...
 "#);
 }

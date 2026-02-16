@@ -153,9 +153,9 @@ Argument-form: a stream where `s[n]` is the result of `m` previous items as `fun
 starting with `func(arg1, ..., argM)`.
 = input.?{func}
 = ?{func}(arg1, ..., argM)
-> 1.nest{#*2} => [2, 4, 8, 16, 32, ...]
-> nest{#1+#2}(1,1) => [2, 3, 5, 8, 13, ...] ; Fibonacci sequence
-> "abc".nest{#+1} => ["bcd", "cde", "def", "efg", "fgh", ...]
+> 1.?{#*2} => [2, 4, 8, 16, 32, ...]
+> ?{#1+#2}(1,1) => [2, 3, 5, 8, 13, ...] ; Fibonacci sequence
+> "abc".?{#+1} => ["bcd", "cde", "def", "efg", "fgh", ...]
 : fold
 "#);
 }

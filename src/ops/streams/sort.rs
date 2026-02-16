@@ -45,7 +45,7 @@ mod tests {
         use super::*;
 
         test_eval!("[5,2,9,3,5].sort" => "[2, 3, 5, 5, 9]");
-        //test_eval!("\"bac\".sort" => err);
+        test_eval!("\"bac\".sort" => err);
         test_eval!("['b','a','c'].sort" => "['a', 'b', 'c']");
         test_eval!("[\"abc\", \"def\", \"AdS\"].sort" => "[\"abc\", \"AdS\", \"def\"]");
         test_eval!("alpha(\"aáb\", [\"a\", \"B\", \"Á\"].sort)" => "[\"a\", \"Á\", \"B\"]");
@@ -53,5 +53,14 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("sort", eval_sort);
+    symbols.insert_with_docs("sort", eval_sort, r#"
+The input stream, sorted. Arrays of numbers, characters, strings, or streams can be sorted.
+Strings and streams are sorted in lexicographic order.
+= stream.?
+> [5,2,9,3,5].? => [2, 3, 5, 5, 9]
+> ['b','a','c'].? => ['a', 'b', 'c']
+> ["one", "two", "three"].? => ["one", "three", "two"]
+> [[1,2],[],[1]].? : 6 => [[], [1], [1, 2]]
+: sortby
+"#);
 }

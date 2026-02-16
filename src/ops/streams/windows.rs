@@ -158,5 +158,13 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("windows", eval_windows);
+    symbols.insert_with_docs("windows", eval_windows, r#"
+Single-argument form: a stream of `size`-sized arrays (overlapping) from the input `stream`.
+Two-argument form: evaluations of the function `func` on the above.
+= stream.?(size)
+= stream.?(size, {func})
+> ?seq.?(3) : 10 => [[1, 2, 3], [2, 3, 4], [3, ...], ...]
+> ?seq.?(3, plus) => [6, 9, 12, 15, 18, ...]
+> [1, 3, 7, 5].?(2, {#2-#1}) => [2, 4, -2] ; differences
+"#);
 }
