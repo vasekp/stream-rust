@@ -214,5 +214,12 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("reorder", eval_reorder);
+    symbols.insert_with_docs("reorder", eval_reorder, r#"
+A stream applying a given permutation on the input `stream`: returning `stream[i1]`, `stream[i2]` etc., followed by all the remaining items.
+= stream.?(i1, ..., iK)
+> ('a'..'e').?(3, 2, 1) => ['c', 'b', 'a', 'd', 'e']
+> (1..5).?(3) => [3, 1, 2, 4, 5]
+> ?seq.?(10, 10) => !indices can not repeat
+: perm
+"#);
 }

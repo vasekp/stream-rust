@@ -76,6 +76,7 @@ mod tests {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_with_docs("enum", eval_enum, r#"
 A stream where each element is accompanied by its position in the original `stream`.
+Equivalent to `stream.?zip(?seq)`.
 = stream.?
 > ["one", "two", "three"].? : 10 => [["one", 1], ["two", 2], ["three", 3]]
 : index
