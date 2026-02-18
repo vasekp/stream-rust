@@ -129,19 +129,222 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("isnum", eval_class);
-    symbols.insert("isbool", eval_class);
-    symbols.insert("ischar", eval_class);
-    symbols.insert("isstream", eval_class);
-    symbols.insert("isstring", eval_class);
-    symbols.insert("isodd", eval_class);
-    symbols.insert("iseven", eval_class);
-    symbols.insert("isempty", eval_class);
-    symbols.insert("isalpha", eval_class);
-    symbols.insert("isascii", eval_class);
-    symbols.insert("isdigit", eval_class);
-    symbols.insert("iswhite", eval_class);
-    symbols.insert("isupper", eval_class);
-    symbols.insert("islower", eval_class);
-    symbols.insert("isnumeric", eval_class);
+    symbols.insert_with_docs("isnum", eval_class, r#"
+Evaluates to `true` if `input` is a number, `false` otherwise.
+= input.?
+> 1.? => true
+> [1, 2].? => false
+> "1".? => false
+: isnum
+: isbool
+: ischar
+: isstream
+: isstring
+: isodd
+: iseven
+: isnumeric
+"#);
+    symbols.insert_with_docs("isbool", eval_class, r#"
+Evaluates to `true` if `input` is a boolean value (`true` or `false`), `false` otherwise.
+= input.?
+> 1.? => false
+> true.? => true
+> false.? => true
+> "true".? => false
+: isnum
+: ischar
+: isstream
+: isstring
+"#);
+    symbols.insert_with_docs("ischar", eval_class, r#"
+Evaluates to `true` if `input` is a character, `false` otherwise.
+= input.?
+> 1.? => false
+> 'x'.? => true
+> "x".? => false
+: isnum
+: isbool
+: isstream
+: isstring
+: isalpha
+: isdigit
+: iswhite
+: isupper
+: islower
+: isnumeric
+"#);
+    symbols.insert_with_docs("isstream", eval_class, r#"
+Evaluates to `true` if `input` is a stream, `false` otherwise.
+= input.?
+> 1.? => false
+> "string".? => false
+> [1, 2].? => true
+> [].? => true
+: isnum
+: isbool
+: ischar
+: isstring
+: isempty
+"#);
+    symbols.insert_with_docs("isstring", eval_class, r#"
+Evaluates to `true` if `input` is a string, `false` otherwise.
+= input.?
+> 1.? => false
+> "string".? => true
+> ['a', 'b'].? => false
+: isnum
+: isbool
+: ischar
+: isstream
+: isempty
+"#);
+    symbols.insert_with_docs("isodd", eval_class, r#"
+Evaluates to `true` if `number` is odd, `false` otherwise.
+= number.?
+> 1.? => true
+> 0.? => false
+> 'a'.? => !not a number
+: isnum
+: isnumeric
+"#);
+    symbols.insert_with_docs("iseven", eval_class, r#"
+Evaluates to `true` if `number` is even, `false` otherwise.
+= number.?
+> 1.? => false
+> 0.? => true
+> 'a'.? => !not a number
+: isnum
+: isnumeric
+"#);
+    symbols.insert_with_docs("isempty", eval_class, r#"
+Evaluates to `true` if `input` is an empty stream or an empty string, `false` otherwise.
+= input.?
+> [].? => true
+> "".? => true
+> [[]].? => false
+> " ".? => false
+: isstream
+: isstring
+: isnumeric
+"#);
+    symbols.insert_with_docs("isalpha", eval_class, r#"
+Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` otherwise.
+= char.?
+> 'a'.? => true
+> 'A'.? => true
+> 'á'.? => false
+> "a".? => !not a character
+: ischar
+: isascii
+: isdigit
+: iswhite
+: isupper
+: islower
+: isnumeric
+"#);
+    symbols.insert_with_docs("isascii", eval_class, r#"
+Evaluates to `true` if `char` is ASCII, `false` otherwise.
+= char.?
+> 'a'.? => true
+> '#'.? => true
+> 'á'.? => false
+> "a".? => !not a character
+: ischar
+: isalpha
+: isdigit
+: iswhite
+: isupper
+: islower
+: isnumeric
+"#);
+    symbols.insert_with_docs("isdigit", eval_class, r#"
+Evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
+= char.?
+> 'a'.? => false
+> '5'.? => true
+> "5".? => !not a character
+: ischar
+: isalpha
+: isascii
+: iswhite
+: isupper
+: islower
+: isnumeric
+"#);
+    symbols.insert_with_docs("iswhite", eval_class, r#"
+Evaluates to `true` if `char` is a whitespace character, `false` otherwise.
+= char.?
+> ' '.? => true
+> '\n'.? => true
+> '5'.? => false
+> " ".? => !not a character
+: ischar
+: isalpha
+: isascii
+: isdigit
+: isupper
+: islower
+: isnumeric
+"#);
+    symbols.insert_with_docs("isupper", eval_class, r#"
+For characters: evaluates to `true` if `char` is uppercase, `false` otherwise.
+For strings: evaluates to `true` if all alphabetic characters are uppercase and there is at least one of them.
+= char.?
+= string.?
+> ' '.? => false
+> 'A'.? => true
+> "ABC".? => true
+> "Abc".? => false
+> "A B".? => true
+> " ".? => false
+: ischar
+: isstring
+: isalpha
+: isascii
+: isdigit
+: iswhite
+: islower
+: isnumeric
+"#);
+    symbols.insert_with_docs("islower", eval_class, r#"
+For characters: evaluates to `true` if `char` is lowercase, `false` otherwise.
+For strings: evaluates to `true` if all alphabetic characters are lowercase and there is at least one of them.
+= char.?
+= string.?
+> ' '.? => false
+> 'a'.? => true
+> "abc".? => true
+> "Abc".? => false
+> "a b".? => true
+> " ".? => false
+: ischar
+: isstring
+: isalpha
+: isascii
+: isdigit
+: iswhite
+: isupper
+: isnumeric
+"#);
+    symbols.insert_with_docs("isnumeric", eval_class, r#"
+For characters: evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
+For strings: evaluates to `true` if the string represents a number. Apart from digits, it can start 
+with a sign `+` or `-`.
+= char.?
+= string.?
+> '1'.? => true
+> '+'.? => false
+> "123".? => true
+> "+0".? => true
+> "+".? => false
+: ischar
+: isstring
+: isalpha
+: isascii
+: isdigit
+: iswhite
+: isupper
+: islower
+: strnum
+"#);
 }
