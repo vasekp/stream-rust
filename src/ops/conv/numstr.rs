@@ -50,14 +50,14 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
         RNodeS { source: Item::String(s), args: RArgs::One(Item::Number(radix)), .. } =>
             match radix.to_u32() {
                 Some(radix) if (2..=36).contains(&radix) => (s, radix),
-                _ => return Err(StreamError::new("radix must be between 2 and 36", rnode))
+                _ => return Err(StreamError::new("base must be between 2 and 36", rnode))
             },
         _ => return Err(StreamError::new("expected: string.strnum or string.strnum(radix)", rnode))
     };
     let st = try_with!(rnode, s.iter().map(|ch| -> Result<u8, BaseError> {
         check_stop!();
         match ch? {
-            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-') => Ok(c as u8),
+            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c as u8),
             _ => Err(BaseError::from("invalid character"))
         }})
         .collect::<Result<Vec<_>, _>>()?);
@@ -69,7 +69,7 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
 pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
     match radix.to_u32() {
         Some(radix) if (2..=36).contains(&radix) => Ok(radix),
-        _ => Err("radix must be between 2 and 256".into())
+        _ => Err("base must be between 2 and 256".into())
     }
 }
 
@@ -102,6 +102,7 @@ mod tests {
         test_eval!("\"\".strnum" => err);
         test_eval!("\"-\".strnum" => err);
         test_eval!("\"-0\".strnum" => "0");
+        test_eval!("\"+0\".strnum" => "0");
         test_eval!("\"-FFFFFFFFFFFFFFFFFFFF\".strnum(16)" => "-1208925819614629174706175");
         test_eval!("\"A\".strnum" => err);
         test_eval!("\"A\".strnum(11)" => "10");
@@ -110,6 +111,28 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("numstr", eval_numstr);
-    symbols.insert("strnum", eval_strnum);
+    symbols.insert_with_docs("numstr", eval_numstr, r#"
+Converts `number` to a string.
+If `base` is not given, it defaults to 10 (decadic).
+If `min_width` is given, the string is zero-padded if shorter.
+= number.?
+= number.?(base)
+= number.?(base, min_width)
+> 42.? => "42"
+> (-15).?(10, 5) => "-00015" ; sign does not count towards width
+> 42.?(2) => "101010"
+> 65535.?(16) => "FFFF" ; base-11 to base-36 digits are uppercase
+: strnum
+: numdig
+"#);
+    symbols.insert_with_docs("strnum", eval_strnum, r#"
+Converts `string` into a number.
+If `base` is not given, it defaults to 10 (decadic).
+= string.?
+= string.?(base)
+> "-42".? => -42
+> "ffff".?(16) => 65535 ; both uppercase and lowercase accepted
+: numstr
+: dignum
+"#);
 }

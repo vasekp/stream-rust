@@ -100,6 +100,28 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("numdig", eval_numdig);
-    symbols.insert("dignum", eval_dignum);
+    symbols.insert_with_docs("numdig", eval_numdig, r#"
+Converts `number` to a stream of digits (most significant first).
+If `base` is not given, it defaults to 10 (decadic).
+If `min_width` is given, the stream is zero-padded if shorter.
+! `?` can not accept negative numbers.
+= number.?
+= number.?(base)
+= number.?(base, min_width)
+> 42.? => [4, 2]
+> 42.?(10, 5) => [0, 0, 0, 4, 2]
+> 65500.?(256) => [255, 220] ; base can exceed 36 (up to 256)
+: dignum
+: numstr
+"#);
+    symbols.insert_with_docs("dignum", eval_dignum, r#"
+Converts a stream of digits into a number.
+If `base` is not given, it defaults to 10 (decadic).
+= stream.?
+= stream.?(base)
+> [1, 6].? => 16
+> [1, 0, 0, 0].?(2) => 8
+: numdig
+: strnum
+"#);
 }

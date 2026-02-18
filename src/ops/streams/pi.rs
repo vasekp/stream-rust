@@ -9,7 +9,7 @@ fn eval_pi(node: Node, env: &Env) -> Result<Item, StreamError> {
             if let Some(radix) = radix.to_u32() {
                 Ok(Item::new_stream(Pi{head: rnode.head, radix: Some(radix)}))
             } else {
-                Err(StreamError::new("radix too large", rnode))
+                Err(StreamError::new("base too large", rnode))
             }
         }
         _ => Err(StreamError::new("expected: pi or pi(radix)", rnode))

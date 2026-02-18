@@ -85,5 +85,12 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("while", eval_while);
+    symbols.insert_with_docs("while", eval_while, r#"
+Evaluates `cond` on items of `stream` and returns them as long as the result is `true`.
+(The first item for which `item.cond == false` stops the stream.}
+= stream.?{cond}
+> [1, 2, -1, 0, 5].?{# > 0} => [1, 2]
+> ?range(10).?(?isodd) => [1]
+: select
+"#);
 }
