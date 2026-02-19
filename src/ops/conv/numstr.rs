@@ -113,7 +113,7 @@ mod tests {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_with_docs("numstr", eval_numstr, r#"
 Converts `number` to a string.
-If `base` is not given, it defaults to 10 (decadic).
+If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
 If `min_width` is given, the string is zero-padded if shorter.
 = number.?
 = number.?(base)
@@ -127,7 +127,7 @@ If `min_width` is given, the string is zero-padded if shorter.
 "#);
     symbols.insert_with_docs("strnum", eval_strnum, r#"
 Converts `string` into a number.
-If `base` is not given, it defaults to 10 (decadic).
+If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
 = string.?
 = string.?(base)
 > "-42".? => -42

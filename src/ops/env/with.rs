@@ -122,5 +122,16 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("with", eval_with);
+    symbols.insert_with_docs("with", eval_with, r#"
+Defines or redefines symbols (local variables) for the evaluation of `expr`.
+Both values and functions can be assigned: expressions enclosed in `{}` can refer to `#, #1, ...` and are evaluated only when used.
+* The assignments are processed from left to right, so one assignment can already be used in defining the next.
+= ?(var1=value1, ..., expr)
+> ?(str="input", str~", "~str) => "input, input"
+> ?(func={#.isodd & #>=3}, (1..5).?filter(func)) => [3, 5]
+> ?(a = [3, 4, 5], b = a + 1, b - a) => [1, 1, 1]
+> ?(seq=[1, 2, 3], seq) => [1, 2, 3] ; can redefine existing keywords
+: alpha
+: global
+"#);
 }
