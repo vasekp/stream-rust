@@ -39,7 +39,7 @@ impl From<&'static str> for DocRecord {
 }
 
 fn parse_example(line: &'static str) -> Example {
-    let (first, second) = line.split_once(" => ").expect("{line} must respect the format 'lineput => output'");
+    let (first, second) = line.split_once(" => ").expect("{line} must respect the format 'input => output'");
     let (input, width) = match first.split_once(" : ") {
         Some((input, width)) => (input, Some(width.parse().expect("error parsing width specification in {first}"))),
         None => (first, None)
