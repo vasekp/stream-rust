@@ -42,6 +42,24 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("ord", eval_ord);
-    symbols.insert("chr", eval_chr);
+    symbols.insert_with_docs("ord", eval_ord, r#"
+Converts `char` to its order in the current alphabet.
+= char.?
+> 'z'.? => 26
+> ?alpha("αβγ", 'Γ'.?) => 3
+> "Hello".chars:? => [8, 5, 12, 12, 15]
+: alpha
+: chr
+"#);
+    symbols.insert_with_docs("chr", eval_chr, r#"
+Converts `number` to character in alphabet (lowercase).
+* This function wraps automatically.
+= number.?
+> 26.? => 'z'
+> [8, 5, 12, 12, 15]:?.?string => "hello"
+> ?range(25, 28):? => ['y', 'z', 'a', 'b'] ; wraps automatically
+> ?alpha("αβγ", 2.?) => 'β'
+: alpha
+: ord
+"#);
 }

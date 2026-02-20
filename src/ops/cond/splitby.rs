@@ -97,8 +97,9 @@ If the input is a string, evaluates `cond` on characters and returns a stream of
 ! Does not coalesce the delimiters. If multiple items in a row satisfy `item.cond`, the output will contain empty streams / empty strings.
 = stream.?{cond}
 = string.?{cond}
-> [1, 2, -1, 0, 5].?{# == 0} : 6 => [[1, 2, -1], [5]]
+> [1, 2, -1, 0, 5].?{# < 0} : 6 => [[1, 2], [0, 5]]
 > "Hello world".?(?iswhite) => ["Hello", "world"]
 > "three   spaces".?(?iswhite) => ["three", "", "", "spaces"]
+: split
 "#);
 }

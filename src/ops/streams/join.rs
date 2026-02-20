@@ -200,5 +200,6 @@ The shorthand for `?(a, b, c, ...)` is `a~b~c~...`.
 > ['a', 'b', 'c']~?seq => ['a', 'b', 'c', 1, 2, ...]
 > [1, 2]~3~"abc" => [1, 2, 3, "abc"]
 > "Hello"~' '~"world" => "Hello world"
+: cat
 "#);
 }

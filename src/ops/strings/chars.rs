@@ -97,6 +97,22 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("chars", Chars::eval);
-    symbols.insert("string", Str::eval);
+    symbols.insert_with_docs("chars", Chars::eval, r#"
+Splits `string` into a stream of characters.
+= string.?
+> "Hello".? => ['H', 'e', 'l', 'l', 'o']
+> "Hello".?:ord => [8, 5, 12, 12, 15]
+: string
+"#);
+    symbols.insert_with_docs("string", Str::eval, r#"
+Turns a stream of characters into a string.
+* Functionally equivalent to `?cat` but optimized for this purpose.
+= stream.?
+> ['a', 'b', 'c'].? => "abc"
+> 1.? => !not a stream
+> ['a', 'b', 1].? => "ab<!> ; non-character in the stream only causes error when it's reached
+: chars
+: cat
+: numstr
+"#);
 }

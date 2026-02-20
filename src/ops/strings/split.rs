@@ -169,5 +169,16 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("split", eval_split);
+    symbols.insert_with_docs("split", eval_split, r#"
+Splits `string` on occurrences of any of the `delimiter`s, which can each be a character or a substring.
+For streams: the `delimiter`s are any items, which are compared for exact match.
+= string.split(delimiter...)
+= stream.split(delimiter...)
+> "Hello, world".?(", ") => ["Hello", "world"]
+> "Hello, world".?(' ', ',') => ["Hello", "", "world"] ; there's an empty string between ',' and ' '
+> "two  spaces".?(" ", "  ") => ["two", "", "spaces"] ; " " is encountered before "  "
+> ?range(10).?(3) : 6 => [[1, 2], [4, 5, ...]]
+> ?range(10).?([3, 4]) : 6 => [[1, 2, 3, 4, 5, ...]] ; the *item* [3, 4] never appears
+: splitby
+"#);
 }
