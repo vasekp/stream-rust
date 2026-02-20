@@ -172,7 +172,7 @@ impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("lenAM", eval_len_am);
-    symbols.insert("lenUF", eval_len_uf);
-    symbols.insert("lenUU", eval_len_uu);
+    symbols.insert("$lenAM", eval_len_am);
+    symbols.insert("$lenUF", eval_len_uf);
+    symbols.insert("$lenUU", eval_len_uu);
 }

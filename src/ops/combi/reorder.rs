@@ -191,8 +191,8 @@ mod tests {
         test_eval!("('a'..'e').reorder(0)" => err);
         test_eval!("('a'..'e').reorder(6)" => err);
         test_eval!("('a'..'e').reorder()" => "['a', 'b', 'c', 'd', 'e']");
-        test_eval!("('a'..'e').lenAM.reorder(6)" => err);
-        test_eval!("('a'..'e').lenUF.reorder(6)" => "[<!>");
+        test_eval!("('a'..'e').$lenAM.reorder(6)" => err);
+        test_eval!("('a'..'e').$lenUF.reorder(6)" => "[<!>");
         test_eval!("('a'..'e').reorder(3,2)" => "['c', 'b', 'a', 'd', 'e']");
         test_eval!("('a'..'e').reorder(3,4)" => "['c', 'd', 'a', 'b', 'e']");
         test_eval!("('a'..'e').reorder(2,4)" => "['b', 'd', 'a', 'c', 'e']");
