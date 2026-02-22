@@ -524,11 +524,25 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("+", eval_op);
-    symbols.insert("plus", eval_op);
+    symbols.insert_with_docs(["plus", "+"], eval_op, r#"
+The total of all arguments.
+The shorthand for `?(arg1, arg2, ...)` is `arg1 + arg2 + ...`.
+= ?(arg1, arg2, ...)
+= arg1 + arg2 + ...
+> ?(1, 2, 3, 4) => 10
+> [1, 2, 3, 4, 5].?windows(2, ?) => [3, 5, 7, 9]
+: times
+"#);
     symbols.insert("-", eval_op);
-    symbols.insert("*", eval_op);
-    symbols.insert("times", eval_op);
+    symbols.insert_with_docs(["times", "*"], eval_op, r#"
+The product of all arguments.
+The shorthand for `?(arg1, arg2, ...)` is `arg1 * arg2 * ...`.
+= ?(arg1, arg2, ...)
+= arg1 * arg2 * ...
+> ?(1, 2, 3, 4) => 24
+> [1, 2, 3, 4, 5].?windows(2, ?) => [2, 6, 12, 20]
+: plus
+"#);
     symbols.insert("/", eval_op);
     symbols.insert("%", eval_op);
     symbols.insert("^", eval_op);

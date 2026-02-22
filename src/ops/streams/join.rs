@@ -195,8 +195,8 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_with_docs(["join", "~"], eval_join, r#"
 The concatenation of all `input`s. If all of them are strings or single characters, the result is a string, otherwise, a stream.
 The shorthand for `?(a, b, c, ...)` is `a~b~c~...`.
-= ?(input, input, ...)
-= input~input~...
+= ?(input1, input2, ...)
+= input1~input2~...
 > ['a', 'b', 'c']~?seq => ['a', 'b', 'c', 1, 2, ...]
 > [1, 2]~3~"abc" => [1, 2, 3, "abc"]
 > "Hello"~' '~"world" => "Hello world"

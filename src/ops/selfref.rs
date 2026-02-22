@@ -149,5 +149,9 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("self", SelfRef::eval);
+    symbols.insert_with_docs("self", SelfRef::eval, r#"
+A stream evaluating `func` on its own output, which is put in place of `#`.
+= ?{func}
+> self{1~[#+1]} => [1, [2, [3, ...]]]
+"#);
 }
