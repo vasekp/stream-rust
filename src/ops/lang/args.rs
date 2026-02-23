@@ -37,5 +37,5 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("*args", eval_args);
+    symbols.insert("[args]", eval_args);
 }

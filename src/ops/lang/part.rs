@@ -214,7 +214,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("*part", eval_part);
+    symbols.insert("[part]", eval_part);
     symbols.insert_with_docs("part", eval_part, r#"
 In its simplest form `stream.?(index)`, evaluates to the `index`-th item in `stream`.
 Part specifications can be given to greater depth using multiple arguments.
