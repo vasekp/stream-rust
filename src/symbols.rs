@@ -74,7 +74,7 @@ mod tests {
         let mut visited = HashSet::new();
         let mut missing = Vec::new();
         for (sym, rec) in &SYMBOLS.0 {
-            if !(sym.as_bytes()[0] as char).is_ascii_alphabetic() { continue; }
+            if matches!(sym.as_bytes()[0], b'$' | b'[') { continue; }
             if !visited.insert(Arc::as_ptr(rec)) { continue; }
             let (_, Some(docs)) = &**rec else {
                 missing.push(sym);
