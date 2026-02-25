@@ -70,8 +70,60 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("<<", LexOp::eval);
-    symbols.insert(">>", LexOp::eval);
-    symbols.insert("<<=", LexOp::eval);
-    symbols.insert(">>=", LexOp::eval);
+    symbols.insert_with_docs("<<", LexOp::eval, r#"
+Lexical comparison: Evaluates to `true` if each `item` compares before the next.
+= op1 ? op2 ? ...
+> "abc" ? "abd" ? "ac" => true
+> "a" ? "A" => false
+> 'a' ? "a" => !can't compare characters and strings
+> [1,2,3] ? [1,2,4] ? [1,3] => true
+: <<=
+: >>
+: <
+: ==
+: alpha
+: sort
+"#);
+    symbols.insert_with_docs(">>", LexOp::eval, r#"
+Lexical comparison: Evaluates to `true` if each `item` compares after the next.
+= op1 ? op2 ? ...
+> "abc" ? "aba" ? "ab" => true
+> "a" ? "A" => false
+> 'a' ? "a" => !can't compare characters and strings
+> [1,2,3] ? [1,2,1] ? [1,2] => true
+: <<
+: >>=
+: >
+: ==
+: alpha
+: sort
+"#);
+    symbols.insert_with_docs("<<=", LexOp::eval, r#"
+Lexical comparison: Evaluates to `true` if each `item` compares before or equally with the next.
+= op1 ? op2 ? ...
+> "abc" ? "abd" ? "ac" => true
+> "a" ? "A" => true
+> 'a' ? "a" => !can't compare characters and strings
+> [1,2,3] ? [1,3] ? [1,3] => true
+: <<
+: >>=
+: <=
+: ==
+: alpha
+: sort
+"#);
+    symbols.insert_with_docs(">>=", LexOp::eval, r#"
+Lexical comparison: Evaluates to `true` if each `item` compares after or equally with the next.
+= op1 ? op2 ? ...
+> "abc" ? "abc" ? "ab" => true
+> "a" ? "A" => true
+> 'a' ? "a" => !can't compare characters and strings
+> [1,2,1] ? [1,2,1] ? [1,2] => true
+: >>
+: <<=
+: >=
+: ==
+: alpha
+: sort
+"#);
 }
