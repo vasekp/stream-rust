@@ -100,7 +100,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("numdig", eval_numdig, r#"
+    symbols.insert("numdig", eval_numdig, r#"
 Converts `number` to a stream of digits (most significant first).
 If `base` is given, it needs to be between 2 and 256 (inclusive). If omitted, it defaults to 10 (decadic).
 If `min_width` is given, the stream is zero-padded if shorter.
@@ -114,7 +114,7 @@ If `min_width` is given, the stream is zero-padded if shorter.
 : dignum
 : numstr
 "#);
-    symbols.insert_with_docs("dignum", eval_dignum, r#"
+    symbols.insert("dignum", eval_dignum, r#"
 Converts a stream of digits into a number.
 If `base` is given, it needs to be between 2 and 256 (inclusive). If omitted, it defaults to 10 (decadic).
 = stream.?

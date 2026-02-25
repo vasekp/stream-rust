@@ -84,7 +84,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("and", eval_and, r#"
+    symbols.insert("and", eval_and, r#"
 Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`, `false` otherwise.
 The shorthand for `?(input1, input2, ...)` is `input1 & input2 & ...`.
 * Allows short-circuting: if any `inputM` is `false`, does not evaluate the rest.
@@ -95,7 +95,7 @@ The shorthand for `?(input1, input2, ...)` is `input1 & input2 & ...`.
 : not
 : xor
 "#);
-    symbols.insert_with_docs("&", eval_and, r#"
+    symbols.insert("&", eval_and, r#"
 Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`, `false` otherwise.
 * Allows short-circuting: if any `inputM` is `false`, does not evaluate the rest.
 = input1 & input2 & ...
@@ -105,7 +105,7 @@ Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`
 : |
 : !
 "#);
-    symbols.insert_with_docs("or", eval_or, r#"
+    symbols.insert("or", eval_or, r#"
 Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `true`, `false` otherwise.
 The shorthand for `?(input1, input2, ...)` is `input1 | input2 | ...`.
 * Allows short-circuting: if any `inputM` is `true`, does not evaluate the rest.
@@ -116,7 +116,7 @@ The shorthand for `?(input1, input2, ...)` is `input1 | input2 | ...`.
 : not
 : xor
 "#);
-    symbols.insert_with_docs("|", eval_or, r#"
+    symbols.insert("|", eval_or, r#"
 Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `true`, `false` otherwise.
 * Allows short-circuting: if any `inputM` is `true`, does not evaluate the rest.
 = input1 | input2 | ...
@@ -127,7 +127,7 @@ Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `tru
 : !
 : xor
 "#);
-    symbols.insert_with_docs("!", eval_not_xor, r#"
+    symbols.insert("!", eval_not_xor, r#"
 Logical `NOT`: evaluates to `true` if `input` is `false`, `false` if it is `true`.
 = !input
 > !(1 > 2) => true
@@ -136,7 +136,7 @@ Logical `NOT`: evaluates to `true` if `input` is `false`, `false` if it is `true
 : &
 : |
 "#);
-    symbols.insert_with_docs("xor", eval_not_xor, r#"
+    symbols.insert("xor", eval_not_xor, r#"
 Logical `XOR` ("exclusive or") of all inputs: evaluates to `true` if the number of `true` inputs is odd, `false` if it's even.
 The shorthand for `?(input1, input2, ...)` is `input1 ! input2 ! ...`.
 For two inputs, `input1 ! input2` is `true` if one is `true` but not both.
@@ -148,7 +148,7 @@ For two inputs, `input1 ! input2` is `true` if one is `true` but not both.
 : or
 : not
 "#);
-    symbols.insert_with_docs("not", eval_not_xor, r#"
+    symbols.insert("not", eval_not_xor, r#"
 Logical `NOT`: evaluates to `true` if `input` is `false`, `false` if it is `true`.
 The shorthand for `?(input)` is `!input1`.
 = ?(input)

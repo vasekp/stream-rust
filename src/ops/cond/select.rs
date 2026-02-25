@@ -91,7 +91,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs(["select", "filter"], eval_select, r#"
+    symbols.insert(["select", "filter"], eval_select, r#"
 Evaluates `cond` on every item of `stream` and returns only thise items for which it gave `true`.
 = stream.?{cond}
 > [1, 2, -1, 0, 5].?{# > 0} => [1, 2, 5]

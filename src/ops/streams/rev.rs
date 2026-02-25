@@ -132,7 +132,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("rev", eval_rev, r#"
+    symbols.insert("rev", eval_rev, r#"
 The input `stream` or `string`, reversed.
 ! May need to evaluate the entire contents of the input.
 = stream.?

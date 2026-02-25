@@ -29,7 +29,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("if", eval_if, r#"
+    symbols.insert("if", eval_if, r#"
 If `condition` evaluates to `true`, returns `a`, otherwise returns `b`.
 * The other result is not evaluated.
 = ?(condition, a, b)

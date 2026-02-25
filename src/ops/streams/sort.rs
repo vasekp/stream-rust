@@ -53,7 +53,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("sort", eval_sort, r#"
+    symbols.insert("sort", eval_sort, r#"
 The input stream, sorted. Arrays of numbers, characters, strings, or streams can be sorted.
 Strings and streams are sorted in lexicographic order.
 = stream.?

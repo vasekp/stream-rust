@@ -53,7 +53,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("ucase", eval_ulcase, r#"
+    symbols.insert("ucase", eval_ulcase, r#"
 Converts `char` or `string` to uppercase.
 = char.?
 = string.?
@@ -62,7 +62,7 @@ Converts `char` or `string` to uppercase.
 : lcase
 : replace
 "#);
-    symbols.insert_with_docs("lcase", eval_ulcase, r#"
+    symbols.insert("lcase", eval_ulcase, r#"
 Converts `char` or `string` to lowercase.
 = char.?
 = string.?

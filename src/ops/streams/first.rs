@@ -120,7 +120,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs(["first", "take"], eval_first, r#"
+    symbols.insert(["first", "take"], eval_first, r#"
 Up to the first `count` items of `stream`, or up to the first `count` characters of `string`.
 If `count` is not given, only gives the first item or the first character (no stream / string).
 = stream.?

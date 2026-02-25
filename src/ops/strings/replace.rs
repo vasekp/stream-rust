@@ -200,7 +200,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("replace", eval_replace, r#"
+    symbols.insert("replace", eval_replace, r#"
 Replaces occurrences of `patt` by `repl`, or occurrences of `pattM` by `replM`.
 For strings, each `patt` and each `repl` may be a character or a substring.
 For streams, the latter variant is not available, as `[patt1, ...]` is treated as a valid `patt` itself.

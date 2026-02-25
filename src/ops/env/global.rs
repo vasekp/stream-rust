@@ -26,7 +26,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("global", eval_global, r#"
+    symbols.insert("global", eval_global, r#"
 Evaluates `expr` reverting all local definitions and alphabet.
 * All globally defined functions (`$name = {}`) are automatically wrapped in `?` to avoid dependende on local environment.
 = ?(expr)

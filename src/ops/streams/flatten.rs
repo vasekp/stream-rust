@@ -148,7 +148,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("flatten", Flatten::eval, r#"
+    symbols.insert("flatten", Flatten::eval, r#"
 A stream flattened up to `depth` levels. If `depth` is omitted, the input is flattened to all levels.
 = stream.?
 = stream.?(depth)

@@ -129,7 +129,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("isnum", eval_class, r#"
+    symbols.insert("isnum", eval_class, r#"
 Evaluates to `true` if `input` is a number, `false` otherwise.
 = input.?
 > 1.? => true
@@ -144,7 +144,7 @@ Evaluates to `true` if `input` is a number, `false` otherwise.
 : iseven
 : isnumeric
 "#);
-    symbols.insert_with_docs("isbool", eval_class, r#"
+    symbols.insert("isbool", eval_class, r#"
 Evaluates to `true` if `input` is a boolean value (`true` or `false`), `false` otherwise.
 = input.?
 > 1.? => false
@@ -156,7 +156,7 @@ Evaluates to `true` if `input` is a boolean value (`true` or `false`), `false` o
 : isstream
 : isstring
 "#);
-    symbols.insert_with_docs("ischar", eval_class, r#"
+    symbols.insert("ischar", eval_class, r#"
 Evaluates to `true` if `input` is a character, `false` otherwise.
 = input.?
 > 1.? => false
@@ -173,7 +173,7 @@ Evaluates to `true` if `input` is a character, `false` otherwise.
 : islower
 : isnumeric
 "#);
-    symbols.insert_with_docs("isstream", eval_class, r#"
+    symbols.insert("isstream", eval_class, r#"
 Evaluates to `true` if `input` is a stream, `false` otherwise.
 = input.?
 > 1.? => false
@@ -186,7 +186,7 @@ Evaluates to `true` if `input` is a stream, `false` otherwise.
 : isstring
 : isempty
 "#);
-    symbols.insert_with_docs("isstring", eval_class, r#"
+    symbols.insert("isstring", eval_class, r#"
 Evaluates to `true` if `input` is a string, `false` otherwise.
 = input.?
 > 1.? => false
@@ -198,7 +198,7 @@ Evaluates to `true` if `input` is a string, `false` otherwise.
 : isstream
 : isempty
 "#);
-    symbols.insert_with_docs("isodd", eval_class, r#"
+    symbols.insert("isodd", eval_class, r#"
 Evaluates to `true` if `number` is odd, `false` otherwise.
 = number.?
 > 1.? => true
@@ -207,7 +207,7 @@ Evaluates to `true` if `number` is odd, `false` otherwise.
 : isnum
 : isnumeric
 "#);
-    symbols.insert_with_docs("iseven", eval_class, r#"
+    symbols.insert("iseven", eval_class, r#"
 Evaluates to `true` if `number` is even, `false` otherwise.
 = number.?
 > 1.? => false
@@ -216,7 +216,7 @@ Evaluates to `true` if `number` is even, `false` otherwise.
 : isnum
 : isnumeric
 "#);
-    symbols.insert_with_docs("isempty", eval_class, r#"
+    symbols.insert("isempty", eval_class, r#"
 Evaluates to `true` if `input` is an empty stream or an empty string, `false` otherwise.
 = input.?
 > [].? => true
@@ -227,7 +227,7 @@ Evaluates to `true` if `input` is an empty stream or an empty string, `false` ot
 : isstring
 : isnumeric
 "#);
-    symbols.insert_with_docs("isalpha", eval_class, r#"
+    symbols.insert("isalpha", eval_class, r#"
 Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` otherwise.
 = char.?
 > 'a'.? => true
@@ -242,7 +242,7 @@ Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` othe
 : islower
 : isnumeric
 "#);
-    symbols.insert_with_docs("isascii", eval_class, r#"
+    symbols.insert("isascii", eval_class, r#"
 Evaluates to `true` if `char` is ASCII, `false` otherwise.
 = char.?
 > 'a'.? => true
@@ -257,7 +257,7 @@ Evaluates to `true` if `char` is ASCII, `false` otherwise.
 : islower
 : isnumeric
 "#);
-    symbols.insert_with_docs("isdigit", eval_class, r#"
+    symbols.insert("isdigit", eval_class, r#"
 Evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
 = char.?
 > 'a'.? => false
@@ -271,7 +271,7 @@ Evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
 : islower
 : isnumeric
 "#);
-    symbols.insert_with_docs("iswhite", eval_class, r#"
+    symbols.insert("iswhite", eval_class, r#"
 Evaluates to `true` if `char` is a whitespace character, `false` otherwise.
 = char.?
 > ' '.? => true
@@ -286,7 +286,7 @@ Evaluates to `true` if `char` is a whitespace character, `false` otherwise.
 : islower
 : isnumeric
 "#);
-    symbols.insert_with_docs("isupper", eval_class, r#"
+    symbols.insert("isupper", eval_class, r#"
 For characters: evaluates to `true` if `char` is uppercase, `false` otherwise.
 For strings: evaluates to `true` if all alphabetic characters are uppercase and there is at least one of them.
 = char.?
@@ -306,7 +306,7 @@ For strings: evaluates to `true` if all alphabetic characters are uppercase and 
 : islower
 : isnumeric
 "#);
-    symbols.insert_with_docs("islower", eval_class, r#"
+    symbols.insert("islower", eval_class, r#"
 For characters: evaluates to `true` if `char` is lowercase, `false` otherwise.
 For strings: evaluates to `true` if all alphabetic characters are lowercase and there is at least one of them.
 = char.?
@@ -326,7 +326,7 @@ For strings: evaluates to `true` if all alphabetic characters are lowercase and 
 : isupper
 : isnumeric
 "#);
-    symbols.insert_with_docs("isnumeric", eval_class, r#"
+    symbols.insert("isnumeric", eval_class, r#"
 For characters: evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
 For strings: evaluates to `true` if the string represents a number. Apart from digits, it can start 
 with a sign `+` or `-`.

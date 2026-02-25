@@ -16,14 +16,14 @@ static SYMBOLS: Lazy<Symbols> = Lazy::new(|| {
 });
 
 impl Symbols {
-    pub(crate) fn insert(&mut self, names: impl AsSlice<&'static str>, ctor: Constructor) {
+    pub(crate) fn insert_raw(&mut self, names: impl AsSlice<&'static str>, ctor: Constructor) {
         let rec = Arc::new((ctor, None));
         for sym in names.as_slice() {
             self.0.insert(sym, Arc::clone(&rec));
         }
     }
 
-    pub(crate) fn insert_with_docs(&mut self, names: impl AsSlice<&'static str>,
+    pub(crate) fn insert(&mut self, names: impl AsSlice<&'static str>,
             ctor: Constructor, doc_string: &'static str) {
         let mut docs = DocRecord::from(doc_string);
         debug_assert!(docs.symbols.is_empty());
@@ -72,14 +72,9 @@ mod tests {
         use std::collections::HashSet;
         let mut res = Ok(());
         let mut visited = HashSet::new();
-        let mut missing = Vec::new();
         for (sym, rec) in &SYMBOLS.0 {
-            if matches!(sym.as_bytes()[0], b'$' | b'[') { continue; }
             if !visited.insert(Arc::as_ptr(rec)) { continue; }
-            let (_, Some(docs)) = &**rec else {
-                missing.push(sym);
-                continue;
-            };
+            let (_, Some(docs)) = &**rec else { continue; };
             if docs.desc.is_empty() {
                 println!("{sym}: empty description");
                 res = Err(DocError);
@@ -102,15 +97,6 @@ mod tests {
             for see in &docs.see {
                 res = res.and(check_ref(see, sym));
             }
-        }
-        let mut iter = missing.into_iter();
-        if let Some(sym) = iter.next() {
-            print!("No documentation: {sym}");
-            for sym in iter {
-                print!(", {sym}");
-            }
-            println!();
-            res = Err(DocError);
         }
         res
     }

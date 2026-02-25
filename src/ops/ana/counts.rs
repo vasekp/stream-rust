@@ -122,7 +122,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs(["counts", "count", "tally", "freq"], eval_counts, r#"
+    symbols.insert(["counts", "count", "tally", "freq"], eval_counts, r#"
 Form without arguments: counts unique items in `stream`, or unique characters in `string`, returning a stream of pairs `[item, count]` in order of first appearance.
 Form with arguments: only counts appearances of the given `item`s or `char`s, returning a stream of counts in order of the arguments.
 In the latter form and with string input, `?` can also count substrings, including partial overlaps.

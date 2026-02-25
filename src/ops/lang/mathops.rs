@@ -524,7 +524,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("+", eval_op, r#"
+    symbols.insert("+", eval_op, r#"
 Addition. Can add numbers to numbers, numbers to characters or strings,
 or strings and characters together (shifting in alphabet with wrap-around).
 Automatically threads over streams to arbitrary depth, or adds streams and constants.
@@ -540,7 +540,7 @@ Automatically threads over streams to arbitrary depth, or adds streams and const
 : plus
 : *
 "#);
-    symbols.insert_with_docs("plus", eval_op, r#"
+    symbols.insert("plus", eval_op, r#"
 The total of all arguments.
 The shorthand for `?(arg1, arg2, ...)` is `arg1 + arg2 + ...`.
 = ?(arg1, arg2, ...)
@@ -549,7 +549,7 @@ The shorthand for `?(arg1, arg2, ...)` is `arg1 + arg2 + ...`.
 : +
 : times
 "#);
-    symbols.insert_with_docs("-", eval_op, r#"
+    symbols.insert("-", eval_op, r#"
 Subtraction, negation.
 Subtracts numbers from numbers, numbers from characters or strings,
 or strings and characters together (shifting in alphabet with wrap-around).
@@ -567,7 +567,7 @@ Negation only works for numbers and streams of numbers.
 > [5, 6, 7] - [1, 2] => [4, 4] ; the stream that ends first determines the length
 : +
 "#);
-    symbols.insert_with_docs("*", eval_op, r#"
+    symbols.insert("*", eval_op, r#"
 Multiplication. Can multiply numbers with numbers or characters with numbers
 (shifting in alphabet with wrap-around).
 Automatically threads over streams to arbitrary depth, or multiples streams and constants.
@@ -583,7 +583,7 @@ Automatically threads over streams to arbitrary depth, or multiples streams and 
 : /
 : times
 "#);
-    symbols.insert_with_docs("times", eval_op, r#"
+    symbols.insert("times", eval_op, r#"
 The product of all arguments.
 The shorthand for `?(arg1, arg2, ...)` is `arg1 * arg2 * ...`.
 = ?(arg1, arg2, ...)
@@ -591,7 +591,7 @@ The shorthand for `?(arg1, arg2, ...)` is `arg1 * arg2 * ...`.
 > [1, 2, 3, 4, 5].?windows(2, ?) => [2, 6, 12, 20]
 : plus
 "#);
-    symbols.insert_with_docs("/", eval_op, r#"
+    symbols.insert("/", eval_op, r#"
 Integer division.
 Automatically threads over streams to arbitrary depth, or accepts streams and constants.
 = op1 / op2
@@ -601,7 +601,7 @@ Automatically threads over streams to arbitrary depth, or accepts streams and co
 : *
 : %
 "#);
-    symbols.insert_with_docs("%", eval_op, r#"
+    symbols.insert("%", eval_op, r#"
 Integer modulo (remainder) operation.
 This is *Euclidean* reminder, meaning that it is the difference to the nearest multiple of `op2` smaller or equal than `op1`. It is never negative.
 Automatically threads over streams to arbitrary depth, or accepts streams and constants.
@@ -612,7 +612,7 @@ Automatically threads over streams to arbitrary depth, or accepts streams and co
 > ((-10) / 3) * 3 + ((-10) % 3) => -7
 : /
 "#);
-    symbols.insert_with_docs("^", eval_op, r#"
+    symbols.insert("^", eval_op, r#"
 Power operation (to a nonnegative exponent).
 Automatically threads over streams to arbitrary depth, or accepts streams and constants.
 = op1 ^ op2

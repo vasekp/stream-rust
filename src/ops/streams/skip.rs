@@ -87,7 +87,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("skip", eval_skip, r#"
+    symbols.insert("skip", eval_skip, r#"
 A stream skipping first `count` items of `input` (first `count` characters if `input` is a string), then returning the rest unchanged.
 If `count` is omitted, it defaults to one.
 If `count` is longer than `stream`, returns an empty stream.

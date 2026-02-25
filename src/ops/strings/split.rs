@@ -169,7 +169,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("split", eval_split, r#"
+    symbols.insert("split", eval_split, r#"
 Splits `string` on occurrences of any of the `delimiter`s, which can each be a character or a substring.
 For streams: the `delimiter`s are any items, which are compared for exact match.
 = string.split(delimiter...)

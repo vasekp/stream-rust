@@ -45,7 +45,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs(["len", "length"], eval_len, r#"
+    symbols.insert(["len", "length"], eval_len, r#"
 Evaluates to the number of items in `stream`, or the number of characters in `string`.
 = stream.?
 = string.?

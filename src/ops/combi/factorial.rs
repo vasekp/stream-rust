@@ -143,7 +143,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("factorial", eval_factorial, r#"
+    symbols.insert("factorial", eval_factorial, r#"
 Factorial of `number`.
 = number.?
 = ?(number)
@@ -151,14 +151,14 @@ Factorial of `number`.
 : binom
 : comb
 "#);
-    symbols.insert_with_docs("binom", eval_binom, r#"
+    symbols.insert("binom", eval_binom, r#"
 Binomial coefficient, i.e., `factorial(n) / (factorial(k) * factorial(n-k))` if `0 <= k <= n`.
 = ?(n, k)
 > [0, 1, 2, 3, 4]:{?(4, #)} => [1, 4, 6, 4, 1]
 : factorial
 : comb
 "#);
-    symbols.insert_with_docs("comb", eval_comb, r#"
+    symbols.insert("comb", eval_comb, r#"
 Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * factorial(k2) * ...)`.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 4200
@@ -166,7 +166,7 @@ Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * fact
 : factorial
 : rcomb
 "#);
-    symbols.insert_with_docs("rcomb", eval_rcomb, r#"
+    symbols.insert("rcomb", eval_rcomb, r#"
 The number of partitions of a set of type `(k1, ..., kM)`, i.e., `?comb(k1, ..., kM)` divided by the number of permutations keeping the argument tuple unchanged.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 2100

@@ -245,14 +245,14 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("..", Range::eval, r#"
+    symbols.insert("..", Range::eval, r#"
 A stream of a range of values (numbers or characters).
 = from..to
 > 1..3 => [1, 2, 3]
 > 'a'..'c' => ['a', 'b', 'c']
 : range
 "#);
-    symbols.insert_with_docs("range", Range::eval, r#"
+    symbols.insert("range", Range::eval, r#"
 A stream of a range of values. If `from` or `step` are not given, they default to 1.
 Also works for characters, in this case `from` must be given. `step` remains numeric.
 A shorthand for `?range(from, to)` is `from..to`.

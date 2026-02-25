@@ -159,7 +159,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("perm", eval_perm, r#"
+    symbols.insert("perm", eval_perm, r#"
 A stream of all permutations of the input `stream`, listed in reverse lexicographical order.
 = stream.?
 > [2, 4, 6].? : 16 => [[2, 4, 6], [4, 2, 6], [2, 6, 4], [6, 2, 4], ...]

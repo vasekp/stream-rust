@@ -78,7 +78,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("ddup", eval_ddup, r#"
+    symbols.insert("ddup", eval_ddup, r#"
 A stream with only the first appearance of any repeated item kept.
 = stream.?
 > [1, 2, 1, 2, 3].? => [1, 2, 3]

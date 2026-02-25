@@ -188,7 +188,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("riffle", Riffle::eval, r#"
+    symbols.insert("riffle", Riffle::eval, r#"
 A stream interlevaing `input` with copies of `filler`.
 If `filler` is also a stream, interleaves the two streams, until one of them ends.
 = input.?(filler)

@@ -61,7 +61,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("sortby", eval_sortby, r#"
+    symbols.insert("sortby", eval_sortby, r#"
 The input stream, sorted by a computed key. The key has to always evaluate to the same type which is one of those `?sort` can handle.
 For pairs of elements `a`, `b` for which `a.func == b.func`, their ordering in the result is unspecified.
 = stream.?{func}

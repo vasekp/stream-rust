@@ -125,7 +125,7 @@ fn eval_assign(node: Node, _env: &Env) -> Result<Item, StreamError> {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("==", CmpOp::eval, r#"
+    symbols.insert("==", CmpOp::eval, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
 = op1 == op2 == ...
 > 1+1 == 2 => true
@@ -142,7 +142,7 @@ Checks for equality of all `input`s: evaluates to `true` if they all are equal, 
 : <<=
 : >>=
 "#);
-    symbols.insert_with_docs("equal", CmpOp::eval, r#"
+    symbols.insert("equal", CmpOp::eval, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
 The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 = ?(input1, input2, ...)
@@ -153,7 +153,7 @@ The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 : or
 : not
 "#);
-    symbols.insert_with_docs("<>", CmpOp::eval, r#"
+    symbols.insert("<>", CmpOp::eval, r#"
 Checks for inequality of `op1` and `op2`: evaluates to `false` if they all are equal, `true` otherwise.
 = op1 <> op2
 > 0 <> "0" => true
@@ -163,7 +163,7 @@ Checks for inequality of `op1` and `op2`: evaluates to `false` if they all are e
 : ==
 : !
 "#);
-    symbols.insert_with_docs("<", CmpOp::eval, r#"
+    symbols.insert("<", CmpOp::eval, r#"
 Evaluates to `true` if each number is strictly less than the next.
 = op1 < op2 < ...
 > 10 < 11 => true
@@ -175,7 +175,7 @@ Evaluates to `true` if each number is strictly less than the next.
 : <>
 : <<
 "#);
-    symbols.insert_with_docs(">", CmpOp::eval, r#"
+    symbols.insert(">", CmpOp::eval, r#"
 Evaluates to `true` if each number is strictly greater than the next.
 = op1 > op2 > ...
 > 11 > 10 => true
@@ -187,7 +187,7 @@ Evaluates to `true` if each number is strictly greater than the next.
 : <>
 : >>
 "#);
-    symbols.insert_with_docs("<=", CmpOp::eval, r#"
+    symbols.insert("<=", CmpOp::eval, r#"
 Evaluates to `true` if each number is less than or equal to the next.
 = op1 <= op2 <= ...
 > 10 <= 11 => true
@@ -199,7 +199,7 @@ Evaluates to `true` if each number is less than or equal to the next.
 : <>
 : <<=
 "#);
-    symbols.insert_with_docs(">=", CmpOp::eval, r#"
+    symbols.insert(">=", CmpOp::eval, r#"
 Evaluates to `true` if each number is greater than or equal to the next.
 = op1 >= op2 >= ...
 > 11 >= 10 => true
@@ -211,7 +211,7 @@ Evaluates to `true` if each number is greater than or equal to the next.
 : <>
 : >>=
 "#);
-    symbols.insert_with_docs("=", eval_assign, r#"
+    symbols.insert("=", eval_assign, r#"
 Assigns `value` to `name`.
 This can only be used for local assignments using `?with` or for global variables. Use `==` for comparison.
 = name = variable

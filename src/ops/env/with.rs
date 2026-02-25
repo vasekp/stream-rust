@@ -122,7 +122,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("with", eval_with, r#"
+    symbols.insert("with", eval_with, r#"
 Defines or redefines symbols (local variables) for the evaluation of `expr`.
 Both values and functions can be assigned: expressions enclosed in `{}` can refer to `#, #1, ...` and are evaluated only when used.
 * The assignments are processed from left to right, so one assignment can already be used in defining the next.

@@ -110,7 +110,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("contains", eval_contains, r#"
+    symbols.insert("contains", eval_contains, r#"
 Evaluates to `true` if `stream` contains `item`, or if `string` contains `char` or `substring`, otherwise `false`.
 In case of multiple arguments, evaluates to a stream of one `true` or `false` per argument.
 ! Can halt for infinite stream which does not contain any match.

@@ -179,7 +179,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("pi", eval_pi, r#"
+    symbols.insert("pi", eval_pi, r#"
 A stream of the digits of π (pi). If `base` is omitted, it defaults to 10 (decimal).
 = ?
 = ?(base)

@@ -104,7 +104,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("zip", eval_zip, r#"
+    symbols.insert("zip", eval_zip, r#"
 A stream of arrays whose `n`-th element comes from the `n`-th input `streamN`.
 The input which finishes first determines the length of the zip.
 = ?(stream1, ..., streamM)

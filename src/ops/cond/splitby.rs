@@ -91,7 +91,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("splitby", eval_splitby, r#"
+    symbols.insert("splitby", eval_splitby, r#"
 A stream of streams: evaluates `cond` on items of `stream`. Every time the condition is `true`, the item is dropped and a new substream starts.
 If the input is a string, evaluates `cond` on characters and returns a stream of strings similarly.
 ! Does not coalesce the delimiters. If multiple items in a row satisfy `item.cond`, the output will contain empty streams / empty strings.

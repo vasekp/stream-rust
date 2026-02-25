@@ -42,7 +42,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_with_docs("ord", eval_ord, r#"
+    symbols.insert("ord", eval_ord, r#"
 Converts `char` to its order in the current alphabet.
 = char.?
 > 'z'.? => 26
@@ -51,7 +51,7 @@ Converts `char` to its order in the current alphabet.
 : alpha
 : chr
 "#);
-    symbols.insert_with_docs("chr", eval_chr, r#"
+    symbols.insert("chr", eval_chr, r#"
 Converts `number` to character in alphabet (lowercase).
 * This function wraps automatically.
 = number.?
