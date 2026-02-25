@@ -147,15 +147,78 @@ Checks for equality of all `input`s: evaluates to `true` if they all are equal, 
 The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 = ?(input1, input2, ...)
 > [1, 2, 2, 3, 3].?windows(2, ?) => [false, true, false, true]
+> [1, 2, 2, 2, 3].?windows(3, ?) => [false, true, false]
 : ==
 : and
 : or
 : not
 "#);
-    symbols.insert("<>", CmpOp::eval);
-    symbols.insert("<", CmpOp::eval);
-    symbols.insert(">", CmpOp::eval);
-    symbols.insert("<=", CmpOp::eval);
-    symbols.insert(">=", CmpOp::eval);
-    symbols.insert("=", eval_assign);
+    symbols.insert_with_docs("<>", CmpOp::eval, r#"
+Checks for inequality of `op1` and `op2`: evaluates to `false` if they all are equal, `true` otherwise.
+= op1 <> op2
+> 0 <> "0" => true
+> [] <> "" => true
+> [] <> [[]] => true
+> [1, 2, 2, 3, 3].?windows(2, {#1 <> #2}) => [true, false, true, false]
+: ==
+: !
+"#);
+    symbols.insert_with_docs("<", CmpOp::eval, r#"
+Evaluates to `true` if each number is strictly less than the next.
+= op1 < op2 < ...
+> 10 < 11 => true
+> 10 < 11 < 11 < 12 => false
+> 10 < 11 <= 11 => !can not mix inequalities, use ?and
+: <=
+: >
+: ==
+: <>
+: <<
+"#);
+    symbols.insert_with_docs(">", CmpOp::eval, r#"
+Evaluates to `true` if each number is strictly greater than the next.
+= op1 > op2 > ...
+> 11 > 10 => true
+> 12 > 11 > 11 > 10 => false
+> 11 > 10 >= 10 => !can not mix inequalities, use ?and
+: <
+: >=
+: ==
+: <>
+: >>
+"#);
+    symbols.insert_with_docs("<=", CmpOp::eval, r#"
+Evaluates to `true` if each number is less than or equal to the next.
+= op1 <= op2 <= ...
+> 10 <= 11 => true
+> 10 <= 11 <= 11 <= 12 => true
+> 11 <= 11 < 12 => !can not mix inequalities, use ?and
+: <
+: >=
+: ==
+: <>
+: <<=
+"#);
+    symbols.insert_with_docs(">=", CmpOp::eval, r#"
+Evaluates to `true` if each number is greater than or equal to the next.
+= op1 >= op2 >= ...
+> 11 >= 10 => true
+> 12 >= 11 >= 11 >= 11 => true
+> 11 >= 11 > 10 => !can not mix inequalities, use ?and
+: >
+: <=
+: ==
+: <>
+: >>=
+"#);
+    symbols.insert_with_docs("=", eval_assign, r#"
+Assigns `value` to `name`.
+This can only be used for local assignments using `?with` or for global variables. Use `==` for comparison.
+= name = variable
+> 10 = 11 => !can not assign to 10
+> a = 10 => !can only assign to global symbols
+> ?with(a = 10, a) => 10
+: ==
+: with
+"#);
 }

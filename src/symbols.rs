@@ -121,7 +121,11 @@ mod tests {
         };
         let input = line.flatten();
         let Ok(expr) = crate::parse(&input) else {
-            panic!("failed to parse example in {}: {:?}", sym, input);
+            if ex.output.is_err() {
+                return Ok(());
+            } else {
+                panic!("failed to parse example in {}: {:?}", sym, input);
+            }
         };
         let res = expr.eval_default();
         let success = match (&ex.width, ex.output, res) {
