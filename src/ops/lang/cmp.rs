@@ -128,9 +128,9 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("==", CmpOp::eval, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
 = op1 == op2 == ...
-> 1+1 == 2 => true
-> 2+2 == 2*2 == 2^2 == 4 => true
-> 0 == [] => false
+> 1+1 ? 2 => true
+> 2+2 ? 2*2 ? 2^2 ? 4 => true
+> 0 ? [] => false
 : equal
 : <>
 : <
@@ -155,20 +155,20 @@ The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 "#);
     symbols.insert("<>", CmpOp::eval, r#"
 Checks for inequality of `op1` and `op2`: evaluates to `false` if they all are equal, `true` otherwise.
-= op1 <> op2
-> 0 <> "0" => true
-> [] <> "" => true
-> [] <> [[]] => true
-> [1, 2, 2, 3, 3].?windows(2, {#1 <> #2}) => [true, false, true, false]
+= op1 ? op2
+> 0 ? "0" => true
+> [] ? "" => true
+> [] ? [[]] => true
+> [1, 2, 2, 3, 3].?windows(2, {#1 ? #2}) => [true, false, true, false]
 : ==
 : !
 "#);
     symbols.insert("<", CmpOp::eval, r#"
 Evaluates to `true` if each number is strictly less than the next.
-= op1 < op2 < ...
-> 10 < 11 => true
-> 10 < 11 < 11 < 12 => false
-> 10 < 11 <= 11 => !can not mix inequalities, use ?and
+= op1 ? op2 ? ...
+> 10 ? 11 => true
+> 10 ? 11 ? 11 ? 12 => false
+> 10 ? 11 <= 11 => !can not mix inequalities, use ?and
 : <=
 : >
 : ==
@@ -177,10 +177,10 @@ Evaluates to `true` if each number is strictly less than the next.
 "#);
     symbols.insert(">", CmpOp::eval, r#"
 Evaluates to `true` if each number is strictly greater than the next.
-= op1 > op2 > ...
-> 11 > 10 => true
-> 12 > 11 > 11 > 10 => false
-> 11 > 10 >= 10 => !can not mix inequalities, use ?and
+= op1 ? op2 ? ...
+> 11 ? 10 => true
+> 12 ? 11 ? 11 ? 10 => false
+> 11 ? 10 >= 10 => !can not mix inequalities, use ?and
 : <
 : >=
 : ==
@@ -189,10 +189,10 @@ Evaluates to `true` if each number is strictly greater than the next.
 "#);
     symbols.insert("<=", CmpOp::eval, r#"
 Evaluates to `true` if each number is less than or equal to the next.
-= op1 <= op2 <= ...
-> 10 <= 11 => true
-> 10 <= 11 <= 11 <= 12 => true
-> 11 <= 11 < 12 => !can not mix inequalities, use ?and
+= op1 ? op2 ? ...
+> 10 ? 11 => true
+> 10 ? 11 ? 11 ? 12 => true
+> 11 ? 11 < 12 => !can not mix inequalities, use ?and
 : <
 : >=
 : ==
@@ -201,10 +201,10 @@ Evaluates to `true` if each number is less than or equal to the next.
 "#);
     symbols.insert(">=", CmpOp::eval, r#"
 Evaluates to `true` if each number is greater than or equal to the next.
-= op1 >= op2 >= ...
-> 11 >= 10 => true
-> 12 >= 11 >= 11 >= 11 => true
-> 11 >= 11 > 10 => !can not mix inequalities, use ?and
+= op1 ? op2 ? ...
+> 11 ? 10 => true
+> 12 ? 11 ? 11 ? 11 => true
+> 11 ? 11 > 10 => !can not mix inequalities, use ?and
 : >
 : <=
 : ==

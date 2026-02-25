@@ -98,9 +98,9 @@ The shorthand for `?(input1, input2, ...)` is `input1 & input2 & ...`.
     symbols.insert("&", eval_and, r#"
 Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`, `false` otherwise.
 * Allows short-circuting: if any `inputM` is `false`, does not evaluate the rest.
-= input1 & input2 & ...
-> 1+1 == 2 & [] == [] => true
-> "a" == "a" & 1 == "1" => false
+= input1 ? input2 ? ...
+> 1+1 == 2 ? [] == [] => true
+> "a" == "a" ? 1 == "1" => false
 : and
 : |
 : !
@@ -119,9 +119,9 @@ The shorthand for `?(input1, input2, ...)` is `input1 | input2 | ...`.
     symbols.insert("|", eval_or, r#"
 Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `true`, `false` otherwise.
 * Allows short-circuting: if any `inputM` is `true`, does not evaluate the rest.
-= input1 | input2 | ...
-> 1+1 == 2 | [] == [] => true
-> "a" == "a" | 1 == "1" => true
+= input1 ? input2 ? ...
+> 1+1 == 2 ? [] == [] => true
+> "a" == "a" ? 1 == "1" => true
 : or
 : &
 : !
