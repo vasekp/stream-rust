@@ -125,15 +125,29 @@ fn eval_assign(node: Node, _env: &Env) -> Result<Item, StreamError> {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("==", CmpOp::eval);
+    symbols.insert_with_docs("==", CmpOp::eval, r#"
+Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
+= op1 == op2 == ...
+> 1+1 == 2 => true
+> 2+2 == 2*2 == 2^2 == 4 => true
+> 0 == [] => false
+: equal
+: <>
+: <
+: >
+: <=
+: >=
+: <<
+: >>
+: <<=
+: >>=
+"#);
     symbols.insert_with_docs("equal", CmpOp::eval, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
 The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 = ?(input1, input2, ...)
-= input1 == input2 == ...
-> 1+1 == 2 => true
-> 2+2 == 2*2 == 2^2 == 4 => true
-> 0 == [] => false
+> [1, 2, 2, 3, 3].?windows(2, ?) => [false, true, false, true]
+: ==
 : and
 : or
 : not
