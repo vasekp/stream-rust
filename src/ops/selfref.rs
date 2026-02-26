@@ -6,14 +6,21 @@ use std::cell::RefCell;
 struct SelfRef {
     head: Head,
     body: Node,
-    env: Env
+    env: Env,
+    pre: Option<BoxedStream>,
 }
 
 impl SelfRef {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         match node.resolve() {
             RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) =>
-                Ok(Item::new_stream(SelfRef{head, body, env: env.clone()})),
+                Ok(Item::new_stream(SelfRef{
+                    pre: None, head, body, env: env.clone()})),
+            RNode::Source(RNodeS { source, head, args: RArgs::One(Expr::Eval(body)) }) => {
+                let Item::Stream(stm) = source.eval(env)? else { todo!() };
+                Ok(Item::new_stream(SelfRef{
+                    pre: Some(stm.into()), head, body, env: env.clone()}))
+            },
             node => Err(StreamError::new("expected: self({body})", node))
         }
     }
@@ -48,31 +55,38 @@ impl Stream for SelfRef {
             Ok((stm, hist)) => (stm, hist),
             Err(err) => return Box::new(std::iter::once(Err(err)))
         };
+        let iter = if let Some(vec) = &self.pre { vec.iter() } else { EmptyStream.iter() };
         Box::new(SelfRefIter {
+            pre: iter,
             inner: stm.into_iter(),
-            hist
+            hist,
         })
     }
 }
 
 type CacheHistory = RefCell<Vec<Item>>;
 
-struct SelfRefIter {
+struct SelfRefIter<'node> {
+    pre: Box<dyn SIterator + 'node>,
     inner: OwnedStreamIter,
-    hist: Rc<CacheHistory>
+    hist: Rc<CacheHistory>,
 }
 
-impl Iterator for SelfRefIter {
+impl Iterator for SelfRefIter<'_> {
     type Item = Result<Item, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = iter_try_expr!(self.inner.next()?);
+        let item = if let Some(item) = iter_try_expr!(self.pre.next().transpose()) {
+            item.clone()
+        } else {
+            iter_try_expr!(self.inner.next()?)
+        };
         self.hist.borrow_mut().push(item.clone());
         Some(Ok(item))
     }
 }
 
-impl SIterator for SelfRefIter { }
+impl SIterator for SelfRefIter<'_> { }
 
 #[derive(Clone)]
 struct BackRef {
@@ -86,7 +100,7 @@ struct BackRefIter {
 
 impl Describe for BackRef {
     fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
-        "<self>".to_owned()
+        "[self]".to_owned()
     }
 }
 
@@ -126,8 +140,10 @@ mod tests {
         test_eval!("self{#+1}" => "[]");
         test_eval!("self{#.repeat}" => "[]");
         test_eval!("self{1~(#+1)}" => "[1, 2, 3, 4, 5, ...]");
+        test_eval!("[1].self{#+1}" => "[1, 2, 3, 4, 5, ...]");
         test_eval!("self{0~(1-#)}" => "[0, 1, 0, 1, 0, ...]");
         test_eval!("self{1~[#+1]}" => "[1, [2, [3, ...]]]");
+        test_eval!("[1].self{[#+1]}" => "[1, [2, [3, ...]]]");
         test_eval!("self{[#]}" => "[[[[[[...]]]]]]");
         test_eval!("self{[#]~1}[2]" => "1");
         test_eval!("self{seq+(5~#)}" => "[6, 8, 11, 15, 20, ...]");
@@ -151,8 +167,11 @@ mod tests {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("self", SelfRef::eval, r#"
 A stream evaluating `func` on its own output, which is put in place of `#`.
+If `stream` is present, uses its items first to populate the history.
 = ?{func}
-> self{1~[#+1]} => [1, [2, [3, ...]]]
+= stream.?{func}
+> self{[#]} => [[[[[[...]]]]]]
+> [1].self{[#+1]} => [1, [2, [3, ...]]]
 : nest
 "#);
 }
