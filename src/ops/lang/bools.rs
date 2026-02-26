@@ -18,15 +18,19 @@ fn eval_or(mut node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::Bool(false))
 }
 
-fn eval_not_xor(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_not(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
-    let res = try_with!(node, match (&node.head.as_str(), &node.args[..]) {
-        (Some("!"), [one]) => one.to_bool().map(|b| !b),
-        (Some("not"), [one]) => one.to_bool().map(|b| !b),
-        (Some("not"), _) => Err("exactly 1 operand required".into()),
-        (_, any) => any.iter().try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))
-    }?);
+    match &node.args[..] {
+        [Item::Bool(b)] => Ok(Item::Bool(!b)),
+        _ => Err(StreamError::new("one bool argument expected", node))
+    }
+}
+
+fn eval_xor(node: Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    try_with!(node, node.check_no_source()?);
+    let res = try_with!(node, node.args.iter().try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))?);
     Ok(Item::Bool(res))
 }
 
@@ -35,7 +39,6 @@ mod tests {
     #[test]
     fn test_bools() {
         use super::*;
-        use crate::parser::parse;
 
         test_eval!("false&false" => "false");
         test_eval!("false&true" => "false");
@@ -64,9 +67,6 @@ mod tests {
         test_eval!("1==2|1+'a'==1" => err);
 
         test_eval!("!false" => "true");
-        test_eval!("true!true" => "false");
-        test_eval!("true!true!true" => "true");
-        assert!(parse("!true!true!true").is_err());
         test_eval!("xor()" => "false");
         test_eval!("not()" => err);
         test_eval!("xor(false)" => "false");
@@ -127,28 +127,7 @@ Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `tru
 : !
 : xor
 "#);
-    symbols.insert("!", eval_not_xor, r#"
-Logical `NOT`: evaluates to `true` if `input` is `false`, `false` if it is `true`.
-= !input
-> !(1 > 2) => true
-> !("a" == "a") => false
-: not
-: &
-: |
-"#);
-    symbols.insert("xor", eval_not_xor, r#"
-Logical `XOR` ("exclusive or") of all inputs: evaluates to `true` if the number of `true` inputs is odd, `false` if it's even.
-The shorthand for `?(input1, input2, ...)` is `input1 ! input2 ! ...`.
-For two inputs, `input1 ! input2` is `true` if one is `true` but not both.
-= ?(input1, input2, ...)
-= input1 ! input2 ! ...
-> 1+1 == 2 ! [] == [] => false
-> "a" == "a" ! 1 == "1" => true
-: and
-: or
-: not
-"#);
-    symbols.insert("not", eval_not_xor, r#"
+    symbols.insert("not", eval_not, r#"
 Logical `NOT`: evaluates to `true` if `input` is `false`, `false` if it is `true`.
 The shorthand for `?(input)` is `!input1`.
 = ?(input)
@@ -158,5 +137,25 @@ The shorthand for `?(input)` is `!input1`.
 : and
 : or
 : xor
+"#);
+    symbols.insert("!", eval_not, r#"
+Logical `NOT`: evaluates to `true` if `input` is `false`, `false` if it is `true`.
+= !input
+> !(1 > 2) => true
+> !("a" == "a") => false
+: not
+: &
+: |
+"#);
+    symbols.insert("xor", eval_xor, r#"
+Logical `XOR` ("exclusive or") of all inputs: evaluates to `true` if the number of `true` inputs is odd, `false` if it's even.
+For two inputs, `?(input1, input2)` is `true` if one is `true` but not both, equivalent to `input1 <> input2`.
+= ?(input1, input2, ...)
+> ?(1+1 == 2, [] == []) => false
+> ?("a" == "a", 1 == "1") => true
+> [true, true, false, false].?windows(2, ?) => [false, true, false]
+: and
+: or
+: not
 "#);
 }

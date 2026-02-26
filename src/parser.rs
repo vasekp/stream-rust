@@ -576,9 +576,6 @@ impl<'str> Parser<'str> {
                         } else if entry.prec == prec && entry.op == op && multi {
                             // We have the same operator, and it allows multiple parameters:
                             // add current expr to them and put entry back
-                            if entry.args.is_empty() && op == "!" { // special case: !x is not but x!y is xor; mixing the two is ambiguous
-                                return Err(ParseError::new("cannot mix prefix and infix", op));
-                            }
                             entry.args.push(expr);
                             stack.push(entry);
                             break;
