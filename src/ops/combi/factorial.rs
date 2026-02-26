@@ -39,14 +39,14 @@ fn eval_binom(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_comb(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_multi(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     let mut total = 0;
     let mut denom = UNumber::one();
     for arg in &node.args {
         let Item::Number(k) = arg else {
-            return Err(StreamError::new("expected: comb(number, number, ...)", node));
+            return Err(StreamError::new("expected: multi(number, number, ...)", node));
         };
         if k.is_negative() {
             return Err(StreamError::new("input can't be negative", node));
@@ -60,7 +60,7 @@ fn eval_comb(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
     Ok(Item::new_number(factorial(total) / denom))
 }
-fn eval_rcomb(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rmulti(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     let mut total = 0;
@@ -68,7 +68,7 @@ fn eval_rcomb(node: Node, env: &Env) -> Result<Item, StreamError> {
     let mut vec = Vec::new();
     for arg in &node.args {
         let Item::Number(k) = arg else {
-            return Err(StreamError::new("expected: comb(number, number, ...)", node));
+            return Err(StreamError::new("expected: rmulti(number, number, ...)", node));
         };
         if k.is_negative() {
             return Err(StreamError::new("input can't be negative", node));
@@ -114,31 +114,31 @@ mod tests {
     }
 
     #[test]
-    fn test_comb() {
+    fn test_multi() {
         use super::*;
-        test_eval!("comb(3,5) == binom(8,3)" => "true");
-        test_eval!("comb(3,5,0) == binom(8,3)" => "true");
-        test_eval!("comb()" => "1");
-        test_eval!("comb(0)" => "1");
-        test_eval!("comb(0,0)" => "1");
-        test_eval!("comb(1,1,1,1) == factorial(4)" => "true");
-        test_eval!("comb(3,3,3) == factorial(9)/factorial(3)^3" => "true");
-        test_eval!("comb(3,4,5) == factorial(12)/factorial(3)/factorial(4)/factorial(5)" => "true");
+        test_eval!("multi(3,5) == binom(8,3)" => "true");
+        test_eval!("multi(3,5,0) == binom(8,3)" => "true");
+        test_eval!("multi()" => "1");
+        test_eval!("multi(0)" => "1");
+        test_eval!("multi(0,0)" => "1");
+        test_eval!("multi(1,1,1,1) == factorial(4)" => "true");
+        test_eval!("multi(3,3,3) == factorial(9)/factorial(3)^3" => "true");
+        test_eval!("multi(3,4,5) == factorial(12)/factorial(3)/factorial(4)/factorial(5)" => "true");
     }
 
     #[test]
-    fn test_rcomb() {
+    fn test_rmulti() {
         use super::*;
-        test_eval!("rcomb(3,5) == comb(3,5)" => "true");
-        test_eval!("rcomb(3,5,0) == comb(3,5,0)" => "true");
-        test_eval!("rcomb()" => "1");
-        test_eval!("rcomb(0)" => "1");
-        test_eval!("rcomb(0,0)" => "1");
-        test_eval!("rcomb(1,1,1,1)" => "1");
-        test_eval!("rcomb(3,3,3) == comb(3,3,3)/factorial(3)" => "true");
-        test_eval!("rcomb(3,4,3) == comb(3,3,4)/factorial(2)" => "true");
-        test_eval!("rcomb(3,4,5) == comb(3,4,5)" => "true");
-        test_eval!("rcomb(3,4,3,4,3) == comb(3,3,3,4,4)/2/6" => "true");
+        test_eval!("rmulti(3,5) == multi(3,5)" => "true");
+        test_eval!("rmulti(3,5,0) == multi(3,5,0)" => "true");
+        test_eval!("rmulti()" => "1");
+        test_eval!("rmulti(0)" => "1");
+        test_eval!("rmulti(0,0)" => "1");
+        test_eval!("rmulti(1,1,1,1)" => "1");
+        test_eval!("rmulti(3,3,3) == multi(3,3,3)/factorial(3)" => "true");
+        test_eval!("rmulti(3,4,3) == multi(3,3,4)/factorial(2)" => "true");
+        test_eval!("rmulti(3,4,5) == multi(3,4,5)" => "true");
+        test_eval!("rmulti(3,4,3,4,3) == multi(3,3,3,4,4)/2/6" => "true");
     }
 }
 
@@ -149,29 +149,29 @@ Factorial of `number`.
 = ?(number)
 > ?seq:? => [1, 2, 6, 24, 120, ...]
 : binom
-: comb
+: multi
 "#);
     symbols.insert("binom", eval_binom, r#"
 Binomial coefficient, i.e., `?factorial(n) / (?factorial(k) * ?factorial(n-k))` if `0 <= k <= n`.
 = ?(n, k)
 > [0, 1, 2, 3, 4]:{?(4, #)} => [1, 4, 6, 4, 1]
 : factorial
-: comb
+: multi
 "#);
-    symbols.insert("comb", eval_comb, r#"
+    symbols.insert("multi", eval_multi, r#"
 Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * factorial(k2) * ...)`.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 4200
 > ?(3, 3, 4) == ?factorial(3+3+4) / (?factorial(3)^2 * ?factorial(4)) => true
 : factorial
-: rcomb
+: rmulti
 "#);
-    symbols.insert("rcomb", eval_rcomb, r#"
-The number of partitions of a set of type `(k1, ..., kM)`, i.e., `?comb(k1, ..., kM)` divided by the number of permutations keeping the argument tuple unchanged.
+    symbols.insert("rmulti", eval_rmulti, r#"
+The number of partitions of a set of type `(k1, ..., kM)`, i.e., `?multi(k1, ..., kM)` divided by the number of permutations keeping the argument tuple unchanged.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 2100
-> ?(3, 3, 4) == comb(3, 3, 4) / (?factorial(2) * ?factorial(1)) => true ; 3 repeats twice, 4 once
-: comb
+> ?(3, 3, 4) == ?multi(3, 3, 4) / (?factorial(2) * ?factorial(1)) => true ; 3 repeats twice, 4 once
+: multi
 : factorial
 "#);
 }
