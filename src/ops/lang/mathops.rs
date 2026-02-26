@@ -124,14 +124,13 @@ impl MathOp {
     }
 
     fn mod_func(items: &[Item], _env: &Env) -> Result<Item, BaseError> {
-        use num::traits::Euclid;
         match items {
             [lhs, rhs] => {
                 let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);
                 if rhs.is_zero() {
                     Err("division by zero".into())
                 } else {
-                    Ok(Item::new_number(lhs.rem_euclid(rhs)))
+                    Ok(Item::new_number(lhs % rhs))
                 }
             },
             _ => Err("exactly 2 arguments required".into())
@@ -429,8 +428,9 @@ mod tests {
         test_eval!("0^1" => "0");
         test_eval!("1^(-1)" => err);
         test_eval!("157%10" => "7");
-        test_eval!("(-157)%10" => "3");
-        test_eval!("(-157)%(-10)" => "3");
+        test_eval!("(-157)%10" => "-7");
+        test_eval!("157%(-10)" => "7");
+        test_eval!("(-157)%(-10)" => "-7");
 
         test_eval!("'a'+'b'+'c'" => "'f'");
         test_eval!("'E'+3+'a'" => "'I'");
@@ -603,13 +603,12 @@ Automatically threads over streams to arbitrary depth, or accepts streams and co
 "#);
     symbols.insert("%", eval_op, r#"
 Integer modulo (remainder) operation.
-This is *Euclidean* reminder, meaning that it is the difference to the nearest multiple of `op2` smaller or equal than `op1`. It is never negative.
+Satisfies that `(a / b) + (a % b) = a` for any `a`, `b` except `b == 0`.
 Automatically threads over streams to arbitrary depth, or accepts streams and constants.
 = op1 % op2
 > 10 % 3 => 1
-> (-10) % 3 => 2 ; -10 == (-4)*3 + 2
-> (10 / 3) * 3 + (10 % 3) => 10
-> ((-10) / 3) * 3 + ((-10) % 3) => -7
+> (-10) % 3 => -1
+> 10 % (-3) => 1
 : /
 "#);
     symbols.insert("^", eval_op, r#"
