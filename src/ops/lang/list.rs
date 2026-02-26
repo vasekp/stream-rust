@@ -29,9 +29,10 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["list", "[list]"], eval_list, r#"
+    symbols.insert_raw("[list]", eval_list);
+    symbols.insert("list", eval_list, r#"
 A stream formed by `?`'s arguments.
 = ?(item1, item2, ...)
-> list(1, 2, 3) => [1, 2, 3]
+> ?(1, 2, 3) => [1, 2, 3]
 "#);
 }

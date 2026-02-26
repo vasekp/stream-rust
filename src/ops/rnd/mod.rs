@@ -133,7 +133,7 @@ mod tests {
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("rnd", eval_rnd, r#"
-A stream of uniformly random samples from `stream`.
+An infinite stream of uniformly random samples from the input `stream`.
 This is designed to be a reproducible pseudorandom generator. For this reason, a `seed` (number) needs to be provided. The same seed leads to the same pseudorandom stream.
 * For a different seed in each invocation, you may use `$#`, which increases by one in each successfully evaluated input.
 = stream.?(seed)

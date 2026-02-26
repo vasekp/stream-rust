@@ -160,7 +160,7 @@ mod tests {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("windows", eval_windows, r#"
 Single-argument form: a stream of `size`-sized arrays (overlapping) from the input `stream`.
-Two-argument form: evaluations of the function `func` on the above.
+Two-argument form: evaluations of the function `func` on the above, entering as arguments (`#1, #2, ...`).
 = stream.?(size)
 = stream.?(size, {func})
 > ?seq.?(3) : 10 => [[1, 2, 3], [2, 3, 4], [3, ...], ...]

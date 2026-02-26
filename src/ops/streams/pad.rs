@@ -251,8 +251,7 @@ mod tests {
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["padleft", "padl"], eval_padl, r#"
-The input `stream` (or `string`) left-padded to `length` using copies of `item` (or `char`, 
-respectively).
+Left-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
 If the input length is already `length` or more, returns unchanged.
 = stream.?(length, item)
 = string.?(length, char)
@@ -261,8 +260,7 @@ If the input length is already `length` or more, returns unchanged.
 : padright
 "#);
     symbols.insert(["padright", "padr"], eval_padr, r#"
-The input `stream` (or `string`) right-padded to `length` using copies of `item` (or `char`, 
-respectively).
+Right-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
 If the input length is already `length` or more, returns unchanged.
 = stream.?(length, item)
 = string.?(length, char)

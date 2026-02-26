@@ -241,6 +241,7 @@ Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` othe
 : isupper
 : islower
 : isnumeric
+: alpha
 "#);
     symbols.insert("isascii", eval_class, r#"
 Evaluates to `true` if `char` is ASCII, `false` otherwise.

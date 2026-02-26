@@ -92,14 +92,13 @@ mod tests {
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("splitby", eval_splitby, r#"
-A stream of streams: evaluates `cond` on items of `stream`. Every time the condition is `true`, the item is dropped and a new substream starts.
+Splits `stream` to substreams by evaluating `cond` on its items. Every time the condition is `true`, the item is dropped and a new substream starts.
 If the input is a string, evaluates `cond` on characters and returns a stream of strings similarly.
-! Does not coalesce the delimiters. If multiple items in a row satisfy `item.cond`, the output will contain empty streams / empty strings.
 = stream.?{cond}
 = string.?{cond}
 > [1, 2, -1, 0, 5].?{# < 0} : 6 => [[1, 2], [0, 5]]
 > "Hello world".?(?iswhite) => ["Hello", "world"]
-> "three   spaces".?(?iswhite) => ["three", "", "", "spaces"]
+> "three   spaces".?(?iswhite) => ["three", "", "", "spaces"] ; does not coalesce the delimiters
 : split
 "#);
 }

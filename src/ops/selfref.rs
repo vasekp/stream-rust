@@ -153,5 +153,6 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 A stream evaluating `func` on its own output, which is put in place of `#`.
 = ?{func}
 > self{1~[#+1]} => [1, [2, [3, ...]]]
+: nest
 "#);
 }

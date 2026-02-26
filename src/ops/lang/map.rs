@@ -103,7 +103,7 @@ mod tests {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_raw("[map]", eval_map);
     symbols.insert(["foreach", "map"], eval_map, r#"
-A stream formed by applying `func` on each item in `stream`.
+Applies `func` on each item in `stream`.
 The shorthand for `stream.?(func)` or `stream.?{#.func(args)}` is `stream:func` or `stream:func(args)`.
 = stream.?{func}
 = stream:func(args)

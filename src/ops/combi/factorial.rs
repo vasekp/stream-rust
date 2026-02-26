@@ -152,7 +152,7 @@ Factorial of `number`.
 : comb
 "#);
     symbols.insert("binom", eval_binom, r#"
-Binomial coefficient, i.e., `factorial(n) / (factorial(k) * factorial(n-k))` if `0 <= k <= n`.
+Binomial coefficient, i.e., `?factorial(n) / (?factorial(k) * ?factorial(n-k))` if `0 <= k <= n`.
 = ?(n, k)
 > [0, 1, 2, 3, 4]:{?(4, #)} => [1, 4, 6, 4, 1]
 : factorial
@@ -162,7 +162,7 @@ Binomial coefficient, i.e., `factorial(n) / (factorial(k) * factorial(n-k))` if 
 Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * factorial(k2) * ...)`.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 4200
-> ?(3, 3, 4) == factorial(3+3+4) / (factorial(3)^2 * factorial(4)) => true
+> ?(3, 3, 4) == ?factorial(3+3+4) / (?factorial(3)^2 * ?factorial(4)) => true
 : factorial
 : rcomb
 "#);
@@ -170,7 +170,7 @@ Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * fact
 The number of partitions of a set of type `(k1, ..., kM)`, i.e., `?comb(k1, ..., kM)` divided by the number of permutations keeping the argument tuple unchanged.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 2100
-> ?(3, 3, 4) == comb(3, 3, 4) / (factorial(2) * factorial(1)) => true ; 3 repeats twice, 4 once
+> ?(3, 3, 4) == comb(3, 3, 4) / (?factorial(2) * ?factorial(1)) => true ; 3 repeats twice, 4 once
 : comb
 : factorial
 "#);

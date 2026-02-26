@@ -54,13 +54,15 @@ mod tests {
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("sort", eval_sort, r#"
-The input stream, sorted. Arrays of numbers, characters, strings, or streams can be sorted.
+Sorts the input `stream`. Arrays of numbers, characters, strings, or streams can be sorted.
 Strings and streams are sorted in lexicographic order.
 = stream.?
-> [5,2,9,3,5].? => [2, 3, 5, 5, 9]
-> ['b','a','c'].? => ['a', 'b', 'c']
+> [5, 2, 9, 3, 5].? => [2, 3, 5, 5, 9]
+> ['b', 'a', 'c'].? => ['a', 'b', 'c']
 > ["one", "two", "three"].? => ["one", "three", "two"]
-> [[1,2],[],[1]].? : 6 => [[], [1], [1, 2]]
+> [[1,2], [], [1]].? : 6 => [[], [1], [1, 2]]
 : sortby
+: <<
+: >>
 "#);
 }

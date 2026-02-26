@@ -30,7 +30,7 @@ mod tests {
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("if", eval_if, r#"
-If `condition` evaluates to `true`, returns `a`, otherwise returns `b`.
+If `condition` evaluates to `true`, evaluates `a`, otherwise evaluates `b`.
 * The other result is not evaluated.
 = ?(condition, a, b)
 > ?seq:{?(#.?isodd, -#, #)} => [-1, 2, -3, 4, -5, ...]

@@ -113,6 +113,7 @@ Turns a stream of characters into a string.
 > ['a', 'b', 1].? => "ab<!> ; non-character in the stream only causes error when it's reached
 : chars
 : cat
+: join
 : numstr
 "#);
 }

@@ -238,5 +238,6 @@ If a `filler` (character or string) is given, it's inserted between each pair of
 > ["Hello", ' ', "world"].? => "Hello world"
 > ['a', 'b', 'c'].?(", ") => "a, b, c"
 : join
+: riffle
 "#);
 }

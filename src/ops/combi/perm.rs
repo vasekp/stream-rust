@@ -166,5 +166,6 @@ A stream of all permutations of the input `stream`, listed in reverse lexicograp
 > [1, 2, 3, 4].?.?length => 24
 > ?seq.?[100] : 10 => [4, 2, 3, 5, 1, 6, 7, 8, 9, 10, ...] ; input can be infinite
 : factorial
+: reorder
 "#);
 }
