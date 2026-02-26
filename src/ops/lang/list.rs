@@ -13,9 +13,6 @@ mod tests {
     #[test]
     fn test_list() {
         test_eval!("[1,2,3]" => "[1, 2, 3]");
-        test_eval!("list(1,2,3)" => "[1, 2, 3]");
-        test_eval!("list()" => "[]");
-        test_eval!("[1].list(1,2,3)" => err);
         test_len!("[1,2,3]" => 3);
         test_len!("[1]" => 1);
         test_len!("[]" => 0);
@@ -24,15 +21,9 @@ mod tests {
         test_advance("[]");
         test_describe!("[1,2,3]" => "[1, 2, 3]");
         test_describe!("[]" => "[]");
-        test_describe!("list(1)" => "[1]");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_raw("[list]", eval_list);
-    symbols.insert("list", eval_list, r#"
-A stream formed by `?`'s arguments.
-= ?(item1, item2, ...)
-> ?(1, 2, 3) => [1, 2, 3]
-"#);
 }
