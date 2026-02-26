@@ -86,6 +86,17 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("skip", eval_skip);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("skip", eval_skip, r#"
+Skips first `count` items of `stream` ot first `count` characters of `string`.
+If `count` is omitted, it defaults to one.
+If `count` is longer than `stream`, returns an empty stream (string).
+= stream.?(count)
+= string.?(count)
+= (stream|string).?
+> ?range(5).? => [2, 3, 4, 5]
+> ?seq.?(10) => [11, 12, 13, 14, 15, ...]
+> "Hello".?(2) => "llo"
+> "Hello".?(5) => ""
+"#);
 }

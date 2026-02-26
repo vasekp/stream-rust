@@ -116,8 +116,23 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("index", eval_index);
-    keywords.insert("find", eval_index);
-    keywords.insert("pos", eval_index);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["index", "find", "pos"], eval_index, r#"
+Attempts to find `item` in `stream`, or `char` or `substring` in `string`, and return its position within.
+If the match is not found, evaluates to `[]`.
+If multiple arguments are provided, evaluates to a stream of the results.
+! Can halt for infinite stream which does not contain any match.
+= stream.?(item)
+= stream.?(item, ...)
+= string.?(char)
+= string.?(substring)
+= string.?(char|substring, ...)
+> [10, 11, 12, 13].?(13) => 4
+> [10, 11, 12, 13].?(1) => []
+> [10, 11, 12, 13].?(1, 10, 15) => [[], 1, []]
+> "abcde".?('d') => 4
+> "abcde".?("cd") => 3
+> "abcde".?("def") => []
+: contains
+"#);
 }

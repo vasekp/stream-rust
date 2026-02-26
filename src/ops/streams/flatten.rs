@@ -147,6 +147,13 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("flatten", Flatten::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("flatten", Flatten::eval, r#"
+Flattens `stream` up to `depth` levels. If `depth` is omitted, `stream` is flattened to all levels.
+= stream.?
+= stream.?(depth)
+> [1, [2, [3]]].? => [1, 2, 3]
+> [1, [2, [3, [4]]]].?(1) : 10 => [1, 2, [3, [4]]]
+> [1, [], [2], [], 3].? => [1, 2, 3]
+"#);
 }

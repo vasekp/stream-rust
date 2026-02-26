@@ -9,7 +9,7 @@ fn eval_pi(node: Node, env: &Env) -> Result<Item, StreamError> {
             if let Some(radix) = radix.to_u32() {
                 Ok(Item::new_stream(Pi{head: rnode.head, radix: Some(radix)}))
             } else {
-                Err(StreamError::new("radix too large", rnode))
+                Err(StreamError::new("base too large", rnode))
             }
         }
         _ => Err(StreamError::new("expected: pi or pi(radix)", rnode))
@@ -178,6 +178,12 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("pi", eval_pi);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("pi", eval_pi, r#"
+A stream of the digits of π (pi). If `base` is omitted, it defaults to 10 (decimal).
+= ?
+= ?(base)
+> ? => [3, 1, 4, 1, 5, ...]
+> ?(16) => [3, 2, 4, 3, 15, ...]
+"#);
 }

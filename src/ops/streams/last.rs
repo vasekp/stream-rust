@@ -160,15 +160,15 @@ mod tests {
         test_eval!("\"abc\".last(0)" => "\"\"");
         test_eval!("\"abc\".last(1)" => "\"c\"");
         test_eval!("\"abc\".last(4)" => "\"abc\"");
-        test_eval!("[].lenUF.last" => err);
-        test_eval!("(1..10).lenUF.last" => "10");
-        test_eval!("[].lenUF.last(3)" => "[]");
-        test_eval!("[1,2].lenUF.last(3)" => "[1, 2]");
-        test_eval!("(1..10).lenUF.last(3)" => "[8, 9, 10]");
-        test_eval!("\"ab\".lenUF.last(3)" => "\"ab\"");
-        test_eval!("\"abcde\".lenUF.last(3)" => "\"cde\"");
-        test_eval!("\"abcde\".lenUF.last(1)" => "\"e\"");
-        test_eval!("\"abcde\".lenUF.last(0)" => "\"\"");
+        test_eval!("[].$lenUF.last" => err);
+        test_eval!("(1..10).$lenUF.last" => "10");
+        test_eval!("[].$lenUF.last(3)" => "[]");
+        test_eval!("[1,2].$lenUF.last(3)" => "[1, 2]");
+        test_eval!("(1..10).$lenUF.last(3)" => "[8, 9, 10]");
+        test_eval!("\"ab\".$lenUF.last(3)" => "\"ab\"");
+        test_eval!("\"abcde\".$lenUF.last(3)" => "\"cde\"");
+        test_eval!("\"abcde\".$lenUF.last(1)" => "\"e\"");
+        test_eval!("\"abcde\".$lenUF.last(0)" => "\"\"");
         test_eval!("seq.last(10^10)" => err);
         test_eval!("range(10^9).last(10^10).len" => "1000000000");
         test_eval!("range(10^11).last(10^10).len" => "10000000000");
@@ -186,6 +186,19 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("last", eval_last);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("last", eval_last, r#"
+Up to the last `count` items of `stream`, or up to the last `count` characters of `string`.
+If `count` is not given, only gives the last item or the last character (no stream / string).
+= stream.?
+= stream.?(count)
+= string.?
+= string.?(count)
+> [1, 2, 3].? => 3
+> [1, 2, 3].?(2) => [2, 3]
+> ?seq.? => !stream is infinite
+> "abc".? => 'c'
+> "abc".?(2) => "bc"
+: first
+"#);
 }

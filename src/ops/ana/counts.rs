@@ -121,9 +121,19 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("counts", eval_counts);
-    keywords.insert("count", eval_counts);
-    keywords.insert("tally", eval_counts);
-    keywords.insert("freq", eval_counts);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["counts", "count", "tally", "freq"], eval_counts, r#"
+Form without arguments: counts unique items in `stream`, or unique characters in `string`, returning a stream of pairs `[item, count]` in order of first appearance.
+Form with arguments: only counts appearances of the given `item`s or `char`s, returning a stream of counts in order of the arguments.
+In the latter form and with string input, `?` can also count substrings, including partial overlaps.
+= stream.?
+= string.?
+= stream.?(item, ...)
+= string.?(char or string, ...)
+> [5, 7, 6, 7, 5].? : 10 => [[5, 2], [7, 2], [6, 1]]
+> [5, 7, 6, 7, 5].?(5, 6, 7, 8) => [2, 1, 2, 0]
+> "abracadabra".? : 20 => [['a', 5], ['b', 2], ['r', 2], ['c', 1], ['d', 1]]
+> "abracadabra".?('a', "ab", "da") => [5, 2, 1]
+> "abracadabra".?@?alpha => [5, 2, 1, 1, 0, ...]
+"#);
 }

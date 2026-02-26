@@ -249,9 +249,23 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("padleft", eval_padl);
-    keywords.insert("padl", eval_padl);
-    keywords.insert("padright", eval_padr);
-    keywords.insert("padr", eval_padr);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["padleft", "padl"], eval_padl, r#"
+Left-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
+If the input length is already `length` or more, returns unchanged.
+= stream.?(length, item)
+= string.?(length, char)
+> [1, 2].?(5, 0) => [0, 0, 0, 1, 2]
+> "ab".?(5, ' ') => "   ab"
+: padright
+"#);
+    symbols.insert(["padright", "padr"], eval_padr, r#"
+Right-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
+If the input length is already `length` or more, returns unchanged.
+= stream.?(length, item)
+= string.?(length, char)
+> [1, 2].?(5, 0) => [1, 2, 0, 0, 0]
+> "ab".?(5, ' ') => "ab   "
+: padright
+"#);
 }

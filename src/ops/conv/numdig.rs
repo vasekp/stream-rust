@@ -99,7 +99,29 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("numdig", eval_numdig);
-    keywords.insert("dignum", eval_dignum);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("numdig", eval_numdig, r#"
+Converts `number` to a stream of digits (most significant first).
+If `base` is given, it needs to be between 2 and 256 (inclusive). If omitted, it defaults to 10 (decadic).
+If `min_width` is given, the stream is zero-padded if shorter.
+! `?` can not accept negative numbers.
+= number.?
+= number.?(base)
+= number.?(base, min_width)
+> 42.? => [4, 2]
+> 42.?(10, 5) => [0, 0, 0, 4, 2]
+> 65500.?(256) => [255, 220]
+: dignum
+: numstr
+"#);
+    symbols.insert("dignum", eval_dignum, r#"
+Converts a stream of digits into a number.
+If `base` is given, it needs to be between 2 and 256 (inclusive). If omitted, it defaults to 10 (decadic).
+= stream.?
+= stream.?(base)
+> [1, 6].? => 16
+> [1, 0, 0, 0].?(2) => 8
+: numdig
+: strnum
+"#);
 }

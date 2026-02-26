@@ -148,6 +148,11 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("self", SelfRef::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("self", SelfRef::eval, r#"
+A stream evaluating `func` on its own output, which is put in place of `#`.
+= ?{func}
+> self{1~[#+1]} => [1, [2, [3, ...]]]
+: nest
+"#);
 }

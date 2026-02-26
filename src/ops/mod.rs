@@ -12,20 +12,20 @@ mod combi;
 #[cfg(test)]
 mod testutils;
 
-pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
-    lang::init(keywords);
-    streams::init(keywords);
-    selfref::init(keywords);
-    env::init(keywords);
-    strings::init(keywords);
-    cond::init(keywords);
-    conv::init(keywords);
-    ana::init(keywords);
-    rnd::init(keywords);
-    combi::init(keywords);
+pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
+    lang::init(symbols);
+    streams::init(symbols);
+    selfref::init(symbols);
+    env::init(symbols);
+    strings::init(symbols);
+    cond::init(symbols);
+    conv::init(symbols);
+    ana::init(symbols);
+    rnd::init(symbols);
+    combi::init(symbols);
 
     #[cfg(test)]
-    testutils::init(keywords);
+    testutils::init(symbols);
 }
 
 #[cfg(test)]

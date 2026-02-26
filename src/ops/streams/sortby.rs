@@ -60,6 +60,13 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("sortby", eval_sortby);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("sortby", eval_sortby, r#"
+Sorts the input stream by a computed key. The key has to always evaluate to the same type which is one of those `?sort` can handle.
+For pairs of elements `a`, `b` for which `a.func == b.func`, their ordering in the result is unspecified.
+= stream.?{func}
+> [5,2,9,3,5].?{-#} => [9, 5, 5, 3, 2]
+> ["one", "two", "three", "four"].?(?length) => ["one", "two", "four", "three"]
+: sort
+"#);
 }

@@ -109,6 +109,22 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("contains", eval_contains);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("contains", eval_contains, r#"
+Evaluates to `true` if `stream` contains `item`, or if `string` contains `char` or `substring`, otherwise `false`.
+In case of multiple arguments, evaluates to a stream of one `true` or `false` per argument.
+! Can halt for infinite stream which does not contain any match.
+= stream.?(item)
+= stream.?(item, item, ...)
+= string.?(char)
+= string.?(substring)
+= string.?(char|substring, char|substring...)
+> ?range(10).?(5) => true
+> ?range(10).?(0) => false
+> ?range(10).?(3, 'a', []) => [true, false, false]
+> "abc".?('a') => true
+> "abc".?("ab") => true
+> "abc".?("") => !substring can't be empty
+: index
+"#);
 }

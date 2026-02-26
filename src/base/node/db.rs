@@ -94,13 +94,13 @@ impl<'a> DescribeBuilder<'a> {
                 ret.push(']');
             },
             Head::Lang(LangItem::Part) => {
-                ret += self.source.as_ref().expect("*part should have source by construction");
+                ret += self.source.as_ref().expect("[part] should have source by construction");
                 ret.push('[');
                 ret += &self.join_args(", ");
                 ret.push(']');
             },
             Head::Lang(LangItem::Map) => {
-                ret += self.source.as_ref().expect("*part should have source by construction");
+                ret += self.source.as_ref().expect("[map] should have source by construction");
                 ret.push(':');
                 debug_assert!(self.args.len() == 1);
                 ret += &self.args[0];

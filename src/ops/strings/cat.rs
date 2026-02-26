@@ -229,6 +229,15 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("cat", Cat::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("cat", Cat::eval, r#"
+Concatenates a stream of strings or characters into a single string.
+If a `filler` (character or string) is given, it's inserted between each pair of strings.
+= stream.?
+= stream.?(filler)
+> ["Hello", ' ', "world"].? => "Hello world"
+> ['a', 'b', 'c'].?(", ") => "a, b, c"
+: join
+: riffle
+"#);
 }

@@ -131,6 +131,14 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("rev", eval_rev);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("rev", eval_rev, r#"
+The input `stream` or `string`, reversed.
+! May need to evaluate the entire contents of the input.
+= stream.?
+= string.?
+> ?range(5).? => [5, 4, 3, 2, 1]
+> "Hello".? => "olleH"
+> ?seq.? => !stream is infinite
+"#);
 }

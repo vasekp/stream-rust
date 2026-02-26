@@ -88,7 +88,7 @@ impl Iterator for RndIter<'_> {
             if rnd < self.parent.cutoff {
                 break rnd;
             } else {
-                eprintln!("drop");
+                //eprintln!("drop");
             }
         };
         let rem = rnd % &self.parent.len;
@@ -131,6 +131,14 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("rnd", eval_rnd);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("rnd", eval_rnd, r#"
+An infinite stream of uniformly random samples from the input `stream`.
+This is designed to be a reproducible pseudorandom generator. For this reason, a `seed` (number) needs to be provided. The same seed leads to the same pseudorandom stream.
+* For a different seed in each invocation, you may use `$#`, which increases by one in each successfully evaluated input.
+= stream.?(seed)
+> (1..6).?(0) : 10 => [3, 5, 4, 4, 2, 2, 2, 5, 4, 1, ...] ; always the same for seed == 0
+> ?seq.?(0) => !stream is infinite
+> [].?(0) => !stream is empty
+"#);
 }

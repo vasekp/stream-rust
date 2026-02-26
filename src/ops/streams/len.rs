@@ -44,6 +44,13 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("len", eval_len);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["len", "length"], eval_len, r#"
+Counts the number of items in `stream`, or the number of characters in `string`.
+= stream.?
+= string.?
+> [2, 4, 6].? => 3
+> "abcde".? => 5
+> ?seq.? => !stream is infinite
+"#);
 }

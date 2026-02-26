@@ -89,10 +89,9 @@ mod tests {
     #[test]
     fn test_riffle() {
         use super::*;
-        test_eval!("zip(seq,seq)" => "[[1, 1], [2, ...], ...]");
-        test_eval!("zip(1..3,'a'..'c',\"xyz\".chars)" => "[[1, 'a', 'x'], [...], ...]");
-        test_eval!("zip(1..3,'a'..'c',\"xyz\".chars)[3]" => "[3, 'c', 'z']");
-        test_eval!("seq.zip(1..2)" => "[[1, 1], [2, ...]]");
+        test_eval!("zip(seq,seq)" : 10 => "[[1, 1], [2, 2], [3, 3], [...], ...]");
+        test_eval!("zip(1..3,'a'..'c',\"xyz\".chars)" : 12 => "[[1, 'a', 'x'], [2, 'b', 'y'], [3, 'c', 'z']]");
+        test_eval!("seq.zip(1..2)" : 6 => "[[1, 1], [2, 2]]");
         test_eval!("\"ab\".zip(1..2)" => err);
         test_eval!("zip(seq)" => "[[1], [2], [...], ...]");
         test_len!("seq.zip([])" => 0);
@@ -104,6 +103,15 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("zip", eval_zip);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("zip", eval_zip, r#"
+A stream of arrays whose `n`-th element comes from the `n`-th input `streamN`.
+The input which finishes first determines the length of the zip.
+= ?(stream1, ..., streamM)
+= stream1.?(stream2, ..., streamM)
+> "abc".?chars.?(?seq) : 10 => [['a', 1], ['b', 2], ['c', 3]]
+> ?(?range(1, 3), ?range(5, 10)) : 10 => [[1, 5], [2, 6], [3, 7]]
+: riffle
+: enum
+"#);
 }

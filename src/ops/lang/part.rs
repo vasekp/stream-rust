@@ -213,7 +213,22 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("*part", eval_part);
-    keywords.insert("part", eval_part);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert_raw("[part]", eval_part);
+    symbols.insert("part", eval_part, r#"
+In its simplest form `stream.?(index)`, evaluates to the `index`-th item in `stream`.
+Part specifications can be given to greater depth using multiple arguments.
+If a certain argument is a stream of indices, evaluates to a stream of concrete part specifications.
+The shorthand for `stream.?(arg1, arg2, ...)` is `stream[arg1, arg2, ...]`.
+= stream.?(arg1, arg2, ...)
+= string.?(index or stream)
+= stream[arg1, arg2, ...]
+= string[index or stream]
+> ?range(10, 20).?(2) => 11
+> ?range(10, 20).?([2, 5]) => [11, 14]
+> ?range(10, 20).?(2..5) => [11, 12, 13, 14]
+> [[1, 2], ['a', 'b']].?(2, 1) => 'a' ; take second item (['a', 'b']), then first item of that
+> "abcde".?(3..4) => "cd"
+: range
+"#);
 }

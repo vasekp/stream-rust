@@ -73,6 +73,12 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("enum", eval_enum);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("enum", eval_enum, r#"
+Accompanies every item in `stream` with its position in it.
+* Equivalent to `stream.?zip(?seq)`.
+= stream.?
+> ["one", "two", "three"].? : 10 => [["one", 1], ["two", 2], ["three", 3]]
+: index
+"#);
 }

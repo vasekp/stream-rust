@@ -64,24 +64,24 @@ impl PartialEq<str> for Head {
 /// Special types of [`Head`] for language constructs with special syntax.
 #[derive(Debug, PartialEq, Clone)]
 pub enum LangItem {
-    /// List (`[1, 2, 3]` ~ `*list(1, 2, 3)`)
+    /// List (`[1, 2, 3]` ~ `[list](1, 2, 3)`)
     List,
-    /// Parts (`source[1, 2]` ~ `source.*part(1, 2)`)
+    /// Parts (`source[1, 2]` ~ `source.[part](1, 2)`)
     Part,
-    /// Colon (`source:func` ~ `source.*map(func)`)
+    /// Colon (`source:func` ~ `source.[map](func)`)
     Map,
     /// Args (`source.head@args`)
     Args,
 }
 
 impl LangItem {
-    pub(crate) fn keyword(&self) -> &'static str {
+    pub(crate) fn symbol(&self) -> &'static str {
         use LangItem::*;
         match self {
-            List => "*list",
-            Part => "*part",
-            Map => "*map",
-            Args => "*args",
+            List => "[list]",
+            Part => "[part]",
+            Map => "[map]",
+            Args => "[args]",
         }
     }
 }

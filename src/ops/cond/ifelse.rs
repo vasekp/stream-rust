@@ -28,6 +28,14 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("if", eval_if);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("if", eval_if, r#"
+If `condition` evaluates to `true`, evaluates `a`, otherwise evaluates `b`.
+* The other result is not evaluated.
+= ?(condition, a, b)
+> ?seq:{?(#.?isodd, -#, #)} => [-1, 2, -3, 4, -5, ...]
+> ["12", "+3", "xx"]:{?(#.?isnumeric, #.?strnum, #)} => [12, 3, "xx"] ; "xx".strnum would be an error
+: select
+: while
+"#);
 }

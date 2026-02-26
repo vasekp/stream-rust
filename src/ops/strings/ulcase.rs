@@ -52,7 +52,23 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("ucase", eval_ulcase);
-    keywords.insert("lcase", eval_ulcase);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("ucase", eval_ulcase, r#"
+Converts `char` or `string` to uppercase.
+= char.?
+= string.?
+> "Hello".? => "HELLO"
+> 'γ'.? => 'Γ'
+: lcase
+: replace
+"#);
+    symbols.insert("lcase", eval_ulcase, r#"
+Converts `char` or `string` to lowercase.
+= char.?
+= string.?
+> "Hello".? => "hello"
+> 'Σ'.? => 'σ'
+: ucase
+: replace
+"#);
 }

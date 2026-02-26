@@ -90,6 +90,14 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("select", eval_select);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["select", "filter"], eval_select, r#"
+Evaluates `cond` on every item of `stream` and returns only thise items for which it gave `true`.
+= stream.?{cond}
+> [1, 2, -1, 0, 5].?{# > 0} => [1, 2, 5]
+> ?range(10).?(?isodd) => [1, 3, 5, 7, 9]
+: countif
+: while
+: if
+"#);
 }

@@ -91,7 +91,7 @@ impl Iterator for ReorderIter<'_> {
                             Some(Err(err)) => return Some(Err(err)),
                             None => {
                                 return Some(Err(StreamError::new(format!("index past end ({next})"),
-                                    Node::new("*part", 
+                                    Node::new("[part]", 
                                         Some(self.parent.source.clone_item().into()),
                                         vec![Expr::new_number(next.to_owned())]))));
                             }
@@ -191,8 +191,8 @@ mod tests {
         test_eval!("('a'..'e').reorder(0)" => err);
         test_eval!("('a'..'e').reorder(6)" => err);
         test_eval!("('a'..'e').reorder()" => "['a', 'b', 'c', 'd', 'e']");
-        test_eval!("('a'..'e').lenAM.reorder(6)" => err);
-        test_eval!("('a'..'e').lenUF.reorder(6)" => "[<!>");
+        test_eval!("('a'..'e').$lenAM.reorder(6)" => err);
+        test_eval!("('a'..'e').$lenUF.reorder(6)" => "[<!>");
         test_eval!("('a'..'e').reorder(3,2)" => "['c', 'b', 'a', 'd', 'e']");
         test_eval!("('a'..'e').reorder(3,4)" => "['c', 'd', 'a', 'b', 'e']");
         test_eval!("('a'..'e').reorder(2,4)" => "['b', 'd', 'a', 'c', 'e']");
@@ -213,6 +213,13 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("reorder", eval_reorder);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("reorder", eval_reorder, r#"
+Applies a given permutation on the input `stream`: returning `stream[i1]`, `stream[i2]` etc., followed by all the remaining items.
+= stream.?(i1, ..., iK)
+> ('a'..'e').?(3, 2, 1) => ['c', 'b', 'a', 'd', 'e']
+> (1..5).?(3) => [3, 1, 2, 4, 5]
+> ?seq.?(10, 10) => !indices can not repeat
+: perm
+"#);
 }

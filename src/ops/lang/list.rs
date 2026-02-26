@@ -28,7 +28,11 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("*list", eval_list);
-    keywords.insert("list", eval_list);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert_raw("[list]", eval_list);
+    symbols.insert("list", eval_list, r#"
+A stream formed by `?`'s arguments.
+= ?(item1, item2, ...)
+> ?(1, 2, 3) => [1, 2, 3]
+"#);
 }

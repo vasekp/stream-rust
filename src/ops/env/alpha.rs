@@ -51,6 +51,22 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("alpha", eval_alpha);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("alpha", eval_alpha, r#"
+Without arguments: returns the current alphabet as a stream of characters.
+With arguments: changes alphabet for the evaluation of `expr`.
+The new alphabet can be given as a list of characters, or a string.
+= ?
+= ?(stream, expr)
+= ?(string, expr)
+> ? => ['a', 'b', 'c', 'd', 'e', ...]
+> ?(['α', 'β', 'γ'], ?) => ['α', 'β', 'γ']
+> ?(['α', 'β', 'γ'], ["αβα", "γγ", "γαβ", "β"].?sort) => ["αβα", "β", "γαβ", "γγ"]
+> ["αβα", "γγ", "γαβ", "β"].?sort => !not in alphabet
+> ?("xyz", 'x' + 'x') => 'y'
+: ord
+: chr
+: with
+: global
+"#);
 }

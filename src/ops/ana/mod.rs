@@ -1,5 +1,5 @@
 mod counts;
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    counts::init(keywords);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    counts::init(symbols);
 }

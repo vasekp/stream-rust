@@ -244,7 +244,27 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("range", Range::eval);
-    keywords.insert("..", Range::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("..", Range::eval, r#"
+A range of values (numbers or characters).
+= from..to
+> 1..3 => [1, 2, 3]
+> 'a'..'c' => ['a', 'b', 'c']
+: range
+"#);
+    symbols.insert("range", Range::eval, r#"
+A range of values. If `from` or `step` are not given, they default to 1.
+Also works for characters, in this case `from` must be given. `step` remains numeric.
+The shorthand for `?range(from, to)` is `from..to`.
+= ?(to)
+= ?(from, to)
+= ?(from, to, step)
+> ?(3) => [1, 2, 3]
+> ?(3, 5) => [3, 4, 5]
+> ?(0, 10, 3) => [0, 3, 6, 9]
+> ?(1, 2, 0) => [1, 1, 1, 1, 1, ...]
+> ?(10, 0, -3) => [10, 7, 4, 1]
+: seq
+: ..
+"#);
 }

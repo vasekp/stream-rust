@@ -100,8 +100,14 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("*map", eval_map);
-    keywords.insert("map", eval_map);
-    keywords.insert("foreach", eval_map);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert_raw("[map]", eval_map);
+    symbols.insert(["foreach", "map"], eval_map, r#"
+Applies `func` on each item in `stream`.
+The shorthand for `stream.?(func)` or `stream.?{#.func(args)}` is `stream:func` or `stream:func(args)`.
+= stream.?{func}
+= stream:func(args)
+> ?seq.?{#*3} => [3, 6, 9, 12, 15, ...]
+> ?seq.?{#*#1}(5) => [5, 10, 15, 20, 25, ...]
+"#);
 }

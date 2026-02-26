@@ -5,11 +5,11 @@ mod class;
 mod r#while;
 mod splitby;
 
-pub(crate) fn init(keywords: &mut crate::keywords::Keywords) {
-    select::init(keywords);
-    countif::init(keywords);
-    ifelse::init(keywords);
-    class::init(keywords);
-    r#while::init(keywords);
-    splitby::init(keywords);
+pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
+    select::init(symbols);
+    countif::init(symbols);
+    ifelse::init(symbols);
+    class::init(symbols);
+    r#while::init(symbols);
+    splitby::init(symbols);
 }

@@ -99,7 +99,16 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("seq", Seq::eval);
-    keywords.insert("iota", Seq::eval);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["seq", "iota"], Seq::eval, r#"
+A stream of consecutive numbers. If `from` or `step` are not given, they default to 1.
+= ?
+= ?(from)
+= ?(from, step)
+> ? => [1, 2, 3, 4, 5, ...]
+> ?(0) => [0, 1, 2, 3, 4, ...]
+> ?(0, 2) => [0, 2, 4, 6, 8, ...]
+> ?(3, -1) => [3, 2, 1, 0, -1, ...]
+: range
+"#);
 }

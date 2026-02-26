@@ -77,6 +77,11 @@ mod tests {
     }
 }
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    keywords.insert("ddup", eval_ddup);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("ddup", eval_ddup, r#"
+Keeps only the first appearance of any repeated item in `stream`.
+= stream.?
+> [1, 2, 1, 2, 3].? => [1, 2, 3]
+> "abracadabra".?chars.?.?string => "abrcd"
+"#);
 }

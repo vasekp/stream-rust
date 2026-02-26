@@ -4,10 +4,10 @@ mod cat;
 mod ulcase;
 mod replace;
 
-pub fn init(keywords: &mut crate::keywords::Keywords) {
-    chars::init(keywords);
-    split::init(keywords);
-    cat::init(keywords);
-    ulcase::init(keywords);
-    replace::init(keywords);
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    chars::init(symbols);
+    split::init(symbols);
+    cat::init(symbols);
+    ulcase::init(symbols);
+    replace::init(symbols);
 }

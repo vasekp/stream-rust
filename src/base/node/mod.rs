@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::keywords::find_keyword;
+use crate::symbols::Symbols;
 
 mod enode;
 mod link;
@@ -41,7 +41,7 @@ impl Node {
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
     ///
-    /// The evaluation is done by finding the head of the node in a global keyword table.
+    /// The evaluation is done by finding the head of the node in a global symbol table.
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
@@ -50,14 +50,14 @@ impl Node {
         let res = (|| {
             match self.head {
                 Head::Symbol(ref sym) | Head::Oper(ref sym) => {
-                    if let Some(func) = find_keyword(sym) {
-                        func(self, env)
+                    if let Some(ctor) = Symbols::find_ctor(sym) {
+                        ctor(self, env)
                     } else {
                         Err(StreamError::new(format!("symbol '{sym}' not found"), self))
                     }
                 },
                 Head::Lang(ref lang) => {
-                    let ctor = find_keyword(lang.keyword()).expect("all LangItem keywords should exist");
+                    let ctor = Symbols::find_ctor(lang.symbol()).expect("all LangItem symbols should exist");
                     ctor(self, env)
                 },
                 Head::Block(blk) => {
@@ -66,7 +66,7 @@ impl Node {
                         .map(|expr| expr.eval(env))
                         .collect::<Result<_, _>>()?;
                     blk.apply(&source, &args)?.eval(env)
-                }
+                },
             }
         })();
         env.tracer.borrow_mut().log(tracing::Event::Leave(&res));
