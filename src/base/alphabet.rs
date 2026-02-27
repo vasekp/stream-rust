@@ -1,6 +1,5 @@
 use crate::base::*;
 use std::collections::HashMap;
-use num::traits::Euclid;
 
 /// The notion of alphabet ordering in Stream.
 #[derive(Clone, Default)]

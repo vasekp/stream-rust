@@ -26,7 +26,7 @@ fn sort_impl(vals: &mut [Item], alpha: &Rc<Alphabet>) -> Result<(), BaseError> {
             for ix in 0..rest.len() {
                 if rest[ix].lex_cmp(pivot, alpha)? == Ordering::Less {
                     rest.swap(ix, div_ix);
-                    div_ix.inc();
+                    div_ix += 1;
                 }
             }
             vals.swap(0, div_ix);

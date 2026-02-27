@@ -30,7 +30,7 @@ fn stream_counts_listed_impl(stm: &dyn Stream, args: &[Item]) -> Result<Item, St
         let item = item?;
         for (cmp, count) in &mut counts {
             if item.try_eq(cmp)? {
-                count.inc();
+                *count += 1;
             }
         }
     }
@@ -66,7 +66,7 @@ fn string_counts_listed_impl(stm: &dyn Stream<Char>, chars: &[Vec<Char>]) -> Res
                 deque.range(longest - len..).eq(cmp.iter())
             };
             if found {
-                count.inc();
+                *count += 1;
             }
         }
     }
@@ -88,7 +88,7 @@ fn counts_free_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<Item, StreamErro
         'a: {
             for (cmp, count) in &mut counts {
                 if item.try_eq(cmp)? {
-                    count.inc();
+                    *count += 1;
                     break 'a;
                 }
             }

@@ -43,8 +43,8 @@ stream.dignum(radix, min_width)", rnode))
     let vec = try_with!(rnode, s.iter().map(|item| {
             check_stop!();
             item?.into_num()?
-                .to_u8()
-                .ok_or(BaseError::from("invalid digit"))
+                .try_into()
+                .map_err(|_| BaseError::from("invalid digit"))
         })
         .collect::<Result<Vec<u8>, _>>()?);
     let num = Number::from_radix_be(num::bigint::Sign::Plus, &vec, radix)
@@ -53,8 +53,8 @@ stream.dignum(radix, min_width)", rnode))
 }
 
 pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
-    match radix.to_u32() {
-        Some(radix) if (2..=256).contains(&radix) => Ok(radix),
+    match radix.try_into() {
+        Ok(radix) if (2..=256).contains(&radix) => Ok(radix),
         _ => Err("radix must be between 2 and 256".into())
     }
 }

@@ -35,7 +35,9 @@ impl Stream for PermStream {
         Box::new(PermIter {
             source: &self.source,
             src_len: &self.len,
-            self_len: self.len.as_ref().and_then(|x| x.to_u32().map(crate::utils::factorial)),
+            self_len: self.len.as_ref()
+                .and_then(|x| u32::try_from(x).ok())
+                .map(crate::utils::factorial),
             order: vec![],
             num_read: UNumber::zero()
         })
@@ -43,9 +45,9 @@ impl Stream for PermStream {
 
     fn len(&self) -> Length {
         match &self.len {
-            Some(len) => match len.to_u32() {
-                Some(x) => Length::Exact(crate::utils::factorial(x)),
-                None => Length::UnknownFinite
+            Some(len) => match u32::try_from(len) {
+                Ok(x) => Length::Exact(crate::utils::factorial(x)),
+                _ => Length::UnknownFinite
             },
             None => Length::Infinite
         }
@@ -53,12 +55,12 @@ impl Stream for PermStream {
 }
 
 fn build_order(mut n: UNumber) -> Vec<usize> {
-    if n.is_zero() { return vec![]; } else { n.dec(); }
+    if n.is_zero() { return vec![]; } else { n -= 1; }
     let mut vec = vec![0];
     for i in 2usize.. {
         if n.is_zero() { break; }
         let (div, rem) = n.div_rem(&UNumber::from(i));
-        vec.push(rem.to_usize().unwrap()); // result of div must fit
+        vec.push(usize::try_from(rem).unwrap()); // result of div must fit
         n = div;
     }
     vec.reverse();
@@ -96,7 +98,7 @@ impl Iterator for PermIter<'_> {
                 None => {
                     let prev_len = self.order.len();
                     if self.src_len.as_ref()
-                        .and_then(UNumber::to_usize)
+                        .and_then(|x| usize::try_from(x).ok())
                         .is_some_and(|x| x == prev_len) { return None; }
                     self.order.push(self.order[0]);
                     self.order[0] = prev_len;
@@ -107,7 +109,7 @@ impl Iterator for PermIter<'_> {
         let order = self.order.iter()
             .map(|x| Item::new_number(x + 1))
             .collect::<Vec<_>>();
-        self.num_read.inc();
+        self.num_read += 1;
         Some(Expr::from(ENode {
             head: "reorder".into(),
             source: Some(self.source.clone()),

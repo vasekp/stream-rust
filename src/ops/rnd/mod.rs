@@ -1,6 +1,6 @@
 use crate::base::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use rand::{RngCore, SeedableRng, rngs::SmallRng};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
@@ -13,11 +13,11 @@ fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
             let mut hasher = DefaultHasher::default();
             Hash::hash(&seed, &mut hasher);
             Hash::hash(&b':', &mut hasher);
-            let digits = len.iter_u32_digits().collect::<Vec<_>>();
-            let top_digit = digits.last().expect("digits should be nonempty");
-            let max_quot = if digits.len() == 1 { u32::MAX / top_digit }
-                else if top_digit == &u32::MAX { 1 }
-                else { u32::MAX / (top_digit + 1) };
+            let digits = len.to_be_bytes();
+            let top_digit = digits[0];
+            let max_quot = if digits.len() == 1 { u8::MAX / top_digit }
+                else if top_digit == u8::MAX { 1 }
+                else { u8::MAX / (top_digit + 1) };
             Ok(Item::new_stream(RndStream {
                 source: stm.into(),
                 head, seed, hasher,
@@ -82,9 +82,9 @@ impl Iterator for RndIter<'_> {
         let rnd = loop {
             let mut digits = Vec::with_capacity(self.parent.num_digits);
             for _ in 0..self.parent.num_digits {
-                digits.push(rng.next_u32());
+                digits.push(rng.random());
             }
-            let rnd = UNumber::from_slice(&digits[..]);
+            let rnd = UNumber::from_be_bytes(&digits[..]);
             if rnd < self.parent.cutoff {
                 break rnd;
             } else {
@@ -98,7 +98,7 @@ impl Iterator for RndIter<'_> {
             Ok(Some(_)) => unreachable!("iterator ended before its length"),
             Err(err) => return Some(Err(err))
         };
-        self.pos.inc();
+        self.pos += 1;
         iter.next()
     }
 }

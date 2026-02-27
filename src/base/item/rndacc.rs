@@ -20,7 +20,7 @@ impl<I: ItemType> Iterator for RandomAccess<'_, I> {
     type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.consumed.inc();
+        self.consumed += 1;
         self.iter.next()
     }
 }
