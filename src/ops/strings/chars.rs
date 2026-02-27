@@ -3,7 +3,7 @@ use crate::base::*;
 #[derive(Clone)]
 struct Chars {
     head: Head,
-    source: BoxedStream<Char>
+    source: Rc<dyn Stream<Char>>
 }
 
 impl Chars {
@@ -39,7 +39,7 @@ impl Stream for Chars {
 #[derive(Clone)]
 struct Str {
     head: Head,
-    source: BoxedStream
+    source: Rc<dyn Stream>
 }
 
 impl Str {

@@ -71,8 +71,8 @@ fn eval_index_impl<I: ItemType>(source: &dyn Stream<I>, index: &Number) -> Resul
 
 #[derive(Clone)]
 struct Part {
-    source: BoxedStream,
-    indices: BoxedStream,
+    source: Rc<dyn Stream>,
+    indices: Rc<dyn Stream>,
     rest: Vec<Item>,
     env: Env,
     head: Head
@@ -128,8 +128,8 @@ impl SIterator for PartIter<'_> {
 
 #[derive(Clone)]
 struct StringPart {
-    source: BoxedStream<Char>,
-    indices: BoxedStream,
+    source: Rc<dyn Stream<Char>>,
+    indices: Rc<dyn Stream>,
     head: Head
 }
 

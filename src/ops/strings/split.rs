@@ -26,7 +26,7 @@ fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct SplitString {
     head: Head,
-    source: BoxedStream<Char>,
+    source: Rc<dyn Stream<Char>>,
     sep: Vec<LiteralString>,
 }
 
@@ -89,7 +89,7 @@ impl SIterator for SplitStringIter<'_> {
 #[derive(Clone)]
 struct SplitStream {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     sep: Vec<Item>,
 }
 

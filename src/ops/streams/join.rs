@@ -31,7 +31,7 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 enum Joinable<I: ItemType> {
     Single(I),
-    Stream(BoxedStream<I>)
+    Stream(Rc<dyn Stream<I>>)
 }
 
 impl<I: ItemType> Describe for Joinable<I> {

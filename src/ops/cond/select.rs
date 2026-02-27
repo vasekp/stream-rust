@@ -3,7 +3,7 @@ use crate::base::*;
 #[derive(Clone)]
 struct Select {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     cond: ENode,
     env: Env
 }

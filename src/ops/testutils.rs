@@ -14,7 +14,7 @@ fn eval_len_am(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct LenAM<I: ItemType> {
     head: Head,
-    src: BoxedStream<I>,
+    src: Rc<dyn Stream<I>>,
 }
 
 impl<I: ItemType> Describe for LenAM<I> {
@@ -71,7 +71,7 @@ fn eval_len_uf(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct LenUF<I: ItemType> {
     head: Head,
-    src: BoxedStream<I>,
+    src: Rc<dyn Stream<I>>,
 }
 
 impl<I: ItemType> Describe for LenUF<I> {
@@ -128,7 +128,7 @@ fn eval_len_uu(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct LenUU<I: ItemType> {
     head: Head,
-    src: BoxedStream<I>,
+    src: Rc<dyn Stream<I>>,
 }
 
 impl<I: ItemType> Describe for LenUU<I> {

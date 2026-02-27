@@ -7,7 +7,7 @@ struct SelfRef {
     head: Head,
     body: Node,
     env: Env,
-    pre: Option<BoxedStream>,
+    pre: Option<Rc<dyn Stream>>,
 }
 
 impl SelfRef {
@@ -25,7 +25,7 @@ impl SelfRef {
         }
     }
 
-    fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {
+    fn eval_real(&self) -> Result<(Rc<dyn Stream>, Rc<CacheHistory>), StreamError> {
         let hist = Rc::new(RefCell::new(Vec::new()));
         let item = self.body.clone()
             .with_source(Expr::new_stream(BackRef {

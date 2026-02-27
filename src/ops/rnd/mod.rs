@@ -32,7 +32,7 @@ fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
 
 #[derive(Clone)]
 struct RndStream {
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     head: Head,
     seed: Number,
     hasher: DefaultHasher,

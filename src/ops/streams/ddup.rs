@@ -12,7 +12,7 @@ fn eval_ddup(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct DDup {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
 }
 
 

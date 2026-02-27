@@ -13,7 +13,7 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
                 (Item::Char(c1), Item::String(s2)) => (vec![vec![c1.to_owned()]], vec![s2.listout()?]),
                 (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![c2.to_owned()]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
-                (Item::Stream(s1), Item::Stream(s2)) => (read_stream(&**s1)?, read_stream(&**s2)?),
+                (Item::Stream(s1), Item::Stream(s2)) => (read_stream(&s1)?, read_stream(&s2)?),
                 _ => return Err(StreamError::new("expected: (char/string, char/string) or (stream, stream)", node))
             };
             if orig.len() != repl.len() {
@@ -33,14 +33,14 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn read_stream(stm: &(dyn Stream + 'static)) -> Result<Vec<Vec<Char>>, StreamError> {
+fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
     stm.iter()
         .map(|item| {
             check_stop!();
             match item? {
                 Item::Char(ch) => Ok(vec![ch]),
                 Item::String(s) => s.listout(),
-                item => Err(StreamError::new(format!("expected character or string, found {item:?}"), stm.clone_item()))
+                item => Err(StreamError::new(format!("expected character or string, found {item:?}"), Item::from(stm)))
             }})
         .collect()
 }
@@ -48,7 +48,7 @@ fn read_stream(stm: &(dyn Stream + 'static)) -> Result<Vec<Vec<Char>>, StreamErr
 #[derive(Clone)]
 struct StringReplace {
     head: Head,
-    source: BoxedStream<Char>,
+    source: Rc<dyn Stream<Char>>,
     orig: Vec<Vec<Char>>,
     repl: Vec<Vec<Char>>,
     longest: usize,
@@ -155,7 +155,7 @@ impl SIterator<Char> for StringReplaceIter<'_> {
 #[derive(Clone)]
 struct StreamReplace {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     orig: Item,
     repl: Item,
 }

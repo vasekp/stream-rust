@@ -14,7 +14,7 @@ fn eval_splitby(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct SplitBy<I: ItemType> {
     head: Head,
-    source: BoxedStream<I>,
+    source: Rc<dyn Stream<I>>,
     cond: ENode,
     env: Env
 }

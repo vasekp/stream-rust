@@ -2,7 +2,7 @@ use crate::base::*;
 
 #[derive(Clone)]
 struct Flatten {
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     depth: Option<UNumber>,
     head: Head
 }
@@ -11,10 +11,10 @@ impl Flatten {
     fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
         match node.eval_all(env)?.resolve_source()? {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero } => {
-                Ok(Item::new_stream(Flatten { source: stm.into(), head, depth: None }))
+                Ok(Item::new_stream(Flatten { source: stm, head, depth: None }))
             },
             RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(depth)) } if !depth.is_negative() => {
-                Ok(Item::new_stream(Flatten { source: stm.into(), head, depth: Some(crate::utils::unsign(depth)) }))
+                Ok(Item::new_stream(Flatten { source: stm, head, depth: Some(crate::utils::unsign(depth)) }))
             },
             node => Err(StreamError::new("expected: stream.flatten or stream.flatten(depth)", node))
         }

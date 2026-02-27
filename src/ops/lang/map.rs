@@ -12,7 +12,7 @@ fn eval_map(node: Node, env: &Env) -> Result<Item, StreamError> {
 
 #[derive(Clone)]
 struct Map {
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     body: Node,
     head: Head,
     env: Env
@@ -29,7 +29,7 @@ impl Describe for Map {
 
 impl Stream for Map {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SMap::new(&*self.source, |item| {
+        Box::new(SMap::new(&self.source, |item| {
             self.body.clone()
                 .with_source(item.into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
@@ -44,7 +44,7 @@ impl Stream for Map {
 
 #[derive(Clone)]
 struct CharMap {
-    source: BoxedStream<Char>,
+    source: Rc<dyn Stream<Char>>,
     body: Node,
     head: Head,
     env: Env
@@ -61,7 +61,7 @@ impl Describe for CharMap {
 
 impl Stream<Char> for CharMap {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(SMap::new(&*self.source, |ch| {
+        Box::new(SMap::new(&self.source, |ch| {
             self.body.clone()
                 .with_source(Item::Char(ch).into())
                 .and_then(|node| Expr::from(node).eval(&self.env))

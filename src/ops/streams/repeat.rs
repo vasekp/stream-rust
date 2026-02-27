@@ -103,7 +103,7 @@ impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
 #[derive(Clone)]
 pub struct RepeatStream<I: ItemType> {
     head: Head,
-    stream: BoxedStream<I>,
+    stream: Rc<dyn Stream<I>>,
     count: Option<UNumber>
 }
 

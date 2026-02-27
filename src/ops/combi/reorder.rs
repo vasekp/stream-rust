@@ -31,7 +31,7 @@ fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
 
 #[derive(Clone)]
 struct ReorderStream {
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     head: Head,
     indices: Vec<UNumber>,
     max_index: UNumber,
@@ -91,8 +91,8 @@ impl Iterator for ReorderIter<'_> {
                             Some(Err(err)) => return Some(Err(err)),
                             None => {
                                 return Some(Err(StreamError::new(format!("index past end ({next})"),
-                                    Node::new("[part]", 
-                                        Some(self.parent.source.clone_item().into()),
+                                    Node::new("[part]",
+                                        Some(Item::from(&self.parent.source).into()),
                                         vec![Expr::new_number(next.to_owned())]))));
                             }
                         }

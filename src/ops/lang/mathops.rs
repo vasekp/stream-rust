@@ -238,7 +238,7 @@ impl SIterator for MathOpIter<'_> {
 
 #[derive(Clone)]
 struct StringOp {
-    first: BoxedStream<Char>,
+    first: Rc<dyn Stream<Char>>,
     node_rem: ENode,
     func: StringFunc,
     env: Env,

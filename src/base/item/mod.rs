@@ -32,8 +32,8 @@ pub enum Item {
     Number(Number),
     Bool(bool),
     Char(Char),
-    Stream(Box<dyn Stream<Item>>),
-    String(Box<dyn Stream<Char>>),
+    Stream(Rc<dyn Stream<Item>>),
+    String(Rc<dyn Stream<Char>>),
 }
 
 impl Item {
@@ -50,19 +50,19 @@ impl Item {
     }
 
     pub fn new_stream(value: impl Stream + 'static) -> Item {
-        Item::Stream(Box::new(value))
+        Item::Stream(Rc::new(value))
     }
 
     pub fn new_string(value: impl Stream<Char> + 'static) -> Item {
-        Item::String(Box::new(value))
+        Item::String(Rc::new(value))
     }
 
     pub fn empty_stream() -> Item {
-        Item::Stream(Box::new(EmptyStream))
+        Item::Stream(Rc::new(EmptyStream))
     }
 
     pub fn empty_string() -> Item {
-        Item::String(Box::new(EmptyString))
+        Item::String(Rc::new(EmptyString))
     }
 
     pub fn as_num(&self) -> Result<&Number, BaseError> {
@@ -288,15 +288,15 @@ impl<I: ItemType> From<Vec<I>> for Item {
     }
 }
 
-impl<I: ItemType> From<Box<dyn Stream<I>>> for Item {
-    fn from(vec: Box<dyn Stream<I>>) -> Item {
-        I::from_box(vec)
+impl<I: ItemType> From<Rc<dyn Stream<I>>> for Item {
+    fn from(rc: Rc<dyn Stream<I>>) -> Item {
+        I::from_rc(rc)
     }
 }
 
-impl<I: ItemType> From<BoxedStream<I>> for Item {
-    fn from(vec: BoxedStream<I>) -> Item {
-        I::from_box(vec.into())
+impl<I: ItemType> From<&Rc<dyn Stream<I>>> for Item {
+    fn from(rc: &Rc<dyn Stream<I>>) -> Item {
+        I::from_rc(Rc::clone(rc))
     }
 }
 
@@ -338,8 +338,8 @@ impl Clone for Item {
             Number(x) => Number(x.clone()),
             Bool(x) => Bool(*x),
             Char(x) => Char(x.clone()),
-            Stream(s) => Stream(s.clone_box()),
-            String(s) => String(s.clone_box()),
+            Stream(s) => Stream(Rc::clone(s)),
+            String(s) => String(Rc::clone(s)),
         }
     }
 }

@@ -88,14 +88,14 @@ where F: FnMut() -> Result<I, StreamError>
 }
 
 pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> {
-    parent: &'node (dyn Stream<I1> + 'static),
+    parent: Rc<dyn Stream<I1>>,
     source: Box<dyn SIterator<I1> + 'node>,
     func: F
 }
 
 impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SMap<'node, I1, I2, F> {
-    pub(crate) fn new(stream: &'node (dyn Stream<I1> + 'static), func: F) -> Self {
-        SMap{parent: stream, source: stream.iter(), func}
+    pub(crate) fn new(stream: &'node Rc<dyn Stream<I1>>, func: F) -> Self {
+        SMap{parent: Rc::clone(stream), source: stream.iter(), func}
     }
 }
 
@@ -105,7 +105,7 @@ impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'_,
     fn next(&mut self) -> Option<Self::Item> {
         let item = iter_try_expr!(self.source.next()?);
         let res = (self.func)(item);
-        Some(res.map_err(|err| StreamError::new(err, I1::from_box(self.parent.clone_box()))))
+        Some(res.map_err(|err| StreamError::new(err, Item::from(&self.parent))))
     }
 }
 

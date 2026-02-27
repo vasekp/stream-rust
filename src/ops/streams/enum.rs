@@ -11,7 +11,7 @@ fn eval_enum(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct Enum {
     head: Head,
-    stream: BoxedStream,
+    stream: Rc<dyn Stream>,
 }
 
 

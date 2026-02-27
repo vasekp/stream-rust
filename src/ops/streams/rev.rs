@@ -11,13 +11,13 @@ fn eval_rev(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<Item, StreamError> {
+fn eval_rev_impl<I: ItemType>(head: Head, source: Rc<dyn Stream<I>>) -> Result<Item, StreamError> {
     match source.len() {
         Length::Infinite
             => Err(StreamError::new("input is infinite", Item::from(source))),
         Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) =>
-            Ok(Item::from(Box::new(Rev{head, source: source.into(), length: len})
-                    as Box<dyn Stream<I>>)),
+            Ok(Item::from(Rc::new(Rev{head, source: source.into(), length: len})
+                    as Rc<dyn Stream<I>>)),
         _ => {
             let mut vec = source.listout()?;
             vec.reverse();
@@ -29,7 +29,7 @@ fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<
 #[derive(Clone)]
 pub struct Rev<I: ItemType> {
     head: Head,
-    source: BoxedStream<I>,
+    source: Rc<dyn Stream<I>>,
     length: UNumber
 }
 

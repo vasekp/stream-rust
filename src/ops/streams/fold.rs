@@ -5,7 +5,7 @@ use std::collections::VecDeque;
 struct Fold {
     head: Head,
     body: ENode,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     env: Env
 }
 

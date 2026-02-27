@@ -3,7 +3,7 @@ use crate::base::*;
 #[derive(Clone)]
 struct Riffle {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     filler: Item
 }
 
@@ -15,7 +15,7 @@ impl Riffle {
             if src.is_empty()
                 => return Ok(Item::empty_stream()),
             RNodeS { source: Item::Stream(src), args: RArgs::One(filler), .. }
-                => (BoxedStream::from(src), filler),
+                => (Rc::clone(&src), filler),
             _ => return Err(StreamError::new("expected: stream.riffle(item or stream)", rnode))
         };
         Ok(Item::new_stream(Riffle{head: rnode.head, source, filler}))

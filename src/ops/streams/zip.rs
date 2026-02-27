@@ -20,7 +20,7 @@ fn eval_zip(node: Node, env: &Env) -> Result<Item, StreamError> {
 #[derive(Clone)]
 struct Zip {
     head: Head,
-    streams: Vec<BoxedStream>,
+    streams: Vec<Rc<dyn Stream>>,
 }
 
 

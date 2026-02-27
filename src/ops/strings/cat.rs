@@ -2,7 +2,7 @@ use crate::base::*;
 
 #[derive(Clone)]
 struct Cat {
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     head: Head,
     filler: Option<LiteralString>,
 }
