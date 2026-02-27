@@ -26,9 +26,9 @@ fn eval_enode(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
         Item::Stream(stm) => {
             match node.source {
                 Some(Item::Stream(source)) =>
-                    Ok(Item::new_stream(Part{source: source.into(), indices: stm.into(), rest: node.args, env: env.clone(), head: node.head})),
+                    Ok(Item::new_stream(Part{source, indices: stm, rest: node.args, env: env.clone(), head: node.head})),
                 Some(Item::String(source)) if node.args.is_empty() =>
-                    Ok(Item::new_string(StringPart{source: source.into(), indices: stm.into(), head: node.head})),
+                    Ok(Item::new_string(StringPart{source, indices: stm, head: node.head})),
                 Some(Item::String(_)) => {
                     node.args.insert(0, Item::Stream(stm));
                     Err(StreamError::new("expected only one level of parts", node))

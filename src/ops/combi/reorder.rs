@@ -26,7 +26,7 @@ fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
             return Err(StreamError::new("requested index exceeds length of source", node));
         }
     }
-    Ok(Item::new_stream(ReorderStream { source: stm.into(), head: node.head, indices, max_index }))
+    Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
 
 #[derive(Clone)]

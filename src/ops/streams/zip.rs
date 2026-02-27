@@ -10,7 +10,7 @@ fn eval_zip(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
     let streams = node.source.into_iter().chain(node.args)
         .map(|item| match item {
-            Item::Stream(stm) => stm.into(),
+            Item::Stream(stm) => stm,
             _ => unreachable!()
         })
         .collect();

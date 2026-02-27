@@ -19,7 +19,7 @@ fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
                 else if top_digit == &u32::MAX { 1 }
                 else { u32::MAX / (top_digit + 1) };
             Ok(Item::new_stream(RndStream {
-                source: stm.into(),
+                source: stm,
                 head, seed, hasher,
                 num_digits: digits.len(),
                 cutoff: max_quot * &len,

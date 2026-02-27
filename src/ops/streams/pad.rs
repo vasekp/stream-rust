@@ -6,10 +6,10 @@ fn eval_padl(node: Node, env: &Env) -> Result<Item, StreamError> {
     match node {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(Item::Number(len), item) }
         if !len.is_negative() =>
-            Ok(Item::new_stream(PadLeft { source: stm.into(), len: unsign(len), padding: item, head })),
+            Ok(Item::new_stream(PadLeft { source: stm, len: unsign(len), padding: item, head })),
         RNodeS { head, source: Item::String(s), args: RArgs::Two(Item::Number(len), Item::Char(ch)) }
         if !len.is_negative() =>
-            Ok(Item::new_string(PadLeft { source: s.into(), len: unsign(len), padding: ch, head })),
+            Ok(Item::new_string(PadLeft { source: s, len: unsign(len), padding: ch, head })),
         _ => Err(StreamError::new("expected: stream.padleft(length, item) or string.padleft(length, char)", node))
     }
 }
@@ -19,10 +19,10 @@ fn eval_padr(node: Node, env: &Env) -> Result<Item, StreamError> {
     match node {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(Item::Number(len), item) }
         if !len.is_negative() =>
-            Ok(Item::new_stream(PadRight { source: stm.into(), len: unsign(len), padding: item, head })),
+            Ok(Item::new_stream(PadRight { source: stm, len: unsign(len), padding: item, head })),
         RNodeS { head, source: Item::String(s), args: RArgs::Two(Item::Number(len), Item::Char(ch)) }
         if !len.is_negative() =>
-            Ok(Item::new_string(PadRight { source: s.into(), len: unsign(len), padding: ch, head })),
+            Ok(Item::new_string(PadRight { source: s, len: unsign(len), padding: ch, head })),
         _ => Err(StreamError::new("expected: stream.padright(length, item) or string.padright(length, char)", node))
     }
 }

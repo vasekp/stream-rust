@@ -25,7 +25,7 @@ fn eval_last(node: Node, env: &Env) -> Result<Item, StreamError> {
                         let Item::Stream(stm) = rnode.source else { unreachable!() };
                         Ok(Item::new_stream(Last {
                             head: rnode.head,
-                            source: stm.into(),
+                            source: stm,
                             skip,
                             count
                         }))
@@ -44,7 +44,7 @@ fn eval_last(node: Node, env: &Env) -> Result<Item, StreamError> {
                         let Item::String(stm) = rnode.source else { unreachable!() };
                         Ok(Item::new_string(Last {
                             head: rnode.head,
-                            source: stm.into(),
+                            source: stm,
                             skip,
                             count
                         }))

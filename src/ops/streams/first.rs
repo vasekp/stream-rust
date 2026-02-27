@@ -10,10 +10,10 @@ fn eval_first(node: Node, env: &Env) -> Result<Item, StreamError> {
             => first_item_impl(&**stm).map(Item::Char).map_err(|err| StreamError::new(err, rnode)),
         RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
                 if !count.is_negative()
-            => Ok(Item::new_stream(First{head, source: s.into(), count: unsign(count)})),
+            => Ok(Item::new_stream(First{head, source: s, count: unsign(count)})),
         RNodeS { head, source: Item::String(s), args: RArgs::One(Item::Number(count)) }
                 if !count.is_negative()
-            => Ok(Item::new_string(First{head, source: s.into(), count: unsign(count)})),
+            => Ok(Item::new_string(First{head, source: s, count: unsign(count)})),
         _ => Err(StreamError::new("expected: source.first or source.first(count)", rnode))
     }
 }

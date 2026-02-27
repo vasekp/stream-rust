@@ -21,7 +21,7 @@ fn eval_fold(node: Node, env: &Env) -> Result<Item, StreamError> {
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(body)) }
         if body.source.is_none() && !body.args.is_empty() => {
-            Ok(Item::new_stream(Fold{head, body: body.eval_all(env)?, source: stm.into(), env: env.clone()}))
+            Ok(Item::new_stream(Fold{head, body: body.eval_all(env)?, source: stm, env: env.clone()}))
         },
         node => Err(StreamError::new("expected: stream.fold({body}(args))", node))
     }

@@ -8,13 +8,13 @@ fn eval_windows(node: Node, env: &Env) -> Result<Item, StreamError> {
         RNodeS { source: Item::Stream(_), args: RArgs::One(Expr::Imm(Item::Number(ref size))), .. } => {
             let size = try_with!(node, check_win_size(size)?);
             let Item::Stream(stm) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size, body: None, env: env.clone()}))
+            Ok(Item::new_stream(Windows{head: node.head, source: stm, size, body: None, env: env.clone()}))
         },
         RNodeS { source: Item::Stream(_), args: RArgs::Two(Expr::Imm(Item::Number(ref size)), Expr::Eval(_)), .. } => {
             let size = try_with!(node, check_win_size(size)?);
             let RArgs::Two(_, Expr::Eval(body)) = node.args else { unreachable!() };
             let Item::Stream(stm) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size, body: Some(body), env: env.clone()}))
+            Ok(Item::new_stream(Windows{head: node.head, source: stm, size, body: Some(body), env: env.clone()}))
         },
         _ => Err(StreamError::new("expected: source.windows(size) or source.windows(size, func)", node))
     }

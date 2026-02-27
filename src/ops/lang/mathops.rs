@@ -253,7 +253,7 @@ impl StringOp {
             return Err(StreamError::new("not available for strings", node));
         }
         let Item::String(first) = node.args.remove(0) else { unreachable!() };
-        Ok(Item::new_string(StringOp{first: first.into(), node_rem: node, func, env: env.clone()}))
+        Ok(Item::new_string(StringOp{first, node_rem: node, func, env: env.clone()}))
     }
 
     fn find_fn(head: &Head) -> Result<StringFunc, BaseError> {

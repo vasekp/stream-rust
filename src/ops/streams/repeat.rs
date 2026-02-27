@@ -18,11 +18,11 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
         (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item),
         (Item::Stream(_), _) => {
             let Item::Stream(stm) = item else { unreachable!() };
-            Ok(Item::new_stream(RepeatStream{head: rnode.head, stream: stm.into(), count}))
+            Ok(Item::new_stream(RepeatStream{head: rnode.head, stream: stm, count}))
         },
         (Item::String(_), _) => {
             let Item::String(stm) = item else { unreachable!() };
-            Ok(Item::new_string(RepeatStream{head: rnode.head, stream: stm.into(), count}))
+            Ok(Item::new_string(RepeatStream{head: rnode.head, stream: stm, count}))
         },
         (Item::Char(_), _) => {
             let Item::Char(ch) = item else { unreachable!() };

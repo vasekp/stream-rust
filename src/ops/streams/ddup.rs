@@ -4,7 +4,7 @@ fn eval_ddup(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(DDup{head, source: stm.into()})),
+            => Ok(Item::new_stream(DDup{head, source: stm})),
         _ => Err(StreamError::new("expected: stream.ddup", rnode))
     }
 }

@@ -13,7 +13,7 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
                 (Item::Char(c1), Item::String(s2)) => (vec![vec![c1.to_owned()]], vec![s2.listout()?]),
                 (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![c2.to_owned()]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
-                (Item::Stream(s1), Item::Stream(s2)) => (read_stream(&s1)?, read_stream(&s2)?),
+                (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
                 _ => return Err(StreamError::new("expected: (char/string, char/string) or (stream, stream)", node))
             };
             if orig.len() != repl.len() {
@@ -24,10 +24,10 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
             let Item::String(s) = node.source else { unreachable!() };
-            Ok(Item::new_string(StringReplace { head: node.head, source: s.into(), orig, repl, longest }))
+            Ok(Item::new_string(StringReplace { head: node.head, source: s, orig, repl, longest }))
         },
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(orig, repl) } =>
-            Ok(Item::new_stream(StreamReplace { head, source: stm.into(), orig, repl })),
+            Ok(Item::new_stream(StreamReplace { head, source: stm, orig, repl })),
         _ => Err(StreamError::new("expected: string.replace(char, char) or (string, string) or \
                 (list, list) or stream.replace(item, item)", node))
     }

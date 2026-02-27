@@ -16,7 +16,7 @@ fn eval_rev_impl<I: ItemType>(head: Head, source: Rc<dyn Stream<I>>) -> Result<I
         Length::Infinite
             => Err(StreamError::new("input is infinite", Item::from(source))),
         Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) =>
-            Ok(Item::from(Rc::new(Rev{head, source: source.into(), length: len})
+            Ok(Item::from(Rc::new(Rev{head, source, length: len})
                     as Rc<dyn Stream<I>>)),
         _ => {
             let mut vec = source.listout()?;

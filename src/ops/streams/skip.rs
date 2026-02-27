@@ -5,15 +5,15 @@ fn eval_skip(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(Skip{head, source: stm.into(), count: None })),
+            => Ok(Item::new_stream(Skip{head, source: stm, count: None })),
         RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string(Skip{head, source: stm.into(), count: None })),
+            => Ok(Item::new_string(Skip{head, source: stm, count: None })),
         RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(count)) }
                 if !count.is_negative()
-            => Ok(Item::new_stream(Skip{head, source: stm.into(), count: Some(unsign(count))})),
+            => Ok(Item::new_stream(Skip{head, source: stm, count: Some(unsign(count))})),
         RNodeS { head, source: Item::String(stm), args: RArgs::One(Item::Number(count)) }
                 if !count.is_negative()
-            => Ok(Item::new_string(Skip{head, source: stm.into(), count: Some(unsign(count))})),
+            => Ok(Item::new_string(Skip{head, source: stm, count: Some(unsign(count))})),
         _ => Err(StreamError::new("expected: source.skip or source.skip(count)", rnode))
     }
 }

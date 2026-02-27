@@ -14,10 +14,10 @@ fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
                 .map(|res| res.map(LiteralString::from))
                 .collect::<Result<Vec<_>, _>>()?);
             let Some(Item::String(stm)) = node.source else { unreachable!() };
-            Ok(Item::new_stream(SplitString{head: node.head, source: stm.into(), sep}))
+            Ok(Item::new_stream(SplitString{head: node.head, source: stm, sep}))
         },
         Some(Item::Stream(stm)) => {
-            Ok(Item::new_stream(SplitStream{head: node.head, source: stm.into(), sep: node.args}))
+            Ok(Item::new_stream(SplitStream{head: node.head, source: stm, sep: node.args}))
         },
         _ => Err(StreamError::new("expected: string.split(separators) or stream.split(separators)", node))
     }

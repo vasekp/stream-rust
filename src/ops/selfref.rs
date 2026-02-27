@@ -19,7 +19,7 @@ impl SelfRef {
             RNode::Source(RNodeS { source, head, args: RArgs::One(Expr::Eval(body)) }) => {
                 let Item::Stream(stm) = source.eval(env)? else { todo!() };
                 Ok(Item::new_stream(SelfRef{
-                    pre: Some(stm.into()), head, body, env: env.clone()}))
+                    pre: Some(stm), head, body, env: env.clone()}))
             },
             node => Err(StreamError::new("expected: self({body})", node))
         }

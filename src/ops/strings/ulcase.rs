@@ -10,7 +10,7 @@ fn eval_ulcase(node: Node, env: &Env) -> Result<Item, StreamError> {
     };
     match node.source {
         Item::Char(ref ch) => Ok(Item::Char(func(ch))),
-        Item::String(s) => Ok(Item::new_string(ULCase{head: node.head, source: s.into(), func})),
+        Item::String(s) => Ok(Item::new_string(ULCase{head: node.head, source: s, func})),
         ref item => Err(StreamError::new(format!("expected character or string, found {:?}", item), node))
     }
 }

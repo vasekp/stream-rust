@@ -4,9 +4,9 @@ fn eval_splitby(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_source(env)?;
     match node {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)) } =>
-            Ok(Item::new_stream(SplitBy{head, source: stm.into(), cond: cond.eval_all(env)?, env: env.clone()})),
+            Ok(Item::new_stream(SplitBy{head, source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
         RNodeS { head, source: Item::String(stm), args: RArgs::One(Expr::Eval(cond)) } =>
-            Ok(Item::new_stream(SplitBy{head, source: stm.into(), cond: cond.eval_all(env)?, env: env.clone()})),
+            Ok(Item::new_stream(SplitBy{head, source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
         _ => Err(StreamError::new("expected: stream.splitby{condition}", node))
     }
 }

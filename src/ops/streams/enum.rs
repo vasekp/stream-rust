@@ -5,7 +5,7 @@ fn eval_enum(node: Node, env: &Env) -> Result<Item, StreamError> {
     let RNodeS{head, source: Item::Stream(stm), args: RArgs::Zero} = rnode else {
         return Err(StreamError::new("expected: stream.enum", rnode));
     };
-    Ok(Item::new_stream(Enum{head, stream: stm.into()}))
+    Ok(Item::new_stream(Enum{head, stream: stm}))
 }
 
 #[derive(Clone)]

@@ -12,7 +12,7 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
         let elems = node.args.into_iter()
             .map(|item| match item {
                 Item::Char(ch) => Joinable::Single(ch),
-                Item::String(stm) => Joinable::Stream(stm.into()),
+                Item::String(stm) => Joinable::Stream(stm),
                 _ => unreachable!()
             })
             .collect::<Vec<_>>();
@@ -20,7 +20,7 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
     } else {
         let elems = node.args.into_iter()
             .map(|item| match item {
-                Item::Stream(stm) => Joinable::Stream(stm.into()),
+                Item::Stream(stm) => Joinable::Stream(stm),
                 _ => Joinable::Single(item)
             })
             .collect::<Vec<_>>();
