@@ -31,7 +31,6 @@ fn check_win_size(size: &Number) -> Result<usize, BaseError> {
     }
 }
 
-#[derive(Clone)]
 struct Windows {
     head: Head,
     source: Rc<dyn Stream>,

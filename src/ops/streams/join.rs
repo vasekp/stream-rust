@@ -28,7 +28,6 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 enum Joinable<I: ItemType> {
     Single(I),
     Stream(Rc<dyn Stream<I>>)
@@ -43,7 +42,6 @@ impl<I: ItemType> Describe for Joinable<I> {
     }
 }
 
-#[derive(Clone)]
 struct Join<I: ItemType> {
     head: Head,
     elems: Vec<Joinable<I>>

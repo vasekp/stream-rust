@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 struct Select {
     head: Head,
     source: Rc<dyn Stream>,

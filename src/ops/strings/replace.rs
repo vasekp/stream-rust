@@ -45,7 +45,6 @@ fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
         .collect()
 }
 
-#[derive(Clone)]
 struct StringReplace {
     head: Head,
     source: Rc<dyn Stream<Char>>,
@@ -152,7 +151,6 @@ impl SIterator<Char> for StringReplaceIter<'_> {
     }
 }
 
-#[derive(Clone)]
 struct StreamReplace {
     head: Head,
     source: Rc<dyn Stream>,

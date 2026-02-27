@@ -3,12 +3,10 @@ use crate::base::*;
 use std::fmt::Formatter;
 use std::cell::Cell;
 
-use dyn_clone::DynClone;
-
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
-pub trait Stream<I = Item>: DynClone + Describe {
+pub trait Stream<I = Item>: Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
     ///

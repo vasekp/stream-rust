@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 pub struct Seq {
     head: Head,
     from: Option<Number>,

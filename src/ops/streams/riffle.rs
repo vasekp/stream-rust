@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 struct Riffle {
     head: Head,
     source: Rc<dyn Stream>,

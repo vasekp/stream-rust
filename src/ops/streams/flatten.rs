@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 struct Flatten {
     source: Rc<dyn Stream>,
     depth: Option<UNumber>,

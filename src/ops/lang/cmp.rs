@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 struct CmpOp;
 
 type CmpFunc = fn(&[Item]) -> Result<bool, BaseError>;

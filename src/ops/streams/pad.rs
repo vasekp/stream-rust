@@ -27,7 +27,6 @@ fn eval_padr(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 struct PadLeft<I: ItemType> {
     source: Rc<dyn Stream<I>>,
     len: UNumber,
@@ -113,7 +112,6 @@ impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
     }
 }
 
-#[derive(Clone)]
 struct PadRight<I: ItemType> {
     source: Rc<dyn Stream<I>>,
     len: UNumber,

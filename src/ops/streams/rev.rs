@@ -26,7 +26,6 @@ fn eval_rev_impl<I: ItemType>(head: Head, source: Rc<dyn Stream<I>>) -> Result<I
     }
 }
 
-#[derive(Clone)]
 pub struct Rev<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,

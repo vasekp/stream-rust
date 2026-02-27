@@ -17,7 +17,6 @@ fn eval_zip(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_stream(Zip{head: node.head, streams}))
 }
 
-#[derive(Clone)]
 struct Zip {
     head: Head,
     streams: Vec<Rc<dyn Stream>>,

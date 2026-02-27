@@ -15,7 +15,6 @@ fn eval_ulcase(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 struct ULCase {
     head: Head,
     source: Rc<dyn Stream<Char>>,

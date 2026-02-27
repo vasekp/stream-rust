@@ -23,7 +23,6 @@ fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 struct SplitString {
     head: Head,
     source: Rc<dyn Stream<Char>>,
@@ -86,7 +85,6 @@ impl SIterator for SplitStringIter<'_> {
     }
 }
 
-#[derive(Clone)]
 struct SplitStream {
     head: Head,
     source: Rc<dyn Stream>,

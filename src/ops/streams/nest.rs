@@ -1,7 +1,6 @@
 use crate::base::*;
 use std::collections::VecDeque;
 
-#[derive(Clone)]
 struct NestSource {
     source: Item,
     body: Node,
@@ -15,7 +14,6 @@ struct NestIterSource<'node> {
     env: &'node Env
 }
 
-#[derive(Clone)]
 struct NestArgs {
     body: ENode,
     head: Head,

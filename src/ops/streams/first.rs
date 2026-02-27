@@ -25,7 +25,6 @@ fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, BaseError> {
     }
 }
 
-#[derive(Clone)]
 struct First<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,

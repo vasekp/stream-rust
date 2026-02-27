@@ -112,7 +112,6 @@ enum RetType<I> {
     Skip(UNumber)
 }
 
-#[derive(Clone)]
 struct Last<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,

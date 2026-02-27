@@ -2,7 +2,6 @@ use crate::base::*;
 
 use std::cell::RefCell;
 
-#[derive(Clone)]
 struct SelfRef {
     head: Head,
     body: Node,
@@ -88,7 +87,6 @@ impl Iterator for SelfRefIter<'_> {
 
 impl SIterator for SelfRefIter<'_> { }
 
-#[derive(Clone)]
 struct BackRef {
     parent: Weak<CacheHistory>
 }

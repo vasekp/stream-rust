@@ -2,7 +2,6 @@ use crate::base::*;
 
 use std::cmp::Ordering;
 
-#[derive(Clone)]
 struct LexOp;
 
 type CritFunc = fn(Ordering) -> bool;

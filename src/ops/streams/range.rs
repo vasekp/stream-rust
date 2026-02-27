@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 pub struct Range {
     head: Head,
     from: Option<Number>,
@@ -10,7 +9,6 @@ pub struct Range {
     env: Env,
 }
 
-#[derive(Clone, Copy)]
 enum RangeType {
     Numeric,
     Character(CharCase)

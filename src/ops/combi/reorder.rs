@@ -29,7 +29,6 @@ fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
 
-#[derive(Clone)]
 struct ReorderStream {
     source: Rc<dyn Stream>,
     head: Head,

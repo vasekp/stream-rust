@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 struct MathOp {
     node: ENode,
     func: MathFunc,
@@ -236,7 +235,6 @@ impl SIterator for MathOpIter<'_> {
     }
 }
 
-#[derive(Clone)]
 struct StringOp {
     first: Rc<dyn Stream<Char>>,
     node_rem: ENode,

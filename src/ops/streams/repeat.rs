@@ -33,7 +33,6 @@ fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 pub struct RepeatItem<I: ItemType> {
     head: Head,
     item: I,
@@ -100,7 +99,6 @@ impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
     }
 }
 
-#[derive(Clone)]
 pub struct RepeatStream<I: ItemType> {
     head: Head,
     stream: Rc<dyn Stream<I>>,

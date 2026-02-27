@@ -15,7 +15,6 @@ fn eval_perm(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 struct PermStream {
     source: Item,
     len: Option<UNumber>,

@@ -18,7 +18,6 @@ fn eval_skip(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 struct Skip<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,

@@ -1,6 +1,5 @@
 use crate::base::*;
 
-#[derive(Clone)]
 struct Chars {
     head: Head,
     source: Rc<dyn Stream<Char>>
@@ -36,7 +35,6 @@ impl Stream for Chars {
 }
 
 
-#[derive(Clone)]
 struct Str {
     head: Head,
     source: Rc<dyn Stream>

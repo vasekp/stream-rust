@@ -1,7 +1,6 @@
 use crate::base::*;
 use std::collections::VecDeque;
 
-#[derive(Clone)]
 struct Fold {
     head: Head,
     body: ENode,

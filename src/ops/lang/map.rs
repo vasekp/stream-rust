@@ -10,7 +10,6 @@ fn eval_map(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 struct Map {
     source: Rc<dyn Stream>,
     body: Node,
@@ -42,7 +41,6 @@ impl Stream for Map {
     }
 }
 
-#[derive(Clone)]
 struct CharMap {
     source: Rc<dyn Stream<Char>>,
     body: Node,

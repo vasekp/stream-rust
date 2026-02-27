@@ -8,7 +8,6 @@ fn eval_enum(node: Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_stream(Enum{head, stream: stm}))
 }
 
-#[derive(Clone)]
 struct Enum {
     head: Head,
     stream: Rc<dyn Stream>,
