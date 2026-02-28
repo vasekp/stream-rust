@@ -1,4 +1,5 @@
 use crate::base::*;
+use super::digits::Digits;
 
 fn eval_numdig(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
@@ -15,8 +16,7 @@ number.numdig(radix, min_width)", rnode))
     if num.is_negative() {
         return Err(StreamError::new("can only accept nonnegative numbers", rnode));
     }
-    let (_, vec) = num.to_radix_be(radix);
-    let digits = vec.into_iter()
+    let digits = Digits::new(num.unsigned_abs(), radix as u32)
         .map(Item::new_number)
         .collect::<Vec<_>>();
     if let Some(minw) = minw {
@@ -46,10 +46,16 @@ stream.dignum(radix, min_width)", rnode))
                 .try_into()
                 .map_err(|_| BaseError::from("invalid digit"))
         })
-        .collect::<Result<Vec<u8>, _>>()?);
-    let num = Number::from_radix_be(num::bigint::Sign::Plus, &vec, radix)
-        .ok_or_else(|| StreamError::new("invalid input", rnode))?;
-    Ok(Item::Number(num))
+        .collect::<Result<Vec<u32>, _>>()?);
+    let mut num = UNumber::zero();
+    for digit in vec {
+        if !(0..radix).contains(&digit) {
+            return Err(StreamError::new("invalid digit", rnode));
+        }
+        num *= radix;
+        num += digit;
+    }
+    Ok(Item::new_number(num))
 }
 
 pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
