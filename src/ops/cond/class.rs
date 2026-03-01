@@ -16,8 +16,8 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
         "ischar" => Ok(matches!(item, Item::Char(_))),
         "isstream" => Ok(matches!(item, Item::Stream(_))),
         "isstring" => Ok(matches!(item, Item::String(_))),
-        "isodd" => Ok(item.as_num()?.is_odd()),
-        "iseven" => Ok(item.as_num()?.is_even()),
+        "isodd" => Ok(item.as_num()?.unsigned_abs().bit(0)),
+        "iseven" => Ok(!item.as_num()?.unsigned_abs().bit(0)),
         "isempty" => match item {
             Item::Stream(stm) => Ok(stm.is_empty()),
             Item::String(stm) => Ok(stm.is_empty()),

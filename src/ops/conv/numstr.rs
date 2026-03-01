@@ -1,4 +1,5 @@
 use crate::base::*;
+use super::digits::Digits;
 
 fn eval_numstr(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
@@ -15,17 +16,14 @@ number.numstr(radix, min_width)", rnode))
     if radix == 10 && minw.is_none() {
         Ok(Item::new_string(LiteralString::from(format!("{}", num).as_str())))
     } else {
-        let (sign, digits) = num.to_radix_be(radix);
-        let s = std::str::from_utf8(&digits.iter()
-            .map(|dig| match dig {
+        let sign = num.signum().is_negative();
+        let s = Digits::new(num.unsigned_abs(), radix as u8)
+            .map(|dig| (match dig {
                 0..=9 => b'0' + dig,
                 10..=35 => b'A' + (dig - 10),
                 _ => unreachable!()
-            })
-            .collect::<Vec<_>>())
-            .expect("should contain only valid ASCII by construction")
-            .to_owned();
-        let sign = sign == num::bigint::Sign::Minus;
+            }) as char)
+            .collect::<String>();
         match (sign, minw) {
             (false, None) => Ok(Item::new_string(LiteralString::from(s.as_str()))),
             (true, None) => Ok(Item::new_string(LiteralString::from(format!("-{s}").as_str()))),
@@ -48,27 +46,28 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
     let (s, radix) = match &rnode {
         RNodeS { source: Item::String(s), args: RArgs::Zero, .. } => (s, 10),
         RNodeS { source: Item::String(s), args: RArgs::One(Item::Number(radix)), .. } =>
-            match radix.to_u32() {
-                Some(radix) if (2..=36).contains(&radix) => (s, radix),
-                _ => return Err(StreamError::new("base must be between 2 and 36", rnode))
+            match radix.try_into() {
+                Ok(radix) if (2..=36).contains(&radix) => (s, radix),
+                _ => return Err(StreamError::new("radix must be between 2 and 36", rnode))
             },
         _ => return Err(StreamError::new("expected: string.strnum or string.strnum(radix)", rnode))
     };
-    let st = try_with!(rnode, s.iter().map(|ch| -> Result<u8, BaseError> {
+    let st = try_with!(rnode, s.iter().map(|ch| -> Result<char, BaseError> {
         check_stop!();
         match ch? {
-            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c as u8),
+            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c as char),
             _ => Err(BaseError::from("invalid character"))
         }})
-        .collect::<Result<Vec<_>, _>>()?);
-    let num = Number::parse_bytes(&st, radix)
-        .ok_or_else(|| StreamError::new("invalid input", rnode))?;
-    Ok(Item::Number(num))
+        .collect::<Result<String, _>>()?);
+    match Number::from_str_radix(&st, radix) {
+        Ok(num) => Ok(Item::new_number(num)),
+        Err(_) => Err(StreamError::new("invalid input", rnode))
+    }
 }
 
 pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
-    match radix.to_u32() {
-        Some(radix) if (2..=36).contains(&radix) => Ok(radix),
+    match radix.try_into() {
+        Ok(radix) if (2..=36).contains(&radix) => Ok(radix),
         _ => Err("base must be between 2 and 256".into())
     }
 }

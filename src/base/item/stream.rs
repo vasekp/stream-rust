@@ -100,7 +100,7 @@ impl dyn Stream<Item> {
         let mut vec = Vec::new();
         match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
-                if let Some(len) = len.to_usize() {
+                if let Ok(len) = len.try_into() {
                     vec.reserve(len);
                 } else if matches!(lobj, Length::Exact(_)) {
                     return Err(StreamError::new("stream is too long", self.clone_item()));
@@ -183,7 +183,7 @@ impl dyn Stream<Char> {
         let mut vec = Vec::new();
         match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
-                if let Some(len) = len.to_usize() {
+                if let Ok(len) = len.try_into() {
                     vec.reserve(len);
                 } else if matches!(lobj, Length::Exact(_)) {
                     return Err(StreamError::new("string is too long", self.clone_item()));

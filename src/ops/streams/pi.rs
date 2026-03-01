@@ -1,12 +1,11 @@
 use crate::base::*;
-use num::traits::Euclid;
 
 fn eval_pi(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_no_source()?;
     match &rnode.args {
         RArgs::Zero => Ok(Item::new_stream(Pi{head: rnode.head, radix: None})),
         RArgs::One(Item::Number(radix)) if *radix >= Number::from(2) => {
-            if let Some(radix) = radix.to_u32() {
+            if let Ok(radix) = u32::try_from(radix) {
                 Ok(Item::new_stream(Pi{head: rnode.head, radix: Some(radix)}))
             } else {
                 Err(StreamError::new("base too large", rnode))
@@ -90,12 +89,12 @@ impl SIterator for PiIter<'_> {
     }
 
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        match n.to_u32() {
-            Some(n) => {
+        match n.try_into() {
+            Ok(n) => {
                 self.inner.advance(n)?;
                 Ok(None)
             },
-            None => Err(StreamError::new("numerical overflow", Item::new_stream(self.parent.clone())))
+            _ => Err(StreamError::new("numerical overflow", Item::new_stream(self.parent.clone())))
         }
     }
 }
@@ -115,7 +114,7 @@ impl PiIterInner {
         }
     }
 
-    fn advance(&mut self, n: u32) -> Result<(), StreamError> {
+    fn advance(&mut self, n: usize) -> Result<(), StreamError> {
         let mul = UNumber::from(self.radix).pow(n);
         let len = self.cdigits.len();
         let mut carry = UNumber::zero();
@@ -138,8 +137,7 @@ impl Iterator for PiIterInner {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.power *= self.radix;
-        let bits = usize::try_from(self.power.bits() - 1)
-            .expect("usize should be enough");
+        let bits = self.power.bit_len() - 1;
         let prev_len = self.cdigits.len();
         self.cdigits.resize(bits, 0);
         let mut carry = UNumber::zero();
@@ -153,7 +151,7 @@ impl Iterator for PiIterInner {
             carry = quot * num;
         }
         let (div, rem) = carry.div_rem_euclid(&UNumber::from(self.radix));
-        Some(Ok((rem.to_u32().unwrap(), !div.is_zero())))
+        Some(Ok((rem.try_into().unwrap(), !div.is_zero())))
     }
 }
 

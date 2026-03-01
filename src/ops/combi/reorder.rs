@@ -85,7 +85,7 @@ impl Iterator for ReorderIter<'_> {
                     if let Some(next) = vec_iter.next() {
                         match self.iter.nth_from_start(next - 1u32) {
                             Some(Ok(item)) => {
-                                self.pos.inc();
+                                self.pos += 1;
                                 return Some(Ok(item))
                             },
                             Some(Err(err)) => return Some(Err(err)),
@@ -97,8 +97,8 @@ impl Iterator for ReorderIter<'_> {
                             }
                         }
                     }
-                    if self.parent.max_index.to_usize()
-                            .is_some_and(|max| max == self.parent.indices.len()) {
+                    if usize::try_from(&self.parent.max_index)
+                            .is_ok_and(|max| max == self.parent.indices.len()) {
                         iter_try_expr!(self.iter.move_to(self.parent.max_index.to_owned()));
                         self.state = ReorderState::Rest;
                     } else {
@@ -112,17 +112,17 @@ impl Iterator for ReorderIter<'_> {
                         continue;
                     }
                     if self.parent.indices.contains(index) {
-                        index.inc();
+                        *index += 1;
                         continue;
                     } else {
                         let ret = self.iter.nth_from_start(&*index - 1u32);
-                        index.inc();
-                        self.pos.inc();
+                        *index += 1;
+                        self.pos += 1;
                         return ret;
                     }
                 },
                 ReorderState::Rest => {
-                    self.pos.inc();
+                    self.pos += 1;
                     return self.iter.next();
                 }
             }
@@ -145,8 +145,8 @@ impl SIterator for ReorderIter<'_> {
             match &mut self.state {
                 ReorderState::Args{vec_iter} => {
                     while !n.is_zero() && vec_iter.next().is_some() {
-                        n.dec();
-                        self.pos.inc();
+                        n -= 1;
+                        self.pos += 1;
                     }
                     if n.is_zero() {
                         return Ok(None);

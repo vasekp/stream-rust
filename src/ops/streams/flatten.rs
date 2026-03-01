@@ -35,7 +35,7 @@ impl Stream for Flatten {
         Box::new(FlattenIter {
             outer: self.source.iter(),
             iters: vec![],
-            depth: self.depth.as_ref().and_then(UNumber::to_usize),
+            depth: self.depth.as_ref().and_then(|d| d.try_into().ok())
         })
     }
 
@@ -106,7 +106,7 @@ impl SIterator for FlattenIter<'_> {
                     Some(Ok(Item::Stream(stm))) => {
                         self.iters.push(stm.into_iter());
                     },
-                    Some(Ok(_)) => n.dec(),
+                    Some(Ok(_)) => n -= 1,
                     Some(Err(err)) => return Err(err),
                     None => {
                         if self.iters.is_empty() {
