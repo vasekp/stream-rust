@@ -88,9 +88,9 @@ fn eval_last_count<I: ItemType>(stm: &dyn Stream<I>, count: &UNumber) -> Result<
         Length::Exact(len) => Ok(RetType::Skip(len - count)),
         Length::Infinite => Err("stream is infinite".into()),
         _ => {
-            let size = match count.to_usize() {
-                Some(size) => size,
-                None => return Err("length too large".into())
+            let size = match count.try_into() {
+                Ok(size) => size,
+                Err(_) => return Err("length too large".into())
             };
             let mut vec = VecDeque::with_capacity(size);
             for res in stm.iter() {

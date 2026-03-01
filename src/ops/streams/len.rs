@@ -18,7 +18,7 @@ fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, BaseError> {
             for res in stm.iter() {
                 check_stop!();
                 let _ = res?;
-                len.inc();
+                len += 1;
             }
             Ok(len.into())
         },

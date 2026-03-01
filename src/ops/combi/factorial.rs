@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::utils::factorial;
+use super::util::factorial;
 
 fn eval_factorial(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve();
@@ -10,7 +10,7 @@ fn eval_factorial(node: Node, env: &Env) -> Result<Item, StreamError> {
             if x.is_negative() {
                 return Err(StreamError::new("input can't be negative", node));
             }
-            let Some(x) = x.to_u32() else {
+            let Ok(x) = x.try_into() else {
                 return Err(StreamError::new("input too large", node));
             };
             Ok(Item::new_number(factorial(x)))
@@ -27,7 +27,7 @@ fn eval_binom(node: Node, env: &Env) -> Result<Item, StreamError> {
             if n.is_negative() | k.is_negative() {
                 return Err(StreamError::new("input can't be negative", node));
             }
-            let (Some(n), Some(k)) = (n.to_u32(), k.to_u32()) else {
+            let (Ok(n), Ok(k)) = (n.try_into(), k.try_into()) else {
                 return Err(StreamError::new("input too large", node));
             };
             if k > n {
@@ -51,7 +51,7 @@ fn eval_multi(node: Node, env: &Env) -> Result<Item, StreamError> {
         if k.is_negative() {
             return Err(StreamError::new("input can't be negative", node));
         }
-        let Some(k) = k.to_u32() else {
+        let Ok(k) = k.try_into() else {
             return Err(StreamError::new("input too large", node));
         };
         total = try_with!(node, total.checked_add(&k)
@@ -73,7 +73,7 @@ fn eval_rmulti(node: Node, env: &Env) -> Result<Item, StreamError> {
         if k.is_negative() {
             return Err(StreamError::new("input can't be negative", node));
         }
-        let Some(k) = k.to_u32() else {
+        let Ok(k) = k.try_into() else {
             return Err(StreamError::new("input too large", node));
         };
         if k == 0 { continue; }

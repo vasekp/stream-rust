@@ -1,4 +1,5 @@
 mod ord;
+mod digits;
 mod numstr;
 mod numdig;
 

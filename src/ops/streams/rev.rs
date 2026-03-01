@@ -15,7 +15,7 @@ fn eval_rev_impl<I: ItemType>(head: Head, source: Rc<dyn Stream<I>>) -> Result<I
     match source.len() {
         Length::Infinite
             => Err(StreamError::new("input is infinite", Item::from(source))),
-        Length::Exact(len) if len.to_usize().is_some_and(|len| len > CACHE_LEN) =>
+        Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) =>
             Ok(Item::from(Rc::new(Rev{head, source, length: len})
                     as Rc<dyn Stream<I>>)),
         _ => {
@@ -70,10 +70,12 @@ impl<I: ItemType> Iterator for RevIter<'_, I> {
                 if self.start.is_zero() {
                     None
                 } else {
-                    let size_n = CACHE_LEN.into();
-                    let (new_start, diff) = match self.start.checked_sub(&size_n) {
-                        Some(res) => (res, CACHE_LEN),
-                        None => (UNumber::zero(), self.start.to_usize().expect("start < CACHE_LEN should fit into usize"))
+                    let size_n = UNumber::from(CACHE_LEN);
+                    let (new_start, diff) = if size_n <= self.start {
+                        (&self.start - size_n, CACHE_LEN)
+                    } else {
+                        (UNumber::zero(), usize::try_from(&self.start)
+                            .expect("start < CACHE_LEN should fit into usize"))
                     };
                     let mut iter = self.source.iter();
                     iter_try_expr!(iter.advance(new_start.clone()));
@@ -89,8 +91,8 @@ impl<I: ItemType> Iterator for RevIter<'_, I> {
 impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let len = self.cached.len();
-        match n.to_usize() {
-            Some(n) if n <= len => {
+        match usize::try_from(&n) {
+            Ok(n) if n <= len => {
                 self.cached.truncate(len - n);
                 Ok(None)
             },

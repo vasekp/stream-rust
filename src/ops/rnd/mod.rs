@@ -1,6 +1,6 @@
 use crate::base::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use rand::{RngCore, SeedableRng, rngs::SmallRng};
+use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
@@ -13,11 +13,11 @@ fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
             let mut hasher = DefaultHasher::default();
             Hash::hash(&seed, &mut hasher);
             Hash::hash(&b':', &mut hasher);
-            let digits = len.iter_u32_digits().collect::<Vec<_>>();
-            let top_digit = digits.last().expect("digits should be nonempty");
-            let max_quot = if digits.len() == 1 { u32::MAX / top_digit }
-                else if top_digit == &u32::MAX { 1 }
-                else { u32::MAX / (top_digit + 1) };
+            let digits = len.to_be_bytes();
+            let top_digit = digits[0];
+            let max_quot = if digits.len() == 1 { u8::MAX / top_digit }
+                else if top_digit == u8::MAX { 1 }
+                else { u8::MAX / (top_digit + 1) };
             Ok(Item::new_stream(RndStream {
                 source: stm,
                 head, seed, hasher,
@@ -81,9 +81,9 @@ impl Iterator for RndIter<'_> {
         let rnd = loop {
             let mut digits = Vec::with_capacity(self.parent.num_digits);
             for _ in 0..self.parent.num_digits {
-                digits.push(rng.next_u32());
+                digits.push(rng.random());
             }
-            let rnd = UNumber::from_slice(&digits[..]);
+            let rnd = UNumber::from_be_bytes(&digits[..]);
             if rnd < self.parent.cutoff {
                 break rnd;
             } else {
@@ -97,7 +97,7 @@ impl Iterator for RndIter<'_> {
             Ok(Some(_)) => unreachable!("iterator ended before its length"),
             Err(err) => return Some(Err(err))
         };
-        self.pos.inc();
+        self.pos += 1;
         iter.next()
     }
 }
@@ -118,13 +118,13 @@ mod tests {
     #[test]
     fn test_rnd() {
         use super::*;
-        test_eval!("(1..6).rnd(0)" => "[3, 5, 4, 4, 2, ...]");
-        test_eval!("(1..6).rnd(-1)" => "[6, 6, 1, 2, 4, ...]");
+        test_eval!("(1..6).rnd(0)" => "[4, 5, 1, 1, 2, ...]");
+        test_eval!("(1..6).rnd(-1)" => "[1, 1, 3, 3, 2, ...]");
         test_eval!("[].rnd(1)" => err);
         test_eval!("\"abc\".rnd(1)" => err);
         test_eval!("seq.rnd(1)" => err);
         // test fairness of rejection sampling
-        test_eval!("(range(2^64*3/4).rnd(0)/2^62).first(1000).counts(0,1,2)" => "[324, 336, 340]");
+        test_eval!("(range(2^64*3/4).rnd(0)/2^62).first(1000).counts(0,1,2)" => "[336, 337, 327]");
         test_advance("range(10^10).rnd(1)");
         test_describe!("(1..6).rnd(0)" => "(1..6).rnd(0)");
     }
@@ -136,7 +136,7 @@ An infinite stream of uniformly random samples from the input `stream`.
 This is designed to be a reproducible pseudorandom generator. For this reason, a `seed` (number) needs to be provided. The same seed leads to the same pseudorandom stream.
 * For a different seed in each invocation, you may use `$#`, which increases by one in each successfully evaluated input.
 = stream.?(seed)
-> (1..6).?(0) : 10 => [3, 5, 4, 4, 2, 2, 2, 5, 4, 1, ...] ; always the same for seed == 0
+> (1..6).?(0) : 10 => [4, 5, 1, 1, 2, 6, 3, 6, 4, 5, ...] ; always the same for seed == 0
 > ?seq.?(0) => !stream is infinite
 > [].?(0) => !stream is empty
 "#);
