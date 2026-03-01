@@ -16,7 +16,7 @@ number.numdig(radix, min_width)", rnode))
     if num.is_negative() {
         return Err(StreamError::new("can only accept nonnegative numbers", rnode));
     }
-    let digits = Digits::new(num.unsigned_abs(), radix as u32)
+    let digits = Digits::new(num.unsigned_abs(), radix)
         .map(Item::new_number)
         .collect::<Vec<_>>();
     if let Some(minw) = minw {

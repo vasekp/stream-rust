@@ -328,7 +328,7 @@ fn parse_c_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
             .ok_or(ParseError::new(format!("invalid digits in base {base}"), slice))
     }*/
     Number::from_str_with_radix_prefix(slice)
-        .map_err(|_| ParseError::new(format!("invalid digits"), slice))
+        .map_err(|_| ParseError::new("invalid digits".to_string(), slice))
 }
 
 #[test]

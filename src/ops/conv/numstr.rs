@@ -55,7 +55,7 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
     let st = try_with!(rnode, s.iter().map(|ch| -> Result<char, BaseError> {
         check_stop!();
         match ch? {
-            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c as char),
+            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
             _ => Err(BaseError::from("invalid character"))
         }})
         .collect::<Result<String, _>>()?);
