@@ -1,4 +1,5 @@
 use crate::base::*;
+use super::util::factorial;
 
 fn eval_perm(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
@@ -37,7 +38,7 @@ impl Stream for PermStream {
             src_len: &self.len,
             self_len: self.len.as_ref()
                 .and_then(|x| u32::try_from(x).ok())
-                .map(crate::utils::factorial),
+                .map(factorial),
             order: vec![],
             num_read: UNumber::zero()
         })
@@ -46,7 +47,7 @@ impl Stream for PermStream {
     fn len(&self) -> Length {
         match &self.len {
             Some(len) => match u32::try_from(len) {
-                Ok(x) => Length::Exact(crate::utils::factorial(x)),
+                Ok(x) => Length::Exact(factorial(x)),
                 _ => Length::UnknownFinite
             },
             None => Length::Infinite

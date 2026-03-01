@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::utils::factorial;
+use super::util::factorial;
 
 fn eval_factorial(node: Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve();
