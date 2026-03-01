@@ -119,13 +119,13 @@ mod tests {
     #[test]
     fn test_rnd() {
         use super::*;
-        test_eval!("(1..6).rnd(0)" => "[3, 5, 4, 4, 2, ...]");
-        test_eval!("(1..6).rnd(-1)" => "[6, 6, 1, 2, 4, ...]");
+        test_eval!("(1..6).rnd(0)" => "[4, 5, 1, 1, 2, ...]");
+        test_eval!("(1..6).rnd(-1)" => "[1, 1, 3, 3, 2, ...]");
         test_eval!("[].rnd(1)" => err);
         test_eval!("\"abc\".rnd(1)" => err);
         test_eval!("seq.rnd(1)" => err);
         // test fairness of rejection sampling
-        test_eval!("(range(2^64*3/4).rnd(0)/2^62).first(1000).counts(0,1,2)" => "[324, 336, 340]");
+        test_eval!("(range(2^64*3/4).rnd(0)/2^62).first(1000).counts(0,1,2)" => "[336, 337, 327]");
         test_advance("range(10^10).rnd(1)");
         test_describe!("(1..6).rnd(0)" => "(1..6).rnd(0)");
     }
@@ -137,7 +137,7 @@ An infinite stream of uniformly random samples from the input `stream`.
 This is designed to be a reproducible pseudorandom generator. For this reason, a `seed` (number) needs to be provided. The same seed leads to the same pseudorandom stream.
 * For a different seed in each invocation, you may use `$#`, which increases by one in each successfully evaluated input.
 = stream.?(seed)
-> (1..6).?(0) : 10 => [3, 5, 4, 4, 2, 2, 2, 5, 4, 1, ...] ; always the same for seed == 0
+> (1..6).?(0) : 10 => [4, 5, 1, 1, 2, 6, 3, 6, 4, 5, ...] ; always the same for seed == 0
 > ?seq.?(0) => !stream is infinite
 > [].?(0) => !stream is empty
 "#);

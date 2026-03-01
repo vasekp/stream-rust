@@ -149,7 +149,7 @@ mod tests {
         test_eval!("seq.perm.len" => err);
         test_eval!("[2,4,6].perm" : 24 => "[[2, 4, 6], [4, 2, 6], [2, 6, 4], [6, 2, 4], [4, 6, 2], [6, 4, 2]]");
         test_eval!("[2,4,6].skip(1).perm" : 10 => "[[4, 6], [6, 4]]");
-        test_eval!("alpha.perm.rnd(0).first.string" => "\"brpdlaqkyvgcnztwxeuf...");
+        test_eval!("alpha.perm.rnd(0).first.string" => "\"uorclhnmzvjdsfqiwtbp...");
         test_len!("[2,4,6].perm" => 6);
         test_len!("range(10^50).perm" => Length::UnknownFinite);
         test_len!("seq.perm" => Length::Infinite);
