@@ -4,7 +4,7 @@ fn eval_pi(node: Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_no_source()?;
     match &rnode.args {
         RArgs::Zero => Ok(Item::new_stream(Pi{head: rnode.head, radix: None})),
-        RArgs::One(Item::Number(radix)) if *radix >= Number::from(2) => { // TODO 65535 vs. u32::MAX
+        RArgs::One(Item::Number(radix)) if *radix >= Number::from(2) => {
             if let Ok(radix) = u32::try_from(radix) {
                 Ok(Item::new_stream(Pi{head: rnode.head, radix: Some(radix)}))
             } else {

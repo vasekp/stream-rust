@@ -59,9 +59,13 @@ stream.dignum(radix, min_width)", rnode))
 }
 
 pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
-    match radix.try_into() {
-        Ok(radix) if (2..=256).contains(&radix) => Ok(radix),
-        _ => Err("radix must be between 2 and 256".into())
+    if radix < &Number::from(2) {
+        Err("base must be at least 2".into())
+    } else {
+        match radix.try_into() {
+            Ok(radix) => Ok(radix),
+            _ => Err("base too large".into())
+        }
     }
 }
 
@@ -85,7 +89,8 @@ mod tests {
         test_eval!("42.numdig(-1)" => err);
         test_eval!("65535.numdig(255)" => "[1, 2, 0]");
         test_eval!("65535.numdig(256)" => "[255, 255]");
-        test_eval!("65532.numdig(257)" => err);
+        test_eval!("65535.numdig(257)" => "[255, 0]");
+        test_eval!("(10^10).numdig(10^9)" => "[10, 0]");
     }
 
     #[test]
@@ -98,17 +103,16 @@ mod tests {
         test_eval!("[].dignum" => err);
         test_eval!("[1, 6].dignum(36)" => "42");
         test_eval!("[1, 6].dignum(255)" => "261");
-        test_eval!("[254, 254].dignum(256)" => "65278");
-        test_eval!("[1, 6].dignum(257)" => err);
-        test_eval!("[256].dignum(255)" => err);
-        test_eval!("[256].dignum(256)" => err);
+        test_eval!("[255, 255].dignum(256)" => "65535");
+        test_eval!("[1, 0].dignum(257)" => "257");
+        test_eval!("[1, 0].dignum(10^9)" => "1000000000");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("numdig", eval_numdig, r#"
 Converts `number` to a stream of digits (most significant first).
-If `base` is given, it needs to be between 2 and 256 (inclusive). If omitted, it defaults to 10 (decadic).
+If `base` is omitted, it defaults to 10 (decadic).
 If `min_width` is given, the stream is zero-padded if shorter.
 ! `?` can not accept negative numbers.
 = number.?
@@ -116,13 +120,13 @@ If `min_width` is given, the stream is zero-padded if shorter.
 = number.?(base, min_width)
 > 42.? => [4, 2]
 > 42.?(10, 5) => [0, 0, 0, 4, 2]
-> 65500.?(256) => [255, 220]
+> 123456789.?(1000) => [123, 456, 789]
 : dignum
 : numstr
 "#);
     symbols.insert("dignum", eval_dignum, r#"
 Converts a stream of digits into a number.
-If `base` is given, it needs to be between 2 and 256 (inclusive). If omitted, it defaults to 10 (decadic).
+If `base` is omitted, it defaults to 10 (decadic).
 = stream.?
 = stream.?(base)
 > [1, 6].? => 16
