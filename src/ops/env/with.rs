@@ -8,7 +8,7 @@ fn eval_with(mut node: Node, env: &Env) -> Result<Item, StreamError> {
         return Err(StreamError::new("at least 2 arguments required", node));
     }
     let (body, assigns) = (node.args.pop().unwrap(), node.args); // just checked len > 2 > 1
-    let mut replace = HashMap::<String, Rc<Rhs>>::new();
+    let mut replace = HashMap::<&str, Rc<Rhs>>::new();
     for assign in assigns {
         let (mut body, names) = match assign {
             Expr::Eval(Node { head: Head::Oper(op), source: None, mut args })
@@ -35,13 +35,13 @@ fn eval_with(mut node: Node, env: &Env) -> Result<Item, StreamError> {
     body.eval(env)
 }
 
-fn with_replacer(expr: Expr, replace: &HashMap::<String, Rc<Rhs>>)
+fn with_replacer(expr: Expr, replace: &HashMap::<&str, Rc<Rhs>>)
     -> Result<std::ops::ControlFlow<Expr, Node>, StreamError>
 {
     use std::ops::ControlFlow;
     let Expr::Eval(mut node) = expr else { return Ok(ControlFlow::Break(expr)) };
     match node {
-        Node { head: Head::Symbol(ref sym), .. } if sym == "global" =>
+        Node { head: Head::Symbol("global"), .. } =>
             Ok(ControlFlow::Break(node.into())),
         Node { head: Head::Symbol(sym), source: None, mut args } if sym == "with" && args.len() > 1 => {
             let (mut body, assigns) = (args.pop().unwrap(), &mut args); // just checked len > 2 > 1
@@ -49,7 +49,7 @@ fn with_replacer(expr: Expr, replace: &HashMap::<String, Rc<Rhs>>)
             for assign in assigns {
                 let Expr::Eval(Node { head: Head::Oper(op), source: None, args }) = assign
                     else { return Err(StreamError::new("expected assignment", assign.clone())) };
-                if op != "=" { return Err(StreamError::new("expected assignment", assign.clone())); }
+                if *op != "=" { return Err(StreamError::new("expected assignment", assign.clone())); }
                 let mut body = args.pop().expect("Oper(=) should have at least 2 arguments");
                 body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
                 for expr in args.iter() {

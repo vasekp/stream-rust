@@ -16,7 +16,6 @@ pub fn intern(s: &str) -> &'static str {
 
 pub fn intern_static(s: &'static str) {
     let mut set = STRINGS.lock().expect("mutex lock failure");
-    debug_assert!(!set.contains(s));
     set.insert(s);
 }
 

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// register of defined symbols.
 pub struct Session {
     hist: Vec<Item>,
-    vars: HashMap<String, Rhs>,
+    vars: HashMap<&'static str, Rhs>,
     env: Env,
     counter: usize,
 }
@@ -28,7 +28,7 @@ impl Session {
     pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
         stop::reset_stop();
         match expr {
-            Expr::Eval(Node { head: Head::Oper(op), source: None, mut args }) if op == "=" => {
+            Expr::Eval(Node { head: Head::Oper("="), source: None, mut args }) => {
                 let rhs = args.pop().expect("= should have at least 2 args");
                 let rhs = match self.apply_context(rhs)? {
                     Expr::Eval(Node { head: Head::Block(block), source: None, args }) if args.is_empty()
@@ -52,16 +52,16 @@ impl Session {
                 }
                 let last = names.pop();
                 for name in &names {
-                    self.vars.insert(name.to_owned(), rhs.clone());
+                    self.vars.insert(name, rhs.clone());
                 }
                 if let Some(name) = last {
-                    self.vars.insert(name.to_owned(), rhs);
+                    self.vars.insert(name, rhs);
                     names.push(name);
                 }
                 self.counter += 1;
                 Ok(SessionUpdate::Globals(names))
             },
-            Expr::Eval(Node { head: Head::Symbol(sym), source: None, args }) if sym == "clear" => {
+            Expr::Eval(Node { head: Head::Symbol("clear"), source: None, args }) => {
                 let mut names = Vec::with_capacity(args.len());
                 let mut updated = Vec::with_capacity(args.len());
                 for arg in args {
@@ -146,11 +146,11 @@ impl Session {
         self.env.tracer = tracer;
     }
 
-    pub fn vars(&self) -> &HashMap<String, Rhs> {
+    pub fn vars(&self) -> &HashMap<&'static str, Rhs> {
         &self.vars
     }
 
-    pub fn vars_mut(&mut self) -> &mut HashMap<String, Rhs> {
+    pub fn vars_mut(&mut self) -> &mut HashMap<&'static str, Rhs> {
         &mut self.vars
     }
 }
@@ -164,7 +164,7 @@ impl Default for Session {
 #[cfg_attr(test, derive(Debug, PartialEq))]
 pub enum SessionUpdate<'a> {
     History(usize, &'a Item),
-    Globals(Vec<String>),
+    Globals(Vec<&'static str>),
 }
 
 impl<'a> SessionUpdate<'a> {
@@ -185,9 +185,9 @@ mod tests {
     #[test]
     fn test_session() {
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a=$b=10").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into(), "$b".into()]));
-        assert_eq!(sess.process(parse("$a=$a+$b").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
-        assert_eq!(sess.process(parse("clear($b)").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$b".into()]));
+        assert_eq!(sess.process(parse("$a=$b=10").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a", "$b"]));
+        assert_eq!(sess.process(parse("$a=$a+$b").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
+        assert_eq!(sess.process(parse("clear($b)").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$b"]));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(20)));
         assert!(sess.process(parse("$b").unwrap()).is_err());
         assert!(sess.process(parse("$c={$c}").unwrap()).is_err());
@@ -198,7 +198,7 @@ mod tests {
         assert_eq!(sess.process(parse("% + %1").unwrap()).unwrap(), SessionUpdate::History(3, &Item::new_number(10100)));
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
         assert_eq!(sess.process(parse("5.$a(6,7)").unwrap()).unwrap().unwrap(), &Item::new_number(47));
         assert_eq!(sess.process(parse("{5.$a(6,7)}").unwrap()).unwrap().unwrap(), &Item::new_number(47));
         assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
@@ -206,7 +206,7 @@ mod tests {
         assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
         assert_eq!(sess.process(parse("with(a=1,{a})").unwrap()).unwrap().unwrap(), &Item::new_number(1));
         assert!(sess.process(parse("with(a=1,$a)").unwrap()).is_err());
         assert!(sess.process(parse("$1=1").unwrap()).is_err());
@@ -214,7 +214,7 @@ mod tests {
         let mut sess = Session::new();
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(1));
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(2));
-        assert_eq!(sess.process(parse("$a=$#").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("$a=$#").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(4));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));

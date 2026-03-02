@@ -1,7 +1,9 @@
 use crate::base::*;
+use crate::interner::intern;
 
 /// Any Stream language expression. This may be either a directly accessible [`Item`] (including
 /// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
+// TODO docstring
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Expr {
@@ -36,8 +38,8 @@ impl Expr {
     }
 
     /// Creates an operator expression. Operands are provided as `args`.
-    pub fn new_op(op: impl Into<String>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{head: Head::Oper(op.into()), source: None, args})
+    pub fn new_op(op: &str, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{head: Head::Oper(intern(op)), source: None, args})
     }
 
     /// Makes the output of this expression an input to a [`Link`].

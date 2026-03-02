@@ -1,6 +1,7 @@
 use std::str::CharIndices;
 use std::iter::Peekable;
 use crate::base::*;
+use crate::interner::intern;
 
 
 struct Tokenizer<'str> {
@@ -404,12 +405,12 @@ impl<'str> Parser<'str> {
         let Some(tok) = self.tk.next_tr()? else { return Ok(None); };
         use TokenClass as TC;
         let head = match tok {
-            Token(TC::Ident, name) => Head::Symbol(name.into()),
+            Token(TC::Ident, name) => Head::Symbol(intern(name)),
             Token(TC::Special, tk @ "$") => {
                 let Some(Token(TC::Ident, name)) = self.tk.next_tr()? else {
                     return Err(ParseError::new("requires name: $name", tk));
                 };
-                Head::Symbol(format!("{tk}{name}"))
+                Head::Symbol(intern(&format!("{tk}{name}")))
             },
             Token(TC::Open, bkt @ "{") => return Ok(Some(self.read_block_link(bkt)?)),
             Token(_, tok) => return Err(ParseError::new("cannot appear here", tok))

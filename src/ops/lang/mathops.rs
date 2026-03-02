@@ -350,7 +350,7 @@ impl Iterator for StringOpIter<'_> {
         fn aux_node(base: Char, mut inputs: Vec<Item>) -> Node {
             inputs.insert(0, Item::Char(base));
             Node {
-                head: Head::Oper("+".into()),
+                head: Head::Oper("+"),
                 source: None,
                 args: inputs.into_iter().map(Expr::from).collect()
             }
