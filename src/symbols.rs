@@ -1,15 +1,14 @@
 use crate::base::*;
 use crate::docs::DocRecord;
 use std::collections::HashMap;
-use std::sync::Arc;
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 type Constructor = fn(Node, &'_ Env) -> Result<Item, StreamError>;
 
 #[derive(Default)]
 pub(crate) struct Symbols(HashMap<&'static str, Arc<(Constructor, Option<DocRecord>)>>);
 
-static SYMBOLS: Lazy<Symbols> = Lazy::new(|| {
+static SYMBOLS: LazyLock<Symbols> = LazyLock::new(|| {
     let mut symbols = Default::default();
     crate::ops::init(&mut symbols);
     symbols
