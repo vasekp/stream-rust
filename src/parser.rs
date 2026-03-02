@@ -390,7 +390,7 @@ fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
     if content.is_empty() {
         Err(ParseError::new("empty character", slice))
     } else {
-        Ok(Char::from(content))
+        Ok(Char::from(content.as_str()))
     }
 }
 

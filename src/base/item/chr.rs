@@ -1,12 +1,13 @@
 use crate::base::*;
+use crate::interner::intern;
 
 use std::fmt::{Display, Formatter};
 
 /// A 'character' in Stream may represent a single code point or a multigraph (such as 'dz').
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Char {
     Single(char),
-    Multi(String)
+    Multi(&'static str)
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -44,11 +45,11 @@ impl Char {
                     if lcase.len() == 1 {
                         Char::Single(lcase.next().unwrap())
                     } else {
-                        Char::Multi(lcase.to_string())
+                        Char::Multi(intern(&lcase.to_string()))
                     }
                 }
             },
-            Char::Multi(ch) => Char::Multi(ch.to_lowercase())
+            Char::Multi(ch) => Char::Multi(intern(&ch.to_lowercase()))
         }
     }
 
@@ -62,11 +63,11 @@ impl Char {
                     if ucase.len() == 1 {
                         Char::Single(ucase.next().unwrap())
                     } else {
-                        Char::Multi(ucase.to_string())
+                        Char::Multi(intern(&ucase.to_string()))
                     }
                 }
             },
-            Char::Multi(ch) => Char::Multi(ch.to_uppercase())
+            Char::Multi(ch) => Char::Multi(intern(&ch.to_uppercase()))
         }
     }
 }
@@ -77,20 +78,14 @@ impl From<char> for Char {
     }
 }
 
-impl From<String> for Char {
-    fn from(s: String) -> Char {
+impl From<&str> for Char {
+    fn from(s: &str) -> Char {
         let mut it = s.chars();
         if let (Some(c), None) = (it.next(), it.next()) {
             Char::Single(c)
         } else {
-            Char::Multi(s)
+            Char::Multi(intern(s))
         }
-    }
-}
-
-impl From<&str> for Char {
-    fn from(x: &str) -> Char {
-        Char::from(x.to_string())
     }
 }
 
@@ -138,8 +133,8 @@ mod tests {
         assert_eq!(Char::from("a"), Char::Single('a'));
         assert_eq!(Char::from('❤'), Char::Single('❤')); // multi-byte
         assert_eq!(Char::from("❤"), Char::Single('❤'));
-        assert_eq!(Char::from("é"), Char::Multi("é".into())); // combining mark
-        assert_eq!(Char::from("as"), Char::Multi("as".into()));
+        assert_eq!(Char::from("é"), Char::Multi("é")); // combining mark
+        assert_eq!(Char::from("as"), Char::Multi("as"));
         assert_eq!(Char::from('\n').to_string(), "'\\n'");
 
         assert_eq!(Char::Single('a').case(), CharCase::Lower);

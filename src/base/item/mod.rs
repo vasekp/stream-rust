@@ -28,6 +28,7 @@ mod tests;
 pub(crate) use tests::*;
 
 /// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
+#[derive(Clone)]
 pub enum Item {
     Number(Number),
     Bool(bool),
@@ -327,19 +328,6 @@ impl PartialEq for Item {
                     .all(|(x, y)| x == y)
             },
             _ => false
-        }
-    }
-}
-
-impl Clone for Item {
-    fn clone(&self) -> Item {
-        use Item::*;
-        match self {
-            Number(x) => Number(x.clone()),
-            Bool(x) => Bool(*x),
-            Char(x) => Char(x.clone()),
-            Stream(s) => Stream(Rc::clone(s)),
-            String(s) => String(Rc::clone(s)),
         }
     }
 }

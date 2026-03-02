@@ -36,7 +36,7 @@ fn eval_contains(node: Node, env: &Env) -> Result<Item, StreamError> {
         Some(Item::String(stm)) => {
             let mut queries = try_with!(node, node.args.iter()
                 .map(|item| match item {
-                    Item::Char(ch) => Ok(Query::Pending(vec![ch.clone()])),
+                    Item::Char(ch) => Ok(Query::Pending(vec![*ch])),
                     Item::String(s) if !s.is_empty() => Ok(Query::Pending(s.listout()?)),
                     item => Err(BaseError::from(format!("expected character or nonempty string, found {:?}", item)))
                 })

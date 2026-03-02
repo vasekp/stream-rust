@@ -1,5 +1,6 @@
 use crate::base::*;
 use crate::docs::DocRecord;
+use crate::interner;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
@@ -18,6 +19,7 @@ impl Symbols {
     pub(crate) fn insert_raw(&mut self, names: impl AsSlice<&'static str>, ctor: Constructor) {
         let rec = Arc::new((ctor, None));
         for sym in names.as_slice() {
+            interner::intern_static(sym);
             self.0.insert(sym, Arc::clone(&rec));
         }
     }
@@ -29,6 +31,7 @@ impl Symbols {
         docs.symbols = names.as_slice().to_vec();
         let rec = Arc::new((ctor, Some(docs)));
         for sym in names.as_slice() {
+            interner::intern_static(sym);
             self.0.insert(sym, Arc::clone(&rec));
         }
     }

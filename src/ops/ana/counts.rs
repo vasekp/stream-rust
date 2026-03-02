@@ -11,7 +11,7 @@ fn eval_counts(node: Node, env: &Env) -> Result<Item, StreamError> {
         Some(Item::String(stm)) if !node.args.is_empty() => {
             let args = try_with!(node, node.args.iter()
                 .map(|item| match item {
-                    Item::Char(ch) => Ok(vec![ch.clone()]),
+                    Item::Char(ch) => Ok(vec![*ch]),
                     Item::String(s) if !s.is_empty() => Ok(s.listout()?),
                     item => Err(BaseError::from(format!("expected character or nonempty string, found {:?}", item)))
                 })
