@@ -32,7 +32,7 @@ number.numstr(radix, min_width)", rnode))
                     .chain(Link::new("padleft", vec![Expr::new_number(minw), Expr::new_char('0')]))
                     .eval(env),
             (true, Some(minw)) =>
-                Expr::new_node("join", vec![
+                Expr::new_node("join", None, vec![
                     Expr::new_char('-'),
                     Expr::from(Item::new_string(LiteralString::from(s.as_str())))
                         .chain(Link::new("padleft", vec![Expr::new_number(minw), Expr::new_char('0')]))

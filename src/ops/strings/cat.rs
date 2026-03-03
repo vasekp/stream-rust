@@ -80,7 +80,7 @@ impl Iterator for CatIter<'_> {
             match iter_try_expr!(self.outer.next()?) {
                 Item::Char(ch) => return Some(Ok(ch)),
                 Item::String(s) => self.inner = Some(s.into_iter()),
-                item => return Some(Err(StreamError::new(format!("expected string or character, found {:?}", item), Expr::new_node("cat", vec![]))))
+                item => return Some(Err(StreamError::new(format!("expected string or character, found {:?}", item), Expr::new_node("cat", None, vec![])))) // TODO
             }
         }
     }

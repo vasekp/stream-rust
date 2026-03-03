@@ -122,7 +122,7 @@ impl Session {
                                 },
                                 Some(Rhs::Function(block)) => {
                                     Ok(ControlFlow::Break(Expr::Eval(Node {
-                                        head: Expr::new_node("global", vec![block.clone()]).into(),
+                                        head: Expr::new_node("global", None, vec![block.clone()]).into(),
                                         source: source.take(),
                                         args: std::mem::take(args)
                                     })))

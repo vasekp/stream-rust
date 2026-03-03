@@ -33,8 +33,8 @@ impl Expr {
         Item::new_string(LiteralString::from(value)).into()
     }
 
-    pub fn new_node(head: impl Into<Head>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{head: head.into(), source: None, args})
+    pub fn new_node(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
+        Expr::Eval(Node{head: head.into(), source: source.map(Box::new), args})
     }
 
     /// Creates an operator expression. Operands are provided as `args`.

@@ -43,7 +43,7 @@ fn with_replacer(expr: Expr, replace: &HashMap::<&str, Rc<Rhs>>)
     match node {
         Node { head: Head::Symbol("global"), .. } =>
             Ok(ControlFlow::Break(node.into())),
-        Node { head: Head::Symbol(sym), source: None, mut args } if sym == "with" && args.len() > 1 => {
+        Node { head: Head::Symbol(sym @ "with"), source: None, mut args } if args.len() > 1 => {
             let (mut body, assigns) = (args.pop().unwrap(), &mut args); // just checked len > 2 > 1
             let mut replace = replace.clone();
             for assign in assigns {
@@ -63,7 +63,7 @@ fn with_replacer(expr: Expr, replace: &HashMap::<&str, Rc<Rhs>>)
             };
             body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
             args.push(body);
-            Ok(ControlFlow::Break(Expr::new_node(sym, args)))
+            Ok(ControlFlow::Break(Expr::new_node(sym, None, args)))
         },
         Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } => {
             match replace.get(sym).map(|rc| (**rc).clone()) {
@@ -76,7 +76,7 @@ fn with_replacer(expr: Expr, replace: &HashMap::<&str, Rc<Rhs>>)
                 },
                 Some(Rhs::Function(block)) => {
                     Ok(ControlFlow::Continue(Node {
-                        head: Expr::new_node("global", vec![block.clone()]).into(),
+                        head: Expr::new_node("global", None, vec![block.clone()]).into(),
                         source: source.take(),
                         args: std::mem::take(args)
                     }))
