@@ -89,7 +89,7 @@ impl Expr {
         match func(self)? {
             ControlFlow::Continue(mut node) => {
                 if let Head::Block(expr) = &mut node.head {
-                    **expr = std::mem::take(expr).replace(func)?;
+                    *expr = std::mem::take(expr).replace(func)?;
                 }
                 if let Some(expr) = node.source.take() {
                     node.source = Some(expr.replace(func)?);

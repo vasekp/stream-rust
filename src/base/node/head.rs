@@ -9,7 +9,7 @@ use crate::interner::intern;
 pub enum Head {
     Symbol(&'static str),
     Oper(&'static str),
-    Block(Box<Expr>),
+    Block(Expr),
     Lang(LangItem)
 }
 
@@ -36,19 +36,19 @@ impl From<LangItem> for Head {
 
 impl From<Expr> for Head {
     fn from(expr: Expr) -> Head {
-        Head::Block(Box::new(expr))
+        Head::Block(expr)
     }
 }
 
 impl From<Item> for Head {
     fn from(expr: Item) -> Head {
-        Head::Block(Box::new(expr.into()))
+        Head::Block(expr.into())
     }
 }
 
 impl From<Node> for Head {
     fn from(expr: Node) -> Head {
-        Head::Block(Box::new(expr.into()))
+        Head::Block(expr.into())
     }
 }
 

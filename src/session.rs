@@ -35,7 +35,7 @@ impl Session {
                     let rhs = if let Expr::Eval(node) = rhs
                         && node.source.is_none() && node.args.is_empty()
                         && let Head::Block(block) = &node.head {
-                            Rhs::Function((**block).clone())
+                            Rhs::Function(block.clone())
                     } else {
                         Rhs::Value(expr.eval(&self.env)?)
                     };
