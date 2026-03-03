@@ -10,10 +10,9 @@ impl LexOp {
     fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         let func = Self::find_fn(&node.head);
-        try_with!(node, node.check_no_source()?);
-        try_with!(node, node.check_args_nonempty()?);
-        let res = try_with!(node, Self::lex_chain(&node.args, func, env)?);
-        Ok(Item::Bool(res))
+        node.check_no_source()?;
+        node.check_args_nonempty()?;
+        Self::lex_chain(&node.args, func, env).map(Item::Bool)
     }
 
     fn find_fn(head: &Head) -> CritFunc {
@@ -26,7 +25,7 @@ impl LexOp {
         }
     }
 
-    fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> Result<bool, BaseError> {
+    fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> Result<bool, StreamError> {
         let mut iter = items.iter();
         let mut prev = iter.next().unwrap(); // args checked to be nonempty in eval()
         for next in iter {

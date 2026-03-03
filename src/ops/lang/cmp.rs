@@ -2,16 +2,15 @@ use crate::base::*;
 
 struct CmpOp;
 
-type CmpFunc = fn(&[Item]) -> Result<bool, BaseError>;
+type CmpFunc = fn(&[Item]) -> Result<bool, StreamError>;
 
 impl CmpOp {
     fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
         let node = node.eval_all(env)?;
         let func = Self::find_fn(&node.head);
-        try_with!(node, node.check_no_source()?);
-        try_with!(node, node.check_args_nonempty()?);
-        let res = try_with!(node, func(&node.args)?);
-        Ok(Item::Bool(res))
+        node.check_no_source()?;
+        node.check_args_nonempty()?;
+        func(&node.args).map(Item::Bool)
     }
 
     fn find_fn(head: &Head) -> CmpFunc {
@@ -27,7 +26,7 @@ impl CmpOp {
         }
     }
 
-    fn eq_func(items: &[Item]) -> Result<bool, BaseError> {
+    fn eq_func(items: &[Item]) -> Result<bool, StreamError> {
         let mut iter = items.iter();
         let first = iter.next().unwrap(); // args checked to be nonempty in eval()
         for item in iter {
@@ -38,30 +37,30 @@ impl CmpOp {
         Ok(true)
     }
 
-    fn ineq_func(items: &[Item]) -> Result<bool, BaseError> {
+    fn ineq_func(items: &[Item]) -> Result<bool, StreamError> {
         match items {
-            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b).map_err(BaseError::from),
-            _ => Err("exactly 2 arguments required".into())
+            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b).map_err(StreamError::from),
+            _ => Err(StreamError::new0("exactly 2 arguments required"))
         }
     }
 
-    fn lt_func(items: &[Item]) -> Result<bool, BaseError> {
+    fn lt_func(items: &[Item]) -> Result<bool, StreamError> {
         Self::ineq_chain(items, Number::lt)
     }
 
-    fn gt_func(items: &[Item]) -> Result<bool, BaseError> {
+    fn gt_func(items: &[Item]) -> Result<bool, StreamError> {
         Self::ineq_chain(items, Number::gt)
     }
 
-    fn le_func(items: &[Item]) -> Result<bool, BaseError> {
+    fn le_func(items: &[Item]) -> Result<bool, StreamError> {
         Self::ineq_chain(items, Number::le)
     }
 
-    fn ge_func(items: &[Item]) -> Result<bool, BaseError> {
+    fn ge_func(items: &[Item]) -> Result<bool, StreamError> {
         Self::ineq_chain(items, Number::ge)
     }
 
-    fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> Result<bool, BaseError> {
+    fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> Result<bool, StreamError> {
         let mut iter = items.iter();
         let mut prev = iter.next()
             .unwrap() // args checked to be nonempty in eval()

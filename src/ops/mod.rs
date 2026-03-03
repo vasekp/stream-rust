@@ -1,4 +1,4 @@
-//mod lang;
+mod lang;
 //mod streams;
 //mod selfref;
 //mod env;
@@ -13,7 +13,7 @@
 //mod testutils;
 
 pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
-//    lang::init(symbols);
+    lang::init(symbols);
 //    streams::init(symbols);
 //    selfref::init(symbols);
 //    env::init(symbols);

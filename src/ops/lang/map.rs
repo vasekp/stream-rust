@@ -62,8 +62,7 @@ impl Stream<Char> for CharMap {
             self.body
                 .with_source(Item::Char(ch).into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
-                .and_then(|item| item.into_char()
-                    .map_err(|err| StreamError::new(err, Item::from(self.source.clone()))))
+                .and_then(Item::into_char)
         }))
     }
 

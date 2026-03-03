@@ -6,7 +6,7 @@ fn eval_args(node: &Node, env: &Env) -> Result<Item, StreamError> {
         && head_node.source.is_none() && head_node.args.is_empty() {
             head_node.head.clone()
     } else {
-        panic!("@ should have a bare node as first argument by construction");
+        unreachable!("@ should have a bare node as first argument by construction");
     };
     let args = node.args[1].eval(env)?.as_stream()?.listout()?;
     let source = node.source.as_ref().map(|s| s.eval(env)).transpose()?;
