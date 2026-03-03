@@ -42,14 +42,21 @@ impl Display for BaseError {
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum StreamError {
-    ExprError { reason: String, expr: Expr },
+    ExprError { reason: String, expr: Option<Expr> },
     Interrupt
 }
 
 impl StreamError {
     pub fn new(base: impl Into<BaseError>, expr: impl Into<Expr>) -> StreamError {
         match base.into() {
-            BaseError::String(reason) => StreamError::ExprError{reason, expr: expr.into()},
+            BaseError::String(reason) => StreamError::ExprError{reason, expr: Some(expr.into())},
+            BaseError::StreamError(err) => *err
+        }
+    }
+
+    pub fn new0(base: impl Into<BaseError>) -> StreamError {
+        match base.into() {
+            BaseError::String(reason) => StreamError::ExprError{reason, expr: None},
             BaseError::StreamError(err) => *err
         }
     }
@@ -60,7 +67,8 @@ impl std::error::Error for StreamError { }
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ExprError { reason, expr } => write!(f, "{}: {}", expr.describe(), reason),
+            Self::ExprError { reason, expr: Some(expr) } => write!(f, "{}: {}", expr.describe(), reason),
+            Self::ExprError { reason, expr: None } => write!(f, "{}", reason),
             Self::Interrupt => write!(f, "interrupted")
         }
     }
