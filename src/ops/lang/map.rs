@@ -32,7 +32,6 @@ impl Stream for Map {
             self.body
                 .with_source(item.into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
-                .map_err(BaseError::from)
         }))
     }
 
@@ -65,7 +64,6 @@ impl Stream<Char> for CharMap {
                 .and_then(|node| Expr::from(node).eval(&self.env))
                 .and_then(|item| item.into_char()
                     .map_err(|err| StreamError::new(err, Item::from(self.source.clone()))))
-                .map_err(BaseError::from)
         }))
     }
 

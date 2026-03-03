@@ -80,7 +80,7 @@ impl<I: ItemType> dyn Stream<I> {
         }
     }
 
-    pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> Result<I2, BaseError> + 'node>(self: &'node Rc<Self>, func: F) -> Box<dyn SIterator<I2> + 'node> {
+    pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> Result<I2, StreamError> + 'node>(self: &'node Rc<Self>, func: F) -> Box<dyn SIterator<I2> + 'node> {
         Box::new(SMap::new(self, func))
     }
 }

@@ -20,28 +20,28 @@ pub(crate) trait Checks {
         }
     }
 
-    /*fn source_checked(&self) -> Result<&Self::Element, BaseError> {
+    /*fn source_checked(&self) -> Result<&Self::Element, StreamError> {
         self.source().ok_or("source required".into())
     }*/
 
-    fn check_no_args(&self) -> Result<(), BaseError> {
+    fn check_no_args(&self) -> Result<(), StreamError> {
         if !self.args().is_empty() {
-            Err("no arguments expected".into())
+            Err(StreamError::new0("no arguments expected"))
         } else {
             Ok(())
         }
     }
 
-    fn check_args_nonempty(&self) -> Result<(), BaseError> {
+    fn check_args_nonempty(&self) -> Result<(), StreamError> {
         if self.args().is_empty() {
-            Err("at least 1 argument required".into())
+            Err(StreamError::new0("at least 1 argument required"))
         } else {
             Ok(())
         }
     }
 
-    fn first_arg_checked(&self) -> Result<&Self::Element, BaseError> {
-        self.args().first().ok_or("at least 1 argument required".into())
+    fn first_arg_checked(&self) -> Result<&Self::Element, StreamError> {
+        self.args().first().ok_or(StreamError::new0("at least 1 argument required"))
     }
 }
 

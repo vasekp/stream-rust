@@ -87,29 +87,28 @@ where F: FnMut() -> Result<I, StreamError>
     }
 }
 
-pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> {
+pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> {
     parent: Rc<dyn Stream<I1>>,
     source: Box<dyn SIterator<I1> + 'node>,
     func: F
 }
 
-impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SMap<'node, I1, I2, F> {
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> SMap<'node, I1, I2, F> {
     pub(crate) fn new(stream: &'node Rc<dyn Stream<I1>>, func: F) -> Self {
         SMap{parent: Rc::clone(stream), source: stream.iter(), func}
     }
 }
 
-impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> Iterator for SMap<'_, I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> Iterator for SMap<'_, I1, I2, F> {
     type Item = Result<I2, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let item = iter_try_expr!(self.source.next()?);
-        let res = (self.func)(item);
-        Some(res.map_err(|err| StreamError::new(err, Item::from(&self.parent))))
+        Some((self.func)(item)) // TODO attribute parent
     }
 }
 
-impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, BaseError>> SIterator<I2> for SMap<'_, I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> SIterator<I2> for SMap<'_, I1, I2, F> {
     fn len_remain(&self) -> Length {
         self.source.len_remain()
     }

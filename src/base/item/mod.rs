@@ -66,38 +66,38 @@ impl Item {
         Item::String(Rc::new(EmptyString))
     }
 
-    pub fn as_num(&self) -> Result<&Number, BaseError> {
+    pub fn as_num(&self) -> Result<&Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected number"))
         }
     }
 
-    pub fn into_num(self) -> Result<Number, BaseError> {
+    pub fn into_num(self) -> Result<Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected number"))
         }
     }
 
     pub fn to_bool(&self) -> Result<bool, StreamError> {
         match self {
             Item::Bool(x) => Ok(*x),
-            _ => Err(StreamError::new0(format!("expected boolean value, found {:?}", &self)))
+            _ => Err(StreamError::new0("expected boolean value"))
         }
     }
 
-    pub fn as_char(&self) -> Result<&Char, BaseError> {
+    pub fn as_char(&self) -> Result<&Char, StreamError> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(format!("expected character, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected character"))
         }
     }
 
-    pub fn into_char(self) -> Result<Char, BaseError> {
+    pub fn into_char(self) -> Result<Char, StreamError> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(format!("expected character, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected character"))
         }
     }
 
@@ -201,7 +201,7 @@ impl Item {
         })
     }
 
-    pub(crate) fn lex_cmp(&self, other: &Self, alpha: &Rc<Alphabet>) -> Result<std::cmp::Ordering, BaseError> {
+    pub(crate) fn lex_cmp(&self, other: &Self, alpha: &Rc<Alphabet>) -> Result<std::cmp::Ordering, StreamError> {
         use Item::*;
         use std::cmp::Ordering;
         Ok(match (self, other) {
@@ -246,7 +246,7 @@ impl Item {
                     }
                 }
             },
-            (x, y) => return Err(format!("can't compare {x:?} with {y:?}").into())
+            (x, y) => return Err(StreamError::new0(format!("can't compare {x:?} with {y:?}")))
         })
     }
 }
