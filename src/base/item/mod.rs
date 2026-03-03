@@ -80,10 +80,10 @@ impl Item {
         }
     }
 
-    pub fn to_bool(&self) -> Result<bool, BaseError> {
+    pub fn to_bool(&self) -> Result<bool, StreamError> {
         match self {
             Item::Bool(x) => Ok(*x),
-            _ => Err(format!("expected boolean value, found {:?}", &self).into())
+            _ => Err(StreamError::new0(format!("expected boolean value, found {:?}", &self)))
         }
     }
 
@@ -103,6 +103,20 @@ impl Item {
 
     pub fn is_stream(&self) -> bool {
         matches!(self, Item::Stream(_))
+    }
+
+    pub fn as_stream(&self) -> Result<&Rc<dyn Stream>, StreamError> {
+        match self {
+            Item::Stream(stm) => Ok(stm),
+            _ => Err(StreamError::new0(format!("expected stream, found {:?}", &self)))
+        }
+    }
+
+    pub fn to_stream(&self) -> Result<Rc<dyn Stream>, StreamError> {
+        match self {
+            Item::Stream(stm) => Ok(Rc::clone(stm)),
+            _ => Err(StreamError::new0(format!("expected stream, found {:?}", &self)))
+        }
     }
 
     pub fn is_string(&self) -> bool {

@@ -8,7 +8,7 @@ struct MathOp {
 
 type MathFunc = fn(&[Item], &Env) -> Result<Item, BaseError>;
 
-fn eval_op(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_op(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_no_source()?);
     match try_with!(node, node.first_arg_checked()?) {
@@ -52,14 +52,14 @@ impl MathOp {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a + num));
                 Ok(Item::new_number(ans?))
             },
-            Item::Char(ref ch) => {
+            Item::Char(ch) => {
                 let index = env.alpha.ord(ch)?;
                 let case = ch.case();
                 let ans = iter.try_fold(index.into(),
                     |a, e| {
                         match e {
-                            Item::Number(ref num) => Ok(a + num),
-                            Item::Char(ref ch) => Ok(a + env.alpha.ord(ch)?),
+                            Item::Number(num) => Ok(a + num),
+                            Item::Char(ch) => Ok(a + env.alpha.ord(ch)?),
                             _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
                         }
                     })?;
@@ -78,8 +78,8 @@ impl MathOp {
                     let index = env.alpha.ord(ch)?;
                     let case = ch.case();
                     let ord = match rhs {
-                        Item::Number(ref num) => index - num,
-                        Item::Char(ref ch) => (index - env.alpha.ord(ch)?).into(),
+                        Item::Number(num) => index - num,
+                        Item::Char(ch) => (index - env.alpha.ord(ch)?).into(),
                         _ => return Err(format!("expected number or character, found {:?}", rhs).into())
                     };
                     Ok(Item::new_char(env.alpha.chr(&ord, case)))
@@ -98,7 +98,7 @@ impl MathOp {
                 let ans = iter.try_fold(init.to_owned(), |a, e| e.as_num().map(|num| a * num))?;
                 Ok(Item::new_number(ans))
             },
-            Item::Char(ref ch) => {
+            Item::Char(ch) => {
                 let index = env.alpha.ord(ch)?;
                 let case = ch.case();
                 let ans = iter.try_fold(index.into(), |a, e| e.as_num().map(|num| a * num))?;
@@ -269,8 +269,8 @@ impl StringOp {
         let ans = rest.iter().try_fold(index.into(),
             |a, e| {
                 match e {
-                    Item::Number(ref num) => Ok(a + num),
-                    Item::Char(ref ch) => Ok(a + env.alpha.ord(ch)?),
+                    Item::Number(num) => Ok(a + num),
+                    Item::Char(ch) => Ok(a + env.alpha.ord(ch)?),
                     _ => Err(BaseError::from(format!("expected number or character, found {:?}", e)))
                 }
             })?;
@@ -282,8 +282,8 @@ impl StringOp {
         let case = first.case();
         let ord = match rest {
             [other] => match other {
-                Item::Number(ref num) => index - num,
-                Item::Char(ref ch) => (index - env.alpha.ord(ch)?).into(),
+                Item::Number(num) => index - num,
+                Item::Char(ch) => (index - env.alpha.ord(ch)?).into(),
                 _ => return Err(BaseError::from(format!("expected number or character, found {:?}", other)))
             },
             _ => return Err("not available for strings".into())

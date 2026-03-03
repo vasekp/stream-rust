@@ -6,16 +6,16 @@ pub(crate) trait Checks {
     fn source(&self) -> Option<&Self::Element>;
     fn args(&self) -> &Vec<Self::Element>;
 
-    fn check_source(&self) -> Result<(), BaseError> {
+    fn check_source(&self) -> Result<(), StreamError> {
         match &self.source() {
             Some(_) => Ok(()),
-            None => Err("source required".into()),
+            None => Err(StreamError::new0("source required")),
         }
     }
 
-    fn check_no_source(&self) -> Result<(), BaseError> {
+    fn check_no_source(&self) -> Result<(), StreamError> {
         match &self.source() {
-            Some(_) => Err("no source accepted".into()),
+            Some(_) => Err(StreamError::new0("no source accepted")),
             None => Ok(())
         }
     }

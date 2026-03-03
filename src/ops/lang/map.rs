@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_map(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_map(node: &Node, env: &Env) -> Result<Item, StreamError> {
     match node.eval_source(env)? {
         RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
             Ok(Item::new_stream(Map{head, source, body, env: env.clone()})),
@@ -12,7 +12,7 @@ fn eval_map(node: Node, env: &Env) -> Result<Item, StreamError> {
 
 struct Map {
     source: Rc<dyn Stream>,
-    body: Node,
+    body: Rc<Node>,
     head: Head,
     env: Env
 }
@@ -21,7 +21,7 @@ impl Describe for Map {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.body)
+            .push_arg(&*self.body)
             .finish(prec)
     }
 }
@@ -29,7 +29,7 @@ impl Describe for Map {
 impl Stream for Map {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(SMap::new(&self.source, |item| {
-            self.body.clone()
+            self.body
                 .with_source(item.into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
                 .map_err(BaseError::from)
@@ -43,7 +43,7 @@ impl Stream for Map {
 
 struct CharMap {
     source: Rc<dyn Stream<Char>>,
-    body: Node,
+    body: Rc<Node>,
     head: Head,
     env: Env
 }
@@ -52,7 +52,7 @@ impl Describe for CharMap {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.body)
+            .push_arg(&*self.body)
             .finish(prec)
     }
 }
@@ -60,7 +60,7 @@ impl Describe for CharMap {
 impl Stream<Char> for CharMap {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(SMap::new(&self.source, |ch| {
-            self.body.clone()
+            self.body
                 .with_source(Item::Char(ch).into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
                 .and_then(|item| item.into_char()

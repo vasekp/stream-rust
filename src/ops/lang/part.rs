@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_part(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_part(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     try_with!(node, node.check_source()?);
     try_with!(node, node.check_args_nonempty()?);

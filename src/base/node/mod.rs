@@ -126,21 +126,19 @@ impl Node {
         })
     }
 
-    pub(crate) fn with_source(mut self, source: Expr) -> Result<Node, StreamError> {
+    pub(crate) fn with_source(&self, source: Expr) -> Result<Node, StreamError> {
         if self.source.is_some() {
-            Err(StreamError::new("already has source", self))
+            Err(StreamError::new0("already has source"))
         } else {
-            self.source = Some(source);
-            Ok(self)
+            Ok(Node{head: self.head.clone(), source: Some(source), args: self.args.clone()})
         }
     }
 
-    pub(crate) fn with_args(mut self, args: Vec<Expr>) -> Result<Node, StreamError> {
+    pub(crate) fn with_args(&self, args: Vec<Expr>) -> Result<Node, StreamError> {
         if !self.args.is_empty() {
-            Err(StreamError::new("already has arguments", self))
+            Err(StreamError::new0("already has arguments"))
         } else {
-            self.args = args;
-            Ok(self)
+            Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
         }
     }
 

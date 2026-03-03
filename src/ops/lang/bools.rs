@@ -1,36 +1,36 @@
 use crate::base::*;
 
-fn eval_and(mut node: Node, env: &Env) -> Result<Item, StreamError> {
-    try_with!(node, node.check_no_source()?);
-    for arg in std::mem::take(&mut node.args) {
-        let val = try_with!(node, arg.eval(env)?.to_bool()?);
+fn eval_and(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_source()?;
+    for arg in &node.args {
+        let val = arg.eval(env)?.to_bool()?;
         if !val { return Ok(Item::Bool(false)); }
     }
     Ok(Item::Bool(true))
 }
 
-fn eval_or(mut node: Node, env: &Env) -> Result<Item, StreamError> {
-    try_with!(node, node.check_no_source()?);
-    for arg in std::mem::take(&mut node.args) {
-        let val = try_with!(node, arg.eval(env)?.to_bool()?);
+fn eval_or(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_source()?;
+    for arg in &node.args {
+        let val = arg.eval(env)?.to_bool()?;
         if val { return Ok(Item::Bool(true)); }
     }
     Ok(Item::Bool(false))
 }
 
-fn eval_not(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_not(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source()?);
+    node.check_no_source()?;
     match &node.args[..] {
         [Item::Bool(b)] => Ok(Item::Bool(!b)),
         _ => Err(StreamError::new("one bool argument expected", node))
     }
 }
 
-fn eval_xor(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_xor(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source()?);
-    let res = try_with!(node, node.args.iter().try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))?);
+    node.check_no_source()?;
+    let res = node.args.iter().try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))?;
     Ok(Item::Bool(res))
 }
 
