@@ -22,6 +22,12 @@ impl StreamError {
 
 impl std::error::Error for StreamError { }
 
+/*impl From<T: Into<String>> for StreamError {
+    fn from(s: T) -> StreamError {
+        StreamError::ExprError{reason: t.into(), expr: None}
+    }
+}*/
+
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -65,14 +71,14 @@ impl Display for ParseError<'_> {
     }
 }
 
-macro_rules! try_with {
-    ($blame:expr, $expr:expr) => {
+//macro_rules! try_with {
+//    ($blame:expr, $expr:expr) => {
 //        match (|| -> Result<_, BaseError> { Ok($expr) })() {
 //            Ok(result) => result,
 //            Err(err) => return Err(StreamError::new(err, $blame))
 //        }
-    }
-}
+//    }
+//}
 
 macro_rules! iter_try_call {
     ($expr:expr) => {
@@ -105,7 +111,7 @@ macro_rules! check_stop {
     }
 }
 
-pub(crate) use try_with;
+//pub(crate) use try_with;
 pub(crate) use iter_try_call;
 pub(crate) use iter_try_expr;
 pub(crate) use check_stop;
