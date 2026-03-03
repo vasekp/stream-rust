@@ -51,36 +51,36 @@ impl Expr {
         })
     }
 
-    pub(in crate::base) fn apply(self, source: &Option<Item>, args: &Vec<Item>) -> Result<Expr, StreamError> {
+    pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Expr, StreamError> {
         match self {
             Expr::Eval(node) => Ok(Expr::Eval(node.apply(source, args)?)),
             Expr::Repl(Subst::Input(index)) =>
                 match index {
                     None => source.as_ref()
-                        .ok_or(StreamError::new("no source provided", self))
+                        .ok_or(StreamError::new0("no source provided"))
                         .map(|item| item.clone().into()),
                     Some(ix) => args.get(ix - 1)
-                        .ok_or(StreamError::new("no such input", self))
+                        .ok_or(StreamError::new0("no such input"))
                         .map(|item| item.clone().into()),
                 },
             Expr::Repl(Subst::InputList) =>
                 Ok(Expr::new_stream(List::from(args.to_owned()))),
-            _ => Ok(self)
+            _ => Ok(self.clone())
         }
     }
 
     /// Evaluates this `Expr` in a default environment.
-    pub fn eval_default(self) -> Result<Item, StreamError> {
+    pub fn eval_default(&self) -> Result<Item, StreamError> {
         self.eval(&Default::default())
     }
 
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
     /// `Node::eval()`.
-    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
+    pub fn eval(&self, env: &Env) -> Result<Item, StreamError> {
         match self {
-            Expr::Imm(item) => Ok(item),
+            Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => node.eval(env),
-            Expr::Repl(_) => Err(StreamError::new("out of context", self))
+            Expr::Repl(_) => Err(StreamError::new0("out of context"))
         }
     }
 

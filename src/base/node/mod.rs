@@ -45,24 +45,24 @@ impl Node {
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
-    pub fn eval(self, env: &Env) -> Result<Item, StreamError> {
-        env.tracer.borrow_mut().log(tracing::Event::Enter(&self));
+    pub fn eval(&self, env: &Env) -> Result<Item, StreamError> {
+        env.tracer.borrow_mut().log(tracing::Event::Enter(self));
         let res = (|| {
-            match self.head {
-                Head::Symbol(ref sym) | Head::Oper(ref sym) => {
+            match &self.head {
+                Head::Symbol(sym) | Head::Oper(sym) => {
                     if let Some(ctor) = Symbols::find_ctor(sym) {
                         ctor(self, env)
                     } else {
-                        Err(StreamError::new(format!("symbol '{sym}' not found"), self))
+                        Err(StreamError::new0(format!("symbol '{sym}' not found")))
                     }
                 },
-                Head::Lang(ref lang) => {
+                Head::Lang(lang) => {
                     let ctor = Symbols::find_ctor(lang.symbol()).expect("all LangItem symbols should exist");
                     ctor(self, env)
                 },
                 Head::Block(blk) => {
-                    let source = self.source.map(|expr| expr.eval(env)).transpose()?;
-                    let args = self.args.into_iter()
+                    let source = self.source.as_ref().map(|expr| expr.eval(env)).transpose()?;
+                    let args = self.args.iter()
                         .map(|expr| expr.eval(env))
                         .collect::<Result<_, _>>()?;
                     blk.apply(&source, &args)?.eval(env)
@@ -73,25 +73,25 @@ impl Node {
         res
     }
 
-    pub(crate) fn eval_all(self, env: &Env) -> Result<ENode, StreamError> {
-        let source = match self.source {
+    pub(crate) fn eval_all(&self, env: &Env) -> Result<ENode, StreamError> {
+        let source = match &self.source {
             Some(source) => Some(source.eval(env)?),
             None => None
         };
-        let args = self.args.into_iter()
+        let args = self.args.iter()
             .map(|x| x.eval(env))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(ENode{head: self.head, source, args})
+        Ok(ENode{head: self.head.clone(), source, args})
     }
 
-    pub(crate) fn eval_source(self, env: &Env) -> Result<RNodeS<Item, Expr>, StreamError> {
-        match self.source {
+    pub(crate) fn eval_source(&self, env: &Env) -> Result<RNodeS<Item, Expr>, StreamError> {
+        match &self.source {
             Some(source) => Ok(RNodeS {
-                head: self.head,
+                head: self.head.clone(),
                 source: source.eval(env)?,
-                args: self.args.into()
+                args: self.args.clone().into(),
             }),
-            None => Err(StreamError::new("source required", self))
+            None => Err(StreamError::new0("source required"))
         }
     }
 
@@ -102,24 +102,25 @@ impl Node {
         Ok(self)
     }*/
 
-    pub(crate) fn eval_nth_arg(mut self, ix: usize, env: &Env) -> Result<Node, StreamError> {
+    pub(crate) fn eval_nth_arg(&self, ix: usize, env: &Env) -> Result<Node, StreamError> {
         if ix >= self.args.len() {
-            return Err(StreamError::new("not enough arguments", self));
+            return Err(StreamError::new0("not enough arguments"));
         }
-        let arg = self.args.remove(ix);
+        let mut args = self.args.clone();
+        let arg = args.remove(ix);
         let arg = arg.eval(env)?;
-        self.args.insert(ix, arg.into());
-        Ok(self)
+        args.insert(ix, arg.into());
+        Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
     }
 
-    pub(in crate::base) fn apply(self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
+    pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
         Ok(Node {
-            head: self.head,
-            source: match self.source {
+            head: self.head.clone(),
+            source: match &self.source {
                 None => None,
                 Some(boxed) => Some(Box::new(boxed.apply(source, args)?))
             },
-            args: self.args.into_iter()
+            args: self.args.iter()
                 .map(|expr| expr.apply(source, args))
                 .collect::<Result<Vec<_>, _>>()?
         })
