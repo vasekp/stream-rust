@@ -84,23 +84,40 @@ impl Expr {
         }
     }
 
-    pub fn replace(self, func: &impl Fn(Expr) -> Result<std::ops::ControlFlow<Expr, Node>, StreamError>) -> Result<Expr, StreamError> {
-        use std::ops::ControlFlow;
-        match func(self)? {
-            ControlFlow::Continue(mut node) => {
-                if let Head::Block(expr) = &mut node.head {
-                    *expr = std::mem::take(expr).replace(func)?;
-                }
-                if let Some(expr) = node.source.take() {
-                    node.source = Some(expr.replace(func)?);
-                }
-                node.args = std::mem::take(&mut node.args)
-                    .into_iter()
-                    .map(|expr| expr.replace(func))
-                    .collect::<Result<_, _>>()?;
-                Ok(Expr::Eval(Rc::new(node)))
-            },
-            ControlFlow::Break(expr) => Ok(expr),
+    pub fn replace(&self, func: &impl Fn(&Expr) -> Result<std::borrow::Cow<'_, Expr>, StreamError>) -> Result<std::borrow::Cow<'_, Expr>, StreamError> {
+        use std::borrow::Cow;
+        if let Cow::Owned(expr) = func(self)? {
+            Ok(Cow::Owned(expr))
+        } else if let Expr::Eval(node) = self {
+            let new_head = if let Head::Block(expr) = &node.head
+                && let Cow::Owned(expr) = expr.replace(func)? {
+                    Cow::Owned(Head::Block(expr))
+            } else {
+                Cow::Borrowed(&node.head)
+            };
+            let new_source = if let Some(source) = &node.source
+                && let Cow::Owned(expr) = source.replace(func)? {
+                Cow::Owned(Some(expr))
+            } else {
+                Cow::Borrowed(&node.source)
+            };
+            let new_args = node.args.iter()
+                .map(|expr| expr.replace(func))
+                .collect::<Result<Vec<_>, _>>()?;
+            let res = if matches!(new_head, Cow::Owned(_))
+                || matches!(new_source, Cow::Owned(_))
+                || new_args.iter().any(|cow| matches!(cow, Cow::Owned(_))) {
+                    Cow::Owned(Expr::Eval(Rc::new(Node {
+                        head: new_head.into_owned(),
+                        source: new_source.into_owned(),
+                        args: new_args.into_iter().map(Cow::into_owned).collect(),
+                    })))
+            } else {
+                Cow::Borrowed(self)
+            };
+            Ok(res)
+        } else {
+            Ok(Cow::Borrowed(self))
         }
     }
 }

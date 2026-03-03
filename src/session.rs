@@ -108,38 +108,38 @@ impl Session {
         }
     }
 
-    fn apply_context(&mut self, expr: Expr) -> Result<Expr, StreamError> {
-        expr.replace(&|sub_expr| {
-            use std::ops::ControlFlow;
+    fn apply_context(&self, expr: Expr) -> Result<Expr, StreamError> {
+        use std::borrow::Cow;
+        let res = expr.replace(&|sub_expr| {
             match sub_expr {
                 Expr::Repl(Subst::History(index)) => match index {
-                    Some(ix @ 1..) => Ok(ControlFlow::Break(try_with!(sub_expr,
+                    Some(ix @ 1..) => Ok(Cow::Owned(
                         self.hist.get(ix - 1)
                             .cloned()
                             .map(Expr::from)
-                            .ok_or(format!("history item %{ix} does not exist"))?))),
-                    Some(0) => Err(StreamError::new("invalid history index", sub_expr)),
-                    None => Ok(ControlFlow::Break(try_with!(sub_expr,
+                            .ok_or(StreamError::new0(format!("history item %{ix} does not exist")))?)),
+                    Some(0) => Err(StreamError::new0("invalid history index")),
+                    None => Ok(Cow::Owned(
                         self.hist.last()
                             .cloned()
                             .map(Expr::from)
-                            .ok_or("history is empty")?))),
+                            .ok_or(StreamError::new0("history is empty"))?)),
                 },
                 Expr::Repl(Subst::Counter) =>
-                    Ok(ControlFlow::Break(Expr::new_number(self.counter))),
+                    Ok(Cow::Owned(Expr::new_number(self.counter))),
                 Expr::Eval(node) => {
-                    match &*node {
+                    match &**node {
                         Node { head: Head::Symbol(sym), source, args } if sym.starts_with('$') => {
                             match self.vars.get(sym) {
                                 Some(Rhs::Value(item)) => {
                                     if source.is_some() || !args.is_empty() {
                                         Err(StreamError::new0("no source or arguments allowed"))
                                     } else {
-                                        Ok(ControlFlow::Break(Expr::Imm(item.clone())))
+                                        Ok(Cow::Owned(Expr::Imm(item.clone())))
                                     }
                                 },
                                 Some(Rhs::Function(block)) => {
-                                    Ok(ControlFlow::Break(Expr::new_node(
+                                    Ok(Cow::Owned(Expr::new_node(
                                         Expr::new_node("global", None, vec![block.clone()]),
                                         source.clone(),
                                         args.clone()
@@ -148,12 +148,13 @@ impl Session {
                                 None => Err(StreamError::new0("variable not defined"))
                             }
                         },
-                        _ => Ok(ControlFlow::Continue((*node).clone()))
+                        _ => Ok(Cow::Borrowed(sub_expr))
                     }
                 },
-                sub_expr @ (Expr::Imm(_) | Expr::Repl(_)) => Ok(ControlFlow::Break(sub_expr))
+                sub_expr => Ok(Cow::Borrowed(sub_expr))
             }
-        })
+        });
+        Ok(res?.into_owned())
     }
 
     pub fn history(&self) -> &Vec<Item> {
