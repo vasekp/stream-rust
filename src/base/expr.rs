@@ -8,7 +8,7 @@ use crate::interner::intern;
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Expr {
     Imm(Item),
-    Eval(Node),
+    Eval(Rc<Node>),
     Repl(Subst),
 }
 
@@ -34,26 +34,26 @@ impl Expr {
     }
 
     pub fn new_node(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{head: head.into(), source: source.map(Box::new), args})
+        Expr::Eval(Rc::new(Node{head: head.into(), source: source.map(Box::new), args}))
     }
 
     /// Creates an operator expression. Operands are provided as `args`.
     pub fn new_op(op: &str, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Node{head: Head::Oper(intern(op)), source: None, args})
+        Expr::Eval(Rc::new(Node{head: Head::Oper(intern(op)), source: None, args}))
     }
 
     /// Makes the output of this expression an input to a [`Link`].
     pub fn chain(self, next: Link) -> Expr {
-        Expr::Eval(Node{
+        Expr::Eval(Rc::new(Node{
             head: next.head,
             source: Some(Box::new(self)),
             args: next.args
-        })
+        }))
     }
 
     pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Expr, StreamError> {
         match self {
-            Expr::Eval(node) => Ok(Expr::Eval(node.apply(source, args)?)),
+            Expr::Eval(node) => Ok(Expr::Eval(Rc::new(node.apply(source, args)?))),
             Expr::Repl(Subst::Input(index)) =>
                 match index {
                     None => source.as_ref()
@@ -88,7 +88,7 @@ impl Expr {
         use std::ops::ControlFlow;
         match func(self)? {
             ControlFlow::Continue(mut node) => {
-                if let Head::Block(ref mut expr) = &mut node.head {
+                if let Head::Block(expr) = &mut node.head {
                     **expr = std::mem::take(expr).replace(func)?;
                 }
                 if let Some(expr) = node.source.take() {
@@ -98,7 +98,7 @@ impl Expr {
                     .into_iter()
                     .map(|expr| expr.replace(func))
                     .collect::<Result<_, _>>()?;
-                Ok(Expr::Eval(node))
+                Ok(Expr::Eval(Rc::new(node)))
             },
             ControlFlow::Break(expr) => Ok(expr),
         }
@@ -119,7 +119,7 @@ impl From<Item> for Expr {
 
 impl<T> From<T> for Expr where T: Into<Node> {
     fn from(item: T) -> Expr {
-        Expr::Eval(item.into())
+        Expr::Eval(Rc::new(item.into()))
     }
 }
 
