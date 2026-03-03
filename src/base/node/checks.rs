@@ -48,7 +48,7 @@ pub(crate) trait Checks {
 impl Checks for Node {
     type Element = Expr;
 
-    fn source(&self) -> Option<&Expr> { self.source.as_deref() }
+    fn source(&self) -> Option<&Expr> { self.source.as_ref() }
     fn args(&self) -> &Vec<Expr> { &self.args }
 }
 

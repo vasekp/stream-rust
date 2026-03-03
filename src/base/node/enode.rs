@@ -14,7 +14,7 @@ impl From<ENode> for Node {
     fn from(enode: ENode) -> Node {
         Node {
             head: enode.head,
-            source: enode.source.map(|item| Box::new(item.into())),
+            source: enode.source.map(Expr::from),
             args: enode.args.into_iter().map(Expr::from).collect()
         }
     }

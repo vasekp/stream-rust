@@ -86,7 +86,7 @@ impl<S, T> From<RNode<S, T>> for Node where S: Into<Expr>, T: Into<Expr> {
 
 impl<S, T> From<RNodeS<S, T>> for Node where S: Into<Expr>, T: Into<Expr> {
     fn from(RNodeS { head, source, args }: RNodeS<S, T>) -> Node {
-        Node { head, source: Some(Box::new(source.into())), args: args.into() }
+        Node { head, source: Some(source.into()), args: args.into() }
     }
 }
 

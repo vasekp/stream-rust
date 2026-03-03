@@ -26,7 +26,7 @@ mod tests;
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Node {
     pub head: Head,
-    pub source: Option<Box<Expr>>,
+    pub source: Option<Expr>,
     pub args: Vec<Expr>
 }
 
@@ -35,7 +35,7 @@ impl Node {
     /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
     /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
     pub fn new(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Node {
-        Node{head: head.into(), source: source.map(Box::new), args}
+        Node{head: head.into(), source, args}
     }
 
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
@@ -118,7 +118,7 @@ impl Node {
             head: self.head.clone(),
             source: match &self.source {
                 None => None,
-                Some(boxed) => Some(Box::new(boxed.apply(source, args)?))
+                Some(src) => Some(src.apply(source, args)?)
             },
             args: self.args.iter()
                 .map(|expr| expr.apply(source, args))
@@ -130,7 +130,7 @@ impl Node {
         if self.source.is_some() {
             Err(StreamError::new("already has source", self))
         } else {
-            self.source = Some(Box::new(source));
+            self.source = Some(source);
             Ok(self)
         }
     }
@@ -147,7 +147,7 @@ impl Node {
     #[allow(unused)]
     pub(crate) fn resolve(self) -> RNode<Expr> {
         match self.source {
-            Some(source) => RNode::Source(RNodeS { head: self.head, source: *source, args: self.args.into() }),
+            Some(source) => RNode::Source(RNodeS { head: self.head, source, args: self.args.into() }),
             None => RNode::NoSource(RNodeNS { head: self.head, args: self.args.into() }),
         }
     }
@@ -155,7 +155,7 @@ impl Node {
     #[allow(unused)]
     pub(crate) fn resolve_source(self) -> Result<RNodeS<Expr>, StreamError> {
         match self.source {
-            Some(source) => Ok(RNodeS { head: self.head, source: *source, args: self.args.into() }),
+            Some(source) => Ok(RNodeS { head: self.head, source, args: self.args.into() }),
             None => Err(StreamError::new("source required", self))
         }
     }
@@ -172,7 +172,7 @@ impl Node {
 impl Describe for Node {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
-            .set_source_opt(&self.source.as_deref())
+            .set_source_opt(&self.source)
             .push_args(&self.args)
             .finish(prec)
     }

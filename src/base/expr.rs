@@ -34,7 +34,7 @@ impl Expr {
     }
 
     pub fn new_node(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Rc::new(Node{head: head.into(), source: source.map(Box::new), args}))
+        Expr::Eval(Rc::new(Node{head: head.into(), source, args}))
     }
 
     /// Creates an operator expression. Operands are provided as `args`.
@@ -46,7 +46,7 @@ impl Expr {
     pub fn chain(self, next: Link) -> Expr {
         Expr::Eval(Rc::new(Node{
             head: next.head,
-            source: Some(Box::new(self)),
+            source: Some(self),
             args: next.args
         }))
     }
@@ -92,7 +92,7 @@ impl Expr {
                     **expr = std::mem::take(expr).replace(func)?;
                 }
                 if let Some(expr) = node.source.take() {
-                    node.source = Some(Box::new((*expr).replace(func)?));
+                    node.source = Some(expr.replace(func)?);
                 }
                 node.args = std::mem::take(&mut node.args)
                     .into_iter()

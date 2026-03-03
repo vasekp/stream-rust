@@ -141,7 +141,7 @@ impl Session {
                                 Some(Rhs::Function(block)) => {
                                     Ok(ControlFlow::Break(Expr::new_node(
                                         Expr::new_node("global", None, vec![block.clone()]),
-                                        source.as_ref().map(|boxed| (**boxed).clone()),
+                                        source.clone(),
                                         args.clone()
                                     )))
                                 },
