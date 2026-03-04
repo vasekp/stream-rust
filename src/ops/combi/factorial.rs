@@ -1,47 +1,47 @@
 use crate::base::*;
 use super::util::factorial;
 
-fn eval_factorial(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_factorial(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve();
     match &node {
         RNode::Source(RNodeS { source: Item::Number(x), args: RArgs::Zero, .. })
         | RNode::NoSource(RNodeNS { args: RArgs::One(Item::Number(x)), .. })
         => {
             if x.is_negative() {
-                return Err(StreamError::new("input can't be negative", node));
+                return Err(StreamError::new0("input can't be negative"));
             }
             let Ok(x) = x.try_into() else {
-                return Err(StreamError::new("input too large", node));
+                return Err(StreamError::new0("input too large"));
             };
             Ok(Item::new_number(factorial(x)))
         },
-        _ => Err(StreamError::new("expected: number.factorial or factorial(number)", node))
+        _ => Err(StreamError::new0("expected: number.factorial or factorial(number)"))
     }
 }
 
-fn eval_binom(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_binom(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve();
     match &node {
         RNode::NoSource(RNodeNS { args: RArgs::Two(Item::Number(n), Item::Number(k)), .. })
         => {
             if n.is_negative() | k.is_negative() {
-                return Err(StreamError::new("input can't be negative", node));
+                return Err(StreamError::new0("input can't be negative"));
             }
             let (Ok(n), Ok(k)) = (n.try_into(), k.try_into()) else {
-                return Err(StreamError::new("input too large", node));
+                return Err(StreamError::new0("input too large"));
             };
             if k > n {
-                return Err(StreamError::new("out of range", node));
+                return Err(StreamError::new0("out of range"));
             }
             Ok(Item::new_number(factorial(n) / (factorial(k) * factorial(n - k))))
         },
-        _ => Err(StreamError::new("expected: binom(n, k)", node))
+        _ => Err(StreamError::new0("expected: binom(n, k)"))
     }
 }
 
-fn eval_multi(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_multi(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source()?);
+    node.check_no_source()?;
     let mut total = 0;
     let mut denom = UNumber::one();
     for arg in &node.args {
@@ -54,15 +54,15 @@ fn eval_multi(node: Node, env: &Env) -> Result<Item, StreamError> {
         let Ok(k) = k.try_into() else {
             return Err(StreamError::new("input too large", node));
         };
-        total = try_with!(node, total.checked_add(&k)
-            .ok_or(BaseError::from("input too large"))?);
+        total = total.checked_add(&k)
+            .ok_or(StreamError::new0("input too large"))?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))
 }
-fn eval_rmulti(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rmulti(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source()?);
+    node.check_no_source()?;
     let mut total = 0;
     let mut denom = UNumber::one();
     let mut vec = Vec::new();
@@ -81,8 +81,8 @@ fn eval_rmulti(node: Node, env: &Env) -> Result<Item, StreamError> {
             denom *= 1 + vec.iter().filter(|x| *x == &k).count();
         }
         vec.push(k);
-        total = try_with!(node, total.checked_add(&k)
-            .ok_or(BaseError::from("input too large"))?);
+        total = total.checked_add(&k)
+            .ok_or(StreamError::new0("input too large"))?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))

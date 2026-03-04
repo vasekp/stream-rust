@@ -1,7 +1,7 @@
 use crate::base::*;
 use super::util::factorial;
 
-fn eval_perm(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_perm(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
     match node {
         RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, head } => {
@@ -12,7 +12,7 @@ fn eval_perm(node: Node, env: &Env) -> Result<Item, StreamError> {
                 Ok(Item::new_stream(PermStream { source: node.source, len: Some(count), head }))
             }
         },
-        _ => Err(StreamError::new("expected: stream.perm", node))
+        _ => Err(StreamError::new0("expected: stream.perm"))
     }
 }
 
@@ -122,7 +122,7 @@ impl SIterator for PermIter<'_> {
     fn len_remain(&self) -> Length {
         match (self.src_len, &self.self_len) {
             (None, _) => Length::Infinite,
-            (Some(_), Some(ref len)) => Length::Exact(len - &self.num_read),
+            (Some(_), Some(len)) => Length::Exact(len - &self.num_read),
             (Some(_), None) => Length::UnknownFinite
         }
     }

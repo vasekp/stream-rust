@@ -1,10 +1,10 @@
 use crate::base::*;
 
-fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let mut indices = Vec::with_capacity(node.args.len());
     for index in &node.args {
-        let Item::Number(ref index) = index else {
+        let Item::Number(index) = index else {
             return Err(StreamError::new(format!("expected number, found {:?}", index), node));
         };
         if !index.is_positive() {

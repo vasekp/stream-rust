@@ -2,7 +2,7 @@ use crate::base::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
-fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rnd(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
     match node {
         RNodeS { source: Item::Stream(stm), args: RArgs::One(Item::Number(seed)), head } => {
