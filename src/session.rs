@@ -32,12 +32,12 @@ impl Session {
                 Node { head: Head::Oper("="), source: None, args } => {
                     let Some((rhs, lhs)) = args.split_last() else { unreachable!() };
                     let rhs = self.apply_context(rhs.clone())?;
-                    let rhs = if let Expr::Eval(node) = rhs
+                    let rhs = if let Expr::Eval(node) = &rhs
                         && node.source.is_none() && node.args.is_empty()
                         && let Head::Block(block) = &node.head {
                             Rhs::Function(block.clone())
                     } else {
-                        Rhs::Value(expr.eval(&self.env)?)
+                        Rhs::Value(rhs.eval(&self.env)?)
                     };
                     let mut names = Vec::with_capacity(lhs.len());
                     for arg in lhs {

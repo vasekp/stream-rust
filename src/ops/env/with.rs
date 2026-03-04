@@ -80,8 +80,10 @@ fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                         return Err(StreamError::new("expected variable name", assign.clone()))
                     }
                 }
+                *assign = new_assign.into();
             };
             if let Cow::Owned(new_body) = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? { *body = new_body }
+            eprintln!("{}", node.describe());
             Ok(Cow::Owned(node.into()))
         },
         Node { head: Head::Symbol(sym), source, args } => {
