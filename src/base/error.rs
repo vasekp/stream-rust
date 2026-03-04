@@ -71,15 +71,6 @@ impl Display for ParseError<'_> {
     }
 }
 
-//macro_rules! try_with {
-//    ($blame:expr, $expr:expr) => {
-//        match (|| -> Result<_, BaseError> { Ok($expr) })() {
-//            Ok(result) => result,
-//            Err(err) => return Err(StreamError::new(err, $blame))
-//        }
-//    }
-//}
-
 macro_rules! iter_try_call {
     ($expr:expr) => {
         match (|| -> Result<_, StreamError> { Ok($expr) })() {
@@ -111,7 +102,6 @@ macro_rules! check_stop {
     }
 }
 
-//pub(crate) use try_with;
 pub(crate) use iter_try_call;
 pub(crate) use iter_try_expr;
 pub(crate) use check_stop;
