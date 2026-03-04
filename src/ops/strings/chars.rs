@@ -6,12 +6,12 @@ struct Chars {
 }
 
 impl Chars {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        try_with!(node, node.check_no_args()?);
+    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
+        node.check_no_args()?;
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode.source {
             Item::String(stm) => Ok(Item::new_stream(Chars{head: rnode.head, source: stm})),
-            ref item => Err(StreamError::new(format!("expected string, found {:?}", item), rnode))
+            ref item => Err(StreamError::new0(format!("expected string")))
         }
     }
 }
@@ -41,12 +41,12 @@ struct Str {
 }
 
 impl Str {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        try_with!(node, node.check_no_args()?);
+    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
+        node.check_no_args()?;
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode.source {
             Item::Stream(stm) => Ok(Item::new_string(Str{head: rnode.head, source: stm})),
-            ref item => Err(StreamError::new(format!("expected stream, found {:?}", item), rnode))
+            ref item => Err(StreamError::new0("expected stream"))
         }
     }
 }

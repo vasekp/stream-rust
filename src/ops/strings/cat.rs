@@ -8,7 +8,7 @@ struct Cat {
 }
 
 impl Cat {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
         match node.eval_all(env)?.resolve_source()? {
             RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero } =>
                 Ok(Item::new_string(Cat { source: stm, head, filler: None })),
@@ -71,7 +71,7 @@ impl Iterator for CatIter<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             check_stop!(iter);
-            if let Some(ref mut iter) = &mut self.inner {
+            if let Some(iter) = &mut self.inner {
                 match iter_try_expr!(iter.next().transpose()) {
                     Some(ch) => return Some(Ok(ch)),
                     None => self.inner = None
@@ -80,7 +80,8 @@ impl Iterator for CatIter<'_> {
             match iter_try_expr!(self.outer.next()?) {
                 Item::Char(ch) => return Some(Ok(ch)),
                 Item::String(s) => self.inner = Some(s.into_iter()),
-                item => return Some(Err(StreamError::new(format!("expected string or character, found {:?}", item), Expr::new_node("cat", None, vec![])))) // TODO
+                item => return Some(Err(StreamError::new0(format!("expected string or character")))) 
+                    // TODO decorate
             }
         }
     }
@@ -93,7 +94,7 @@ impl SIterator<Char> for CatIter<'_> {
             if n.is_zero() {
                 return Ok(None);
             }
-            if let Some(ref mut iter) = &mut self.inner {
+            if let Some(iter) = &mut self.inner {
                 let Some(m) = iter.advance(n)? else { return Ok(None); };
                 self.inner = None;
                 n = m;
@@ -133,18 +134,17 @@ impl<'node> RiffleCatIter<'node> {
         let inner = match Self::next_cs(&mut *outer) {
             Some(Ok(cs)) => cs,
             None => return Box::new(std::iter::empty()),
-            Some(Err(err)) => return Box::new(std::iter::once(Err(StreamError::new(err, 
-                            Item::new_string(parent.clone()))))),
+            Some(Err(err)) => return Box::new(std::iter::once(Err(err))),
         };
         Box::new(RiffleCatIter{parent, outer, inner, filler, state: RiffleCatState::Source})
     }
 
-    fn next_cs(outer: &mut (dyn SIterator + 'node)) -> Option<Result<Box<dyn SIterator<Char> + 'node>, BaseError>> {
+    fn next_cs(outer: &mut (dyn SIterator + 'node)) -> Option<Result<Box<dyn SIterator<Char> + 'node>, StreamError>> {
         Some(match outer.next()? {
             Err(err) => Err(err.into()),
             Ok(Item::Char(ch)) => Ok(Box::new(std::iter::once(Ok(ch)))),
             Ok(Item::String(s)) => Ok(Box::new(s.into_iter())),
-            Ok(item) => Err(format!("expected character or string, found {:?}", item).into())
+            Ok(item) => Err(StreamError::new0("expected character or string"))
         })
     }
 }
@@ -160,8 +160,7 @@ impl Iterator for RiffleCatIter<'_> {
             }
             match std::mem::replace(&mut self.state, RiffleCatState::Source) {
                 RiffleCatState::Source => {
-                    let next = iter_try_expr!(Self::next_cs(&mut *self.outer)?.map_err(|err|
-                            StreamError::new(err, Item::new_string(self.parent.clone()))));
+                    let next = iter_try_expr!(Self::next_cs(&mut *self.outer)?);
                     self.state = RiffleCatState::Filler{next};
                     self.inner = self.filler.iter();
                 },
@@ -190,8 +189,7 @@ impl SIterator<Char> for RiffleCatIter<'_> {
                     let next = match Self::next_cs(&mut *self.outer) {
                         None => return Ok(Some(n)),
                         Some(Ok(cs)) => cs,
-                        Some(Err(err)) => return Err(StreamError::new(err, 
-                                Item::new_string(self.parent.clone())))
+                        Some(Err(err)) => return Err(err),
                     };
                     self.state = RiffleCatState::Filler{next};
                     self.inner = self.filler.iter();

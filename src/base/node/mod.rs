@@ -158,18 +158,25 @@ impl Node {
     }
 
     #[allow(unused)]
-    pub(crate) fn resolve_source(self) -> Result<RNodeS<Expr>, StreamError> {
-        match self.source {
-            Some(source) => Ok(RNodeS { head: self.head, source, args: self.args.into() }),
-            None => Err(StreamError::new("source required", self))
+    pub(crate) fn resolve_source(&self) -> Result<RNodeS<Expr>, StreamError> {
+        match &self.source {
+            Some(source) => Ok(RNodeS {
+                head: self.head.clone(),
+                source: source.clone(),
+                args: self.args.clone().into()
+            }),
+            None => Err(StreamError::new0("source required"))
         }
     }
 
     #[allow(unused)]
-    pub(crate) fn resolve_no_source(self) -> Result<RNodeNS<Expr>, StreamError> {
+    pub(crate) fn resolve_no_source(&self) -> Result<RNodeNS<Expr>, StreamError> {
         match self.source {
-            Some(_) => Err(StreamError::new("no source accepted", self)),
-            None => Ok(RNodeNS { head: self.head, args: self.args.into() })
+            Some(_) => Err(StreamError::new0("no source accepted")),
+            None => Ok(RNodeNS {
+                head: self.head.clone(),
+                args: self.args.clone().into()
+            })
         }
     }
 }

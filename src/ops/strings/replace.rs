@@ -2,9 +2,9 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_args_nonempty()?);
+    node.check_args_nonempty()?;
     let node = node.resolve_source()?;
     match node {
         RNodeS { source: Item::String(_), args: RArgs::Two(ref x, ref y), .. } => {
@@ -14,13 +14,13 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
                 (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![c2.to_owned()]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
                 (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
-                _ => return Err(StreamError::new("expected: (char/string, char/string) or (stream, stream)", node))
+                _ => return Err(StreamError::new0("expected: (char/string, char/string) or (stream, stream)"))
             };
             if orig.len() != repl.len() {
-                return Err(StreamError::new("the replacements lists must be of same length", node));
+                return Err(StreamError::new0("the replacements lists must be of same length"));
             }
             if orig.iter().any(Vec::is_empty) {
-                return Err(StreamError::new("the sought string can't be empty", node));
+                return Err(StreamError::new0("the sought string can't be empty"));
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
             let Item::String(s) = node.source else { unreachable!() };
@@ -28,8 +28,8 @@ fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
         },
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(orig, repl) } =>
             Ok(Item::new_stream(StreamReplace { head, source: stm, orig, repl })),
-        _ => Err(StreamError::new("expected: string.replace(char, char) or (string, string) or \
-                (list, list) or stream.replace(item, item)", node))
+        _ => Err(StreamError::new0("expected: string.replace(char, char) or (string, string) or \
+                (list, list) or stream.replace(item, item)"))
     }
 }
 
@@ -40,7 +40,7 @@ fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
             match item? {
                 Item::Char(ch) => Ok(vec![ch]),
                 Item::String(s) => s.listout(),
-                item => Err(StreamError::new(format!("expected character or string, found {item:?}"), Item::from(stm)))
+                item => Err(StreamError::new0("expected character or string"))
             }})
         .collect()
 }

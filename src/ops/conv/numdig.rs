@@ -1,15 +1,15 @@
 use crate::base::*;
 use super::digits::Digits;
 
-fn eval_numdig(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_numdig(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     let (num, radix, minw) = match &rnode {
         RNodeS { source: Item::Number(num), args: RArgs::Zero, .. } => (num, 10, None),
         RNodeS { source: Item::Number(num), args: RArgs::One(Item::Number(radix)), .. } =>
-            try_with!(rnode, (num, check_radix(radix)?, None)),
+            (num, check_radix(radix)?, None),
         RNodeS { source: Item::Number(num), args: RArgs::Two(Item::Number(radix), Item::Number(minw)), .. }
         if !minw.is_negative() =>
-            try_with!(rnode, (num, check_radix(radix)?, Some(crate::utils::unsign(minw.clone())))),
+            (num, check_radix(radix)?, Some(crate::utils::unsign(minw.clone()))),
         _ => return Err(StreamError::new("expected: number.numdig or number.numdig(radix) or \
 number.numdig(radix, min_width)", rnode))
     };
@@ -28,25 +28,24 @@ number.numdig(radix, min_width)", rnode))
     }
 }
 
-fn eval_dignum(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_dignum(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     let (s, radix) = match &rnode {
         RNodeS { source: Item::Stream(s), args: RArgs::Zero, .. } => (s, 10),
         RNodeS { source: Item::Stream(s), args: RArgs::One(Item::Number(radix)), .. } =>
-            try_with!(rnode, (s, check_radix(radix)?)),
+            (s, check_radix(radix)?),
         _ => return Err(StreamError::new("expected: stream.dignum or stream.dignum(radix) or \
 stream.dignum(radix, min_width)", rnode))
     };
     if s.is_empty() {
         return Err(StreamError::new("stream is empty", rnode));
     }
-    let vec = try_with!(rnode, s.iter().map(|item| {
+    let vec = s.iter().map(|item| {
             check_stop!();
             item?.into_num()?
                 .try_into()
-                .map_err(|_| BaseError::from("invalid digit"))
-        })
-        .collect::<Result<Vec<u32>, _>>()?);
+                .map_err(|_| StreamError::new0("invalid digit"))
+        }).collect::<Result<Vec<u32>, _>>()?;
     let mut num = UNumber::zero();
     for digit in vec {
         if !(0..radix).contains(&digit) {
@@ -58,13 +57,13 @@ stream.dignum(radix, min_width)", rnode))
     Ok(Item::new_number(num))
 }
 
-pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
+pub(crate) fn check_radix(radix: &Number) -> Result<u32, StreamError> {
     if radix < &Number::from(2) {
-        Err("base must be at least 2".into())
+        Err(StreamError::new0("base must be at least 2"))
     } else {
         match radix.try_into() {
             Ok(radix) => Ok(radix),
-            _ => Err("base too large".into())
+            _ => Err(StreamError::new0("base too large"))
         }
     }
 }

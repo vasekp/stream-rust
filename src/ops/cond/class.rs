@@ -1,15 +1,15 @@
 use crate::base::*;
 
-fn eval_class(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_class(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match &rnode {
         RNodeS { source: item, args: RArgs::Zero, head: Head::Symbol(head) } =>
-            Ok(try_with!(rnode, eval_inner(head, item, env).map(Item::Bool)?)),
+            Ok(eval_inner(head, item, env).map(Item::Bool)?),
         _ => Err(StreamError::new("no arguments accepted", rnode))
     }
 }
 
-fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
+fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, StreamError> {
     match head {
         "isnum" => Ok(matches!(item, Item::Number(_))),
         "isbool" => Ok(matches!(item, Item::Bool(_))),
@@ -21,7 +21,7 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
         "isempty" => match item {
             Item::Stream(stm) => Ok(stm.is_empty()),
             Item::String(stm) => Ok(stm.is_empty()),
-            _ => Err(format!("expected stream or string, found {:?}", item).into())
+            _ => Err(StreamError::new0("expected stream or string"))
         },
         "isalpha" => Ok(env.alpha.contains(item.as_char()?)),
         "isascii" => Ok(match item.as_char()? {
@@ -51,7 +51,7 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
                 }
                 !indet
             },
-            _ => return Err(format!("expected character or string, found {:?}", item).into())
+            _ => return Err(StreamError::new0("expected character or string"))
         }),
         "islower" => Ok(match item {
             Item::Char(ch) => ch.case() == CharCase::Lower,
@@ -68,7 +68,7 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
                 }
                 !indet
             },
-            _ => return Err(format!("expected character or string, found {:?}", item).into())
+            _ => return Err(StreamError::new0("expected character or string"))
         }),
         "isnumeric" => {
             if let Item::Char(ch) = item {
@@ -77,7 +77,9 @@ fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, BaseError> {
                     _ => Ok(false)
                 }
             }
-            let Item::String(stm) = item else { return Err(format!("expected character or string, found {:?}", item).into()); };
+            let Item::String(stm) = item else {
+                return Err(StreamError::new0("expected character or string"));
+            };
             let mut iter = stm.iter();
             let mut nonempty = match iter.next().transpose()? {
                 Some(ch) => match ch {

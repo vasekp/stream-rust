@@ -1,9 +1,9 @@
 use crate::base::*;
 
-fn eval_if(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_if(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.resolve_no_source()?;
     let RNodeNS { args: RArgs::Three(cond, ..), .. } = &rnode else {
-        return Err(StreamError::new("expected: if(cond, expr, expr)", rnode));
+        return Err(StreamError::new0("expected: if(cond, expr, expr)"));
     };
     let cond_v = match cond.clone().eval(env)? {
         Item::Bool(value) => value,

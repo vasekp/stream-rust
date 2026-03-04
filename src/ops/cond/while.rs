@@ -13,7 +13,7 @@ struct WhileIter<'node> {
     env: &'node Env
 }
 
-fn eval_while(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_while(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_source(env)?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)) } =>

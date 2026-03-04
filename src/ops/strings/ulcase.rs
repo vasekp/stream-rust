@@ -1,7 +1,7 @@
 use crate::base::*;
 
-fn eval_ulcase(node: Node, env: &Env) -> Result<Item, StreamError> {
-    try_with!(node, node.check_no_args()?);
+fn eval_ulcase(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_args()?;
     let node = node.eval_source(env)?;
     let func = match node.head.as_str() {
         Some("ucase") => Char::to_uppercase,
@@ -11,7 +11,7 @@ fn eval_ulcase(node: Node, env: &Env) -> Result<Item, StreamError> {
     match node.source {
         Item::Char(ref ch) => Ok(Item::Char(func(ch))),
         Item::String(s) => Ok(Item::new_string(ULCase{head: node.head, source: s, func})),
-        ref item => Err(StreamError::new(format!("expected character or string, found {:?}", item), node))
+        ref item => Err(StreamError::new0("expected character or string"))
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_splitby(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_splitby(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_source(env)?;
     match node {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)) } =>

@@ -1,15 +1,15 @@
 use crate::base::*;
 use super::digits::Digits;
 
-fn eval_numstr(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_numstr(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     let (num, radix, minw) = match &rnode {
         RNodeS { source: Item::Number(num), args: RArgs::Zero, .. } => (num, 10, None),
         RNodeS { source: Item::Number(num), args: RArgs::One(Item::Number(radix)), .. } =>
-            try_with!(rnode, (num, check_radix(radix)?, None)),
+            (num, check_radix(radix)?, None),
         RNodeS { source: Item::Number(num), args: RArgs::Two(Item::Number(radix), Item::Number(minw)), .. }
         if !minw.is_negative() =>
-            try_with!(rnode, (num, check_radix(radix)?, Some(crate::utils::unsign(minw.clone())))),
+            (num, check_radix(radix)?, Some(crate::utils::unsign(minw.clone()))),
         _ => return Err(StreamError::new("expected: number.numstr or number.numstr(radix) or \
 number.numstr(radix, min_width)", rnode))
     };
@@ -41,7 +41,7 @@ number.numstr(radix, min_width)", rnode))
     }
 }
 
-fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     let (s, radix) = match &rnode {
         RNodeS { source: Item::String(s), args: RArgs::Zero, .. } => (s, 10),
@@ -52,23 +52,23 @@ fn eval_strnum(node: Node, env: &Env) -> Result<Item, StreamError> {
             },
         _ => return Err(StreamError::new("expected: string.strnum or string.strnum(radix)", rnode))
     };
-    let st = try_with!(rnode, s.iter().map(|ch| -> Result<char, BaseError> {
+    let st = s.iter().map(|ch| -> Result<char, StreamError> {
         check_stop!();
         match ch? {
             Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
-            _ => Err(BaseError::from("invalid character"))
-        }})
-        .collect::<Result<String, _>>()?);
+            _ => Err(StreamError::new0("invalid character"))
+        }
+    }).collect::<Result<String, _>>()?;
     match Number::from_str_radix(&st, radix) {
         Ok(num) => Ok(Item::new_number(num)),
         Err(_) => Err(StreamError::new("invalid input", rnode))
     }
 }
 
-pub(crate) fn check_radix(radix: &Number) -> Result<u32, BaseError> {
+pub(crate) fn check_radix(radix: &Number) -> Result<u32, StreamError> {
     match radix.try_into() {
         Ok(radix) if (2..=36).contains(&radix) => Ok(radix),
-        _ => Err("base must be between 2 and 256".into())
+        _ => Err(StreamError::new0("base must be between 2 and 256"))
     }
 }
 
