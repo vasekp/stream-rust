@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_len_am(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len_am(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
@@ -56,7 +56,7 @@ impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
     }
 }
 
-fn eval_len_uf(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len_uf(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
@@ -112,7 +112,7 @@ impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
     }
 }
 
-fn eval_len_uu(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len_uu(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }

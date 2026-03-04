@@ -4,23 +4,23 @@ use std::cell::RefCell;
 
 struct SelfRef {
     head: Head,
-    body: Node,
+    body: Rc<Node>,
     env: Env,
     pre: Option<Rc<dyn Stream>>,
 }
 
 impl SelfRef {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
         match node.resolve() {
             RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) =>
                 Ok(Item::new_stream(SelfRef{
-                    pre: None, head, body, env: env.clone()})),
+                    pre: None, head, body: Rc::clone(&body), env: env.clone()})),
             RNode::Source(RNodeS { source, head, args: RArgs::One(Expr::Eval(body)) }) => {
                 let Item::Stream(stm) = source.eval(env)? else { todo!() };
                 Ok(Item::new_stream(SelfRef{
-                    pre: Some(stm), head, body, env: env.clone()}))
+                    pre: Some(stm), head, body: Rc::clone(&body), env: env.clone()}))
             },
-            node => Err(StreamError::new("expected: self({body})", node))
+            node => Err(StreamError::new0("expected: self({body})"))
         }
     }
 
@@ -33,8 +33,7 @@ impl SelfRef {
             .eval(&self.env)?;
         let stm = match item {
             Item::Stream(stm) => stm,
-            _ => return Err(StreamError::new(format!("expected stream, found {:?}", item), 
-                self.body.clone()))
+            _ => return Err(StreamError::new0("expected stream"))
         };
         Ok((stm, hist))
     }
@@ -43,7 +42,7 @@ impl SelfRef {
 impl Describe for SelfRef {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
-            .push_arg(&self.body)
+            .push_arg(&*self.body)
             .finish(prec)
     }
 }

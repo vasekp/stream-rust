@@ -55,7 +55,7 @@ impl From<Node> for Head {
 impl PartialEq<str> for Head {
     fn eq(&self, other: &str) -> bool {
         match self {
-            Head::Symbol(sym) => *sym == other,
+            Head::Symbol(sym) | Head::Oper(sym) => *sym == other,
             _ => false
         }
     }

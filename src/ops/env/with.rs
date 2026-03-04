@@ -2,31 +2,39 @@ use crate::base::*;
 
 use std::collections::HashMap;
 
-fn eval_with(mut node: Node, env: &Env) -> Result<Item, StreamError> {
-    try_with!(node, node.check_no_source()?);
-    if node.args.len() < 2 {
-        return Err(StreamError::new("at least 2 arguments required", node));
+fn eval_with(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_source()?;
+    let Some((body, assigns)) = node.args.split_last() else {
+        return Err(StreamError::new0("at least 2 arguments required"));
+    };
+    if assigns.is_empty() {
+        return Err(StreamError::new0("at least 2 arguments required"));
     }
-    let (body, assigns) = (node.args.pop().unwrap(), node.args); // just checked len > 2 > 1
     let mut replace = HashMap::<&str, Rc<Rhs>>::new();
     for assign in assigns {
-        let (mut body, names) = match assign {
-            Expr::Eval(Node { head: Head::Oper(op), source: None, mut args })
-                if op == "=" && args.len() >= 2
-            => (args.pop().unwrap(), args),
-            _ => return Err(StreamError::new("expected assignment", assign))
-        };
-        let names = names.into_iter().map(|expr| match expr {
-            Expr::Eval(Node { head: Head::Symbol(sym), source: None, args }) if args.is_empty() => Ok(sym),
-            _ => Err(StreamError::new("expected variable name", expr))
-        }).collect::<Result<Vec<_>, _>>()?;
-        body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
-        let rhs = Rc::new(match body {
-            Expr::Eval(Node { head: Head::Block(block), source: None, args })
-                if args.is_empty()
-                => Rhs::Function(*block),
-            expr => Rhs::Value(expr.eval(env)?)
-        });
+        let (body, names) = if let Expr::Eval(node) = assign
+            && &node.head == "=" && node.source.is_none() {
+                node.args.split_last()
+        } else {
+            return Err(StreamError::new0("expected assignment"));
+        }.expect("= should have at least 2 arguments by construction");
+        let names = names.into_iter().map(|expr|
+            if let Expr::Eval(node) = expr
+            && let Head::Symbol(sym) = &node.head
+            && node.source.is_none() && node.args.is_empty() {
+                Ok(sym)
+            } else {
+                Err(StreamError::new0("expected variable name"))
+            }
+        ).collect::<Result<Vec<_>, _>>()?;
+        let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
+        let rhs = Rc::new(if let Expr::Eval(node) = &*body
+            && let Head::Block(block) = &node.head
+            && node.source.is_none() && node.args.is_empty() {
+                Rhs::Function(block.clone())
+            } else {
+                Rhs::Value(body.eval(env)?)
+            });
         for name in names {
             replace.insert(name, Rc::clone(&rhs));
         }
@@ -35,56 +43,71 @@ fn eval_with(mut node: Node, env: &Env) -> Result<Item, StreamError> {
     body.eval(env)
 }
 
-fn with_replacer(expr: Expr, replace: &HashMap::<&str, Rc<Rhs>>)
-    -> Result<std::ops::ControlFlow<Expr, Node>, StreamError>
+fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
+    -> Result<std::borrow::Cow<'a, Expr>, StreamError>
 {
-    use std::ops::ControlFlow;
-    let Expr::Eval(mut node) = expr else { return Ok(ControlFlow::Break(expr)) };
-    match node {
+    use std::borrow::Cow;
+    let Expr::Eval(node) = expr else {
+        return Ok(Cow::Borrowed(expr));
+    };
+    match &**node {
         Node { head: Head::Symbol("global"), .. } =>
-            Ok(ControlFlow::Break(node.into())),
-        Node { head: Head::Symbol(sym @ "with"), source: None, mut args } if args.len() > 1 => {
-            let (mut body, assigns) = (args.pop().unwrap(), &mut args); // just checked len > 2 > 1
+            Ok(Cow::Owned(expr.clone())),
+        Node { head: Head::Symbol("with"), source: None, .. } => {
+            let mut node = (**node).clone();
+            let Some((body, assigns)) = node.args.split_last_mut() else {
+                return Err(StreamError::new0("at least 2 arguments required"));
+            };
             let mut replace = replace.clone();
             for assign in assigns {
-                let Expr::Eval(Node { head: Head::Oper(op), source: None, args }) = assign
-                    else { return Err(StreamError::new("expected assignment", assign.clone())) };
-                if *op != "=" { return Err(StreamError::new("expected assignment", assign.clone())); }
-                let mut body = args.pop().expect("Oper(=) should have at least 2 arguments");
-                body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
-                for expr in args.iter() {
-                    match expr {
-                        Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
-                        if args.is_empty() => { replace.remove(sym); },
-                        _ => return Err(StreamError::new("expected variable name", assign.clone()))
+                let Expr::Eval(assign_node) = assign else {
+                    return Err(StreamError::new0("expected assignment"));
+                };
+                let mut new_assign = (**assign_node).clone();
+                let (body, names) = if &new_assign.head == "="
+                    && new_assign.source.is_none() {
+                        new_assign.args.split_last_mut()
+                } else {
+                    return Err(StreamError::new0("expected assignment"));
+                }.expect("= should have at least 2 arguments by construction");
+                match body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? {
+                    Cow::Owned(new_body) => *body = new_body,
+                    Cow::Borrowed(_) => (),
+                }
+                for expr in names {
+                    if let Expr::Eval(node) = expr
+                        && let Head::Symbol(sym) = node.head
+                        && node.source.is_none() && node.args.is_empty() {
+                            replace.remove(sym);
+                    } else {
+                        return Err(StreamError::new("expected variable name", assign.clone()))
                     }
                 }
-                args.push(body);
             };
-            body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
-            args.push(body);
-            Ok(ControlFlow::Break(Expr::new_node(sym, None, args)))
+            match body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? {
+                Cow::Owned(new_body) => *body = new_body,
+                Cow::Borrowed(_) => (),
+            }
+            Ok(Cow::Owned(node.into()))
         },
-        Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } => {
+        Node { head: Head::Symbol(sym), source, args } => {
             match replace.get(sym).map(|rc| (**rc).clone()) {
                 Some(Rhs::Value(item)) => {
                     if source.is_some() || !args.is_empty() {
-                        Err(StreamError::new("no source or arguments allowed", node))
+                        Err(StreamError::new0("no source or arguments allowed"))
                     } else {
-                        Ok(ControlFlow::Break(item.clone().into()))
+                        Ok(Cow::Owned(item.clone().into()))
                     }
                 },
                 Some(Rhs::Function(block)) => {
-                    Ok(ControlFlow::Continue(Node {
-                        head: Expr::new_node("global", None, vec![block.clone()]).into(),
-                        source: source.take(),
-                        args: std::mem::take(args)
-                    }))
+                    let mut new_node = (**node).clone();
+                    new_node.head = Expr::new_node("global", None, vec![block.clone()]).into();
+                    Ok(Cow::Owned(new_node.into()))
                 },
-                None => Ok(ControlFlow::Continue(node)),
+                None => Ok(Cow::Borrowed(expr)),
             }
         },
-        _ => Ok(ControlFlow::Continue(node))
+        _ => Ok(Cow::Borrowed(expr)),
     }
 }
 
