@@ -1,8 +1,8 @@
 use crate::base::*;
 
-fn eval_zip(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_zip(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_args_nonempty()?);
+    node.check_args_nonempty()?;
     for arg in node.source.iter().chain(node.args.iter()) {
         if !arg.is_stream() {
             return Err(StreamError::new(format!("expected stream, found {:?}", arg), node));

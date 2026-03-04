@@ -28,7 +28,7 @@ impl Stream for Seq {
 }
 
 impl Seq {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
         let rnode = node.eval_all(env)?.resolve_no_source()?;
         let (from, step) = match rnode.args {
             RArgs::Zero => (None, None),

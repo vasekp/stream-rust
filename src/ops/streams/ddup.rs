@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_ddup(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_ddup(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }

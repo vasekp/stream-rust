@@ -1,8 +1,8 @@
 use crate::base::*;
 
-fn eval_rev(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rev(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let enode = node.eval_all(env)?;
-    try_with!(enode, enode.check_no_args()?);
+    enode.check_no_args()?;
     let rnode = enode.resolve_source()?;
     match rnode.source {
         Item::Stream(stm) => eval_rev_impl(rnode.head, stm),

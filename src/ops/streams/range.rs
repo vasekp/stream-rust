@@ -15,7 +15,7 @@ enum RangeType {
 }
 
 impl Range {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
         let mut rnode = node.eval_all(env)?.resolve_no_source()?;
         let (from, to, step, rtype) = match rnode {
             RNodeNS { args: RArgs::One(Item::Number(to)), .. }
@@ -27,15 +27,15 @@ impl Range {
             RNodeNS { args: RArgs::Two(Item::Char(ref from), Item::Char(ref to)), .. }
                 => {
                     let case = from.case();
-                    let from_ix = try_with!(rnode, env.alpha.ord(from)?);
-                    let to_ix = try_with!(rnode, env.alpha.ord(to)?);
+                    let from_ix = env.alpha.ord(from)?;
+                    let to_ix = env.alpha.ord(to)?;
                     (Some(from_ix.into()), to_ix.into(), None, RangeType::Character(case))
                 },
             RNodeNS { args: RArgs::Three(Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)), .. }
                 => {
                     let case = from.case();
-                    let from_ix = try_with!(rnode, env.alpha.ord(from)?);
-                    let to_ix = try_with!(rnode, env.alpha.ord(to)?);
+                    let from_ix = env.alpha.ord(from)?;
+                    let to_ix = env.alpha.ord(to)?;
                     (Some(from_ix.into()), to_ix.into(), Some(std::mem::take(step)), RangeType::Character(case))
                 },
             _ => return Err(StreamError::new("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)", rnode))

@@ -1,13 +1,13 @@
 use crate::base::*;
 use crate::utils::unsign;
 
-fn eval_first(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_first(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, .. }
-            => first_item_impl(&**stm).map_err(|err| StreamError::new(err, rnode)),
+            => first_item_impl(&**stm),
         RNodeS { source: Item::String(ref stm), args: RArgs::Zero, .. }
-            => first_item_impl(&**stm).map(Item::Char).map_err(|err| StreamError::new(err, rnode)),
+            => first_item_impl(&**stm).map(Item::Char),
         RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
                 if !count.is_negative()
             => Ok(Item::new_stream(First{head, source: s, count: unsign(count)})),
@@ -18,10 +18,10 @@ fn eval_first(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, BaseError> {
+fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
     match stm.iter().next() {
         Some(result) => Ok(result?),
-        None => Err("stream is empty".into())
+        None => Err(StreamError::new0("stream is empty"))
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::base::*;
 use crate::utils::unsign;
 
-fn eval_skip(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_skip(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     match rnode {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }

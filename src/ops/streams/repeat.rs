@@ -1,7 +1,7 @@
 use crate::base::*;
 use crate::utils::unsign;
 
-fn eval_repeat(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_repeat(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     let (item, count) = match rnode {
         RNodeS { source, args: RArgs::Zero, .. }

@@ -1,9 +1,9 @@
 use crate::base::*;
 
-fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_join(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source()?);
-    try_with!(node, node.check_args_nonempty()?);
+    node.check_no_source()?;
+    node.check_args_nonempty()?;
 
     let is_string = node.args.iter()
         .all(|item| matches!(item, Item::Char(_) | Item::String(_)));

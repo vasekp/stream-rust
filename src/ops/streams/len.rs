@@ -1,16 +1,16 @@
 use crate::base::*;
 
-fn eval_len(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_source()?;
     let len = match &rnode {
-        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => len_impl(&**stm),
-        RNodeS { source: Item::String(stm), args: RArgs::Zero, .. } => len_impl(&**stm),
+        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => len_impl(&**stm)?,
+        RNodeS { source: Item::String(stm), args: RArgs::Zero, .. } => len_impl(&**stm)?,
         _ => return Err(StreamError::new("expected: source.len", rnode))
     };
-    Ok(Item::new_number(try_with!(rnode, len?)))
+    Ok(Item::new_number(len))
 }
 
-fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, BaseError> {
+fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, StreamError> {
     match stm.len() {
         Length::Exact(len) => Ok(len),
         Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {
@@ -22,7 +22,7 @@ fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, BaseError> {
             }
             Ok(len.into())
         },
-        Length::Infinite => Err("stream is infinite".into())
+        Length::Infinite => Err(StreamError::new0("stream is infinite"))
     }
 }
 

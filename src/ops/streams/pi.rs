@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_pi(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_pi(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_all(env)?.resolve_no_source()?;
     match &rnode.args {
         RArgs::Zero => Ok(Item::new_stream(Pi{head: rnode.head, radix: None})),

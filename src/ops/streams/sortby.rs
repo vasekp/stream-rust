@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::cmp::Ordering;
 
-fn eval_sortby(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_sortby(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let rnode = node.eval_source(env)?;
     match &rnode {
         RNodeS { source: Item::Stream(stm), args: RArgs::One(Expr::Eval(func)), .. } => {
@@ -15,17 +15,17 @@ fn eval_sortby(node: Node, env: &Env) -> Result<Item, StreamError> {
                         .map(|res| (item, res))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            try_with!(rnode, sortby_impl(&mut vals_keys[..], &env.alpha)?);
+            sortby_impl(&mut vals_keys[..], &env.alpha)?;
             let vals = vals_keys.into_iter()
                 .map(|(val, _)| val)
                 .collect::<Vec<_>>();
             Ok(Item::new_stream(List::from(vals)))
         }
-        _ => Err(StreamError::new("expected: stream.sortby{function}", rnode))
+        _ => Err(StreamError::new0("expected: stream.sortby{function}"))
     }
 }
 
-fn sortby_impl(vals: &mut [(Item, Item)], alpha: &Rc<Alphabet>) -> Result<(), BaseError> {
+fn sortby_impl(vals: &mut [(Item, Item)], alpha: &Rc<Alphabet>) -> Result<(), StreamError> {
     match &mut vals[..] {
         [] | [_] => (),
         [x, y] => if x.1.lex_cmp(&y.1, alpha)? == Ordering::Greater { std::mem::swap(x, y) },

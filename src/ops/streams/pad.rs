@@ -1,7 +1,7 @@
 use crate::base::*;
 use crate::utils::unsign;
 
-fn eval_padl(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
     match node {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(Item::Number(len), item) }
@@ -14,7 +14,7 @@ fn eval_padl(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_padr(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?.resolve_source()?;
     match node {
         RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(Item::Number(len), item) }
