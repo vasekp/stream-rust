@@ -129,11 +129,10 @@ impl SIterator for PermIter<'_> {
 
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.num_read += n;
-        if let Some(len) = &self.self_len {
-            if &self.num_read >= len {
+        if let Some(len) = &self.self_len
+            && &self.num_read >= len {
                 return Ok(Some(&self.num_read - len));
             }
-        }
         self.order = build_order(self.num_read.clone());
         Ok(None)
     }

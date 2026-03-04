@@ -11,7 +11,7 @@ impl Chars {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode.source {
             Item::String(stm) => Ok(Item::new_stream(Chars{head: rnode.head, source: stm})),
-            ref item => Err(StreamError::new0(format!("expected string")))
+            _item => Err(StreamError::new0("expected string".to_string()))
         }
     }
 }
@@ -46,7 +46,7 @@ impl Str {
         let rnode = node.eval_all(env)?.resolve_source()?;
         match rnode.source {
             Item::Stream(stm) => Ok(Item::new_string(Str{head: rnode.head, source: stm})),
-            ref item => Err(StreamError::new0("expected stream"))
+            _item => Err(StreamError::new0("expected stream"))
         }
     }
 }

@@ -80,7 +80,7 @@ impl Iterator for CatIter<'_> {
             match iter_try_expr!(self.outer.next()?) {
                 Item::Char(ch) => return Some(Ok(ch)),
                 Item::String(s) => self.inner = Some(s.into_iter()),
-                item => return Some(Err(StreamError::new0(format!("expected string or character")))) 
+                _item => return Some(Err(StreamError::new0("expected string or character".to_string()))) 
                     // TODO decorate
             }
         }
@@ -116,7 +116,7 @@ impl SIterator<Char> for CatIter<'_> {
 }
 
 struct RiffleCatIter<'node> {
-    parent: &'node Cat,
+    _parent: &'node Cat,
     outer: Box<dyn SIterator + 'node>,
     inner: Box<dyn SIterator<Char> + 'node>,
     filler: &'node LiteralString,
@@ -136,15 +136,15 @@ impl<'node> RiffleCatIter<'node> {
             None => return Box::new(std::iter::empty()),
             Some(Err(err)) => return Box::new(std::iter::once(Err(err))),
         };
-        Box::new(RiffleCatIter{parent, outer, inner, filler, state: RiffleCatState::Source})
+        Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source})
     }
 
     fn next_cs(outer: &mut (dyn SIterator + 'node)) -> Option<Result<Box<dyn SIterator<Char> + 'node>, StreamError>> {
         Some(match outer.next()? {
-            Err(err) => Err(err.into()),
+            Err(err) => Err(err),
             Ok(Item::Char(ch)) => Ok(Box::new(std::iter::once(Ok(ch)))),
             Ok(Item::String(s)) => Ok(Box::new(s.into_iter())),
-            Ok(item) => Err(StreamError::new0("expected character or string"))
+            Ok(_item) => Err(StreamError::new0("expected character or string"))
         })
     }
 }

@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::HashMap;
 
-fn eval_with(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_with(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
     let Some((body, assigns)) = node.args.split_last() else {
         return Err(StreamError::new0("at least 2 arguments required"));
@@ -18,7 +18,7 @@ fn eval_with(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
         } else {
             return Err(StreamError::new0("expected assignment"));
         }.expect("= should have at least 2 arguments by construction");
-        let names = names.into_iter().map(|expr|
+        let names = names.iter().map(|expr|
             if let Expr::Eval(node) = expr
             && let Head::Symbol(sym) = &node.head
             && node.source.is_none() && node.args.is_empty() {
@@ -70,10 +70,7 @@ fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                 } else {
                     return Err(StreamError::new0("expected assignment"));
                 }.expect("= should have at least 2 arguments by construction");
-                match body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? {
-                    Cow::Owned(new_body) => *body = new_body,
-                    Cow::Borrowed(_) => (),
-                }
+                if let Cow::Owned(new_body) = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? { *body = new_body }
                 for expr in names {
                     if let Expr::Eval(node) = expr
                         && let Head::Symbol(sym) = node.head
@@ -84,10 +81,7 @@ fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                     }
                 }
             };
-            match body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? {
-                Cow::Owned(new_body) => *body = new_body,
-                Cow::Borrowed(_) => (),
-            }
+            if let Cow::Owned(new_body) = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? { *body = new_body }
             Ok(Cow::Owned(node.into()))
         },
         Node { head: Head::Symbol(sym), source, args } => {

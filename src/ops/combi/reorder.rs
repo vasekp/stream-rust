@@ -20,12 +20,11 @@ fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
         return Err(StreamError::new("expected: stream.reorder(index...)", node));
     };
     let max_index = indices.iter().max().cloned().unwrap_or_default();
-    if let Length::Exact(len) | Length::AtMost(len) = stm.len() {
-        if max_index > len {
+    if let Length::Exact(len) | Length::AtMost(len) = stm.len()
+        && max_index > len {
             let node = ENode { source: Some(Item::Stream(stm)), ..node };
             return Err(StreamError::new("requested index exceeds length of source", node));
         }
-    }
     Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
 

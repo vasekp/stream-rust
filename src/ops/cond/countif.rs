@@ -11,7 +11,7 @@ fn eval_countif(node: &Node, env: &Env) -> Result<Item, StreamError> {
         check_stop!();
         match cond.clone().with_source(item?.into())?.eval(env)? {
             Item::Bool(value) => if value { count += 1; },
-            other => return Err(StreamError::new0("expected bool")),
+            _other => return Err(StreamError::new0("expected bool")),
         }
     }
     Ok(Item::new_number(count))

@@ -40,7 +40,7 @@ fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
             match item? {
                 Item::Char(ch) => Ok(vec![ch]),
                 Item::String(s) => s.listout(),
-                item => Err(StreamError::new0("expected character or string"))
+                _item => Err(StreamError::new0("expected character or string"))
             }})
         .collect()
 }
@@ -116,11 +116,10 @@ impl Iterator for StringReplaceIter<'_> {
                     self.queued = None;
                 }
             }
-            if self.cache.len() == self.longest {
-                if let Some(item) = self.cache.pop_front() {
+            if self.cache.len() == self.longest
+                && let Some(item) = self.cache.pop_front() {
                     return Some(Ok(item));
                 }
-            }
             if let Some(item) = self.source.next() {
                 self.cache.push_back(iter_try_expr!(item));
                 'a: for (patt, repl) in self.orig.iter().zip(self.repl.iter()) {

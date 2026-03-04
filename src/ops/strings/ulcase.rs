@@ -11,7 +11,7 @@ fn eval_ulcase(node: &Node, env: &Env) -> Result<Item, StreamError> {
     match node.source {
         Item::Char(ref ch) => Ok(Item::Char(func(ch))),
         Item::String(s) => Ok(Item::new_string(ULCase{head: node.head, source: s, func})),
-        ref item => Err(StreamError::new0("expected character or string"))
+        _item => Err(StreamError::new0("expected character or string"))
     }
 }
 

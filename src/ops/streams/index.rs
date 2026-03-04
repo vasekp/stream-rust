@@ -15,12 +15,11 @@ fn eval_index(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 check_stop!();
                 let elm = elm?;
                 for query in &mut queries {
-                    if let Query::Pending(item) = query {
-                        if elm.try_eq(item)? {
+                    if let Query::Pending(item) = query
+                        && elm.try_eq(item)? {
                             *query = Query::Found(ix);
                             rem -= 1;
                         }
-                    }
                     if rem == 0 { break 'a; }
                 }
             }
@@ -41,7 +40,7 @@ fn eval_index(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 .map(|item| match item {
                     Item::Char(ch) => Ok(Query::Pending(vec![*ch])),
                     Item::String(s) if !s.is_empty() => Ok(Query::Pending(s.listout()?)),
-                    item => Err(StreamError::new0("expected character or nonempty string"))
+                    _item => Err(StreamError::new0("expected character or nonempty string"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let longest = queries.iter()

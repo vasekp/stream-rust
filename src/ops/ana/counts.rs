@@ -13,7 +13,7 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![*ch]),
                     Item::String(s) if !s.is_empty() => Ok(s.listout()?),
-                    item => Err(StreamError::new0("expected character or nonempty string"))
+                    _item => Err(StreamError::new0("expected character or nonempty string"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             string_counts_listed_impl(&**stm, &args)

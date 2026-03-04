@@ -20,7 +20,7 @@ impl SelfRef {
                 Ok(Item::new_stream(SelfRef{
                     pre: Some(stm), head, body: Rc::clone(&body), env: env.clone()}))
             },
-            node => Err(StreamError::new0("expected: self({body})"))
+            _node => Err(StreamError::new0("expected: self({body})"))
         }
     }
 

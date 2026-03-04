@@ -38,11 +38,10 @@ pub trait SIterator<I = Item>: Iterator<Item = Result<I, StreamError>> {
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
     /// value given by [`SIterator::len_remain()`].
     fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        if let Length::Exact(len) = self.len_remain() {
-            if n > len {
+        if let Length::Exact(len) = self.len_remain()
+            && n > len {
                 return Ok(Some(n - &len));
             }
-        }
         while !n.is_zero() {
             check_stop!();
             match self.next() {
@@ -88,14 +87,14 @@ where F: FnMut() -> Result<I, StreamError>
 }
 
 pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> {
-    parent: Rc<dyn Stream<I1>>,
+    _parent: Rc<dyn Stream<I1>>,
     source: Box<dyn SIterator<I1> + 'node>,
     func: F
 }
 
 impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> SMap<'node, I1, I2, F> {
     pub(crate) fn new(stream: &'node Rc<dyn Stream<I1>>, func: F) -> Self {
-        SMap{parent: Rc::clone(stream), source: stream.iter(), func}
+        SMap{_parent: Rc::clone(stream), source: stream.iter(), func}
     }
 }
 

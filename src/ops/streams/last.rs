@@ -66,7 +66,7 @@ fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
             let mut iter = stm.iter();
             let mut last = match iter.next() {
                 Some(Ok(item)) => item,
-                Some(Err(err)) => return Err(err.into()),
+                Some(Err(err)) => return Err(err),
                 None => return Err(StreamError::new0("stream is empty"))
             };
             for res in iter {

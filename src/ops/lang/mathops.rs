@@ -65,7 +65,7 @@ impl MathOp {
                     })?;
                 Ok(Item::new_char(env.alpha.chr(&ans, case)))
             },
-            item => Err(StreamError::new0("expected number or character"))
+            _item => Err(StreamError::new0("expected number or character"))
         }
     }
 
@@ -347,7 +347,7 @@ impl Iterator for StringOpIter<'_> {
     type Item = Result<Char, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        fn aux_node(base: Char, mut inputs: Vec<Item>) -> Node {
+        fn _aux_node(base: Char, mut inputs: Vec<Item>) -> Node {
             inputs.insert(0, Item::Char(base));
             Node {
                 head: Head::Oper("+"),

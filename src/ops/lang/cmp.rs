@@ -39,7 +39,7 @@ impl CmpOp {
 
     fn ineq_func(items: &[Item]) -> Result<bool, StreamError> {
         match items {
-            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b).map_err(StreamError::from),
+            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
             _ => Err(StreamError::new0("exactly 2 arguments required"))
         }
     }

@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_and(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_and(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
     for arg in &node.args {
         let val = arg.eval(env)?.to_bool()?;
@@ -9,7 +9,7 @@ fn eval_and(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::Bool(true))
 }
 
-fn eval_or(mut node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_or(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
     for arg in &node.args {
         let val = arg.eval(env)?.to_bool()?;
