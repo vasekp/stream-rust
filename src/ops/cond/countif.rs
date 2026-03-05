@@ -1,10 +1,9 @@
 use crate::base::*;
 
 fn eval_countif(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_source(env)?;
-    let (stm, cond) = match &rnode {
-        RNodeS { source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)), .. } => (stm, cond),
-        _ => return Err(StreamError::new0("expected: stream.countif{cond}"))
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let [Expr::Eval(cond)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: stream.while{cond}"))
     };
     let mut count = 0;
     for item in stm.iter() {

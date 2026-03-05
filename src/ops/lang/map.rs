@@ -1,12 +1,15 @@
 use crate::base::*;
 
 fn eval_map(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    match node.eval_source(env)? {
-        RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
-            Ok(Item::new_stream(Map{head, source, body, env: env.clone()})),
-        RNodeS { head, source: Item::String(source), args: RArgs::One(Expr::Eval(body)) } =>
-            Ok(Item::new_string(CharMap{head, source, body, env: env.clone()})),
-        node => Err(StreamError::new("expected: source:body", node))
+    let body = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
+        Rc::clone(body)
+    } else {
+        return Err(StreamError::new0("expected: source:body"));
+    };
+    match node.source_checked()?.eval(env)? {
+        Item::Stream(source) => Ok(Item::new_stream(Map{head: node.head.clone(), source, body, env: env.clone()})),
+        Item::String(source) => Ok(Item::new_string(CharMap{head: node.head.clone(), source, body, env: env.clone()})),
+        _ => Err(StreamError::new0("expected: source:body"))
     }
 }
 

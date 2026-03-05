@@ -1,5 +1,13 @@
 use crate::base::*;
 
+fn eval_while(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let [Expr::Eval(cond)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: stream.while{cond}"))
+    };
+    Ok(Item::new_stream(While{head: node.head.clone(), cond: cond.eval_all(env)?, source: stm, env: env.clone()}))
+}
+
 struct While {
     head: Head,
     source: Rc<dyn Stream>,
@@ -11,15 +19,6 @@ struct WhileIter<'node> {
     cond: &'node ENode,
     source: Box<dyn SIterator + 'node>,
     env: &'node Env
-}
-
-fn eval_while(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_source(env)?;
-    match rnode {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)) } =>
-            Ok(Item::new_stream(While{head, cond: cond.eval_all(env)?, source: stm, env: env.clone()})),
-        node => Err(StreamError::new("expected: stream.while{cond}", node))
-    }
 }
 
 impl Describe for While {

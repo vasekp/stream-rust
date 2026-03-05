@@ -3,21 +3,14 @@ use crate::base::*;
 use std::collections::VecDeque;
 
 fn eval_windows(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_nth_arg(0, env)?.eval_source(env)?;
-    match node {
-        RNodeS { source: Item::Stream(_), args: RArgs::One(Expr::Imm(Item::Number(ref size))), .. } => {
-            let size = check_win_size(size)?;
-            let Item::Stream(stm) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Windows{head: node.head, source: stm, size, body: None, env: env.clone()}))
-        },
-        RNodeS { source: Item::Stream(_), args: RArgs::Two(Expr::Imm(Item::Number(ref size)), Expr::Eval(_)), .. } => {
-            let size = check_win_size(size)?;
-            let RArgs::Two(_, Expr::Eval(body)) = node.args else { unreachable!() };
-            let Item::Stream(stm) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Windows{head: node.head, source: stm, size, body: Some(Rc::clone(&body)), env: env.clone()}))
-        },
-        _ => Err(StreamError::new("expected: source.windows(size) or source.windows(size, func)", node))
-    }
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let (size, body) = match &node.args[..] {
+        [size] => (size, None),
+        [size, Expr::Eval(body)] => (size, Some(body)),
+        _ => return Err(StreamError::new0("expected: source.windows(size) or source.windows(size, func)"))
+    };
+    let size = check_win_size(size.eval(env)?.as_num()?)?;
+    Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body: body.cloned(), env: env.clone()}))
 }
 
 fn check_win_size(size: &Number) -> Result<usize, StreamError> {

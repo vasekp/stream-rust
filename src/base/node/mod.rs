@@ -95,24 +95,6 @@ impl Node {
         }
     }
 
-    /*pub(crate) fn eval_args(mut self, env: &Env) -> Result<Node, StreamError> {
-        self.args = self.args.into_iter()
-            .map(|x| x.eval(env).map(Expr::from))
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(self)
-    }*/
-
-    pub(crate) fn eval_nth_arg(&self, ix: usize, env: &Env) -> Result<Node, StreamError> {
-        if ix >= self.args.len() {
-            return Err(StreamError::new0("not enough arguments"));
-        }
-        let mut args = self.args.clone();
-        let arg = args.remove(ix);
-        let arg = arg.eval(env)?;
-        args.insert(ix, arg.into());
-        Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
-    }
-
     pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
         Ok(Node {
             head: self.head.clone(),
