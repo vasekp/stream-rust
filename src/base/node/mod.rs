@@ -1,15 +1,11 @@
 use crate::base::*;
 use crate::symbols::Symbols;
 
-mod enode;
 mod link;
 mod head;
-mod checks;
 mod db;
 
-pub(crate) use enode::ENode;
 pub use link::Link;
-pub(crate) use checks::Checks;
 pub use head::{Head, LangItem};
 pub(crate) use db::DescribeBuilder;
 
@@ -22,20 +18,13 @@ mod tests;
 /// happens in [`Expr::eval()`].
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Node {
+pub struct Node<I = Expr> {
     pub head: Head,
-    pub source: Option<Expr>,
-    pub args: Vec<Expr>
+    pub source: Option<I>,
+    pub args: Vec<I>
 }
 
-impl Node {
-    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by
-    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
-    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
-    pub fn new(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Node {
-        Node{head: head.into(), source, args}
-    }
-
+impl Node<Expr> {
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
     ///
@@ -71,7 +60,7 @@ impl Node {
         res
     }
 
-    pub(crate) fn eval_all(&self, env: &Env) -> Result<ENode, StreamError> {
+    pub(crate) fn eval_all(&self, env: &Env) -> Result<Node<Item>, StreamError> {
         let source = match &self.source {
             Some(source) => Some(source.eval(env)?),
             None => None
@@ -79,7 +68,7 @@ impl Node {
         let args = self.args.iter()
             .map(|x| x.eval(env))
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(ENode{head: self.head.clone(), source, args})
+        Ok(Node{head: self.head.clone(), source, args})
     }
 
     pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
@@ -94,8 +83,17 @@ impl Node {
                 .collect::<Result<Vec<_>, _>>()?
         })
     }
+}
 
-    pub(crate) fn with_source(&self, source: Expr) -> Result<Node, StreamError> {
+impl<I: Clone> Node<I> {
+    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by
+    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
+    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
+    pub fn new(head: impl Into<Head>, source: Option<I>, args: Vec<I>) -> Self {
+        Node{head: head.into(), source, args}
+    }
+
+    pub(crate) fn with_source(&self, source: I) -> Result<Self, StreamError> {
         if self.source.is_some() {
             Err(StreamError::new0("already has source"))
         } else {
@@ -103,20 +101,74 @@ impl Node {
         }
     }
 
-    pub(crate) fn with_args(&self, args: Vec<Expr>) -> Result<Node, StreamError> {
+    pub(crate) fn with_args(&self, args: Vec<I>) -> Result<Self, StreamError> {
         if !self.args.is_empty() {
             Err(StreamError::new0("already has arguments"))
         } else {
             Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
         }
     }
+
+    pub(crate) fn check_source(&self) -> Result<(), StreamError> {
+        match &self.source {
+            Some(_) => Ok(()),
+            None => Err(StreamError::new0("source required")),
+        }
+    }
+
+    pub(crate) fn check_no_source(&self) -> Result<(), StreamError> {
+        match &self.source {
+            Some(_) => Err(StreamError::new0("no source accepted")),
+            None => Ok(())
+        }
+    }
+
+    pub(crate) fn source_checked(&self) -> Result<&I, StreamError> {
+        self.source.as_ref().ok_or(StreamError::new0("source required"))
+    }
+
+    pub(crate) fn check_no_args(&self) -> Result<(), StreamError> {
+        if !self.args.is_empty() {
+            Err(StreamError::new0("no arguments expected"))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(crate) fn check_args_nonempty(&self) -> Result<(), StreamError> {
+        if self.args.is_empty() {
+            Err(StreamError::new0("at least 1 argument required"))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub(crate) fn first_arg_checked(&self) -> Result<&I, StreamError> {
+        self.args.first().ok_or(StreamError::new0("at least 1 argument required"))
+    }
 }
 
-impl Describe for Node {
+impl<I: Describe> Describe for Node<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
             .set_source_opt(&self.source)
             .push_args(&self.args)
             .finish(prec)
+    }
+}
+
+impl From<Node<Item>> for Node<Expr> {
+    fn from(node: Node<Item>) -> Node {
+        Node {
+            head: node.head,
+            source: node.source.map(Expr::from),
+            args: node.args.into_iter().map(Expr::from).collect()
+        }
+    }
+}
+
+impl From<&Node<Item>> for Node<Expr> {
+    fn from(node: &Node<Item>) -> Node {
+        node.clone().into()
     }
 }

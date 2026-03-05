@@ -10,7 +10,7 @@ fn eval_args(node: &Node, env: &Env) -> Result<Item, StreamError> {
     };
     let args = node.args[1].eval(env)?.as_stream()?.listout()?;
     let source = node.source.as_ref().map(|s| s.eval(env)).transpose()?;
-    Node::from(ENode { head, source, args }).eval(env)
+    Node::from(Node { head, source, args }).eval(env)
 }
 
 #[cfg(test)]

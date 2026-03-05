@@ -7,10 +7,10 @@ fn eval_part(node: &Node, env: &Env) -> Result<Item, StreamError> {
     eval_enode(node, env)
 }
 
-fn eval_enode(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
+fn eval_enode(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
     match node.args.remove(0) {
         Item::Number(index) => {
-            let snode = ENode{head: LangItem::Part.into(), source: node.source, args: vec![Item::Number(index.clone())]};
+            let snode = Node{head: LangItem::Part.into(), source: node.source, args: vec![Item::Number(index.clone())]};
             let part = match snode.source.as_ref().unwrap() { // source checked before calling eval_enode
                 Item::Stream(stm) => eval_index_impl(&**stm, &index),
                 Item::String(stm) => eval_index_impl(&**stm, &index).map(Item::Char),
@@ -19,7 +19,7 @@ fn eval_enode(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
             if node.args.is_empty() {
                 Ok(part)
             } else {
-                let nnode = ENode{head: node.head, source: Some(part), args: node.args};
+                let nnode = Node{head: node.head, source: Some(part), args: node.args};
                 eval_enode(nnode, env)
             }
         },
@@ -105,7 +105,7 @@ impl Iterator for PartIter<'_> {
         // TODO: smarter - number tracks increments, stream unfolds?
         let mut args = self.parent.rest.clone();
         args.insert(0, part);
-        let node = ENode {
+        let node = Node {
             head: LangItem::Part.into(),
             source: Some(self.parent.source.clone().into()),
             args

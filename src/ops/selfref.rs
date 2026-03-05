@@ -108,8 +108,7 @@ impl Stream for BackRef {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         match Weak::upgrade(&self.parent) {
             Some(rc) => Box::new(BackRefIter{vec: rc, pos: 0}),
-            None => Box::new(std::iter::once(Err(StreamError::new("back-reference detached from cache", 
-                        Node::new("#", None, vec![])))))
+            None => Box::new(std::iter::once(Err(StreamError::new0("back-reference detached from cache"))))
         }
     }
 

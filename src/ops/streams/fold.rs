@@ -14,13 +14,13 @@ fn eval_fold(node: &Node, env: &Env) -> Result<Item, StreamError> {
 
 struct Fold {
     head: Head,
-    body: ENode,
+    body: Node<Item>,
     source: Rc<dyn Stream>,
     env: Env
 }
 
 struct FoldIter<'node> {
-    body: &'node ENode,
+    body: &'node Node<Item>,
     source: Box<dyn SIterator + 'node>,
     prev: VecDeque<Item>,
     env: &'node Env

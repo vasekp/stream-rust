@@ -11,12 +11,12 @@ fn eval_select(node: &Node, env: &Env) -> Result<Item, StreamError> {
 struct Select {
     head: Head,
     source: Rc<dyn Stream>,
-    cond: ENode,
+    cond: Node<Item>,
     env: Env
 }
 
 struct SelectIter<'node> {
-    cond: &'node ENode,
+    cond: &'node Node<Item>,
     source: Box<dyn SIterator + 'node>,
     env: &'node Env
 }

@@ -11,12 +11,12 @@ fn eval_while(node: &Node, env: &Env) -> Result<Item, StreamError> {
 struct While {
     head: Head,
     source: Rc<dyn Stream>,
-    cond: ENode,
+    cond: Node<Item>,
     env: Env
 }
 
 struct WhileIter<'node> {
-    cond: &'node ENode,
+    cond: &'node Node<Item>,
     source: Box<dyn SIterator + 'node>,
     env: &'node Env
 }

@@ -1,7 +1,7 @@
 use crate::base::*;
 
 struct MathOp {
-    node: ENode,
+    node: Node<Item>,
     func: MathFunc,
     env: Env,
 }
@@ -18,12 +18,12 @@ fn eval_op(node: &Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 impl MathOp {
-    fn eval(node: ENode, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
         let func = Self::find_fn(&node.head);
         Self::eval_with(node, env, func)
     }
 
-    fn eval_with(node: ENode, env: &Env, func: MathFunc) -> Result<Item, StreamError> {
+    fn eval_with(node: Node<Item>, env: &Env, func: MathFunc) -> Result<Item, StreamError> {
         if node.args.iter().any(Item::is_stream) {
             Ok(Item::new_stream(MathOp{node, func, env: env.clone()}))
         } else {
@@ -206,7 +206,7 @@ impl Iterator for MathOpIter<'_> {
             .collect::<Option<Result<Vec<_>, _>>>()
         {
             Some(Ok(inputs)) => {
-                let node = ENode { head: self.head.clone(), source: None, args: inputs };
+                let node = Node { head: self.head.clone(), source: None, args: inputs };
                 Some(MathOp::eval_with(node, self.env, self.func))
             },
             Some(Err(err)) => Some(Err(err)),
@@ -237,7 +237,7 @@ impl SIterator for MathOpIter<'_> {
 
 struct StringOp {
     first: Rc<dyn Stream<Char>>,
-    node_rem: ENode,
+    node_rem: Node<Item>,
     func: StringFunc,
     env: Env,
 }
@@ -245,7 +245,7 @@ struct StringOp {
 type StringFunc = fn(&Char, &[Item], &Env) -> Result<Char, StreamError>;
 
 impl StringOp {
-    fn eval(mut node: ENode, env: &Env) -> Result<Item, StreamError> {
+    fn eval(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
         let func = Self::find_fn(&node.head)?; // TODO decorate?
         if node.args.len() < 2 {
             return Err(StreamError::new("not available for strings", node));

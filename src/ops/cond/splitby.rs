@@ -14,13 +14,13 @@ fn eval_splitby(node: &Node, env: &Env) -> Result<Item, StreamError> {
 struct SplitBy<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    cond: ENode,
+    cond: Node<Item>,
     env: Env
 }
 
 struct SplitByIter<'node, I: ItemType> {
     source: Box<dyn SIterator<I> + 'node>,
-    cond: &'node ENode,
+    cond: &'node Node<Item>,
     env: &'node Env,
     done: bool,
 }

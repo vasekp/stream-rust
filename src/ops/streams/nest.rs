@@ -15,13 +15,13 @@ struct NestIterSource<'node> {
 }
 
 struct NestArgs {
-    body: ENode,
+    body: Node<Item>,
     head: Head,
     env: Env
 }
 
 struct NestIterArgs<'node> {
-    body: &'node ENode,
+    body: &'node Node<Item>,
     prev: VecDeque<Item>,
     env: &'node Env
 }

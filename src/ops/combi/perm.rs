@@ -107,7 +107,7 @@ impl Iterator for PermIter<'_> {
             .map(|x| Item::new_number(x + 1))
             .collect::<Vec<_>>();
         self.num_read += 1;
-        Some(Expr::from(ENode {
+        Some(Expr::from(Node {
             head: "reorder".into(),
             source: Some(Item::from(self.source)),
             args: order
