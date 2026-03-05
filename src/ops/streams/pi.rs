@@ -5,16 +5,7 @@ fn eval_pi(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
     let radix = match &node.args[..] {
         [] => None,
-        [Item::Number(radix)] => {
-            if *radix < Number::from(2) {
-                return Err(StreamError::new0("invalid base"));
-            }
-            if let Ok(radix) = u32::try_from(radix) {
-                Some(radix)
-            } else {
-                return Err(StreamError::new0("base too large"));
-            }
-        },
+        [Item::Number(radix)] => Some(radix.try_cast_within(2u32..)?),
         _ => return Err(StreamError::new0("expected: pi or pi(radix)"))
     };
     Ok(Item::new_stream(Pi{head: node.head.clone(), radix}))

@@ -5,10 +5,7 @@ fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let stm = node.source_checked()?.to_stream()?;
     let mut indices = Vec::with_capacity(node.args.len());
     for arg in &node.args {
-        let index: UNumber = arg.to_num()?.try_into().map_err(|_| StreamError::new0("index can't be negative"))?;
-        if index.is_zero() {
-            return Err(StreamError::new0("indices must be positive"));
-        }
+        let index = arg.to_num()?.try_cast_within(UNumber::one()..)?;
         if indices.contains(&index) {
             return Err(StreamError::new0(format!("index {} repeats", index)));
         }

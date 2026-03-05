@@ -140,13 +140,7 @@ impl MathOp {
         match items {
             [base, exp] => {
                 let (base, exp) = (base.as_num()?, exp.as_num()?);
-                if exp.is_negative() {
-                    return Err(StreamError::new0("negative exponent"));
-                }
-                let Ok(exp) = exp.try_into() else {
-                    return Err(StreamError::new0("exponent too large"));
-                };
-                Ok(Item::new_number(base.pow(exp)))
+                Ok(Item::new_number(base.pow(exp.try_cast()?)))
             },
             _ => Err(StreamError::new0("exactly 2 arguments required"))
         }

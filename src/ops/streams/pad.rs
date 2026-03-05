@@ -5,7 +5,7 @@ fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let [Item::Number(len), item] = &node.args[..] else {
         return Err(StreamError::new0("expected: stream.padleft(length, item) or string.padleft(length, char)"));
     };
-    let len = len.try_into().map_err(|_| StreamError::new0("length can't be negative"))?;
+    let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
         (Item::Stream(stm), item) =>
             Ok(Item::new_stream(PadLeft { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
@@ -20,7 +20,7 @@ fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let [Item::Number(len), item] = &node.args[..] else {
         return Err(StreamError::new0("expected: stream.padright(length, item) or string.padright(length, char)"))
     };
-    let len = len.try_into().map_err(|_| StreamError::new0("length can't be negative"))?;
+    let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
         (Item::Stream(stm), item) =>
             Ok(Item::new_stream(PadRight { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),

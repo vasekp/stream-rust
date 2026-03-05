@@ -6,7 +6,7 @@ fn eval_last(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let count: Option<UNumber> = match &node.args[..] {
         [] => None,
-        [Item::Number(count)] => Some(count.try_into().map_err(|_| StreamError::new0("count can't be negative"))?),
+        [Item::Number(count)] => Some(count.try_unsign()?),
         _ => return Err(StreamError::new0("expected: source.last or source.last(count)"))
     };
     match (node.source_checked()?, count) {
@@ -58,10 +58,7 @@ fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNu
         },
         Length::Infinite => Err(StreamError::new0("stream is infinite")),
         _ => {
-            let size = match count.try_into() {
-                Ok(size) => size,
-                Err(_) => return Err(StreamError::new0("length too large"))
-            };
+            let size = count.try_cast()?;
             let mut vec = VecDeque::with_capacity(size);
             for res in stm.iter() {
                 check_stop!();
