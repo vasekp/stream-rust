@@ -1,17 +1,15 @@
 use crate::base::*;
 
+fn eval_chars(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_char_stream()?;
+    Ok(Item::new_stream(Chars{head: node.head, source: stm}))
+}
+
 struct Chars {
     head: Head,
     source: Rc<dyn Stream<Char>>
-}
-
-impl Chars {
-    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        node.check_no_args()?;
-        let stm = node.source_checked()?.to_char_stream()?;
-        Ok(Item::new_stream(Chars{head: node.head, source: stm}))
-    }
 }
 
 impl Describe for Chars {
@@ -32,19 +30,16 @@ impl Stream for Chars {
     }
 }
 
+fn eval_str(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_stream()?;
+    Ok(Item::new_string(Str{head: node.head, source: stm}))
+}
 
 struct Str {
     head: Head,
     source: Rc<dyn Stream>
-}
-
-impl Str {
-    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        node.check_no_args()?;
-        let stm = node.source_checked()?.to_stream()?;
-        Ok(Item::new_string(Str{head: node.head, source: stm}))
-    }
 }
 
 impl Describe for Str {
@@ -91,14 +86,14 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("chars", Chars::eval, r#"
+    symbols.insert("chars", eval_chars, r#"
 Splits `string` into a stream of characters.
 = string.?
 > "Hello".? => ['H', 'e', 'l', 'l', 'o']
 > "Hello".?:ord => [8, 5, 12, 12, 15]
 : string
 "#);
-    symbols.insert("string", Str::eval, r#"
+    symbols.insert("string", eval_str, r#"
 Turns a stream of characters into a string.
 * Functionally equivalent to `?cat` but optimized for this purpose.
 = stream.?

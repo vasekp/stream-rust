@@ -2,6 +2,23 @@ use crate::base::*;
 
 use std::cell::RefCell;
 
+fn eval_self(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let [Expr::Eval(body)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: self({body})"));
+    };
+    let pre = match &node.source {
+        None => None,
+        Some(source) => Some(source.eval(env)?.to_stream()?),
+    };
+    Ok(Item::new_stream(SelfRef{
+        pre,
+        head: node.head.clone(),
+        body: Rc::clone(body),
+        env: env.clone()
+    }))
+}
+
+
 struct SelfRef {
     head: Head,
     body: Rc<Node>,
@@ -10,22 +27,6 @@ struct SelfRef {
 }
 
 impl SelfRef {
-    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        let [Expr::Eval(body)] = &node.args[..] else {
-            return Err(StreamError::new0("expected: self({body})"));
-        };
-        let pre = match &node.source {
-            None => None,
-            Some(source) => Some(source.eval(env)?.to_stream()?),
-        };
-        Ok(Item::new_stream(SelfRef{
-            pre,
-            head: node.head.clone(),
-            body: Rc::clone(body),
-            env: env.clone()
-        }))
-    }
-
     fn eval_real(&self) -> Result<(Rc<dyn Stream>, Rc<CacheHistory>), StreamError> {
         let hist = Rc::new(RefCell::new(Vec::new()));
         let item = self.body.clone()
@@ -164,7 +165,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("self", SelfRef::eval, r#"
+    symbols.insert("self", eval_self, r#"
 A stream evaluating `func` on its own output, which is put in place of `#`.
 If `stream` is present, uses its items first to populate the history.
 = ?{func}

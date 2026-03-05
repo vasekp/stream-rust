@@ -1,28 +1,25 @@
 use crate::base::*;
 
-#[derive(Clone)]
+fn eval_cat(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    let stm = node.source_checked()?.to_stream()?;
+    let filler = match &node.args[..] {
+        [] => None,
+        [Item::String(fill)] => Some(fill.listout()?),
+        [Item::Char(fill)] => Some(vec![*fill]),
+        _ => return Err(StreamError::new0("expected: stream.cat"))
+    };
+    Ok(Item::new_string(Cat {
+        source: stm,
+        head: node.head.clone(),
+        filler: filler.map(LiteralString::from),
+    }))
+}
+
 struct Cat {
     source: Rc<dyn Stream>,
     head: Head,
     filler: Option<LiteralString>,
-}
-
-impl Cat {
-    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        let stm = node.source_checked()?.to_stream()?;
-        let filler = match &node.args[..] {
-            [] => None,
-            [Item::String(fill)] => Some(fill.listout()?),
-            [Item::Char(fill)] => Some(vec![*fill]),
-            _ => return Err(StreamError::new0("expected: stream.cat"))
-        };
-        Ok(Item::new_string(Cat {
-            source: stm,
-            head: node.head.clone(),
-            filler: filler.map(LiteralString::from),
-        }))
-    }
 }
 
 impl Describe for Cat {
@@ -228,7 +225,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("cat", Cat::eval, r#"
+    symbols.insert("cat", eval_cat, r#"
 Concatenates a stream of strings or characters into a single string.
 If a `filler` (character or string) is given, it's inserted between each pair of strings.
 = stream.?
