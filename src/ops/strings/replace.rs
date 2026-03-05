@@ -4,14 +4,12 @@ use std::collections::VecDeque;
 
 fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    node.check_args_nonempty()?;
-    let node = node.resolve_source()?;
-    match node {
-        RNodeS { source: Item::String(_), args: RArgs::Two(ref x, ref y), .. } => {
+    match (node.source_checked()?, &node.args[..]) {
+        (Item::String(stm), [x, y]) => {
             let (orig, repl) = match (x, y) {
-                (Item::Char(c1), Item::Char(c2)) => (vec![vec![c1.to_owned()]], vec![vec![c2.to_owned()]]),
-                (Item::Char(c1), Item::String(s2)) => (vec![vec![c1.to_owned()]], vec![s2.listout()?]),
-                (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![c2.to_owned()]]),
+                (Item::Char(c1), Item::Char(c2)) => (vec![vec![*c1]], vec![vec![*c2]]),
+                (Item::Char(c1), Item::String(s2)) => (vec![vec![*c1]], vec![s2.listout()?]),
+                (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![*c2]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
                 (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
                 _ => return Err(StreamError::new0("expected: (char/string, char/string) or (stream, stream)"))
@@ -23,11 +21,10 @@ fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 return Err(StreamError::new0("the sought string can't be empty"));
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
-            let Item::String(s) = node.source else { unreachable!() };
-            Ok(Item::new_string(StringReplace { head: node.head, source: s, orig, repl, longest }))
+            Ok(Item::new_string(StringReplace { head: node.head.clone(), source: Rc::clone(stm), orig, repl, longest }))
         },
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(orig, repl) } =>
-            Ok(Item::new_stream(StreamReplace { head, source: stm, orig, repl })),
+        (Item::Stream(stm), [orig, repl]) =>
+            Ok(Item::new_stream(StreamReplace { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
         _ => Err(StreamError::new0("expected: string.replace(char, char) or (string, string) or \
                 (list, list) or stream.replace(item, item)"))
     }

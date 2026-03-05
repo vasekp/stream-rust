@@ -7,12 +7,10 @@ struct Chars {
 
 impl Chars {
     fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
+        let node = node.eval_all(env)?;
         node.check_no_args()?;
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode.source {
-            Item::String(stm) => Ok(Item::new_stream(Chars{head: rnode.head, source: stm})),
-            _item => Err(StreamError::new0("expected string".to_string()))
-        }
+        let stm = node.source_checked()?.to_char_stream()?;
+        Ok(Item::new_stream(Chars{head: node.head, source: stm}))
     }
 }
 
@@ -42,12 +40,10 @@ struct Str {
 
 impl Str {
     fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
+        let node = node.eval_all(env)?;
         node.check_no_args()?;
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode.source {
-            Item::Stream(stm) => Ok(Item::new_string(Str{head: rnode.head, source: stm})),
-            _item => Err(StreamError::new0("expected stream"))
-        }
+        let stm = node.source_checked()?.to_stream()?;
+        Ok(Item::new_string(Str{head: node.head, source: stm}))
     }
 }
 

@@ -141,44 +141,6 @@ impl Node {
             Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
         }
     }
-
-    #[allow(unused)]
-    pub(crate) fn resolve(&self) -> RNode<Expr> {
-        match &self.source {
-            Some(source) => RNode::Source(RNodeS {
-                head: self.head.clone(),
-                source: source.clone(),
-                args: self.args.clone().into()
-            }),
-            None => RNode::NoSource(RNodeNS {
-                head: self.head.clone(),
-                args: self.args.clone().into()
-            }),
-        }
-    }
-
-    #[allow(unused)]
-    pub(crate) fn resolve_source(&self) -> Result<RNodeS<Expr>, StreamError> {
-        match &self.source {
-            Some(source) => Ok(RNodeS {
-                head: self.head.clone(),
-                source: source.clone(),
-                args: self.args.clone().into()
-            }),
-            None => Err(StreamError::new0("source required"))
-        }
-    }
-
-    #[allow(unused)]
-    pub(crate) fn resolve_no_source(&self) -> Result<RNodeNS<Expr>, StreamError> {
-        match self.source {
-            Some(_) => Err(StreamError::new0("no source accepted")),
-            None => Ok(RNodeNS {
-                head: self.head.clone(),
-                args: self.args.clone().into()
-            })
-        }
-    }
 }
 
 impl Describe for Node {

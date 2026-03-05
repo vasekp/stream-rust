@@ -20,9 +20,10 @@ pub(crate) trait Checks {
         }
     }
 
-    /*fn source_checked(&self) -> Result<&Self::Element, StreamError> {
-        self.source().ok_or("source required".into())
-    }*/
+    #[allow(unused)]
+    fn source_checked(&self) -> Result<&Self::Element, StreamError> {
+        self.source().ok_or(StreamError::new0("source required"))
+    }
 
     fn check_no_args(&self) -> Result<(), StreamError> {
         if !self.args().is_empty() {

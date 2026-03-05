@@ -1,16 +1,15 @@
 use crate::base::*;
 
 fn eval_class(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match &rnode {
-        RNodeS { source: item, args: RArgs::Zero, head: Head::Symbol(head) } =>
-            Ok(eval_inner(head, item, env).map(Item::Bool)?),
-        _ => Err(StreamError::new("no arguments accepted", rnode))
-    }
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let item = node.source_checked()?;
+    eval_inner(&node.head, item, env).map(Item::Bool)
 }
 
-fn eval_inner(head: &str, item: &Item, env: &Env) -> Result<bool, StreamError> {
-    match head {
+fn eval_inner(head: &Head, item: &Item, env: &Env) -> Result<bool, StreamError> {
+    let Head::Symbol(sym) = head else { unreachable!() };
+    match *sym {
         "isnum" => Ok(matches!(item, Item::Number(_))),
         "isbool" => Ok(matches!(item, Item::Bool(_))),
         "ischar" => Ok(matches!(item, Item::Char(_))),

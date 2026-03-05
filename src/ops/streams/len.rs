@@ -1,11 +1,12 @@
 use crate::base::*;
 
 fn eval_len(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    let len = match &rnode {
-        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => len_impl(&**stm)?,
-        RNodeS { source: Item::String(stm), args: RArgs::Zero, .. } => len_impl(&**stm)?,
-        _ => return Err(StreamError::new("expected: source.len", rnode))
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let len = match node.source_checked()? {
+        Item::Stream(stm) => len_impl(&**stm)?,
+        Item::String(stm) => len_impl(&**stm)?,
+        _ => return Err(StreamError::new0("expected: source.len"))
     };
     Ok(Item::new_number(len))
 }

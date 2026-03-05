@@ -27,14 +27,16 @@ struct NestIterArgs<'node> {
 }
 
 fn eval_nest(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    match node.resolve() {
-        RNode::Source(RNodeS { head, source, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && body.args.is_empty() => {
-            Ok(Item::new_stream(NestSource{head, source: source.eval(env)?, body: Rc::clone(&body), env: env.clone()}))
-        },
-        RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && !body.args.is_empty() => {
-            Ok(Item::new_stream(NestArgs{head, body: body.eval_all(env)?, env: env.clone()}))
-        },
-        node => Err(StreamError::new("expected: source.nest({body}) or nest({body}(args))", node))
+    let [Expr::Eval(body)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: source.nest({body}) or nest({body}(args))"));
+    };
+    body.check_no_source()?;
+    if body.args.is_empty() && let Some(source) = &node.source {
+        Ok(Item::new_stream(NestSource{head: node.head.clone(), source: source.eval(env)?, body: Rc::clone(body), env: env.clone()}))
+    } else if !body.args.is_empty() && node.source.is_none() {
+        Ok(Item::new_stream(NestArgs{head: node.head.clone(), body: body.eval_all(env)?, env: env.clone()}))
+    } else {
+        Err(StreamError::new0("expected: source.nest({body}) or nest({body}(args))"))
     }
 }
 

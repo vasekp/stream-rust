@@ -1,12 +1,10 @@
 use crate::base::*;
 
 fn eval_ddup(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match rnode {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(DDup{head, source: stm})),
-        _ => Err(StreamError::new("expected: stream.ddup", rnode))
-    }
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_stream()?;
+    Ok(Item::new_stream(DDup{head: node.head.clone(), source: stm}))
 }
 
 struct DDup {

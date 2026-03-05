@@ -2,16 +2,19 @@ use crate::base::*;
 use super::digits::Digits;
 
 fn eval_numstr(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    let (num, radix, minw) = match &rnode {
-        RNodeS { source: Item::Number(num), args: RArgs::Zero, .. } => (num, 10, None),
-        RNodeS { source: Item::Number(num), args: RArgs::One(Item::Number(radix)), .. } =>
-            (num, check_radix(radix)?, None),
-        RNodeS { source: Item::Number(num), args: RArgs::Two(Item::Number(radix), Item::Number(minw)), .. }
-        if !minw.is_negative() =>
-            (num, check_radix(radix)?, Some(crate::utils::unsign(minw.clone()))),
-        _ => return Err(StreamError::new("expected: number.numstr or number.numstr(radix) or \
-number.numstr(radix, min_width)", rnode))
+    let node = node.eval_all(env)?;
+    let num = node.source_checked()?.to_num()?;
+    let (radix, minw) = match &node.args[..] {
+        [] => (10, None),
+        [Item::Number(radix)] =>
+            (check_radix(radix)?, None),
+        [Item::Number(radix), Item::Number(minw)] => {
+            let minw = UNumber::try_from(minw)
+                .map_err(|_| StreamError::new0("width can't be negative"))?;
+            (check_radix(radix)?, Some(minw))
+        },
+        _ => return Err(StreamError::new0("expected: number.numstr or number.numstr(radix) or \
+number.numstr(radix, min_width)"))
     };
     if radix == 10 && minw.is_none() {
         Ok(Item::new_string(LiteralString::from(format!("{}", num).as_str())))
@@ -42,17 +45,17 @@ number.numstr(radix, min_width)", rnode))
 }
 
 fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    let (s, radix) = match &rnode {
-        RNodeS { source: Item::String(s), args: RArgs::Zero, .. } => (s, 10),
-        RNodeS { source: Item::String(s), args: RArgs::One(Item::Number(radix)), .. } =>
-            match radix.try_into() {
-                Ok(radix) if (2..=36).contains(&radix) => (s, radix),
-                _ => return Err(StreamError::new("radix must be between 2 and 36", rnode))
-            },
-        _ => return Err(StreamError::new("expected: string.strnum or string.strnum(radix)", rnode))
+    let node = node.eval_all(env)?;
+    let stm = node.source_checked()?.as_char_stream()?;
+    let radix = match &node.args[..] {
+        [] => 10,
+        [Item::Number(radix)] => match radix.try_into() {
+            Ok(radix) if (2..=36).contains(&radix) => radix,
+            _ => return Err(StreamError::new0("radix must be between 2 and 36"))
+        },
+        _ => return Err(StreamError::new0("expected: string.strnum or string.strnum(radix)"))
     };
-    let st = s.iter().map(|ch| -> Result<char, StreamError> {
+    let st = stm.iter().map(|ch| -> Result<char, StreamError> {
         check_stop!();
         match ch? {
             Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
@@ -61,7 +64,7 @@ fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }).collect::<Result<String, _>>()?;
     match Number::from_str_radix(&st, radix) {
         Ok(num) => Ok(Item::new_number(num)),
-        Err(_) => Err(StreamError::new("invalid input", rnode))
+        Err(_) => Err(StreamError::new0("invalid input"))
     }
 }
 

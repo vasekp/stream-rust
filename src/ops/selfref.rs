@@ -11,17 +11,19 @@ struct SelfRef {
 
 impl SelfRef {
     fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        match node.resolve() {
-            RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) =>
-                Ok(Item::new_stream(SelfRef{
-                    pre: None, head, body: Rc::clone(&body), env: env.clone()})),
-            RNode::Source(RNodeS { source, head, args: RArgs::One(Expr::Eval(body)) }) => {
-                let Item::Stream(stm) = source.eval(env)? else { todo!() };
-                Ok(Item::new_stream(SelfRef{
-                    pre: Some(stm), head, body: Rc::clone(&body), env: env.clone()}))
-            },
-            _node => Err(StreamError::new0("expected: self({body})"))
-        }
+        let [Expr::Eval(body)] = &node.args[..] else {
+            return Err(StreamError::new0("expected: self({body})"));
+        };
+        let pre = match &node.source {
+            None => None,
+            Some(source) => Some(source.eval(env)?.to_stream()?),
+        };
+        Ok(Item::new_stream(SelfRef{
+            pre,
+            head: node.head.clone(),
+            body: Rc::clone(body),
+            env: env.clone()
+        }))
     }
 
     fn eval_real(&self) -> Result<(Rc<dyn Stream>, Rc<CacheHistory>), StreamError> {

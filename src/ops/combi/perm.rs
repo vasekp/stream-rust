@@ -2,22 +2,19 @@ use crate::base::*;
 use super::util::factorial;
 
 fn eval_perm(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve_source()?;
-    match node {
-        RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, head } => {
-            if stm.len() == Length::Infinite {
-                Ok(Item::new_stream(PermStream { source: node.source, len: None, head }))
-            } else {
-                let count = stm.try_count()?;
-                Ok(Item::new_stream(PermStream { source: node.source, len: Some(count), head }))
-            }
-        },
-        _ => Err(StreamError::new0("expected: stream.perm"))
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_stream()?;
+    if stm.len() == Length::Infinite {
+        Ok(Item::new_stream(PermStream { source: stm, len: None, head: node.head.clone() }))
+    } else {
+        let count = stm.try_count()?;
+        Ok(Item::new_stream(PermStream { source: stm, len: Some(count), head: node.head.clone() }))
     }
 }
 
 struct PermStream {
-    source: Item,
+    source: Rc<dyn Stream>,
     len: Option<UNumber>,
     head: Head,
 }
@@ -73,7 +70,7 @@ fn build_order(mut n: UNumber) -> Vec<usize> {
 }
 
 struct PermIter<'node> {
-    source: &'node Item,
+    source: &'node Rc<dyn Stream>,
     src_len: &'node Option<UNumber>,
     self_len: Option<UNumber>,
     order: Vec<usize>,
@@ -112,7 +109,7 @@ impl Iterator for PermIter<'_> {
         self.num_read += 1;
         Some(Expr::from(ENode {
             head: "reorder".into(),
-            source: Some(self.source.clone()),
+            source: Some(Item::from(self.source)),
             args: order
         }).eval_default())
     }

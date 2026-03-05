@@ -1,29 +1,32 @@
 use crate::base::*;
-use crate::utils::unsign;
 
 fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve_source()?;
-    match node {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(Item::Number(len), item) }
-        if !len.is_negative() =>
-            Ok(Item::new_stream(PadLeft { source: stm, len: unsign(len), padding: item, head })),
-        RNodeS { head, source: Item::String(s), args: RArgs::Two(Item::Number(len), Item::Char(ch)) }
-        if !len.is_negative() =>
-            Ok(Item::new_string(PadLeft { source: s, len: unsign(len), padding: ch, head })),
-        _ => Err(StreamError::new("expected: stream.padleft(length, item) or string.padleft(length, char)", node))
+    let node = node.eval_all(env)?;
+    let [Item::Number(len), item] = &node.args[..] else {
+        return Err(StreamError::new0("expected: stream.padleft(length, item) or string.padleft(length, char)"));
+    };
+    let len = len.try_into().map_err(|_| StreamError::new0("length can't be negative"))?;
+    match (node.source_checked()?, item) {
+        (Item::Stream(stm), item) =>
+            Ok(Item::new_stream(PadLeft { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
+        (Item::String(stm), Item::Char(ch)) =>
+            Ok(Item::new_string(PadLeft { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
+        _ => Err(StreamError::new0("expected: stream.padleft(length, item) or string.padleft(length, char)"))
     }
 }
 
 fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve_source()?;
-    match node {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(Item::Number(len), item) }
-        if !len.is_negative() =>
-            Ok(Item::new_stream(PadRight { source: stm, len: unsign(len), padding: item, head })),
-        RNodeS { head, source: Item::String(s), args: RArgs::Two(Item::Number(len), Item::Char(ch)) }
-        if !len.is_negative() =>
-            Ok(Item::new_string(PadRight { source: s, len: unsign(len), padding: ch, head })),
-        _ => Err(StreamError::new("expected: stream.padright(length, item) or string.padright(length, char)", node))
+    let node = node.eval_all(env)?;
+    let [Item::Number(len), item] = &node.args[..] else {
+        return Err(StreamError::new0("expected: stream.padright(length, item) or string.padright(length, char)"))
+    };
+    let len = len.try_into().map_err(|_| StreamError::new0("length can't be negative"))?;
+    match (node.source_checked()?, item) {
+        (Item::Stream(stm), item) =>
+            Ok(Item::new_stream(PadRight { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
+        (Item::String(stm), Item::Char(ch)) =>
+            Ok(Item::new_string(PadRight { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
+        _ => Err(StreamError::new0("expected: stream.padright(length, item) or string.padright(length, char)"))
     }
 }
 

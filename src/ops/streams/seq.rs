@@ -1,14 +1,21 @@
 use crate::base::*;
 
+fn eval_seq(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_source()?;
+    let (from, step) = match &node.args[..] {
+        [] => (None, None),
+        [Item::Number(from)] => (Some(from), None),
+        [Item::Number(from), Item::Number(to)] => (Some(from), Some(to)),
+        _ => return Err(StreamError::new("expected one of: seq(), seq(number), seq(number, number)", node))
+    };
+    Ok(Item::new_stream(Seq{head: node.head, from: from.cloned(), step: step.cloned() }))
+}
+
 pub struct Seq {
     head: Head,
     from: Option<Number>,
     step: Option<Number>
-}
-
-struct SeqIter<'node> {
-    value: Number,
-    step: &'node Option<Number>
 }
 
 impl Stream for Seq {
@@ -27,19 +34,6 @@ impl Stream for Seq {
     }
 }
 
-impl Seq {
-    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_no_source()?;
-        let (from, step) = match rnode.args {
-            RArgs::Zero => (None, None),
-            RArgs::One(Item::Number(from)) => (Some(from), None),
-            RArgs::Two(Item::Number(from), Item::Number(to)) => (Some(from), Some(to)),
-            _ => return Err(StreamError::new("expected one of: seq(), seq(number), seq(number, number)", rnode))
-        };
-        Ok(Item::new_stream(Seq{head: rnode.head, from, step}))
-    }
-}
-
 impl Describe for Seq {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
@@ -47,6 +41,11 @@ impl Describe for Seq {
             .push_args(&self.step)
             .finish(prec)
     }
+}
+
+struct SeqIter<'node> {
+    value: Number,
+    step: &'node Option<Number>
 }
 
 impl Iterator for SeqIter<'_> {
@@ -99,7 +98,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["seq", "iota"], Seq::eval, r#"
+    symbols.insert(["seq", "iota"], eval_seq, r#"
 A stream of consecutive numbers. If `from` or `step` are not given, they default to 1.
 = ?
 = ?(from)

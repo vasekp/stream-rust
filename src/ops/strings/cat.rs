@@ -9,19 +9,19 @@ struct Cat {
 
 impl Cat {
     fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        match node.eval_all(env)?.resolve_source()? {
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero } =>
-                Ok(Item::new_string(Cat { source: stm, head, filler: None })),
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::String(fill)) } => {
-                let filler = LiteralString::from(fill.listout()?);
-                Ok(Item::new_string(Cat { source: stm, head, filler: Some(filler) }))
-            },
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Char(fill)) } => {
-                let filler = LiteralString::from(vec![fill]);
-                Ok(Item::new_string(Cat { source: stm, head, filler: Some(filler) }))
-            },
-            node => Err(StreamError::new("expected: stream.cat", node))
-        }
+        let node = node.eval_all(env)?;
+        let stm = node.source_checked()?.to_stream()?;
+        let filler = match &node.args[..] {
+            [] => None,
+            [Item::String(fill)] => Some(fill.listout()?),
+            [Item::Char(fill)] => Some(vec![*fill]),
+            _ => return Err(StreamError::new0("expected: stream.cat"))
+        };
+        Ok(Item::new_string(Cat {
+            source: stm,
+            head: node.head.clone(),
+            filler: filler.map(LiteralString::from),
+        }))
     }
 }
 

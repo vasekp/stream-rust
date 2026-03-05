@@ -1,29 +1,30 @@
 use crate::base::*;
 
 fn eval_alpha(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    if node.source.is_none() && node.args.is_empty() {
-        let vec = env.alpha.iter()
-            .map(Item::Char)
-            .collect::<Vec<_>>();
-        return Ok(Item::from(vec));
+    node.check_no_source()?;
+    match &node.args[..] {
+        [] => {
+            let vec = env.alpha.iter()
+                .map(Item::Char)
+                .collect::<Vec<_>>();
+            Ok(Item::from(vec))
+        },
+        [alpha, body] => {
+            let alpha = match alpha.eval(env)? {
+                Item::Stream(stm) => stm.listout()?
+                    .into_iter()
+                    .map(Item::into_char)
+                    .collect::<Result<Vec<_>, _>>()?
+                    .try_into()?,
+                Item::String(stm) => stm.listout()?.try_into()?,
+                _ => return Err(StreamError::new0("expected stream or string"))
+            };
+            let mut new_env = env.clone();
+            new_env.alpha = Rc::new(alpha);
+            body.eval(&new_env)
+        },
+        _ => Err(StreamError::new0("expected: alpha or alpha(string or stream, body)"))
     }
-    let rnode = node.eval_nth_arg(0, env)?.resolve_no_source()?;
-    let RNodeNS { args: RArgs::Two(alpha, _), .. } = &rnode else {
-        return Err(StreamError::new("expected: alpha(alphabet, expr)", rnode));
-    };
-    let alpha = match alpha {
-            Expr::Imm(Item::Stream(stm)) => stm.listout()?
-                .into_iter()
-                .map(Item::into_char)
-                .collect::<Result<Vec<_>, _>>()?
-                .try_into()?,
-            Expr::Imm(Item::String(stm)) => stm.listout()?.try_into()?,
-            _ => return Err(StreamError::new0("expected stream or string"))
-        };
-    let mut new_env = env.clone();
-    new_env.alpha = Rc::new(alpha);
-    let RArgs::Two(_, body) = rnode.args else { unreachable!() };
-    body.eval(&new_env)
 }
 
 #[cfg(test)]

@@ -1,6 +1,56 @@
 use crate::base::*;
 
-pub struct Range {
+fn eval_range(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_source()?;
+    let (from, to, step, rtype) = match &node.args[..] {
+        [Item::Number(to)] => (None, to.clone(), None, RangeType::Numeric),
+        [Item::Number(from), Item::Number(to)] => (Some(from.clone()), to.clone(), None, RangeType::Numeric),
+        [Item::Number(from), Item::Number(to), Item::Number(step)] => (Some(from.clone()), to.clone(), Some(step.clone()), RangeType::Numeric),
+        [Item::Char(from), Item::Char(to)] => {
+            let case = from.case();
+            let from_ix = env.alpha.ord(from)?;
+            let to_ix = env.alpha.ord(to)?;
+            (Some(from_ix.into()), to_ix.into(), None, RangeType::Character(case))
+        },
+        [Item::Char(from), Item::Char(to), Item::Number(step)] => {
+            let case = from.case();
+            let from_ix = env.alpha.ord(from)?;
+            let to_ix = env.alpha.ord(to)?;
+            (Some(from_ix.into()), to_ix.into(), Some(step.clone()), RangeType::Character(case))
+        },
+        _ => return Err(StreamError::new0("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)"))
+    };
+    if empty_helper(from.as_ref(), &to, step.as_ref()) {
+        Ok(Item::empty_stream())
+    } else {
+        Ok(Item::new_stream(Range{head: node.head.clone(), from, to, step, rtype, env: env.clone()}))
+    }
+}
+
+fn empty_helper(from: Option<&Number>, to: &Number, step: Option<&Number>) -> bool {
+    (step.is_some_and(Number::is_negative) && to > from.unwrap_or(&Number::one()))
+        || (step.is_none_or(Number::is_positive) && to < from.unwrap_or(&Number::one()))
+}
+
+fn len_helper(from: Option<&Number>, to: &Number, step: Option<&Number>) -> Option<UNumber> {
+    if empty_helper(from, to, step) {
+        return Some(UNumber::zero());
+    }
+    match step.map(|step| (step, i32::try_from(step))) {
+        None | Some((_, Ok(1))) => Some(UNumber::try_from(match from {
+                Some(from) => to - from + 1,
+                None => to.to_owned() })
+            .expect("expected to > from when step > 0")),
+        Some((_, Ok(-1))) => Some(UNumber::try_from(from.expect("step should not be Some if from is not") - to + 1)
+            .expect("expected to < from when step < 0")),
+        Some((_, Ok(0))) => None,
+        Some((step, _)) => Some(UNumber::try_from((to - from.expect("step should not be Some if from is not")) / step + 1)
+            .expect("to-from / step sign mismatch")),
+    }
+}
+
+struct Range {
     head: Head,
     from: Option<Number>,
     to: Number,
@@ -12,62 +62,6 @@ pub struct Range {
 enum RangeType {
     Numeric,
     Character(CharCase)
-}
-
-impl Range {
-    fn eval(node: &Node, env: &Env) -> Result<Item, StreamError> {
-        let mut rnode = node.eval_all(env)?.resolve_no_source()?;
-        let (from, to, step, rtype) = match rnode {
-            RNodeNS { args: RArgs::One(Item::Number(to)), .. }
-                => (None, to, None, RangeType::Numeric),
-            RNodeNS { args: RArgs::Two(Item::Number(from), Item::Number(to)), .. }
-                => (Some(from), to, None, RangeType::Numeric),
-            RNodeNS { args: RArgs::Three(Item::Number(from), Item::Number(to), Item::Number(step)), .. }
-                => (Some(from), to, Some(step), RangeType::Numeric),
-            RNodeNS { args: RArgs::Two(Item::Char(ref from), Item::Char(ref to)), .. }
-                => {
-                    let case = from.case();
-                    let from_ix = env.alpha.ord(from)?;
-                    let to_ix = env.alpha.ord(to)?;
-                    (Some(from_ix.into()), to_ix.into(), None, RangeType::Character(case))
-                },
-            RNodeNS { args: RArgs::Three(Item::Char(ref from), Item::Char(ref to), Item::Number(ref mut step)), .. }
-                => {
-                    let case = from.case();
-                    let from_ix = env.alpha.ord(from)?;
-                    let to_ix = env.alpha.ord(to)?;
-                    (Some(from_ix.into()), to_ix.into(), Some(std::mem::take(step)), RangeType::Character(case))
-                },
-            _ => return Err(StreamError::new("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)", rnode))
-        };
-        if Range::empty_helper(from.as_ref(), &to, step.as_ref()) {
-            Ok(Item::empty_stream())
-        } else {
-            Ok(Item::new_stream(Range{head: rnode.head, from, to, step, rtype, env: env.clone()}))
-        }
-    }
-
-    fn empty_helper(from: Option<&Number>, to: &Number, step: Option<&Number>) -> bool {
-        (step.is_some_and(Number::is_negative) && to > from.unwrap_or(&Number::one()))
-            || (step.is_none_or(Number::is_positive) && to < from.unwrap_or(&Number::one()))
-    }
-
-    fn len_helper(from: Option<&Number>, to: &Number, step: Option<&Number>) -> Option<UNumber> {
-        if Self::empty_helper(from, to, step) {
-            return Some(UNumber::zero());
-        }
-        match step.map(|step| (step, i32::try_from(step))) {
-            None | Some((_, Ok(1))) => Some(UNumber::try_from(match from {
-                    Some(from) => to - from + 1,
-                    None => to.to_owned() })
-                .expect("expected to > from when step > 0")),
-            Some((_, Ok(-1))) => Some(UNumber::try_from(from.expect("step should not be Some if from is not") - to + 1)
-                .expect("expected to < from when step < 0")),
-            Some((_, Ok(0))) => None,
-            Some((step, _)) => Some(UNumber::try_from((to - from.expect("step should not be Some if from is not")) / step + 1)
-                .expect("to-from / step sign mismatch")),
-        }
-    }
 }
 
 impl Stream for Range {
@@ -82,7 +76,7 @@ impl Stream for Range {
     }
 
     fn len(&self) -> Length {
-        match Range::len_helper(self.from.as_ref(), &self.to, self.step.as_ref()) {
+        match len_helper(self.from.as_ref(), &self.to, self.step.as_ref()) {
             Some(num) => Length::Exact(num),
             None => Length::Infinite
         }
@@ -139,10 +133,10 @@ impl Iterator for RangeIter<'_> {
 
 impl SIterator for RangeIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
-        if Range::empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
+        if empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             return Ok(Some(n))
         };
-        let Some(max) = Range::len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref())
+        let Some(max) = len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref())
             else { return Ok(None); };
         if n <= max {
             self.value += match &self.parent.step {
@@ -156,7 +150,7 @@ impl SIterator for RangeIter<'_> {
     }
 
     fn len_remain(&self) -> Length {
-        match Range::len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
+        match len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             Some(num) => Length::Exact(num),
             None => Length::Infinite
         }
@@ -243,14 +237,14 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("..", Range::eval, r#"
+    symbols.insert("..", eval_range, r#"
 A range of values (numbers or characters).
 = from..to
 > 1..3 => [1, 2, 3]
 > 'a'..'c' => ['a', 'b', 'c']
 : range
 "#);
-    symbols.insert("range", Range::eval, r#"
+    symbols.insert("range", eval_range, r#"
 A range of values. If `from` or `step` are not given, they default to 1.
 Also works for characters, in this case `from` must be given. `step` remains numeric.
 The shorthand for `?range(from, to)` is `from..to`.

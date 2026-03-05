@@ -2,19 +2,22 @@ use crate::base::*;
 use super::digits::Digits;
 
 fn eval_numdig(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    let (num, radix, minw) = match &rnode {
-        RNodeS { source: Item::Number(num), args: RArgs::Zero, .. } => (num, 10, None),
-        RNodeS { source: Item::Number(num), args: RArgs::One(Item::Number(radix)), .. } =>
-            (num, check_radix(radix)?, None),
-        RNodeS { source: Item::Number(num), args: RArgs::Two(Item::Number(radix), Item::Number(minw)), .. }
-        if !minw.is_negative() =>
-            (num, check_radix(radix)?, Some(crate::utils::unsign(minw.clone()))),
-        _ => return Err(StreamError::new("expected: number.numdig or number.numdig(radix) or \
-number.numdig(radix, min_width)", rnode))
+    let node = node.eval_all(env)?;
+    let num = node.source_checked()?.to_num()?;
+    let (radix, minw) = match &node.args[..] {
+        [] => (10, None),
+        [Item::Number(radix)] =>
+            (check_radix(radix)?, None),
+        [Item::Number(radix), Item::Number(minw)] => {
+            let minw = UNumber::try_from(minw)
+                .map_err(|_| StreamError::new0("width can't be negative"))?;
+            (check_radix(radix)?, Some(minw))
+        },
+        _ => return Err(StreamError::new0("expected: number.numdig or number.numdig(radix) or \
+number.numdig(radix, min_width)"))
     };
     if num.is_negative() {
-        return Err(StreamError::new("can only accept nonnegative numbers", rnode));
+        return Err(StreamError::new0("can only accept nonnegative numbers"));
     }
     let digits = Digits::new(num.unsigned_abs(), radix)
         .map(Item::new_number)
@@ -29,18 +32,18 @@ number.numdig(radix, min_width)", rnode))
 }
 
 fn eval_dignum(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    let (s, radix) = match &rnode {
-        RNodeS { source: Item::Stream(s), args: RArgs::Zero, .. } => (s, 10),
-        RNodeS { source: Item::Stream(s), args: RArgs::One(Item::Number(radix)), .. } =>
-            (s, check_radix(radix)?),
-        _ => return Err(StreamError::new("expected: stream.dignum or stream.dignum(radix) or \
-stream.dignum(radix, min_width)", rnode))
+    let node = node.eval_all(env)?;
+    let stm = node.source_checked()?.as_stream()?;
+    let radix = match &node.args[..] {
+        [] => 10,
+        [Item::Number(radix)] => check_radix(radix)?,
+        _ => return Err(StreamError::new0("expected: stream.dignum or stream.dignum(radix) or \
+stream.dignum(radix, min_width)"))
     };
-    if s.is_empty() {
-        return Err(StreamError::new("stream is empty", rnode));
+    if stm.is_empty() {
+        return Err(StreamError::new0("stream is empty"));
     }
-    let vec = s.iter().map(|item| {
+    let vec = stm.iter().map(|item| {
             check_stop!();
             item?.into_num()?
                 .try_into()
@@ -49,7 +52,7 @@ stream.dignum(radix, min_width)", rnode))
     let mut num = UNumber::zero();
     for digit in vec {
         if !(0..radix).contains(&digit) {
-            return Err(StreamError::new("invalid digit", rnode));
+            return Err(StreamError::new0("invalid digit"));
         }
         num *= radix;
         num += digit;

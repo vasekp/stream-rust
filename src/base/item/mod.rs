@@ -73,6 +73,13 @@ impl Item {
         }
     }
 
+    pub fn to_num(&self) -> Result<Number, StreamError> {
+        match self {
+            Item::Number(x) => Ok(x.clone()),
+            _ => Err(StreamError::new0("expected number"))
+        }
+    }
+
     pub fn into_num(self) -> Result<Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
@@ -108,19 +115,33 @@ impl Item {
     pub fn as_stream(&self) -> Result<&Rc<dyn Stream>, StreamError> {
         match self {
             Item::Stream(stm) => Ok(stm),
-            _ => Err(StreamError::new0(format!("expected stream, found {:?}", &self)))
+            _ => Err(StreamError::new0("expected stream"))
         }
     }
 
     pub fn to_stream(&self) -> Result<Rc<dyn Stream>, StreamError> {
         match self {
             Item::Stream(stm) => Ok(Rc::clone(stm)),
-            _ => Err(StreamError::new0(format!("expected stream, found {:?}", &self)))
+            _ => Err(StreamError::new0("expected stream"))
         }
     }
 
     pub fn is_string(&self) -> bool {
         matches!(self, Item::String(_))
+    }
+
+    pub fn as_char_stream(&self) -> Result<&Rc<dyn Stream<Char>>, StreamError> {
+        match self {
+            Item::String(stm) => Ok(stm),
+            _ => Err(StreamError::new0("expected string"))
+        }
+    }
+
+    pub fn to_char_stream(&self) -> Result<Rc<dyn Stream<Char>>, StreamError> {
+        match self {
+            Item::String(stm) => Ok(Rc::clone(stm)),
+            _ => Err(StreamError::new0("expected string"))
+        }
     }
 
     pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, usize, Option<StreamError>) {

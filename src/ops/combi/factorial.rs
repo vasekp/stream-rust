@@ -2,41 +2,37 @@ use crate::base::*;
 use super::util::factorial;
 
 fn eval_factorial(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve();
-    match &node {
-        RNode::Source(RNodeS { source: Item::Number(x), args: RArgs::Zero, .. })
-        | RNode::NoSource(RNodeNS { args: RArgs::One(Item::Number(x)), .. })
-        => {
-            if x.is_negative() {
-                return Err(StreamError::new0("input can't be negative"));
-            }
-            let Ok(x) = x.try_into() else {
-                return Err(StreamError::new0("input too large"));
-            };
-            Ok(Item::new_number(factorial(x)))
-        },
-        _ => Err(StreamError::new0("expected: number.factorial or factorial(number)"))
+    let node = node.eval_all(env)?;
+    let x = match (&node.source, &node.args[..]) {
+        (Some(Item::Number(x)), []) => x,
+        (None, [Item::Number(x)]) => x,
+        _ => return Err(StreamError::new0("expected: number.factorial or factorial(number)"))
+    };
+    if x.is_negative() {
+        return Err(StreamError::new0("input can't be negative"));
     }
+    let Ok(x) = x.try_into() else {
+        return Err(StreamError::new0("input too large"));
+    };
+    Ok(Item::new_number(factorial(x)))
 }
 
 fn eval_binom(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve();
-    match &node {
-        RNode::NoSource(RNodeNS { args: RArgs::Two(Item::Number(n), Item::Number(k)), .. })
-        => {
-            if n.is_negative() | k.is_negative() {
-                return Err(StreamError::new0("input can't be negative"));
-            }
-            let (Ok(n), Ok(k)) = (n.try_into(), k.try_into()) else {
-                return Err(StreamError::new0("input too large"));
-            };
-            if k > n {
-                return Err(StreamError::new0("out of range"));
-            }
-            Ok(Item::new_number(factorial(n) / (factorial(k) * factorial(n - k))))
-        },
-        _ => Err(StreamError::new0("expected: binom(n, k)"))
+    let node = node.eval_all(env)?;
+    node.check_no_source()?;
+    let [Item::Number(n), Item::Number(k)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: binom(n, k)"));
+    };
+    if n.is_negative() | k.is_negative() {
+        return Err(StreamError::new0("input can't be negative"));
     }
+    let (Ok(n), Ok(k)) = (n.try_into(), k.try_into()) else {
+        return Err(StreamError::new0("input too large"));
+    };
+    if k > n {
+        return Err(StreamError::new0("out of range"));
+    }
+    Ok(Item::new_number(factorial(n) / (factorial(k) * factorial(n - k))))
 }
 
 fn eval_multi(node: &Node, env: &Env) -> Result<Item, StreamError> {

@@ -1,35 +1,24 @@
 use crate::base::*;
-use crate::utils::unsign;
 
 fn eval_repeat(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    let (item, count) = match rnode {
-        RNodeS { source, args: RArgs::Zero, .. }
-            => (source, None),
-        RNodeS { source, args: RArgs::One(Item::Number(count)), .. } if !count.is_negative()
-            => (source, Some(unsign(count))),
-        _ => return Err(StreamError::new("expected one of: source.repeat(), source.repeat(count)", rnode))
+    let node = node.eval_all(env)?;
+    let item = node.source_checked()?;
+    let count = match &node.args[..] {
+        [] => None,
+        [Item::Number(count)] => Some(count.try_into().map_err(|_| StreamError::new0("count can't be negative"))?),
+        _ => return Err(StreamError::new0("expected one of: source.repeat(), source.repeat(count)"))
     };
     match (&item, count.as_ref().and_then(|x| u32::try_from(x).ok())) {
-        (Item::String(stm), _) if stm.is_empty() => Ok(item),
-        (Item::Stream(stm), _) if stm.is_empty() => Ok(item),
+        (Item::String(stm), _) if stm.is_empty() => Ok(item.clone()),
+        (Item::Stream(stm), _) if stm.is_empty() => Ok(item.clone()),
         (Item::Char(_) | Item::String(_), Some(0)) => Ok(Item::empty_string()),
         (_, Some(0)) => Ok(Item::empty_stream()),
-        (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item),
-        (Item::Stream(_), _) => {
-            let Item::Stream(stm) = item else { unreachable!() };
-            Ok(Item::new_stream(RepeatStream{head: rnode.head, stream: stm, count}))
-        },
-        (Item::String(_), _) => {
-            let Item::String(stm) = item else { unreachable!() };
-            Ok(Item::new_string(RepeatStream{head: rnode.head, stream: stm, count}))
-        },
-        (Item::Char(_), _) => {
-            let Item::Char(ch) = item else { unreachable!() };
-            Ok(Item::new_string(RepeatItem{head: rnode.head, item: ch, count}))
-        },
-        (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item]))),
-        _ => Ok(Item::new_stream(RepeatItem{head: rnode.head, item, count}))
+        (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item.clone()),
+        (Item::Stream(stm), _) => Ok(Item::new_stream(RepeatStream{head: node.head.clone(), stream: Rc::clone(stm), count})),
+        (Item::String(stm), _) => Ok(Item::new_string(RepeatStream{head: node.head.clone(), stream: Rc::clone(stm), count})),
+        (Item::Char(ch), _) => Ok(Item::new_string(RepeatItem{head: node.head.clone(), item: *ch, count})),
+        (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item.clone()]))),
+        _ => Ok(Item::new_stream(RepeatItem{head: node.head.clone(), item: item.clone(), count}))
     }
 }
 

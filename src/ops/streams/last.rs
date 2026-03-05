@@ -1,56 +1,20 @@
 use crate::base::*;
-use crate::utils::unsign;
 
 use std::collections::VecDeque;
 
 fn eval_last(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match &rnode {
-        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. }
-            => eval_last_item(&**stm),
-        RNodeS { source: Item::String(stm), args: RArgs::Zero, .. }
-            => eval_last_item(&**stm).map(Item::Char),
-        RNodeS { source: Item::Stream(_), args: RArgs::One(Item::Number(count)), .. } if count.is_zero()
-            => Ok(Item::empty_stream()),
-        RNodeS { source: Item::String(_), args: RArgs::One(Item::Number(count)), .. } if count.is_zero()
-            => Ok(Item::empty_string()),
-        RNodeS { source: Item::Stream(stm), args: RArgs::One(Item::Number(count)), .. }
-                if !count.is_negative()
-            => {
-                let count = unsign(count.to_owned());
-                match eval_last_count(&**stm, &count)? {
-                    RetType::Listed(vec) => Ok(Item::new_stream(List::from(vec))),
-                    RetType::PassThrough => Ok(rnode.source),
-                    RetType::Skip(skip) => {
-                        let Item::Stream(stm) = rnode.source else { unreachable!() };
-                        Ok(Item::new_stream(Last {
-                            head: rnode.head,
-                            source: stm,
-                            skip,
-                            count
-                        }))
-                    },
-                }
-            },
-        RNodeS { source: Item::String(stm), args: RArgs::One(Item::Number(count)), .. }
-                if !count.is_negative()
-            => {
-                let count = unsign(count.to_owned());
-                match eval_last_count(&**stm, &count)? {
-                    RetType::Listed(vec) => Ok(Item::new_string(LiteralString::from(vec))),
-                    RetType::PassThrough => Ok(rnode.source),
-                    RetType::Skip(skip) => {
-                        let Item::String(stm) = rnode.source else { unreachable!() };
-                        Ok(Item::new_string(Last {
-                            head: rnode.head,
-                            source: stm,
-                            skip,
-                            count
-                        }))
-                    },
-                }
-            },
-        _ => Err(StreamError::new("expected: source.last or source.last(count)", rnode))
+    let node = node.eval_all(env)?;
+    let count: Option<UNumber> = match &node.args[..] {
+        [] => None,
+        [Item::Number(count)] => Some(count.try_into().map_err(|_| StreamError::new0("count can't be negative"))?),
+        _ => return Err(StreamError::new0("expected: source.last or source.last(count)"))
+    };
+    match (node.source_checked()?, count) {
+        (Item::Stream(stm), None) => eval_last_item(&**stm),
+        (Item::Stream(stm), Some(count)) => eval_last_count(&node.head, stm, count),
+        (Item::String(stm), None) => eval_last_item(&**stm).map(Item::Char),
+        (Item::String(stm), Some(count)) => eval_last_count(&node.head, stm, count),
+        _ => Err(StreamError::new0("expected: source.first or source.last(count)"))
     }
 }
 
@@ -78,10 +42,20 @@ fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
     }
 }
 
-fn eval_last_count<I: ItemType>(stm: &dyn Stream<I>, count: &UNumber) -> Result<RetType<I>, StreamError> {
+fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumber) -> Result<Item, StreamError> {
+    if count.is_zero() {
+        return Ok(I::from_vec(vec![]));
+    }
     match stm.len() {
-        Length::Exact(len) if &len < count => Ok(RetType::PassThrough),
-        Length::Exact(len) => Ok(RetType::Skip(len - count)),
+        Length::Exact(len) if len < count => Ok(stm.into()),
+        Length::Exact(len) => {
+            Ok(Item::from(Rc::new(Last {
+                head: head.clone(),
+                source: Rc::clone(stm),
+                skip: len - &count,
+                count
+            }) as Rc<dyn Stream<I>>))
+        },
         Length::Infinite => Err(StreamError::new0("stream is infinite")),
         _ => {
             let size = match count.try_into() {
@@ -97,15 +71,9 @@ fn eval_last_count<I: ItemType>(stm: &dyn Stream<I>, count: &UNumber) -> Result<
                 }
                 vec.push_back(item);
             }
-            Ok(RetType::Listed(Vec::from(vec)))
+            Ok(I::from_vec(Vec::from(vec)))
         }
     }
-}
-
-enum RetType<I> {
-    Listed(Vec<I>),
-    PassThrough,
-    Skip(UNumber)
 }
 
 struct Last<I: ItemType> {
