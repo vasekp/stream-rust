@@ -1,34 +1,31 @@
 use crate::base::*;
-use crate::utils::unsign;
 
-fn eval_first(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match rnode {
-        RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, .. }
-            => first_item_impl(&**stm).map_err(|err| StreamError::new(err, rnode)),
-        RNodeS { source: Item::String(ref stm), args: RArgs::Zero, .. }
-            => first_item_impl(&**stm).map(Item::Char).map_err(|err| StreamError::new(err, rnode)),
-        RNodeS { head, source: Item::Stream(s), args: RArgs::One(Item::Number(count)) }
-                if !count.is_negative()
-            => Ok(Item::new_stream(First{head, source: s.into(), count: unsign(count)})),
-        RNodeS { head, source: Item::String(s), args: RArgs::One(Item::Number(count)) }
-                if !count.is_negative()
-            => Ok(Item::new_string(First{head, source: s.into(), count: unsign(count)})),
-        _ => Err(StreamError::new("expected: source.first or source.first(count)", rnode))
+fn eval_first(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    let count = match &node.args[..] {
+        [] => None,
+        [Item::Number(count)] => Some(count.try_into().map_err(|_| StreamError::new0("count can't be negative"))?),
+        _ => return Err(StreamError::new0("expected: source.first or source.first(count)"))
+    };
+    match (node.source_checked()?, count) {
+        (Item::Stream(stm), None) => first_item_impl(&**stm),
+        (Item::Stream(stm), Some(count)) => Ok(Item::new_stream(First{head: node.head.clone(), source: Rc::clone(stm), count })),
+        (Item::String(stm), None) => first_item_impl(&**stm).map(Item::Char),
+        (Item::String(stm), Some(count)) => Ok(Item::new_string(First{head: node.head.clone(), source: Rc::clone(stm), count })),
+        _ => Err(StreamError::new0("expected: source.first or source.first(count)"))
     }
 }
 
-fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, BaseError> {
+fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
     match stm.iter().next() {
         Some(result) => Ok(result?),
-        None => Err("stream is empty".into())
+        None => Err(StreamError::new0("stream is empty"))
     }
 }
 
-#[derive(Clone)]
 struct First<I: ItemType> {
     head: Head,
-    source: BoxedStream<I>,
+    source: Rc<dyn Stream<I>>,
     count: UNumber
 }
 

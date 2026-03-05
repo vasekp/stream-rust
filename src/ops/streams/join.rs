@@ -1,9 +1,9 @@
 use crate::base::*;
 
-fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_join(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source()?);
-    try_with!(node, node.check_args_nonempty()?);
+    node.check_no_source()?;
+    node.check_args_nonempty()?;
 
     let is_string = node.args.iter()
         .all(|item| matches!(item, Item::Char(_) | Item::String(_)));
@@ -12,7 +12,7 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
         let elems = node.args.into_iter()
             .map(|item| match item {
                 Item::Char(ch) => Joinable::Single(ch),
-                Item::String(stm) => Joinable::Stream(stm.into()),
+                Item::String(stm) => Joinable::Stream(stm),
                 _ => unreachable!()
             })
             .collect::<Vec<_>>();
@@ -20,7 +20,7 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
     } else {
         let elems = node.args.into_iter()
             .map(|item| match item {
-                Item::Stream(stm) => Joinable::Stream(stm.into()),
+                Item::Stream(stm) => Joinable::Stream(stm),
                 _ => Joinable::Single(item)
             })
             .collect::<Vec<_>>();
@@ -28,10 +28,9 @@ fn eval_join(node: Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-#[derive(Clone)]
 enum Joinable<I: ItemType> {
     Single(I),
-    Stream(BoxedStream<I>)
+    Stream(Rc<dyn Stream<I>>)
 }
 
 impl<I: ItemType> Describe for Joinable<I> {
@@ -43,7 +42,6 @@ impl<I: ItemType> Describe for Joinable<I> {
     }
 }
 
-#[derive(Clone)]
 struct Join<I: ItemType> {
     head: Head,
     elems: Vec<Joinable<I>>

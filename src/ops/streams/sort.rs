@@ -2,19 +2,16 @@ use crate::base::*;
 
 use std::cmp::Ordering;
 
-fn eval_sort(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match &rnode {
-        RNodeS { source: Item::Stream(stm), args: RArgs::Zero, .. } => {
-            let mut vals = stm.listout()?;
-            try_with!(rnode, sort_impl(&mut vals[..], &env.alpha)?);
-            Ok(Item::new_stream(List::from(vals)))
-        }
-        _ => Err(StreamError::new("expected: stream.sort", rnode))
-    }
+fn eval_sort(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_stream()?;
+    let mut vals = stm.listout()?;
+    sort_impl(&mut vals[..], &env.alpha)?;
+    Ok(Item::new_stream(List::from(vals)))
 }
 
-fn sort_impl(vals: &mut [Item], alpha: &Rc<Alphabet>) -> Result<(), BaseError> {
+fn sort_impl(vals: &mut [Item], alpha: &Rc<Alphabet>) -> Result<(), StreamError> {
     match &mut vals[..] {
         [] | [_] => (),
         [x, y] => if x.lex_cmp(y, alpha)? == Ordering::Greater { std::mem::swap(x, y) },

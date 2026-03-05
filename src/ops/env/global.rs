@@ -1,9 +1,9 @@
 use crate::base::*;
 
-fn eval_global(node: Node, _env: &Env) -> Result<Item, StreamError> {
-    let node = node.resolve();
-    let RNode::NoSource(RNodeNS { args: RArgs::One(body), .. }) = node else {
-        return Err(StreamError::new("expected: global(expr)", node));
+fn eval_global(node: &Node, _env: &Env) -> Result<Item, StreamError> {
+    node.check_no_source()?;
+    let [body] = &node.args[..] else {
+        return Err(StreamError::new0("expected: global(expr)"));
     };
     body.eval(&Default::default())
 }

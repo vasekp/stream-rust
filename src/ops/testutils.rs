@@ -1,20 +1,18 @@
 use crate::base::*;
 
-fn eval_len_am(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match rnode {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(LenAM { head, src: stm.into() })),
-        RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string(LenAM { head, src: stm.into() })),
+fn eval_len_am(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    match node.source_checked()? {
+        Item::Stream(stm) => Ok(Item::new_stream(LenAM { head: node.head.clone(), src: Rc::clone(stm) })),
+        Item::String(stm) => Ok(Item::new_string(LenAM { head: node.head.clone(), src: Rc::clone(stm) })),
         _ => panic!()
     }
 }
 
-#[derive(Clone)]
 struct LenAM<I: ItemType> {
     head: Head,
-    src: BoxedStream<I>,
+    src: Rc<dyn Stream<I>>,
 }
 
 impl<I: ItemType> Describe for LenAM<I> {
@@ -57,21 +55,19 @@ impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
     }
 }
 
-fn eval_len_uf(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match rnode {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(LenUF { head, src: stm.into() })),
-        RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string(LenUF { head, src: stm.into() })),
+fn eval_len_uf(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    match node.source_checked()? {
+        Item::Stream(stm) => Ok(Item::new_stream(LenUF { head: node.head.clone(), src: Rc::clone(stm) })),
+        Item::String(stm) => Ok(Item::new_string(LenUF { head: node.head.clone(), src: Rc::clone(stm) })),
         _ => panic!()
     }
 }
 
-#[derive(Clone)]
 struct LenUF<I: ItemType> {
     head: Head,
-    src: BoxedStream<I>,
+    src: Rc<dyn Stream<I>>,
 }
 
 impl<I: ItemType> Describe for LenUF<I> {
@@ -114,21 +110,19 @@ impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
     }
 }
 
-fn eval_len_uu(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    match rnode {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero }
-            => Ok(Item::new_stream(LenUU { head, src: stm.into() })),
-        RNodeS { head, source: Item::String(stm), args: RArgs::Zero }
-            => Ok(Item::new_string(LenUU { head, src: stm.into() })),
+fn eval_len_uu(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    match node.source_checked()? {
+        Item::Stream(stm) => Ok(Item::new_stream(LenUU { head: node.head.clone(), src: Rc::clone(stm) })),
+        Item::String(stm) => Ok(Item::new_string(LenUU { head: node.head.clone(), src: Rc::clone(stm) })),
         _ => panic!()
     }
 }
 
-#[derive(Clone)]
 struct LenUU<I: ItemType> {
     head: Head,
-    src: BoxedStream<I>,
+    src: Rc<dyn Stream<I>>,
 }
 
 impl<I: ItemType> Describe for LenUU<I> {

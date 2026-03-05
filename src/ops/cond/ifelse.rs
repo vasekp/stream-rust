@@ -1,16 +1,11 @@
 use crate::base::*;
 
-fn eval_if(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.resolve_no_source()?;
-    let RNodeNS { args: RArgs::Three(cond, ..), .. } = &rnode else {
-        return Err(StreamError::new("expected: if(cond, expr, expr)", rnode));
+fn eval_if(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_source()?;
+    let [cond, true_expr, false_expr] = &node.args[..] else {
+        return Err(StreamError::new0("expected: if(cond, expr, expr)"));
     };
-    let cond_v = match cond.clone().eval(env)? {
-        Item::Bool(value) => value,
-        item => return Err(StreamError::new(format!("expected bool, found {:?}", item), rnode))
-    };
-    let RArgs::Three(_, true_expr, false_expr) = rnode.args else { unreachable!() };
-    let expr = if cond_v { true_expr } else { false_expr };
+    let expr = if cond.eval(env)?.to_bool()? { true_expr } else { false_expr };
     expr.eval(env)
 }
 

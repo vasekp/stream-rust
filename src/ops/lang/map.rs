@@ -1,19 +1,21 @@
 use crate::base::*;
 
-fn eval_map(node: Node, env: &Env) -> Result<Item, StreamError> {
-    match node.eval_source(env)? {
-        RNodeS { head, source: Item::Stream(source), args: RArgs::One(Expr::Eval(body)) } =>
-            Ok(Item::new_stream(Map{head, source: source.into(), body, env: env.clone()})),
-        RNodeS { head, source: Item::String(source), args: RArgs::One(Expr::Eval(body)) } =>
-            Ok(Item::new_string(CharMap{head, source: source.into(), body, env: env.clone()})),
-        node => Err(StreamError::new("expected: source:body", node))
+fn eval_map(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let body = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
+        Rc::clone(body)
+    } else {
+        return Err(StreamError::new0("expected: source:body"));
+    };
+    match node.source_checked()?.eval(env)? {
+        Item::Stream(source) => Ok(Item::new_stream(Map{head: node.head.clone(), source, body, env: env.clone()})),
+        Item::String(source) => Ok(Item::new_string(CharMap{head: node.head.clone(), source, body, env: env.clone()})),
+        _ => Err(StreamError::new0("expected: source:body"))
     }
 }
 
-#[derive(Clone)]
 struct Map {
-    source: BoxedStream,
-    body: Node,
+    source: Rc<dyn Stream>,
+    body: Rc<Node>,
     head: Head,
     env: Env
 }
@@ -22,18 +24,17 @@ impl Describe for Map {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.body)
+            .push_arg(&*self.body)
             .finish(prec)
     }
 }
 
 impl Stream for Map {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SMap::new(&*self.source, |item| {
-            self.body.clone()
+        Box::new(SMap::new(&self.source, |item| {
+            self.body
                 .with_source(item.into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
-                .map_err(BaseError::from)
         }))
     }
 
@@ -42,10 +43,9 @@ impl Stream for Map {
     }
 }
 
-#[derive(Clone)]
 struct CharMap {
-    source: BoxedStream<Char>,
-    body: Node,
+    source: Rc<dyn Stream<Char>>,
+    body: Rc<Node>,
     head: Head,
     env: Env
 }
@@ -54,20 +54,18 @@ impl Describe for CharMap {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.body)
+            .push_arg(&*self.body)
             .finish(prec)
     }
 }
 
 impl Stream<Char> for CharMap {
     fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(SMap::new(&*self.source, |ch| {
-            self.body.clone()
+        Box::new(SMap::new(&self.source, |ch| {
+            self.body
                 .with_source(Item::Char(ch).into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
-                .and_then(|item| item.into_char()
-                    .map_err(|err| StreamError::new(err, Item::from(self.source.clone()))))
-                .map_err(BaseError::from)
+                .and_then(Item::into_char)
         }))
     }
 

@@ -4,6 +4,7 @@ mod map;
 mod mathops;
 mod args;
 mod cmp;
+mod assign;
 mod lexcmp;
 mod bools;
 
@@ -14,6 +15,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     mathops::init(symbols);
     args::init(symbols);
     cmp::init(symbols);
+    assign::init(symbols);
     lexcmp::init(symbols);
     bools::init(symbols);
 }

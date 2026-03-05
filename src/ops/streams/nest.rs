@@ -1,10 +1,9 @@
 use crate::base::*;
 use std::collections::VecDeque;
 
-#[derive(Clone)]
 struct NestSource {
     source: Item,
-    body: Node,
+    body: Rc<Node>,
     head: Head,
     env: Env
 }
@@ -15,28 +14,29 @@ struct NestIterSource<'node> {
     env: &'node Env
 }
 
-#[derive(Clone)]
 struct NestArgs {
-    body: ENode,
+    body: Node<Item>,
     head: Head,
     env: Env
 }
 
 struct NestIterArgs<'node> {
-    body: &'node ENode,
+    body: &'node Node<Item>,
     prev: VecDeque<Item>,
     env: &'node Env
 }
 
-fn eval_nest(node: Node, env: &Env) -> Result<Item, StreamError> {
-    match node.resolve() {
-        RNode::Source(RNodeS { head, source, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && body.args.is_empty() => {
-            Ok(Item::new_stream(NestSource{head, source: source.eval(env)?, body, env: env.clone()}))
-        },
-        RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) if body.source.is_none() && !body.args.is_empty() => {
-            Ok(Item::new_stream(NestArgs{head, body: body.eval_all(env)?, env: env.clone()}))
-        },
-        node => Err(StreamError::new("expected: source.nest({body}) or nest({body}(args))", node))
+fn eval_nest(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let [Expr::Eval(body)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: source.nest({body}) or nest({body}(args))"));
+    };
+    body.check_no_source()?;
+    if body.args.is_empty() && let Some(source) = &node.source {
+        Ok(Item::new_stream(NestSource{head: node.head.clone(), source: source.eval(env)?, body: Rc::clone(body), env: env.clone()}))
+    } else if !body.args.is_empty() && node.source.is_none() {
+        Ok(Item::new_stream(NestArgs{head: node.head.clone(), body: body.eval_all(env)?, env: env.clone()}))
+    } else {
+        Err(StreamError::new0("expected: source.nest({body}) or nest({body}(args))"))
     }
 }
 
@@ -44,7 +44,7 @@ impl Describe for NestSource {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.body)
+            .push_arg(&*self.body)
             .finish(prec)
     }
 }

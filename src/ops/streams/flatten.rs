@@ -1,24 +1,20 @@
 use crate::base::*;
 
-#[derive(Clone)]
-struct Flatten {
-    source: BoxedStream,
-    depth: Option<UNumber>,
-    head: Head
+fn eval_flatten(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    let stm = node.source_checked()?.to_stream()?;
+    let depth = match &node.args[..] {
+        [] => None,
+        [Item::Number(depth)] => Some(depth.try_into().map_err(|_| StreamError::new0("can't be negative"))?),
+        _ => return Err(StreamError::new0("expected: stream.flatten or stream.flatten(depth)"))
+    };
+    Ok(Item::new_stream(Flatten { source: stm, head: node.head.clone(), depth }))
 }
 
-impl Flatten {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        match node.eval_all(env)?.resolve_source()? {
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::Zero } => {
-                Ok(Item::new_stream(Flatten { source: stm.into(), head, depth: None }))
-            },
-            RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Item::Number(depth)) } if !depth.is_negative() => {
-                Ok(Item::new_stream(Flatten { source: stm.into(), head, depth: Some(crate::utils::unsign(depth)) }))
-            },
-            node => Err(StreamError::new("expected: stream.flatten or stream.flatten(depth)", node))
-        }
-    }
+struct Flatten {
+    source: Rc<dyn Stream>,
+    depth: Option<UNumber>,
+    head: Head
 }
 
 impl Describe for Flatten {
@@ -148,7 +144,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("flatten", Flatten::eval, r#"
+    symbols.insert("flatten", eval_flatten, r#"
 Flattens `stream` up to `depth` levels. If `depth` is omitted, `stream` is flattened to all levels.
 = stream.?
 = stream.?(depth)

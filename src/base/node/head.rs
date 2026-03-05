@@ -1,4 +1,5 @@
 use crate::base::*;
+use crate::interner::intern;
 
 /// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
 /// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
@@ -6,24 +7,24 @@ use crate::base::*;
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Head {
-    Symbol(String),
-    Oper(String),
-    Block(Box<Expr>),
+    Symbol(&'static str),
+    Oper(&'static str),
+    Block(Expr),
     Lang(LangItem)
 }
 
 impl Head {
-    pub(crate) fn as_str(&self) -> Option<&str> {
+    pub(crate) fn as_str(&self) -> Option<&'static str> {
         match self {
-            Head::Symbol(s) | Head::Oper(s) => Some(s.as_str()),
+            Head::Symbol(s) | Head::Oper(s) => Some(s),
             _ => None
         }
     }
 }
 
-impl<T> From<T> for Head where T: Into<String> {
-    fn from(symbol: T) -> Head {
-        Head::Symbol(symbol.into())
+impl From<&str> for Head {
+    fn from(symbol: &str) -> Head {
+        Head::Symbol(intern(symbol))
     }
 }
 
@@ -35,26 +36,26 @@ impl From<LangItem> for Head {
 
 impl From<Expr> for Head {
     fn from(expr: Expr) -> Head {
-        Head::Block(Box::new(expr))
+        Head::Block(expr)
     }
 }
 
 impl From<Item> for Head {
     fn from(expr: Item) -> Head {
-        Head::Block(Box::new(expr.into()))
+        Head::Block(expr.into())
     }
 }
 
 impl From<Node> for Head {
     fn from(expr: Node) -> Head {
-        Head::Block(Box::new(expr.into()))
+        Head::Block(expr.into())
     }
 }
 
 impl PartialEq<str> for Head {
     fn eq(&self, other: &str) -> bool {
         match self {
-            Head::Symbol(sym) => sym == other,
+            Head::Symbol(sym) | Head::Oper(sym) => *sym == other,
             _ => false
         }
     }

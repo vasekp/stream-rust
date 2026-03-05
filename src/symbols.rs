@@ -1,15 +1,15 @@
 use crate::base::*;
 use crate::docs::DocRecord;
+use crate::interner;
 use std::collections::HashMap;
-use std::sync::Arc;
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
-type Constructor = fn(Node, &'_ Env) -> Result<Item, StreamError>;
+type Constructor = fn(&Node, &'_ Env) -> Result<Item, StreamError>;
 
 #[derive(Default)]
 pub(crate) struct Symbols(HashMap<&'static str, Arc<(Constructor, Option<DocRecord>)>>);
 
-static SYMBOLS: Lazy<Symbols> = Lazy::new(|| {
+static SYMBOLS: LazyLock<Symbols> = LazyLock::new(|| {
     let mut symbols = Default::default();
     crate::ops::init(&mut symbols);
     symbols
@@ -19,6 +19,7 @@ impl Symbols {
     pub(crate) fn insert_raw(&mut self, names: impl AsSlice<&'static str>, ctor: Constructor) {
         let rec = Arc::new((ctor, None));
         for sym in names.as_slice() {
+            interner::intern_static(sym);
             self.0.insert(sym, Arc::clone(&rec));
         }
     }
@@ -30,6 +31,7 @@ impl Symbols {
         docs.symbols = names.as_slice().to_vec();
         let rec = Arc::new((ctor, Some(docs)));
         for sym in names.as_slice() {
+            interner::intern_static(sym);
             self.0.insert(sym, Arc::clone(&rec));
         }
     }

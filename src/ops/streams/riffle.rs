@@ -1,25 +1,19 @@
 use crate::base::*;
 
-#[derive(Clone)]
-struct Riffle {
-    head: Head,
-    source: BoxedStream,
-    filler: Item
+fn eval_riffle(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    let stm = node.source_checked()?.to_stream()?;
+    if stm.is_empty() { return Ok(Item::empty_stream()); }
+    let [filler] = &node.args[..] else {
+        return Err(StreamError::new0("expected: stream.riffle(item or stream)"));
+    };
+    Ok(Item::new_stream(Riffle{head: node.head.clone(), source: stm, filler: filler.clone()}))
 }
 
-impl Riffle {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        let (source, filler) = match rnode {
-            RNodeS { source: Item::Stream(ref src), args: RArgs::One(_), .. }
-            if src.is_empty()
-                => return Ok(Item::empty_stream()),
-            RNodeS { source: Item::Stream(src), args: RArgs::One(filler), .. }
-                => (BoxedStream::from(src), filler),
-            _ => return Err(StreamError::new("expected: stream.riffle(item or stream)", rnode))
-        };
-        Ok(Item::new_stream(Riffle{head: rnode.head, source, filler}))
-    }
+struct Riffle {
+    head: Head,
+    source: Rc<dyn Stream>,
+    filler: Item
 }
 
 impl Describe for Riffle {
@@ -188,7 +182,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("riffle", Riffle::eval, r#"
+    symbols.insert("riffle", eval_riffle, r#"
 Interleaves `stream` with copies of `filler`.
 If `filler` is also a stream, interleaves the two streams, until one of them ends.
 = stream.?(filler)

@@ -1,12 +1,10 @@
 [package]
 name = "streamlang"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 num = "0.4.3"
-dyn-clone = "1.0"
-once_cell = "1.19"
 rustyline = "15.0"
 ctrlc = "3.4"
 colored = "3"

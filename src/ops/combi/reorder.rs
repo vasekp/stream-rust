@@ -1,10 +1,10 @@
 use crate::base::*;
 
-fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let mut indices = Vec::with_capacity(node.args.len());
     for index in &node.args {
-        let Item::Number(ref index) = index else {
+        let Item::Number(index) = index else {
             return Err(StreamError::new(format!("expected number, found {:?}", index), node));
         };
         if !index.is_positive() {
@@ -20,18 +20,16 @@ fn eval_reorder(node: Node, env: &Env) -> Result<Item, StreamError> {
         return Err(StreamError::new("expected: stream.reorder(index...)", node));
     };
     let max_index = indices.iter().max().cloned().unwrap_or_default();
-    if let Length::Exact(len) | Length::AtMost(len) = stm.len() {
-        if max_index > len {
-            let node = ENode { source: Some(Item::Stream(stm)), ..node };
+    if let Length::Exact(len) | Length::AtMost(len) = stm.len()
+        && max_index > len {
+            let node = Node { source: Some(Item::Stream(stm)), ..node };
             return Err(StreamError::new("requested index exceeds length of source", node));
         }
-    }
-    Ok(Item::new_stream(ReorderStream { source: stm.into(), head: node.head, indices, max_index }))
+    Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
 
-#[derive(Clone)]
 struct ReorderStream {
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     head: Head,
     indices: Vec<UNumber>,
     max_index: UNumber,
@@ -91,8 +89,8 @@ impl Iterator for ReorderIter<'_> {
                             Some(Err(err)) => return Some(Err(err)),
                             None => {
                                 return Some(Err(StreamError::new(format!("index past end ({next})"),
-                                    Node::new("[part]", 
-                                        Some(self.parent.source.clone_item().into()),
+                                    Node::new("[part]",
+                                        Some(Item::from(&self.parent.source).into()),
                                         vec![Expr::new_number(next.to_owned())]))));
                             }
                         }

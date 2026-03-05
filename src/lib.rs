@@ -4,6 +4,7 @@ mod symbols;
 pub mod docs;
 mod utils;
 mod ops;
+mod interner;
 pub mod session;
 
 pub use parser::parse;

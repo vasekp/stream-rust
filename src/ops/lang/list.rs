@@ -1,9 +1,11 @@
 use crate::base::*;
 
-fn eval_list(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?;
-    try_with!(node, node.check_no_source()?);
-    Ok(Item::new_stream(List::from(node.args)))
+fn eval_list(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_source()?;
+    let list = node.args.iter()
+        .map(|expr| expr.eval(env))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Item::new_stream(List::from(list)))
 }
 
 #[cfg(test)]

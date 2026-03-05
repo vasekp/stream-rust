@@ -1,24 +1,20 @@
 use crate::base::*;
 use super::util::factorial;
 
-fn eval_perm(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve_source()?;
-    match node {
-        RNodeS { source: Item::Stream(ref stm), args: RArgs::Zero, head } => {
-            if stm.len() == Length::Infinite {
-                Ok(Item::new_stream(PermStream { source: node.source, len: None, head }))
-            } else {
-                let count = stm.try_count()?;
-                Ok(Item::new_stream(PermStream { source: node.source, len: Some(count), head }))
-            }
-        },
-        _ => Err(StreamError::new("expected: stream.perm", node))
+fn eval_perm(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_stream()?;
+    if stm.len() == Length::Infinite {
+        Ok(Item::new_stream(PermStream { source: stm, len: None, head: node.head.clone() }))
+    } else {
+        let count = stm.try_count()?;
+        Ok(Item::new_stream(PermStream { source: stm, len: Some(count), head: node.head.clone() }))
     }
 }
 
-#[derive(Clone)]
 struct PermStream {
-    source: Item,
+    source: Rc<dyn Stream>,
     len: Option<UNumber>,
     head: Head,
 }
@@ -74,7 +70,7 @@ fn build_order(mut n: UNumber) -> Vec<usize> {
 }
 
 struct PermIter<'node> {
-    source: &'node Item,
+    source: &'node Rc<dyn Stream>,
     src_len: &'node Option<UNumber>,
     self_len: Option<UNumber>,
     order: Vec<usize>,
@@ -111,9 +107,9 @@ impl Iterator for PermIter<'_> {
             .map(|x| Item::new_number(x + 1))
             .collect::<Vec<_>>();
         self.num_read += 1;
-        Some(Expr::from(ENode {
+        Some(Expr::from(Node {
             head: "reorder".into(),
-            source: Some(self.source.clone()),
+            source: Some(Item::from(self.source)),
             args: order
         }).eval_default())
     }
@@ -123,18 +119,17 @@ impl SIterator for PermIter<'_> {
     fn len_remain(&self) -> Length {
         match (self.src_len, &self.self_len) {
             (None, _) => Length::Infinite,
-            (Some(_), Some(ref len)) => Length::Exact(len - &self.num_read),
+            (Some(_), Some(len)) => Length::Exact(len - &self.num_read),
             (Some(_), None) => Length::UnknownFinite
         }
     }
 
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.num_read += n;
-        if let Some(len) = &self.self_len {
-            if &self.num_read >= len {
+        if let Some(len) = &self.self_len
+            && &self.num_read >= len {
                 return Ok(Some(&self.num_read - len));
             }
-        }
         self.order = build_order(self.num_read.clone());
         Ok(None)
     }

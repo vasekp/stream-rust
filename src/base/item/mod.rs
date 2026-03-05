@@ -28,12 +28,13 @@ mod tests;
 pub(crate) use tests::*;
 
 /// An `Item` is a concrete value or stream, the result of evaluation of a [`Node`].
+#[derive(Clone)]
 pub enum Item {
     Number(Number),
     Bool(bool),
     Char(Char),
-    Stream(Box<dyn Stream<Item>>),
-    String(Box<dyn Stream<Char>>),
+    Stream(Rc<dyn Stream<Item>>),
+    String(Rc<dyn Stream<Char>>),
 }
 
 impl Item {
@@ -50,53 +51,60 @@ impl Item {
     }
 
     pub fn new_stream(value: impl Stream + 'static) -> Item {
-        Item::Stream(Box::new(value))
+        Item::Stream(Rc::new(value))
     }
 
     pub fn new_string(value: impl Stream<Char> + 'static) -> Item {
-        Item::String(Box::new(value))
+        Item::String(Rc::new(value))
     }
 
     pub fn empty_stream() -> Item {
-        Item::Stream(Box::new(EmptyStream))
+        Item::Stream(Rc::new(EmptyStream))
     }
 
     pub fn empty_string() -> Item {
-        Item::String(Box::new(EmptyString))
+        Item::String(Rc::new(EmptyString))
     }
 
-    pub fn as_num(&self) -> Result<&Number, BaseError> {
+    pub fn as_num(&self) -> Result<&Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected number"))
         }
     }
 
-    pub fn into_num(self) -> Result<Number, BaseError> {
+    pub fn to_num(&self) -> Result<Number, StreamError> {
         match self {
-            Item::Number(x) => Ok(x),
-            _ => Err(format!("expected number, found {:?}", &self).into())
+            Item::Number(x) => Ok(x.clone()),
+            _ => Err(StreamError::new0("expected number"))
         }
     }
 
-    pub fn to_bool(&self) -> Result<bool, BaseError> {
+    pub fn into_num(self) -> Result<Number, StreamError> {
+        match self {
+            Item::Number(x) => Ok(x),
+            _ => Err(StreamError::new0("expected number"))
+        }
+    }
+
+    pub fn to_bool(&self) -> Result<bool, StreamError> {
         match self {
             Item::Bool(x) => Ok(*x),
-            _ => Err(format!("expected boolean value, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected boolean value"))
         }
     }
 
-    pub fn as_char(&self) -> Result<&Char, BaseError> {
+    pub fn as_char(&self) -> Result<&Char, StreamError> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(format!("expected character, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected character"))
         }
     }
 
-    pub fn into_char(self) -> Result<Char, BaseError> {
+    pub fn into_char(self) -> Result<Char, StreamError> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(format!("expected character, found {:?}", &self).into())
+            _ => Err(StreamError::new0("expected character"))
         }
     }
 
@@ -104,8 +112,36 @@ impl Item {
         matches!(self, Item::Stream(_))
     }
 
+    pub fn as_stream(&self) -> Result<&Rc<dyn Stream>, StreamError> {
+        match self {
+            Item::Stream(stm) => Ok(stm),
+            _ => Err(StreamError::new0("expected stream"))
+        }
+    }
+
+    pub fn to_stream(&self) -> Result<Rc<dyn Stream>, StreamError> {
+        match self {
+            Item::Stream(stm) => Ok(Rc::clone(stm)),
+            _ => Err(StreamError::new0("expected stream"))
+        }
+    }
+
     pub fn is_string(&self) -> bool {
         matches!(self, Item::String(_))
+    }
+
+    pub fn as_char_stream(&self) -> Result<&Rc<dyn Stream<Char>>, StreamError> {
+        match self {
+            Item::String(stm) => Ok(stm),
+            _ => Err(StreamError::new0("expected string"))
+        }
+    }
+
+    pub fn to_char_stream(&self) -> Result<Rc<dyn Stream<Char>>, StreamError> {
+        match self {
+            Item::String(stm) => Ok(Rc::clone(stm)),
+            _ => Err(StreamError::new0("expected string"))
+        }
     }
 
     pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, usize, Option<StreamError>) {
@@ -186,7 +222,7 @@ impl Item {
         })
     }
 
-    pub(crate) fn lex_cmp(&self, other: &Self, alpha: &Rc<Alphabet>) -> Result<std::cmp::Ordering, BaseError> {
+    pub(crate) fn lex_cmp(&self, other: &Self, alpha: &Rc<Alphabet>) -> Result<std::cmp::Ordering, StreamError> {
         use Item::*;
         use std::cmp::Ordering;
         Ok(match (self, other) {
@@ -231,7 +267,7 @@ impl Item {
                     }
                 }
             },
-            (x, y) => return Err(format!("can't compare {x:?} with {y:?}").into())
+            (x, y) => return Err(StreamError::new0(format!("can't compare {x:?} with {y:?}")))
         })
     }
 }
@@ -288,15 +324,15 @@ impl<I: ItemType> From<Vec<I>> for Item {
     }
 }
 
-impl<I: ItemType> From<Box<dyn Stream<I>>> for Item {
-    fn from(vec: Box<dyn Stream<I>>) -> Item {
-        I::from_box(vec)
+impl<I: ItemType> From<Rc<dyn Stream<I>>> for Item {
+    fn from(rc: Rc<dyn Stream<I>>) -> Item {
+        I::from_rc(rc)
     }
 }
 
-impl<I: ItemType> From<BoxedStream<I>> for Item {
-    fn from(vec: BoxedStream<I>) -> Item {
-        I::from_box(vec.into())
+impl<I: ItemType> From<&Rc<dyn Stream<I>>> for Item {
+    fn from(rc: &Rc<dyn Stream<I>>) -> Item {
+        I::from_rc(Rc::clone(rc))
     }
 }
 
@@ -327,19 +363,6 @@ impl PartialEq for Item {
                     .all(|(x, y)| x == y)
             },
             _ => false
-        }
-    }
-}
-
-impl Clone for Item {
-    fn clone(&self) -> Item {
-        use Item::*;
-        match self {
-            Number(x) => Number(x.clone()),
-            Bool(x) => Bool(*x),
-            Char(x) => Char(x.clone()),
-            Stream(s) => Stream(s.clone_box()),
-            String(s) => String(s.clone_box()),
         }
     }
 }

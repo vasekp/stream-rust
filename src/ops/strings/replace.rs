@@ -2,53 +2,49 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_replace(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_args_nonempty()?);
-    let node = node.resolve_source()?;
-    match node {
-        RNodeS { source: Item::String(_), args: RArgs::Two(ref x, ref y), .. } => {
+    match (node.source_checked()?, &node.args[..]) {
+        (Item::String(stm), [x, y]) => {
             let (orig, repl) = match (x, y) {
-                (Item::Char(c1), Item::Char(c2)) => (vec![vec![c1.to_owned()]], vec![vec![c2.to_owned()]]),
-                (Item::Char(c1), Item::String(s2)) => (vec![vec![c1.to_owned()]], vec![s2.listout()?]),
-                (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![c2.to_owned()]]),
+                (Item::Char(c1), Item::Char(c2)) => (vec![vec![*c1]], vec![vec![*c2]]),
+                (Item::Char(c1), Item::String(s2)) => (vec![vec![*c1]], vec![s2.listout()?]),
+                (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![*c2]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
-                (Item::Stream(s1), Item::Stream(s2)) => (read_stream(&**s1)?, read_stream(&**s2)?),
-                _ => return Err(StreamError::new("expected: (char/string, char/string) or (stream, stream)", node))
+                (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
+                _ => return Err(StreamError::new0("expected: (char/string, char/string) or (stream, stream)"))
             };
             if orig.len() != repl.len() {
-                return Err(StreamError::new("the replacements lists must be of same length", node));
+                return Err(StreamError::new0("the replacements lists must be of same length"));
             }
             if orig.iter().any(Vec::is_empty) {
-                return Err(StreamError::new("the sought string can't be empty", node));
+                return Err(StreamError::new0("the sought string can't be empty"));
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
-            let Item::String(s) = node.source else { unreachable!() };
-            Ok(Item::new_string(StringReplace { head: node.head, source: s.into(), orig, repl, longest }))
+            Ok(Item::new_string(StringReplace { head: node.head.clone(), source: Rc::clone(stm), orig, repl, longest }))
         },
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::Two(orig, repl) } =>
-            Ok(Item::new_stream(StreamReplace { head, source: stm.into(), orig, repl })),
-        _ => Err(StreamError::new("expected: string.replace(char, char) or (string, string) or \
-                (list, list) or stream.replace(item, item)", node))
+        (Item::Stream(stm), [orig, repl]) =>
+            Ok(Item::new_stream(StreamReplace { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
+        _ => Err(StreamError::new0("expected: string.replace(char, char) or (string, string) or \
+                (list, list) or stream.replace(item, item)"))
     }
 }
 
-fn read_stream(stm: &(dyn Stream + 'static)) -> Result<Vec<Vec<Char>>, StreamError> {
+fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
     stm.iter()
         .map(|item| {
             check_stop!();
             match item? {
                 Item::Char(ch) => Ok(vec![ch]),
                 Item::String(s) => s.listout(),
-                item => Err(StreamError::new(format!("expected character or string, found {item:?}"), stm.clone_item()))
+                _item => Err(StreamError::new0("expected character or string"))
             }})
         .collect()
 }
 
-#[derive(Clone)]
 struct StringReplace {
     head: Head,
-    source: BoxedStream<Char>,
+    source: Rc<dyn Stream<Char>>,
     orig: Vec<Vec<Char>>,
     repl: Vec<Vec<Char>>,
     longest: usize,
@@ -117,11 +113,10 @@ impl Iterator for StringReplaceIter<'_> {
                     self.queued = None;
                 }
             }
-            if self.cache.len() == self.longest {
-                if let Some(item) = self.cache.pop_front() {
+            if self.cache.len() == self.longest
+                && let Some(item) = self.cache.pop_front() {
                     return Some(Ok(item));
                 }
-            }
             if let Some(item) = self.source.next() {
                 self.cache.push_back(iter_try_expr!(item));
                 'a: for (patt, repl) in self.orig.iter().zip(self.repl.iter()) {
@@ -152,10 +147,9 @@ impl SIterator<Char> for StringReplaceIter<'_> {
     }
 }
 
-#[derive(Clone)]
 struct StreamReplace {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     orig: Item,
     repl: Item,
 }

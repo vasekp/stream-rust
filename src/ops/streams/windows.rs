@@ -2,41 +2,33 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_windows(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_nth_arg(0, env)?.eval_source(env)?;
-    match node {
-        RNodeS { source: Item::Stream(_), args: RArgs::One(Expr::Imm(Item::Number(ref size))), .. } => {
-            let size = try_with!(node, check_win_size(size)?);
-            let Item::Stream(stm) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size, body: None, env: env.clone()}))
-        },
-        RNodeS { source: Item::Stream(_), args: RArgs::Two(Expr::Imm(Item::Number(ref size)), Expr::Eval(_)), .. } => {
-            let size = try_with!(node, check_win_size(size)?);
-            let RArgs::Two(_, Expr::Eval(body)) = node.args else { unreachable!() };
-            let Item::Stream(stm) = node.source else { unreachable!() };
-            Ok(Item::new_stream(Windows{head: node.head, source: stm.into(), size, body: Some(body), env: env.clone()}))
-        },
-        _ => Err(StreamError::new("expected: source.windows(size) or source.windows(size, func)", node))
-    }
+fn eval_windows(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let (size, body) = match &node.args[..] {
+        [size] => (size, None),
+        [size, Expr::Eval(body)] => (size, Some(body)),
+        _ => return Err(StreamError::new0("expected: source.windows(size) or source.windows(size, func)"))
+    };
+    let size = check_win_size(size.eval(env)?.as_num()?)?;
+    Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body: body.cloned(), env: env.clone()}))
 }
 
-fn check_win_size(size: &Number) -> Result<usize, BaseError> {
+fn check_win_size(size: &Number) -> Result<usize, StreamError> {
     if size.is_negative() {
-        return Err("size must be positive".into());
+        return Err(StreamError::new0("size must be positive"));
     }
     match size.try_into() {
         Ok(size @ 2..) => Ok(size),
-        Ok(0..=1) => Err("size must be at least 2".into()),
-        _ => Err("size too large".into())
+        Ok(0..=1) => Err(StreamError::new0("size must be at least 2")),
+        _ => Err(StreamError::new0("size too large"))
     }
 }
 
-#[derive(Clone)]
 struct Windows {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     size: usize,
-    body: Option<Node>,
+    body: Option<Rc<Node>>,
     env: Env,
 }
 
@@ -47,7 +39,7 @@ impl Describe for Windows {
             DescribeBuilder::new_with_env(&self.head, env, &self.env)
                 .set_source(&self.source)
                 .push_arg(&self.size)
-                .push_arg(body)
+                .push_arg(&**body)
                 .finish(prec)
         } else {
             DescribeBuilder::new(&self.head, env)
@@ -67,7 +59,7 @@ impl Stream for Windows {
             Ok(deque) => deque,
             Err(err) => return Box::new(std::iter::once(Err(err)))
         };
-        Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_ref(), env: &self.env})
+        Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_deref(), env: &self.env})
     }
 
     fn len(&self) -> Length {

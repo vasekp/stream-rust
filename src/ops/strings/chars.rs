@@ -1,20 +1,15 @@
 use crate::base::*;
 
-#[derive(Clone)]
-struct Chars {
-    head: Head,
-    source: BoxedStream<Char>
+fn eval_chars(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_char_stream()?;
+    Ok(Item::new_stream(Chars{head: node.head, source: stm}))
 }
 
-impl Chars {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        try_with!(node, node.check_no_args()?);
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode.source {
-            Item::String(stm) => Ok(Item::new_stream(Chars{head: rnode.head, source: stm.into()})),
-            ref item => Err(StreamError::new(format!("expected string, found {:?}", item), rnode))
-        }
-    }
+struct Chars {
+    head: Head,
+    source: Rc<dyn Stream<Char>>
 }
 
 impl Describe for Chars {
@@ -35,22 +30,16 @@ impl Stream for Chars {
     }
 }
 
-
-#[derive(Clone)]
-struct Str {
-    head: Head,
-    source: BoxedStream
+fn eval_str(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_stream()?;
+    Ok(Item::new_string(Str{head: node.head, source: stm}))
 }
 
-impl Str {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        try_with!(node, node.check_no_args()?);
-        let rnode = node.eval_all(env)?.resolve_source()?;
-        match rnode.source {
-            Item::Stream(stm) => Ok(Item::new_string(Str{head: rnode.head, source: stm.into()})),
-            ref item => Err(StreamError::new(format!("expected stream, found {:?}", item), rnode))
-        }
-    }
+struct Str {
+    head: Head,
+    source: Rc<dyn Stream>
 }
 
 impl Describe for Str {
@@ -97,14 +86,14 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("chars", Chars::eval, r#"
+    symbols.insert("chars", eval_chars, r#"
 Splits `string` into a stream of characters.
 = string.?
 > "Hello".? => ['H', 'e', 'l', 'l', 'o']
 > "Hello".?:ord => [8, 5, 12, 12, 15]
 : string
 "#);
-    symbols.insert("string", Str::eval, r#"
+    symbols.insert("string", eval_str, r#"
 Turns a stream of characters into a string.
 * Functionally equivalent to `?cat` but optimized for this purpose.
 = stream.?

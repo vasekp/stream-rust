@@ -1,27 +1,26 @@
 use crate::base::*;
 
-fn eval_splitby(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_source(env)?;
-    match node {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(cond)) } =>
-            Ok(Item::new_stream(SplitBy{head, source: stm.into(), cond: cond.eval_all(env)?, env: env.clone()})),
-        RNodeS { head, source: Item::String(stm), args: RArgs::One(Expr::Eval(cond)) } =>
-            Ok(Item::new_stream(SplitBy{head, source: stm.into(), cond: cond.eval_all(env)?, env: env.clone()})),
-        _ => Err(StreamError::new("expected: stream.splitby{condition}", node))
+fn eval_splitby(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let [Expr::Eval(cond)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: stream.while{cond}"))
+    };
+    match node.source_checked()?.eval(env)? {
+        Item::Stream(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
+        Item::String(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
+        _ => Err(StreamError::new0("expected: stream.splitby{condition}"))
     }
 }
 
-#[derive(Clone)]
 struct SplitBy<I: ItemType> {
     head: Head,
-    source: BoxedStream<I>,
-    cond: ENode,
+    source: Rc<dyn Stream<I>>,
+    cond: Node<Item>,
     env: Env
 }
 
 struct SplitByIter<'node, I: ItemType> {
     source: Box<dyn SIterator<I> + 'node>,
-    cond: &'node ENode,
+    cond: &'node Node<Item>,
     env: &'node Env,
     done: bool,
 }

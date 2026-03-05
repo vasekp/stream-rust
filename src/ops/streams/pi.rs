@@ -1,18 +1,23 @@
 use crate::base::*;
 
-fn eval_pi(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_no_source()?;
-    match &rnode.args {
-        RArgs::Zero => Ok(Item::new_stream(Pi{head: rnode.head, radix: None})),
-        RArgs::One(Item::Number(radix)) if *radix >= Number::from(2) => {
-            if let Ok(radix) = u32::try_from(radix) {
-                Ok(Item::new_stream(Pi{head: rnode.head, radix: Some(radix)}))
-            } else {
-                Err(StreamError::new("base too large", rnode))
+fn eval_pi(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_source()?;
+    let radix = match &node.args[..] {
+        [] => None,
+        [Item::Number(radix)] => {
+            if *radix < Number::from(2) {
+                return Err(StreamError::new0("invalid base"));
             }
-        }
-        _ => Err(StreamError::new("expected: pi or pi(radix)", rnode))
-    }
+            if let Ok(radix) = u32::try_from(radix) {
+                Some(radix)
+            } else {
+                return Err(StreamError::new0("base too large"));
+            }
+        },
+        _ => return Err(StreamError::new0("expected: pi or pi(radix)"))
+    };
+    Ok(Item::new_stream(Pi{head: node.head.clone(), radix}))
 }
 
 #[derive(Clone)]

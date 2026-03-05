@@ -2,37 +2,37 @@ use crate::base::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
-fn eval_rnd(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let node = node.eval_all(env)?.resolve_source()?;
-    match node {
-        RNodeS { source: Item::Stream(stm), args: RArgs::One(Item::Number(seed)), head } => {
-            let len = stm.try_count()?;
-            if len.is_zero() {
-                return Err(StreamError::new("stream is empty", Item::Stream(stm)));
-            }
-            let mut hasher = DefaultHasher::default();
-            Hash::hash(&seed, &mut hasher);
-            Hash::hash(&b':', &mut hasher);
-            let digits = len.to_be_bytes();
-            let top_digit = digits[0];
-            let max_quot = if digits.len() == 1 { u8::MAX / top_digit }
-                else if top_digit == u8::MAX { 1 }
-                else { u8::MAX / (top_digit + 1) };
-            Ok(Item::new_stream(RndStream {
-                source: stm.into(),
-                head, seed, hasher,
-                num_digits: digits.len(),
-                cutoff: max_quot * &len,
-                len
-            }))
-        },
-        _ => Err(StreamError::new("expected: stream.rnd(seed)", node))
+fn eval_rnd(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    let stm = node.source_checked()?.to_stream()?;
+    let [Item::Number(seed)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: stream.rnd(seed)"));
+    };
+    let len = stm.try_count()?;
+    if len.is_zero() {
+        return Err(StreamError::new0("stream is empty"));
     }
+    let mut hasher = DefaultHasher::default();
+    Hash::hash(seed, &mut hasher);
+    Hash::hash(&b':', &mut hasher);
+    let digits = len.to_be_bytes();
+    let top_digit = digits[0];
+    let max_quot = if digits.len() == 1 { u8::MAX / top_digit }
+        else if top_digit == u8::MAX { 1 }
+        else { u8::MAX / (top_digit + 1) };
+    Ok(Item::new_stream(RndStream {
+        source: stm,
+        head: node.head.clone(),
+        seed: seed.clone(),
+        hasher,
+        num_digits: digits.len(),
+        cutoff: max_quot * &len,
+        len
+    }))
 }
 
-#[derive(Clone)]
 struct RndStream {
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     head: Head,
     seed: Number,
     hasher: DefaultHasher,

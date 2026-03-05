@@ -2,21 +2,21 @@ use crate::base::*;
 
 pub trait ItemType: Clone + Describe + Into<Item> + 'static {
     fn from_vec(vec: Vec<Self>) -> Item;
-    fn from_box(stm: Box<dyn Stream<Self>>) -> Item;
-    fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError>;
+    fn from_rc(stm: Rc<dyn Stream<Self>>) -> Item;
+    fn listout(stm: &Rc<dyn Stream<Self>>) -> Result<Vec<Self>, StreamError>;
     fn try_eq(&self, other: &Self) -> Result<bool, StreamError>;
 }
 
 impl ItemType for Item {
     fn from_vec(vec: Vec<Item>) -> Item {
-        Item::Stream(Box::new(List::from(vec)))
+        Item::new_stream(List::from(vec))
     }
 
-    fn from_box(stm: Box<dyn Stream<Item>>) -> Item {
+    fn from_rc(stm: Rc<dyn Stream<Item>>) -> Item {
         Item::Stream(stm)
     }
 
-    fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
+    fn listout(stm: &Rc<dyn Stream<Self>>) -> Result<Vec<Self>, StreamError> {
         stm.listout_impl()
     }
 
@@ -27,14 +27,14 @@ impl ItemType for Item {
 
 impl ItemType for Char {
     fn from_vec(vec: Vec<Char>) -> Item {
-        Item::String(Box::new(LiteralString::from(vec)))
+        Item::new_string(LiteralString::from(vec))
     }
 
-    fn from_box(stm: Box<dyn Stream<Char>>) -> Item {
+    fn from_rc(stm: Rc<dyn Stream<Char>>) -> Item {
         Item::String(stm)
     }
 
-    fn listout(stm: &(dyn Stream<Self> + 'static)) -> Result<Vec<Self>, StreamError> {
+    fn listout(stm: &Rc<dyn Stream<Self>>) -> Result<Vec<Self>, StreamError> {
         stm.listout_impl()
     }
 

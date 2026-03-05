@@ -7,7 +7,7 @@ use std::collections::HashMap;
 /// register of defined symbols.
 pub struct Session {
     hist: Vec<Item>,
-    vars: HashMap<String, Rhs>,
+    vars: HashMap<&'static str, Rhs>,
     env: Env,
     counter: usize,
 }
@@ -27,59 +27,77 @@ impl Session {
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
     pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
         stop::reset_stop();
-        match expr {
-            Expr::Eval(Node { head: Head::Oper(op), source: None, mut args }) if op == "=" => {
-                let rhs = args.pop().expect("= should have at least 2 args");
-                let rhs = match self.apply_context(rhs)? {
-                    Expr::Eval(Node { head: Head::Block(block), source: None, args }) if args.is_empty()
-                        => Rhs::Function(*block),
-                    expr => Rhs::Value(expr.eval(&self.env)?)
-                };
-                let mut names = Vec::with_capacity(args.len());
-                for arg in args {
-                    let name = match arg {
-                        Expr::Eval(Node { head: Head::Symbol(ref sym), source: None, ref args })
-                            if args.is_empty() && sym.starts_with('$') => {
+        match &expr {
+            Expr::Eval(node) => match &**node {
+                Node { head: Head::Oper("="), source: None, args } => {
+                    let Some((rhs, lhs)) = args.split_last() else { unreachable!() };
+                    let rhs = self.apply_context(rhs.clone())?;
+                    let rhs = if let Expr::Eval(node) = &rhs
+                        && node.source.is_none() && node.args.is_empty()
+                        && let Head::Block(block) = &node.head {
+                            Rhs::Function(block.clone())
+                    } else {
+                        Rhs::Value(rhs.eval(&self.env)?)
+                    };
+                    let mut names = Vec::with_capacity(lhs.len());
+                    for arg in lhs {
+                        let name = if let Expr::Eval(node) = arg
+                            && node.source.is_none() && node.args.is_empty()
+                            && let Head::Symbol(sym) = &node.head
+                            && sym.starts_with('$') {
                                 if sym.as_bytes()[1].is_ascii_digit() {
-                                    return Err(StreamError::new("reserved variable name", arg));
+                                    return Err(StreamError::new0("reserved variable name"));
                                 } else {
-                                    sym
+                                    *sym
                                 }
-                            },
-                        _ => return Err(StreamError::new("expected global variable ($name)", arg))
-                    };
-                    names.push(name.to_owned());
-                }
-                let last = names.pop();
-                for name in &names {
-                    self.vars.insert(name.to_owned(), rhs.clone());
-                }
-                if let Some(name) = last {
-                    self.vars.insert(name.to_owned(), rhs);
-                    names.push(name);
-                }
-                self.counter += 1;
-                Ok(SessionUpdate::Globals(names))
-            },
-            Expr::Eval(Node { head: Head::Symbol(sym), source: None, args }) if sym == "clear" => {
-                let mut names = Vec::with_capacity(args.len());
-                let mut updated = Vec::with_capacity(args.len());
-                for arg in args {
-                    let name = match arg {
-                        Expr::Eval(Node { head: Head::Symbol(sym), source: None, args })
-                            if args.is_empty() && sym.starts_with('$')
-                        => sym,
-                        _ => return Err(StreamError::new("expected global variable ($name)", arg))
-                    };
-                    names.push(name);
-                }
-                for name in names {
-                    if self.vars.remove(&name).is_some() {
-                        updated.push(name);
+                            } else {
+                                return Err(StreamError::new0("expected global variable ($name)"));
+                            };
+                        names.push(name);
                     }
+                    let last = names.pop();
+                    for name in &names {
+                        self.vars.insert(name, rhs.clone());
+                    }
+                    if let Some(name) = last {
+                        self.vars.insert(name, rhs);
+                        names.push(name);
+                    }
+                    self.counter += 1;
+                    Ok(SessionUpdate::Globals(names))
+                },
+                Node { head: Head::Symbol("clear"), source: None, args } => {
+                    let mut names = Vec::with_capacity(args.len());
+                    let mut updated = Vec::with_capacity(args.len());
+                    for arg in args {
+                        let name = if let Expr::Eval(node) = arg
+                            && node.source.is_none() && node.args.is_empty()
+                            && let Head::Symbol(sym) = &node.head
+                            && sym.starts_with('$') {
+                                if sym.as_bytes()[1].is_ascii_digit() {
+                                    return Err(StreamError::new0("reserved variable name"));
+                                } else {
+                                    *sym
+                                }
+                            } else {
+                                return Err(StreamError::new0("expected global variable ($name)"));
+                            };
+                        names.push(name);
+                    }
+                    for name in names {
+                        if self.vars.remove(name).is_some() {
+                            updated.push(name);
+                        }
+                    }
+                    self.counter += 1;
+                    Ok(SessionUpdate::Globals(updated))
+                },
+                _ => {
+                    let item = self.apply_context(expr)?.eval(&self.env)?;
+                    self.hist.push(item);
+                    self.counter += 1;
+                    Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
                 }
-                self.counter += 1;
-                Ok(SessionUpdate::Globals(updated))
             },
             _ => {
                 let item = self.apply_context(expr)?.eval(&self.env)?;
@@ -90,52 +108,53 @@ impl Session {
         }
     }
 
-    fn apply_context(&mut self, expr: Expr) -> Result<Expr, StreamError> {
-        expr.replace(&|sub_expr| {
-            use std::ops::ControlFlow;
+    fn apply_context(&self, expr: Expr) -> Result<Expr, StreamError> {
+        use std::borrow::Cow;
+        let res = expr.replace(&|sub_expr| {
             match sub_expr {
                 Expr::Repl(Subst::History(index)) => match index {
-                    Some(ix @ 1..) => Ok(ControlFlow::Break(try_with!(sub_expr,
+                    Some(ix @ 1..) => Ok(Cow::Owned(
                         self.hist.get(ix - 1)
                             .cloned()
                             .map(Expr::from)
-                            .ok_or(format!("history item %{ix} does not exist"))?))),
-                    Some(0) => Err(StreamError::new("invalid history index", sub_expr)),
-                    None => Ok(ControlFlow::Break(try_with!(sub_expr,
+                            .ok_or(StreamError::new0(format!("history item %{ix} does not exist")))?)),
+                    Some(0) => Err(StreamError::new0("invalid history index")),
+                    None => Ok(Cow::Owned(
                         self.hist.last()
                             .cloned()
                             .map(Expr::from)
-                            .ok_or("history is empty")?))),
+                            .ok_or(StreamError::new0("history is empty"))?)),
                 },
                 Expr::Repl(Subst::Counter) =>
-                    Ok(ControlFlow::Break(Expr::new_number(self.counter))),
-                Expr::Eval(mut node) => {
-                    match node {
-                        Node { head: Head::Symbol(ref sym), ref mut source, ref mut args } if sym.starts_with('$') => {
+                    Ok(Cow::Owned(Expr::new_number(self.counter))),
+                Expr::Eval(node) => {
+                    match &**node {
+                        Node { head: Head::Symbol(sym), source, args } if sym.starts_with('$') => {
                             match self.vars.get(sym) {
                                 Some(Rhs::Value(item)) => {
                                     if source.is_some() || !args.is_empty() {
-                                        Err(StreamError::new("no source or arguments allowed", node))
+                                        Err(StreamError::new0("no source or arguments allowed"))
                                     } else {
-                                        Ok(ControlFlow::Break(Expr::Imm(item.clone())))
+                                        Ok(Cow::Owned(Expr::Imm(item.clone())))
                                     }
                                 },
                                 Some(Rhs::Function(block)) => {
-                                    Ok(ControlFlow::Break(Expr::Eval(Node {
-                                        head: Expr::new_node("global", vec![block.clone()]).into(),
-                                        source: source.take(),
-                                        args: std::mem::take(args)
-                                    })))
+                                    Ok(Cow::Owned(Expr::new_node(
+                                        Expr::new_node("global", None, vec![block.clone()]),
+                                        source.clone(),
+                                        args.clone()
+                                    )))
                                 },
-                                None => Err(StreamError::new("variable not defined", node))
+                                None => Err(StreamError::new0("variable not defined"))
                             }
                         },
-                        _ => Ok(ControlFlow::Continue(node))
+                        _ => Ok(Cow::Borrowed(sub_expr))
                     }
                 },
-                sub_expr @ (Expr::Imm(_) | Expr::Repl(_)) => Ok(ControlFlow::Break(sub_expr))
+                sub_expr => Ok(Cow::Borrowed(sub_expr))
             }
-        })
+        });
+        Ok(res?.into_owned())
     }
 
     pub fn history(&self) -> &Vec<Item> {
@@ -146,11 +165,11 @@ impl Session {
         self.env.tracer = tracer;
     }
 
-    pub fn vars(&self) -> &HashMap<String, Rhs> {
+    pub fn vars(&self) -> &HashMap<&'static str, Rhs> {
         &self.vars
     }
 
-    pub fn vars_mut(&mut self) -> &mut HashMap<String, Rhs> {
+    pub fn vars_mut(&mut self) -> &mut HashMap<&'static str, Rhs> {
         &mut self.vars
     }
 }
@@ -164,7 +183,7 @@ impl Default for Session {
 #[cfg_attr(test, derive(Debug, PartialEq))]
 pub enum SessionUpdate<'a> {
     History(usize, &'a Item),
-    Globals(Vec<String>),
+    Globals(Vec<&'static str>),
 }
 
 impl<'a> SessionUpdate<'a> {
@@ -185,9 +204,9 @@ mod tests {
     #[test]
     fn test_session() {
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a=$b=10").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into(), "$b".into()]));
-        assert_eq!(sess.process(parse("$a=$a+$b").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
-        assert_eq!(sess.process(parse("clear($b)").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$b".into()]));
+        assert_eq!(sess.process(parse("$a=$b=10").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a", "$b"]));
+        assert_eq!(sess.process(parse("$a=$a+$b").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
+        assert_eq!(sess.process(parse("clear($b)").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$b"]));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(20)));
         assert!(sess.process(parse("$b").unwrap()).is_err());
         assert!(sess.process(parse("$c={$c}").unwrap()).is_err());
@@ -198,7 +217,7 @@ mod tests {
         assert_eq!(sess.process(parse("% + %1").unwrap()).unwrap(), SessionUpdate::History(3, &Item::new_number(10100)));
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
         assert_eq!(sess.process(parse("5.$a(6,7)").unwrap()).unwrap().unwrap(), &Item::new_number(47));
         assert_eq!(sess.process(parse("{5.$a(6,7)}").unwrap()).unwrap().unwrap(), &Item::new_number(47));
         assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
@@ -206,7 +225,7 @@ mod tests {
         assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
         assert_eq!(sess.process(parse("with(a=1,{a})").unwrap()).unwrap().unwrap(), &Item::new_number(1));
         assert!(sess.process(parse("with(a=1,$a)").unwrap()).is_err());
         assert!(sess.process(parse("$1=1").unwrap()).is_err());
@@ -214,7 +233,7 @@ mod tests {
         let mut sess = Session::new();
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(1));
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(2));
-        assert_eq!(sess.process(parse("$a=$#").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a".into()]));
+        assert_eq!(sess.process(parse("$a=$#").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(4));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));

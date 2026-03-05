@@ -2,30 +2,32 @@ use crate::base::*;
 
 use std::cell::RefCell;
 
-#[derive(Clone)]
+fn eval_self(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let [Expr::Eval(body)] = &node.args[..] else {
+        return Err(StreamError::new0("expected: self({body})"));
+    };
+    let pre = match &node.source {
+        None => None,
+        Some(source) => Some(source.eval(env)?.to_stream()?),
+    };
+    Ok(Item::new_stream(SelfRef{
+        pre,
+        head: node.head.clone(),
+        body: Rc::clone(body),
+        env: env.clone()
+    }))
+}
+
+
 struct SelfRef {
     head: Head,
-    body: Node,
+    body: Rc<Node>,
     env: Env,
-    pre: Option<BoxedStream>,
+    pre: Option<Rc<dyn Stream>>,
 }
 
 impl SelfRef {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        match node.resolve() {
-            RNode::NoSource(RNodeNS { head, args: RArgs::One(Expr::Eval(body)) }) =>
-                Ok(Item::new_stream(SelfRef{
-                    pre: None, head, body, env: env.clone()})),
-            RNode::Source(RNodeS { source, head, args: RArgs::One(Expr::Eval(body)) }) => {
-                let Item::Stream(stm) = source.eval(env)? else { todo!() };
-                Ok(Item::new_stream(SelfRef{
-                    pre: Some(stm.into()), head, body, env: env.clone()}))
-            },
-            node => Err(StreamError::new("expected: self({body})", node))
-        }
-    }
-
-    fn eval_real(&self) -> Result<(Box<dyn Stream>, Rc<CacheHistory>), StreamError> {
+    fn eval_real(&self) -> Result<(Rc<dyn Stream>, Rc<CacheHistory>), StreamError> {
         let hist = Rc::new(RefCell::new(Vec::new()));
         let item = self.body.clone()
             .with_source(Expr::new_stream(BackRef {
@@ -34,8 +36,7 @@ impl SelfRef {
             .eval(&self.env)?;
         let stm = match item {
             Item::Stream(stm) => stm,
-            _ => return Err(StreamError::new(format!("expected stream, found {:?}", item), 
-                self.body.clone()))
+            _ => return Err(StreamError::new0("expected stream"))
         };
         Ok((stm, hist))
     }
@@ -44,7 +45,7 @@ impl SelfRef {
 impl Describe for SelfRef {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
-            .push_arg(&self.body)
+            .push_arg(&*self.body)
             .finish(prec)
     }
 }
@@ -88,7 +89,6 @@ impl Iterator for SelfRefIter<'_> {
 
 impl SIterator for SelfRefIter<'_> { }
 
-#[derive(Clone)]
 struct BackRef {
     parent: Weak<CacheHistory>
 }
@@ -108,8 +108,7 @@ impl Stream for BackRef {
     fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         match Weak::upgrade(&self.parent) {
             Some(rc) => Box::new(BackRefIter{vec: rc, pos: 0}),
-            None => Box::new(std::iter::once(Err(StreamError::new("back-reference detached from cache", 
-                        Node::new("#", None, vec![])))))
+            None => Box::new(std::iter::once(Err(StreamError::new0("back-reference detached from cache"))))
         }
     }
 
@@ -165,7 +164,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("self", SelfRef::eval, r#"
+    symbols.insert("self", eval_self, r#"
 A stream evaluating `func` on its own output, which is put in place of `#`.
 If `stream` is present, uses its items first to populate the history.
 = ?{func}

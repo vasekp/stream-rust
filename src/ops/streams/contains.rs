@@ -2,9 +2,9 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_contains(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_contains(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_args_nonempty()?);
+    node.check_args_nonempty()?;
     match &node.source {
         Some(Item::Stream(stm)) => {
             let mut queries = node.args.into_iter()
@@ -15,12 +15,11 @@ fn eval_contains(node: Node, env: &Env) -> Result<Item, StreamError> {
                 check_stop!();
                 let elm = elm?;
                 for query in &mut queries {
-                    if let Query::Pending(item) = query {
-                        if elm.try_eq(item)? {
+                    if let Query::Pending(item) = query
+                        && elm.try_eq(item)? {
                             *query = Query::Found;
                             rem -= 1;
                         }
-                    }
                     if rem == 0 { break 'a; }
                 }
             }
@@ -34,13 +33,13 @@ fn eval_contains(node: Node, env: &Env) -> Result<Item, StreamError> {
             }
         },
         Some(Item::String(stm)) => {
-            let mut queries = try_with!(node, node.args.iter()
+            let mut queries = node.args.iter()
                 .map(|item| match item {
-                    Item::Char(ch) => Ok(Query::Pending(vec![ch.clone()])),
+                    Item::Char(ch) => Ok(Query::Pending(vec![*ch])),
                     Item::String(s) if !s.is_empty() => Ok(Query::Pending(s.listout()?)),
-                    item => Err(BaseError::from(format!("expected character or nonempty string, found {:?}", item)))
+                    _item => Err(StreamError::new0("expected character or nonempty string"))
                 })
-                .collect::<Result<Vec<_>, _>>()?);
+                .collect::<Result<Vec<_>, _>>()?;
             let longest = queries.iter()
                 .map(|q| match q { Query::Pending(vec) => vec.len(), _ => unreachable!() })
                 .reduce(std::cmp::max)

@@ -1,17 +1,15 @@
 use crate::base::*;
 
-fn eval_enum(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_all(env)?.resolve_source()?;
-    let RNodeS{head, source: Item::Stream(stm), args: RArgs::Zero} = rnode else {
-        return Err(StreamError::new("expected: stream.enum", rnode));
-    };
-    Ok(Item::new_stream(Enum{head, stream: stm.into()}))
+fn eval_enum(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let stm = node.source_checked()?.to_stream()?;
+    Ok(Item::new_stream(Enum{head: node.head.clone(), stream: stm}))
 }
 
-#[derive(Clone)]
 struct Enum {
     head: Head,
-    stream: BoxedStream,
+    stream: Rc<dyn Stream>,
 }
 
 

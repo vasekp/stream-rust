@@ -1,30 +1,29 @@
 use crate::base::*;
 use std::collections::VecDeque;
 
-#[derive(Clone)]
+fn eval_fold(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let func = if let [Expr::Eval(body)] = &node.args[..]
+        && body.source.is_none() && !body.args.is_empty() {
+            body
+        } else {
+            return Err(StreamError::new0("expected: stream.sortby{function}"));
+        };
+    Ok(Item::new_stream(Fold{head: node.head.clone(), body: func.eval_all(env)?, source: stm, env: env.clone()}))
+}
+
 struct Fold {
     head: Head,
-    body: ENode,
-    source: BoxedStream,
+    body: Node<Item>,
+    source: Rc<dyn Stream>,
     env: Env
 }
 
 struct FoldIter<'node> {
-    body: &'node ENode,
+    body: &'node Node<Item>,
     source: Box<dyn SIterator + 'node>,
     prev: VecDeque<Item>,
     env: &'node Env
-}
-
-fn eval_fold(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let rnode = node.eval_source(env)?;
-    match rnode {
-        RNodeS { head, source: Item::Stream(stm), args: RArgs::One(Expr::Eval(body)) }
-        if body.source.is_none() && !body.args.is_empty() => {
-            Ok(Item::new_stream(Fold{head, body: body.eval_all(env)?, source: stm.into(), env: env.clone()}))
-        },
-        node => Err(StreamError::new("expected: stream.fold({body}(args))", node))
-    }
 }
 
 impl Describe for Fold {

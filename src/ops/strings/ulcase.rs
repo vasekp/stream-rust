@@ -1,24 +1,22 @@
 use crate::base::*;
 
-fn eval_ulcase(node: Node, env: &Env) -> Result<Item, StreamError> {
-    try_with!(node, node.check_no_args()?);
-    let node = node.eval_source(env)?;
+fn eval_ulcase(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_args()?;
     let func = match node.head.as_str() {
         Some("ucase") => Char::to_uppercase,
         Some("lcase") => Char::to_lowercase,
         _ => panic!("ulcase: unhandled head {:?}", node.head)
     };
-    match node.source {
-        Item::Char(ref ch) => Ok(Item::Char(func(ch))),
-        Item::String(s) => Ok(Item::new_string(ULCase{head: node.head, source: s.into(), func})),
-        ref item => Err(StreamError::new(format!("expected character or string, found {:?}", item), node))
+    match node.source_checked()?.eval(env)? {
+        Item::Char(ch) => Ok(Item::Char(func(&ch))),
+        Item::String(s) => Ok(Item::new_string(ULCase{head: node.head.clone(), source: s, func})),
+        _item => Err(StreamError::new0("expected character or string"))
     }
 }
 
-#[derive(Clone)]
 struct ULCase {
     head: Head,
-    source: BoxedStream<Char>,
+    source: Rc<dyn Stream<Char>>,
     func: fn(&Char) -> Char
 }
 

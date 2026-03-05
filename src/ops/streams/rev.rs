@@ -1,23 +1,22 @@
 use crate::base::*;
 
-fn eval_rev(node: Node, env: &Env) -> Result<Item, StreamError> {
-    let enode = node.eval_all(env)?;
-    try_with!(enode, enode.check_no_args()?);
-    let rnode = enode.resolve_source()?;
-    match rnode.source {
-        Item::Stream(stm) => eval_rev_impl(rnode.head, stm),
-        Item::String(stm) => eval_rev_impl(rnode.head, stm),
-        _ => Err(StreamError::new("expected stream or string", rnode))
+fn eval_rev(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    match node.source_checked()? {
+        Item::Stream(stm) => eval_rev_impl(&node.head, stm),
+        Item::String(stm) => eval_rev_impl(&node.head, stm),
+        _ => Err(StreamError::new0("expected stream or string"))
     }
 }
 
-fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<Item, StreamError> {
+fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> Result<Item, StreamError> {
     match source.len() {
         Length::Infinite
             => Err(StreamError::new("input is infinite", Item::from(source))),
         Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) =>
-            Ok(Item::from(Box::new(Rev{head, source: source.into(), length: len})
-                    as Box<dyn Stream<I>>)),
+            Ok(Item::from(Rc::new(Rev{head: head.clone(), source: Rc::clone(source), length: len})
+                    as Rc<dyn Stream<I>>)),
         _ => {
             let mut vec = source.listout()?;
             vec.reverse();
@@ -26,10 +25,9 @@ fn eval_rev_impl<I: ItemType>(head: Head, source: Box<dyn Stream<I>>) -> Result<
     }
 }
 
-#[derive(Clone)]
 pub struct Rev<I: ItemType> {
     head: Head,
-    source: BoxedStream<I>,
+    source: Rc<dyn Stream<I>>,
     length: UNumber
 }
 

@@ -1,32 +1,31 @@
 use crate::base::*;
 
-fn eval_split(node: Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
-    try_with!(node, node.check_args_nonempty()?);
+    node.check_args_nonempty()?;
     match node.source {
         Some(Item::String(_)) => {
-            let sep = try_with!(node, node.args.iter()
+            let sep = node.args.iter() // TODO decorate?
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![ch.to_owned()]),
-                    Item::String(s) if !s.is_empty() => s.listout().map_err(BaseError::from),
-                    _ => Err(BaseError::from(format!("expected character or nonempty string, found {:?}", item)))
+                    Item::String(s) if !s.is_empty() => s.listout(),
+                    _ => Err(StreamError::new0("expected character or nonempty string"))
                 })
                 .map(|res| res.map(LiteralString::from))
-                .collect::<Result<Vec<_>, _>>()?);
+                .collect::<Result<Vec<_>, _>>()?;
             let Some(Item::String(stm)) = node.source else { unreachable!() };
-            Ok(Item::new_stream(SplitString{head: node.head, source: stm.into(), sep}))
+            Ok(Item::new_stream(SplitString{head: node.head, source: stm, sep}))
         },
         Some(Item::Stream(stm)) => {
-            Ok(Item::new_stream(SplitStream{head: node.head, source: stm.into(), sep: node.args}))
+            Ok(Item::new_stream(SplitStream{head: node.head, source: stm, sep: node.args}))
         },
-        _ => Err(StreamError::new("expected: string.split(separators) or stream.split(separators)", node))
+        _ => Err(StreamError::new0("expected: string.split(separators) or stream.split(separators)"))
     }
 }
 
-#[derive(Clone)]
 struct SplitString {
     head: Head,
-    source: BoxedStream<Char>,
+    source: Rc<dyn Stream<Char>>,
     sep: Vec<LiteralString>,
 }
 
@@ -86,10 +85,9 @@ impl SIterator for SplitStringIter<'_> {
     }
 }
 
-#[derive(Clone)]
 struct SplitStream {
     head: Head,
-    source: BoxedStream,
+    source: Rc<dyn Stream>,
     sep: Vec<Item>,
 }
 

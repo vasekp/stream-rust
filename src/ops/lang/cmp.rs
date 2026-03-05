@@ -1,81 +1,75 @@
 use crate::base::*;
 
-#[derive(Clone)]
-struct CmpOp;
+fn eval_cmp(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    let node = node.eval_all(env)?;
+    let func = find_fn(&node.head);
+    node.check_no_source()?;
+    node.check_args_nonempty()?;
+    func(&node.args).map(Item::Bool)
+}
 
-type CmpFunc = fn(&[Item]) -> Result<bool, BaseError>;
+type CmpFunc = fn(&[Item]) -> Result<bool, StreamError>;
 
-impl CmpOp {
-    fn eval(node: Node, env: &Env) -> Result<Item, StreamError> {
-        let node = node.eval_all(env)?;
-        let func = Self::find_fn(&node.head);
-        try_with!(node, node.check_no_source()?);
-        try_with!(node, node.check_args_nonempty()?);
-        let res = try_with!(node, func(&node.args)?);
-        Ok(Item::Bool(res))
+fn find_fn(head: &Head) -> CmpFunc {
+    match head.as_str().expect("head should be symbol or oper") {
+        "==" => eq_func,
+        "equal" => eq_func,
+        "<>" => ineq_func,
+        "<" => lt_func,
+        ">" => gt_func,
+        "<=" => le_func,
+        ">=" => ge_func,
+        op => panic!("cmp: unhandled op '{op}'")
     }
+}
 
-    fn find_fn(head: &Head) -> CmpFunc {
-        match head.as_str().expect("head should be symbol or oper") {
-            "==" => Self::eq_func,
-            "equal" => Self::eq_func,
-            "<>" => Self::ineq_func,
-            "<" => Self::lt_func,
-            ">" => Self::gt_func,
-            "<=" => Self::le_func,
-            ">=" => Self::ge_func,
-            op => panic!("cmp: unhandled op '{op}'")
+fn eq_func(items: &[Item]) -> Result<bool, StreamError> {
+    let mut iter = items.iter();
+    let first = iter.next().unwrap(); // args checked to be nonempty in eval()
+    for item in iter {
+        if !item.try_eq(first)? {
+            return Ok(false)
         }
     }
+    Ok(true)
+}
 
-    fn eq_func(items: &[Item]) -> Result<bool, BaseError> {
-        let mut iter = items.iter();
-        let first = iter.next().unwrap(); // args checked to be nonempty in eval()
-        for item in iter {
-            if !item.try_eq(first)? {
-                return Ok(false)
-            }
+fn ineq_func(items: &[Item]) -> Result<bool, StreamError> {
+    match items {
+        [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
+        _ => Err(StreamError::new0("exactly 2 arguments required"))
+    }
+}
+
+fn lt_func(items: &[Item]) -> Result<bool, StreamError> {
+    ineq_chain(items, Number::lt)
+}
+
+fn gt_func(items: &[Item]) -> Result<bool, StreamError> {
+    ineq_chain(items, Number::gt)
+}
+
+fn le_func(items: &[Item]) -> Result<bool, StreamError> {
+    ineq_chain(items, Number::le)
+}
+
+fn ge_func(items: &[Item]) -> Result<bool, StreamError> {
+    ineq_chain(items, Number::ge)
+}
+
+fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> Result<bool, StreamError> {
+    let mut iter = items.iter();
+    let mut prev = iter.next()
+        .unwrap() // args checked to be nonempty in eval()
+        .as_num()?;
+    for item in iter {
+        let next = item.as_num()?;
+        if !cmp(prev, next) {
+            return Ok(false);
         }
-        Ok(true)
+        prev = next;
     }
-
-    fn ineq_func(items: &[Item]) -> Result<bool, BaseError> {
-        match items {
-            [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b).map_err(BaseError::from),
-            _ => Err("exactly 2 arguments required".into())
-        }
-    }
-
-    fn lt_func(items: &[Item]) -> Result<bool, BaseError> {
-        Self::ineq_chain(items, Number::lt)
-    }
-
-    fn gt_func(items: &[Item]) -> Result<bool, BaseError> {
-        Self::ineq_chain(items, Number::gt)
-    }
-
-    fn le_func(items: &[Item]) -> Result<bool, BaseError> {
-        Self::ineq_chain(items, Number::le)
-    }
-
-    fn ge_func(items: &[Item]) -> Result<bool, BaseError> {
-        Self::ineq_chain(items, Number::ge)
-    }
-
-    fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> Result<bool, BaseError> {
-        let mut iter = items.iter();
-        let mut prev = iter.next()
-            .unwrap() // args checked to be nonempty in eval()
-            .as_num()?;
-        for item in iter {
-            let next = item.as_num()?;
-            if !cmp(prev, next) {
-                return Ok(false);
-            }
-            prev = next;
-        }
-        Ok(true)
-    }
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -120,12 +114,8 @@ mod tests {
     }
 }
 
-fn eval_assign(node: Node, _env: &Env) -> Result<Item, StreamError> {
-    Err(StreamError::new("assignment not possible here, use == for comparisons", node))
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("==", CmpOp::eval, r#"
+    symbols.insert("==", eval_cmp, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
 = op1 == op2 == ...
 > 1+1 ? 2 => true
@@ -142,7 +132,7 @@ Checks for equality of all `input`s: evaluates to `true` if they all are equal, 
 : <<=
 : >>=
 "#);
-    symbols.insert("equal", CmpOp::eval, r#"
+    symbols.insert("equal", eval_cmp, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
 The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 = ?(input1, input2, ...)
@@ -153,7 +143,7 @@ The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 : or
 : not
 "#);
-    symbols.insert("<>", CmpOp::eval, r#"
+    symbols.insert("<>", eval_cmp, r#"
 Checks for inequality of `op1` and `op2`: evaluates to `false` if they all are equal, `true` otherwise.
 = op1 ? op2
 > 0 ? "0" => true
@@ -163,7 +153,7 @@ Checks for inequality of `op1` and `op2`: evaluates to `false` if they all are e
 : ==
 : !
 "#);
-    symbols.insert("<", CmpOp::eval, r#"
+    symbols.insert("<", eval_cmp, r#"
 Evaluates to `true` if each number is strictly less than the next.
 = op1 ? op2 ? ...
 > 10 ? 11 => true
@@ -175,7 +165,7 @@ Evaluates to `true` if each number is strictly less than the next.
 : <>
 : <<
 "#);
-    symbols.insert(">", CmpOp::eval, r#"
+    symbols.insert(">", eval_cmp, r#"
 Evaluates to `true` if each number is strictly greater than the next.
 = op1 ? op2 ? ...
 > 11 ? 10 => true
@@ -187,7 +177,7 @@ Evaluates to `true` if each number is strictly greater than the next.
 : <>
 : >>
 "#);
-    symbols.insert("<=", CmpOp::eval, r#"
+    symbols.insert("<=", eval_cmp, r#"
 Evaluates to `true` if each number is less than or equal to the next.
 = op1 ? op2 ? ...
 > 10 ? 11 => true
@@ -199,7 +189,7 @@ Evaluates to `true` if each number is less than or equal to the next.
 : <>
 : <<=
 "#);
-    symbols.insert(">=", CmpOp::eval, r#"
+    symbols.insert(">=", eval_cmp, r#"
 Evaluates to `true` if each number is greater than or equal to the next.
 = op1 ? op2 ? ...
 > 11 ? 10 => true
@@ -210,15 +200,5 @@ Evaluates to `true` if each number is greater than or equal to the next.
 : ==
 : <>
 : >>=
-"#);
-    symbols.insert("=", eval_assign, r#"
-Assigns `value` to `name`.
-This can only be used for local assignments using `?with` or for global variables. Use `==` for comparison.
-= name = variable
-> 10 = 11 => !can not assign to 10
-> a = 10 => !can only assign to global symbols
-> ?with(a = 10, a) => 10
-: ==
-: with
 "#);
 }
