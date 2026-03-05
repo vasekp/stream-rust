@@ -5,14 +5,12 @@ mod enode;
 mod link;
 mod head;
 mod checks;
-mod rnode;
 mod db;
 
 pub(crate) use enode::ENode;
 pub use link::Link;
 pub(crate) use checks::Checks;
 pub use head::{Head, LangItem};
-pub(crate) use rnode::*;
 pub(crate) use db::DescribeBuilder;
 
 #[cfg(test)]
@@ -82,17 +80,6 @@ impl Node {
             .map(|x| x.eval(env))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(ENode{head: self.head.clone(), source, args})
-    }
-
-    pub(crate) fn eval_source(&self, env: &Env) -> Result<RNodeS<Item, Expr>, StreamError> {
-        match &self.source {
-            Some(source) => Ok(RNodeS {
-                head: self.head.clone(),
-                source: source.eval(env)?,
-                args: self.args.clone().into(),
-            }),
-            None => Err(StreamError::new0("source required"))
-        }
     }
 
     pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
