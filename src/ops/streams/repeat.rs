@@ -5,7 +5,7 @@ fn eval_repeat(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let item = node.source_checked()?;
     let count = match &node.args[..] {
         [] => None,
-        [Item::Number(count)] => Some(count.try_into().map_err(|_| StreamError::new0("count can't be negative"))?),
+        [Item::Number(count)] => Some(count.try_unsign()?),
         _ => return Err(StreamError::new0("expected one of: source.repeat(), source.repeat(count)"))
     };
     match (&item, count.as_ref().and_then(|x| u32::try_from(x).ok())) {

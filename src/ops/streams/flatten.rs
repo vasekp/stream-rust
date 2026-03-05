@@ -5,7 +5,7 @@ fn eval_flatten(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let stm = node.source_checked()?.to_stream()?;
     let depth = match &node.args[..] {
         [] => None,
-        [Item::Number(depth)] => Some(depth.try_into().map_err(|_| StreamError::new0("can't be negative"))?),
+        [Item::Number(depth)] => Some(depth.try_unsign()?),
         _ => return Err(StreamError::new0("expected: stream.flatten or stream.flatten(depth)"))
     };
     Ok(Item::new_stream(Flatten { source: stm, head: node.head.clone(), depth }))

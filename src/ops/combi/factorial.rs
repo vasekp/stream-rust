@@ -8,26 +8,15 @@ fn eval_factorial(node: &Node, env: &Env) -> Result<Item, StreamError> {
         (None, [Item::Number(x)]) => x,
         _ => return Err(StreamError::new0("expected: number.factorial or factorial(number)"))
     };
-    if x.is_negative() {
-        return Err(StreamError::new0("input can't be negative"));
-    }
-    let Ok(x) = x.try_into() else {
-        return Err(StreamError::new0("input too large"));
-    };
-    Ok(Item::new_number(factorial(x)))
+    Ok(Item::new_number(factorial(x.try_cast()?)))
 }
 
 fn eval_binom(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
-    let [Item::Number(n), Item::Number(k)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: binom(n, k)"));
-    };
-    if n.is_negative() | k.is_negative() {
-        return Err(StreamError::new0("input can't be negative"));
-    }
-    let (Ok(n), Ok(k)) = (n.try_into(), k.try_into()) else {
-        return Err(StreamError::new0("input too large"));
+    let (n, k) = match &node.args[..] {
+        [Item::Number(n), Item::Number(k)] => (n.try_cast()?, k.try_cast()?),
+        _ => return Err(StreamError::new0("expected: binom(n, k)"))
     };
     if k > n {
         return Err(StreamError::new0("out of range"));
@@ -41,15 +30,7 @@ fn eval_multi(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let mut total = 0;
     let mut denom = UNumber::one();
     for arg in &node.args {
-        let Item::Number(k) = arg else {
-            return Err(StreamError::new("expected: multi(number, number, ...)", node));
-        };
-        if k.is_negative() {
-            return Err(StreamError::new("input can't be negative", node));
-        }
-        let Ok(k) = k.try_into() else {
-            return Err(StreamError::new("input too large", node));
-        };
+        let k = arg.to_num()?.try_cast()?;
         total = total.checked_add(&k)
             .ok_or(StreamError::new0("input too large"))?;
         denom *= factorial(k);
@@ -63,15 +44,7 @@ fn eval_rmulti(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let mut denom = UNumber::one();
     let mut vec = Vec::new();
     for arg in &node.args {
-        let Item::Number(k) = arg else {
-            return Err(StreamError::new("expected: rmulti(number, number, ...)", node));
-        };
-        if k.is_negative() {
-            return Err(StreamError::new("input can't be negative", node));
-        }
-        let Ok(k) = k.try_into() else {
-            return Err(StreamError::new("input too large", node));
-        };
+        let k = arg.to_num()?.try_cast()?;
         if k == 0 { continue; }
         if vec.contains(&k) {
             denom *= 1 + vec.iter().filter(|x| *x == &k).count();
@@ -83,7 +56,6 @@ fn eval_rmulti(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
     Ok(Item::new_number(factorial(total) / denom))
 }
-
 
 #[cfg(test)]
 mod tests {

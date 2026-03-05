@@ -9,19 +9,8 @@ fn eval_windows(node: &Node, env: &Env) -> Result<Item, StreamError> {
         [size, Expr::Eval(body)] => (size, Some(body)),
         _ => return Err(StreamError::new0("expected: source.windows(size) or source.windows(size, func)"))
     };
-    let size = check_win_size(size.eval(env)?.as_num()?)?;
+    let size = size.eval(env)?.as_num()?.try_cast_within(2usize..)?;
     Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body: body.cloned(), env: env.clone()}))
-}
-
-fn check_win_size(size: &Number) -> Result<usize, StreamError> {
-    if size.is_negative() {
-        return Err(StreamError::new0("size must be positive"));
-    }
-    match size.try_into() {
-        Ok(size @ 2..) => Ok(size),
-        Ok(0..=1) => Err(StreamError::new0("size must be at least 2")),
-        _ => Err(StreamError::new0("size too large"))
-    }
 }
 
 struct Windows {

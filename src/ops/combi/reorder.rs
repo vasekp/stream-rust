@@ -2,23 +2,15 @@ use crate::base::*;
 
 fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
+    let stm = node.source_checked()?.to_stream()?;
     let mut indices = Vec::with_capacity(node.args.len());
-    for index in &node.args {
-        let Item::Number(index) = index else {
-            return Err(StreamError::new(format!("expected number, found {:?}", index), node));
-        };
-        if !index.is_positive() {
-            return Err(StreamError::new("indices must be positive", node));
-        }
-        let index = crate::utils::unsign(index.to_owned());
+    for arg in &node.args {
+        let index = arg.to_num()?.try_cast_within(UNumber::one()..)?;
         if indices.contains(&index) {
-            return Err(StreamError::new(format!("index {} repeats", index), node));
+            return Err(StreamError::new0(format!("index {} repeats", index)));
         }
         indices.push(index);
     }
-    let Some(Item::Stream(stm)) = node.source else {
-        return Err(StreamError::new("expected: stream.reorder(index...)", node));
-    };
     let max_index = indices.iter().max().cloned().unwrap_or_default();
     if let Length::Exact(len) | Length::AtMost(len) = stm.len()
         && max_index > len {

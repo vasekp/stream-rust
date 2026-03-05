@@ -4,7 +4,7 @@ fn eval_skip(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let count = match &node.args[..] {
         [] => None,
-        [Item::Number(count)] => Some(count.try_into().map_err(|_| StreamError::new0("count can't be negative"))?),
+        [Item::Number(count)] => Some(count.try_unsign()?),
         _ => return Err(StreamError::new0("expected: source.skip or source.skip(count)"))
     };
     match node.source_checked()? {
