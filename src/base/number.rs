@@ -13,9 +13,9 @@ pub use ibig::ops::{DivRem, DivRemEuclid, RemEuclid, UnsignedAbs};
 
 pub(crate) const CACHE_LEN: usize = 100;
 
-pub(crate) trait TryCast<T>: Signed where T: IsSigned + for<'a> TryFrom<&'a Self> {
+pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<'a> TryFrom<&'a Self> {
     fn try_cast(&self) -> Result<T, StreamError> {
-        if !T::IS_SIGNED && self.is_negative() {
+        if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {
             Err(StreamError::new0("value can't be negative"))
         } else {
             self.try_into().map_err(|_| StreamError::new0("value too large"))
@@ -24,7 +24,7 @@ pub(crate) trait TryCast<T>: Signed where T: IsSigned + for<'a> TryFrom<&'a Self
 
     fn try_cast_within(&self, range: impl std::ops::RangeBounds<T>) -> Result<T, StreamError>
     where T: Ord + std::fmt::Display {
-        if !T::IS_SIGNED && self.is_negative() {
+        if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {
             Err(StreamError::new0("value can't be negative"))
         } else {
             let x = self.try_into().map_err(|_| StreamError::new0("value too large"))?;
@@ -33,10 +33,10 @@ pub(crate) trait TryCast<T>: Signed where T: IsSigned + for<'a> TryFrom<&'a Self
             } else {
                 use std::ops::Bound::*;
                 let err = match (range.start_bound(), range.end_bound()) {
-                    (Included(min), Unbounded) => format!("must be at least {min}"),
-                    (Unbounded, Included(max)) => format!("must be at most {max}"),
-                    (Included(min), Included(max)) => format!("must be between {min} and {max}"),
-                    _ => "out of fange".into()
+                    (Included(min), Unbounded) => format!("value must be at least {min}"),
+                    (Unbounded, Included(max)) => format!("value must be at most {max}"),
+                    (Included(min), Included(max)) => format!("value must be between {min} and {max}"),
+                    _ => "value out of range".into()
                 };
                 Err(StreamError::new0(err))
             }
@@ -63,8 +63,11 @@ impl_is_signed!(
 );
 
 impl TryCast<u32> for Number { }
+impl TryCast<usize> for Number { }
 impl TryCast<i32> for Number { }
 impl TryCast<UNumber> for Number { }
+impl TryCast<u32> for UNumber { }
+impl TryCast<usize> for UNumber { }
 
 pub(crate) trait TryUnsign {
     type Unsigned;
