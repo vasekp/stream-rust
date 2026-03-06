@@ -51,12 +51,12 @@ pub trait SIterator<I = Item> {
 }
 
 impl<I> dyn SIterator<I> + '_ {
-    pub fn transpose(self: Box<Self>) -> impl Iterator<Item = Result<I, StreamError>> {
+    pub fn transposed(self: &mut Self) -> impl Iterator<Item = Result<I, StreamError>> {
         RustIterator(self)
     }
 }
 
-struct RustIterator<'a, I>(Box<dyn SIterator<I> + 'a>);
+struct RustIterator<'a, I>(&'a mut dyn SIterator<I>);
 
 impl<I> Iterator for RustIterator<'_, I> {
     type Item = Result<I, StreamError>;
@@ -106,9 +106,9 @@ impl<I> SIterator<I> for std::iter::Empty<Result<I, StreamError>> {
     }
 }
 
-impl<I: Clone> SIterator<I> for std::iter::Repeat<I> {
+impl<I: Clone> SIterator<I> for std::iter::Repeat<Result<I, StreamError>> {
     fn next(&mut self) -> Result<Option<I>, StreamError> {
-        Ok(Iterator::next(self))
+        Iterator::next(self).transpose()
     }
 
     fn len_remain(&self) -> Length {
@@ -164,6 +164,17 @@ impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> SIterator<I2> for S
     }
 }
 
+macro_rules! iter_try {
+    ($expr:expr) => {
+        match $expr? {
+            Some(ret) => ret,
+            None => return Ok(None)
+        }
+    }
+}
+
+pub(crate) use iter_try;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -191,7 +202,7 @@ mod tests {
         let mut iter = std::iter::once(Ok(Item::default()));
         assert_eq!(iter.advance(2u32.into()), Ok(Some(UNumber::one())));
 
-        let mut iter = std::iter::repeat(Item::default());
+        let mut iter = std::iter::repeat(Ok(Item::default()));
         assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
         assert_eq!(iter.len_remain(), Length::Infinite);

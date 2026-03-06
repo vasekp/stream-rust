@@ -17,10 +17,7 @@ fn eval_first(node: &Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
-    match stm.iter().next() {
-        Some(result) => Ok(result?),
-        None => Err(StreamError::new0("stream is empty"))
-    }
+    stm.iter().next()?.ok_or(StreamError::new0("stream is empty"))
 }
 
 struct First<I: ItemType> {
@@ -53,20 +50,16 @@ impl<I: ItemType> Describe for First<I> {
     }
 }
 
-impl<I: ItemType> Iterator for FirstIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for FirstIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         if !self.count_rem.is_zero() {
             self.count_rem -= 1;
             self.source.next()
         } else {
-            None
+            Ok(None)
         }
     }
-}
 
-impl<I: ItemType> SIterator<I> for FirstIter<'_, I> {
     fn len_remain(&self) -> Length {
         Length::intersection(self.source.len_remain(), Length::Exact(self.count_rem.to_owned()))
     }

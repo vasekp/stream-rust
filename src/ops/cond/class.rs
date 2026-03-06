@@ -39,7 +39,7 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> Result<bool, StreamError> 
             Item::Char(ch) => ch.case() == CharCase::Upper,
             Item::String(stm) => {
                 let mut indet = true;
-                for ch in stm.iter() {
+                for ch in stm.iter().transposed() {
                     check_stop!();
                     let ch = ch?;
                     match ch.case() {
@@ -56,7 +56,7 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> Result<bool, StreamError> 
             Item::Char(ch) => ch.case() == CharCase::Lower,
             Item::String(stm) => {
                 let mut indet = true;
-                for ch in stm.iter() {
+                for ch in stm.iter().transposed() {
                     check_stop!();
                     let ch = ch?;
                     match ch.case() {
@@ -80,7 +80,7 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> Result<bool, StreamError> 
                 return Err(StreamError::new0("expected character or string"));
             };
             let mut iter = stm.iter();
-            let mut nonempty = match iter.next().transpose()? {
+            let mut nonempty = match iter.next()? {
                 Some(ch) => match ch {
                     Char::Single('+'|'-') => false,
                     Char::Single(x) if x.is_ascii_digit() => true,
@@ -88,7 +88,7 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> Result<bool, StreamError> 
                 },
                 None => return Ok(false)
             };
-            for ch in iter {
+            for ch in iter.transposed() {
                 match ch? {
                     Char::Single(x) if x.is_ascii_digit() => nonempty = true,
                     _ => return Ok(false)

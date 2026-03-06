@@ -11,7 +11,7 @@ fn eval_contains(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 .map(Query::Pending)
                 .collect::<Vec<_>>();
             let mut rem = queries.len();
-            'a: for elm in stm.iter() {
+            'a: for elm in stm.iter().transposed() {
                 check_stop!();
                 let elm = elm?;
                 for query in &mut queries {
@@ -46,7 +46,7 @@ fn eval_contains(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 .unwrap(); // len ≥ 1
             let mut rem = queries.len();
             let mut deque = VecDeque::with_capacity(longest);
-            'a: for elm in stm.iter() {
+            'a: for elm in stm.iter().transposed() {
                 check_stop!();
                 if deque.len() == longest {
                     deque.pop_front();

@@ -73,21 +73,21 @@ struct SelfRefIter<'node> {
     hist: Rc<CacheHistory>,
 }
 
-impl Iterator for SelfRefIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = if let Some(item) = iter_try_expr!(self.pre.next().transpose()) {
+impl SIterator for SelfRefIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+        let item = if let Some(item) = self.pre.next()? {
             item.clone()
         } else {
-            iter_try_expr!(self.inner.next()?)
+            iter_try!(self.inner.next())
         };
         self.hist.borrow_mut().push(item.clone());
-        Some(Ok(item))
+        Ok(Some(item))
+    }
+
+    fn len_remain(&self) -> Length {
+        Length::Unknown
     }
 }
-
-impl SIterator for SelfRefIter<'_> { }
 
 struct BackRef {
     parent: Weak<CacheHistory>
@@ -117,17 +117,17 @@ impl Stream for BackRef {
     }
 }
 
-impl Iterator for BackRefIter {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for BackRefIter {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         let opos = self.pos;
         self.pos += 1;
-        self.vec.borrow().get(opos).cloned().map(Result::Ok)
+        Ok(self.vec.borrow().get(opos).cloned())
+    }
+
+    fn len_remain(&self) -> Length {
+        Length::Unknown
     }
 }
-
-impl SIterator for BackRefIter {}
 
 #[cfg(test)]
 mod tests {

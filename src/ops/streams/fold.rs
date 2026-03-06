@@ -46,23 +46,19 @@ impl Stream for Fold {
     }
 }
 
-impl Iterator for FoldIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let source = iter_try_expr!(self.source.next()?);
+impl SIterator for FoldIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+        let source = iter_try!(self.source.next());
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();
         let node = Node::new(self.body.head.clone(), Some(source.into()), args);
-        let item = iter_try_expr!(node.eval(self.env));
+        let item = node.eval(self.env)?;
         self.prev.pop_front();
         self.prev.push_back(item.clone());
-        Some(Ok(item))
+        Ok(Some(item))
     }
-}
 
-impl SIterator for FoldIter<'_> {
     fn len_remain(&self) -> Length {
         self.source.len_remain()
     }

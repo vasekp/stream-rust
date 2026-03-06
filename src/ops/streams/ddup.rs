@@ -36,25 +36,21 @@ struct DDupIter<'node> {
     seen: Vec<Item>
 }
 
-impl Iterator for DDupIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for DDupIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         'a: loop {
-            check_stop!(iter);
-            let item = iter_try_expr!(self.iter.next()?);
+            check_stop!();
+            let item = iter_try!(self.iter.next());
             for seen in &self.seen {
-                if iter_try_expr!(item.try_eq(seen)) {
+                if item.try_eq(seen)? {
                     continue 'a;
                 }
             }
             self.seen.push(item.clone());
-            return Some(Ok(item));
+            return Ok(Some(item));
         }
     }
-}
 
-impl SIterator for DDupIter<'_> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.iter.len_remain())
     }

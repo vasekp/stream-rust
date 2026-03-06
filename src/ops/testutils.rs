@@ -37,15 +37,11 @@ struct LenAMIter<'node, I: ItemType> {
     iter: Box<dyn SIterator<I> + 'node>
 }
 
-impl<I: ItemType> Iterator for LenAMIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         self.iter.next()
     }
-}
 
-impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.advance(n)
     }
@@ -92,15 +88,11 @@ struct LenUFIter<'node, I: ItemType> {
     iter: Box<dyn SIterator<I> + 'node>
 }
 
-impl<I: ItemType> Iterator for LenUFIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         self.iter.next()
     }
-}
 
-impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.advance(n)
     }
@@ -147,15 +139,11 @@ struct LenUUIter<'node, I: ItemType> {
     iter: Box<dyn SIterator<I> + 'node>
 }
 
-impl<I: ItemType> Iterator for LenUUIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         self.iter.next()
     }
-}
 
-impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.advance(n)
     }

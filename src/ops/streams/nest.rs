@@ -78,41 +78,33 @@ impl Stream for NestArgs {
     }
 }
 
-impl Iterator for NestIterSource<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for NestIterSource<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         let node = Node::new(self.body.head.clone(),
             Some(std::mem::take(&mut self.prev).into()),
             vec![]);
-        let item = iter_try_expr!(node.eval(self.env));
+        let item = node.eval(self.env)?;
         self.prev = item.clone();
-        Some(Ok(item))
+        Ok(Some(item))
     }
-}
 
-impl SIterator for NestIterSource<'_> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
 }
 
-impl Iterator for NestIterArgs<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for NestIterArgs<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();
         let node = Node::new(self.body.head.clone(), None, args);
-        let item = iter_try_expr!(node.eval(self.env));
+        let item = node.eval(self.env)?;
         self.prev.pop_front();
         self.prev.push_back(item.clone());
-        Some(Ok(item))
+        Ok(Some(item))
     }
-}
 
-impl SIterator for NestIterArgs<'_> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }

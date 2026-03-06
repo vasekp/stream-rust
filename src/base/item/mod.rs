@@ -356,14 +356,14 @@ impl PartialEq for Item {
                 let l1 = x1.len();
                 let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
-                x1.iter().transpose().zip(x2.iter().transpose())
+                x1.iter().transposed().zip(x2.iter().transposed())
                     .all(|(x, y)| x == y)
             },
             (String(x1), String(x2)) => {
                 let l1 = x1.len();
                 let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
-                x1.iter().transpose().zip(x2.iter().transpose())
+                x1.iter().transposed().zip(x2.iter().transposed())
                     .all(|(x, y)| x == y)
             },
             _ => false

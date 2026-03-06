@@ -35,7 +35,7 @@ stream.dignum(radix, min_width)"))
     if stm.is_empty() {
         return Err(StreamError::new0("stream is empty"));
     }
-    let vec = stm.iter().map(|item| {
+    let vec = stm.iter().transposed().map(|item| {
             check_stop!();
             item?.into_num()?.try_cast_within(0..radix)
         }).collect::<Result<Vec<u32>, _>>()?;

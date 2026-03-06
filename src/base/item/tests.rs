@@ -39,7 +39,7 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
 }
 
 fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) {
-    assert_eq!(stm.iter().transpose().map(Result::unwrap).count(), len);
+    assert_eq!(stm.iter().transposed().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.len(), &Length::Exact(len.into())));
     assert!(Length::possibly_eq(&stm.iter().len_remain(), &Length::Exact(len.into())));
     assert_eq!(len == 0, stm.is_empty());

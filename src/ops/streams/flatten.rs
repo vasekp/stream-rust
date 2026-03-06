@@ -50,28 +50,26 @@ struct FlattenIter<'node> {
     depth: Option<usize>,
 }
 
-impl Iterator for FlattenIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for FlattenIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         loop {
-            check_stop!(iter);
-            let res = match self.iters.last_mut() {
+            check_stop!();
+            let next = match self.iters.last_mut() {
                 Some(iter) => iter.next(),
                 None => self.outer.next()
-            };
-            match res {
-                Some(Ok(Item::Stream(stm))) => {
+            }?;
+            match next {
+                Some(Item::Stream(stm)) => {
                     if self.depth.is_some_and(|d| self.iters.len() == d) {
-                        return Some(Ok(Item::Stream(stm)));
+                        return Ok(Some(Item::Stream(stm)));
                     } else {
                         self.iters.push(stm.into_iter());
                     }
                 },
-                Some(res) => return Some(res),
+                Some(item) => return Ok(Some(item)),
                 None => {
                     if self.iters.is_empty() {
-                        return None;
+                        return Ok(None);
                     } else {
                         self.iters.pop();
                     }
@@ -79,9 +77,7 @@ impl Iterator for FlattenIter<'_> {
             }
         }
     }
-}
 
-impl SIterator for FlattenIter<'_> {
     fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();
@@ -98,12 +94,11 @@ impl SIterator for FlattenIter<'_> {
                     Some(iter) => iter.next(),
                     None => self.outer.next()
                 };
-                match res {
-                    Some(Ok(Item::Stream(stm))) => {
+                match res? {
+                    Some(Item::Stream(stm)) => {
                         self.iters.push(stm.into_iter());
                     },
-                    Some(Ok(_)) => n -= 1,
-                    Some(Err(err)) => return Err(err),
+                    Some(_) => n -= 1,
                     None => {
                         if self.iters.is_empty() {
                             return Ok(Some(n));

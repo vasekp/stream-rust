@@ -48,20 +48,16 @@ struct SeqIter<'node> {
     step: &'node Option<Number>
 }
 
-impl Iterator for SeqIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for SeqIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         let ret = Item::new_number(self.value.clone());
         match self.step {
             Some(step) => self.value += step,
             None => self.value += 1
         }
-        Some(Ok(ret))
+        Ok(Some(ret))
     }
-}
 
-impl SIterator for SeqIter<'_> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }

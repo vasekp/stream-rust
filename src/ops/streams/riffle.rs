@@ -32,7 +32,7 @@ impl Stream for Riffle {
             Item::Stream(stm) => stm.iter(),
             item => Box::new(std::iter::repeat(Ok(item.clone())))
         };
-        let source_next = source_iter.next();
+        let source_next = source_iter.next().transpose();
         Box::new(RiffleIter {
             source: source_iter,
             filler: filler_iter,
@@ -69,27 +69,25 @@ enum RiffleState {
     Filler
 }
 
-impl Iterator for RiffleIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for RiffleIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         use RiffleState::*;
         match self.which {
             Source => {
-                let next = self.source_next.take()?;
                 self.which = Filler;
-                Some(next)
+                match self.source_next.take() {
+                    Some(res) => Ok(Some(res?)),
+                    None => Ok(None)
+                }
             },
             Filler => {
-                self.source_next = self.source.next();
+                self.source_next = self.source.next().transpose();
                 self.which = Source;
-                if self.source_next.is_none() { None } else { self.filler.next() }
+                if self.source_next.is_none() { Ok(None) } else { self.filler.next() }
             }
         }
     }
-}
 
-impl SIterator for RiffleIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let common = Length::intersection(self.source.len_remain(), self.filler.len_remain());
         let skip = match Length::intersection(common, Length::Exact(&n / 2u32)) {
@@ -102,7 +100,7 @@ impl SIterator for RiffleIter<'_> {
             match self.which {
                 RiffleState::Source => {
                     self.source.advance(skip - 1u32)?;
-                    self.source_next = self.source.next();
+                    self.source_next = self.source.next().transpose();
                 },
                 RiffleState::Filler => {
                     self.source.advance(skip)?;
@@ -113,7 +111,7 @@ impl SIterator for RiffleIter<'_> {
             n
         };
         while !remain.is_zero() {
-            if self.next().transpose()?.is_none() {
+            if self.next()?.is_none() {
                 return Ok(Some(remain));
             }
             remain -= 1;

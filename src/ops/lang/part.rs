@@ -59,8 +59,8 @@ fn eval_index_impl<I: ItemType>(source: &dyn Stream<I>, index: &Number) -> Resul
         drop(iter);
         return Err(StreamError::new0("index past end of stream"));
     }
-    match iter.next() {
-        Some(value) => Ok(value?),
+    match iter.next()? {
+        Some(value) => Ok(value),
         None => {
             drop(iter);
             Err(StreamError::new0("index past end of stream"))
@@ -97,11 +97,9 @@ struct PartIter<'node> {
     iter: Box<dyn SIterator + 'node>
 }
 
-impl Iterator for PartIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let part = iter_try_expr!(self.iter.next()?);
+impl SIterator for PartIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+        let part = iter_try!(self.iter.next());
         // TODO: smarter - number tracks increments, stream unfolds?
         let mut args = self.parent.rest.clone();
         args.insert(0, part);
@@ -110,11 +108,9 @@ impl Iterator for PartIter<'_> {
             source: Some(self.parent.source.clone().into()),
             args
         };
-        Some(eval_enode(node, &self.parent.env))
+        eval_enode(node, &self.parent.env).map(Option::Some)
     }
-}
 
-impl SIterator for PartIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.advance(n)
     }
@@ -150,18 +146,14 @@ struct StringPartIter<'node> {
     iter: Box<dyn SIterator + 'node>
 }
 
-impl Iterator for StringPartIter<'_> {
-    type Item = Result<Char, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match iter_try_expr!(self.iter.next()?) {
-            Item::Number(index) => Some(eval_index_impl(&*self.parent.source, &index)),
+impl SIterator<Char> for StringPartIter<'_> {
+    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+        match iter_try!(self.iter.next()) {
+            Item::Number(index) => eval_index_impl(&*self.parent.source, &index).map(Option::Some),
             _ => todo!()
         }
     }
-}
 
-impl SIterator<Char> for StringPartIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.advance(n)
     }

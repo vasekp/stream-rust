@@ -52,16 +52,14 @@ impl PiIter<'_> {
     }
 }
 
-impl Iterator for PiIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for PiIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         if self.cached.len() >= 2 {
-            return Some(Ok(Item::new_number(self.cached.remove(0))));
+            return Ok(Some(Item::new_number(self.cached.remove(0))));
         }
         loop {
-            check_stop!(iter);
-            let (n, carry) = iter_try_expr!(self.inner.next().unwrap());
+            check_stop!();
+            let (n, carry) = self.inner.next()?;
             if carry {
                 for x in self.cached.iter_mut().rev() {
                     *x += 1;
@@ -73,13 +71,11 @@ impl Iterator for PiIter<'_> {
                 continue;
             }
             if self.cached.len() >= 2 {
-                return Some(Ok(Item::new_number(self.cached.remove(0))));
+                return Ok(Some(Item::new_number(self.cached.remove(0))));
             }
         }
     }
-}
 
-impl SIterator for PiIter<'_> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
@@ -110,6 +106,25 @@ impl PiIterInner {
         }
     }
 
+    fn next(&mut self) -> Result<(u32, bool), StreamError> {
+        self.power *= self.radix;
+        let bits = self.power.bit_len() - 1;
+        let prev_len = self.cdigits.len();
+        self.cdigits.resize(bits, 0);
+        let mut carry = UNumber::zero();
+        for ix in (0..bits).rev() {
+            check_stop!();
+            carry += if ix < prev_len { UNumber::from(self.cdigits[ix]) * self.radix } else { self.power.clone() };
+            let num = if ix == 0 { UNumber::one() } else { UNumber::from(ix) };
+            let den = if ix == 0 { UNumber::from(self.radix) } else { &num * 2u32 + 1u32 };
+            let (quot, rem) = carry.div_rem_euclid(&den);
+            self.cdigits[ix] = rem.try_into().expect("pi (next): remainder of div_euclid should fit into u32");
+            carry = quot * num;
+        }
+        let (div, rem) = carry.div_rem_euclid(&UNumber::from(self.radix));
+        Ok((rem.try_into().unwrap(), !div.is_zero()))
+    }
+
     fn advance(&mut self, n: usize) -> Result<(), StreamError> {
         let mul = UNumber::from(self.radix).pow(n);
         let len = self.cdigits.len();
@@ -125,29 +140,6 @@ impl PiIterInner {
         }
         self.power *= &mul;
         Ok(())
-    }
-}
-
-impl Iterator for PiIterInner {
-    type Item = Result<(u32, bool), StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.power *= self.radix;
-        let bits = self.power.bit_len() - 1;
-        let prev_len = self.cdigits.len();
-        self.cdigits.resize(bits, 0);
-        let mut carry = UNumber::zero();
-        for ix in (0..bits).rev() {
-            check_stop!(iter);
-            carry += if ix < prev_len { UNumber::from(self.cdigits[ix]) * self.radix } else { self.power.clone() };
-            let num = if ix == 0 { UNumber::one() } else { UNumber::from(ix) };
-            let den = if ix == 0 { UNumber::from(self.radix) } else { &num * 2u32 + 1u32 };
-            let (quot, rem) = carry.div_rem_euclid(&den);
-            self.cdigits[ix] = rem.try_into().expect("pi (next): remainder of div_euclid should fit into u32");
-            carry = quot * num;
-        }
-        let (div, rem) = carry.div_rem_euclid(&UNumber::from(self.radix));
-        Some(Ok((rem.try_into().unwrap(), !div.is_zero())))
     }
 }
 

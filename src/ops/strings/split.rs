@@ -54,32 +54,28 @@ impl Stream for SplitString {
     }
 }
 
-impl Iterator for SplitStringIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for SplitStringIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         if self.done {
-            return None;
+            return Ok(None);
         }
         let mut cache = vec![];
-        for item in &mut self.source {
-            check_stop!(iter);
-            cache.push(iter_try_expr!(item));
+        for item in self.source.transposed() {
+            check_stop!();
+            cache.push(item?);
             for sep in self.sep {
                 if (**sep).len() > cache.len() { continue; }
                 let bkpt = cache.len() - (**sep).len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
-                    return Some(Ok(Item::new_string(LiteralString::from(cache))));
+                    return Ok(Some(Item::new_string(LiteralString::from(cache))));
                 }
             }
         }
         self.done = true;
-        Some(Ok(Item::new_string(LiteralString::from(cache))))
+        Ok(Some(Item::new_string(LiteralString::from(cache))))
     }
-}
 
-impl SIterator for SplitStringIter<'_> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }
@@ -116,30 +112,26 @@ impl Stream for SplitStream {
     }
 }
 
-impl Iterator for SplitStreamIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for SplitStreamIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         if self.done {
-            return None;
+            return Ok(None);
         }
         let mut cache = vec![];
-        for item in &mut self.source {
-            check_stop!(iter);
-            let item = iter_try_expr!(item);
+        for item in self.source.transposed() {
+            check_stop!();
+            let item = item?;
             for sep in self.sep {
-                if iter_try_expr!(item.try_eq(sep)) {
-                    return Some(Ok(Item::new_stream(List::from(cache))));
+                if item.try_eq(sep)? {
+                    return Ok(Some(Item::new_stream(List::from(cache))));
                 }
             }
             cache.push(item);
         }
         self.done = true;
-        Some(Ok(Item::new_stream(List::from(cache))))
+        Ok(Some(Item::new_stream(List::from(cache))))
     }
-}
 
-impl SIterator for SplitStreamIter<'_> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }

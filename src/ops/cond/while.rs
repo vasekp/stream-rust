@@ -40,26 +40,22 @@ impl Stream for While {
     }
 }
 
-impl Iterator for WhileIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let source = iter_try_expr!(self.source.next()?);
-        let cond_item = iter_try_call!(Node::from(self.cond.clone())
+impl SIterator for WhileIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+        let source = iter_try!(self.source.next());
+        let cond_item = Node::from(self.cond.clone())
             .with_source(source.clone().into())?
-            .eval(self.env)?);
+            .eval(self.env)?;
         let Item::Bool(cond) = cond_item else {
-            return Some(Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone())));
+            return Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone()));
         };
         if cond {
-            Some(Ok(source))
+            Ok(Some(source))
         } else {
-            None
+            Ok(None)
         }
     }
-}
 
-impl SIterator for WhileIter<'_> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }

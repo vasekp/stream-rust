@@ -191,25 +191,15 @@ struct MathOpIter<'node> {
     func: MathFunc
 }
 
-impl Iterator for MathOpIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.args.iter_mut()
-            .map(Iterator::next)
-            .collect::<Option<Result<Vec<_>, _>>>()
-        {
-            Some(Ok(inputs)) => {
-                let node = Node { head: self.head.clone(), source: None, args: inputs };
-                Some(MathOp::eval_with(node, self.env, self.func))
-            },
-            Some(Err(err)) => Some(Err(err)),
-            None => None
-        }
-    }
-}
-
 impl SIterator for MathOpIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+        let inputs = iter_try!(self.args.iter_mut()
+            .map(|iter| iter.next())
+            .collect::<Result<Option<Vec<_>>, _>>());
+        let node = Node { head: self.head.clone(), source: None, args: inputs };
+        MathOp::eval_with(node, self.env, self.func).map(Option::Some)
+    }
+
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut remain = UNumber::zero();
         for iter in &mut self.args {
@@ -337,44 +327,29 @@ struct StringOpIter<'node> {
     func: StringFunc
 }
 
-impl Iterator for StringOpIter<'_> {
-    type Item = Result<Char, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        fn _aux_node(base: Char, mut inputs: Vec<Item>) -> Node {
-            inputs.insert(0, Item::Char(base));
-            Node {
-                head: Head::Oper("+"),
-                source: None,
-                args: inputs.into_iter().map(Expr::from).collect()
-            }
-        }
-
-        let ch = iter_try_expr!(self.first.next()?);
-        if !self.env.alpha.contains(&ch) {
-            return Some(Ok(ch));
-        }
-
-        let rest = self.rest.iter_mut()
-            .map(Iterator::next)
-            .collect::<Option<Result<Vec<_>, _>>>();
-        let inputs = iter_try_expr!(rest?);
-        Some((self.func)(&ch, &inputs, self.env))
-    }
-}
-
 impl SIterator<Char> for StringOpIter<'_> {
+    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+        let ch = iter_try!(self.first.next());
+        if !self.env.alpha.contains(&ch) {
+            return Ok(Some(ch));
+        }
+
+        let inputs = iter_try!(self.rest.iter_mut()
+            .map(|iter| iter.next())
+            .collect::<Result<Option<Vec<_>>, _>>());
+        (self.func)(&ch, &inputs, self.env).map(Option::Some)
+    }
+
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut n_chars: usize = 0;
         let mut remain = n;
         while !remain.is_zero() {
-            match self.first.next() {
-                Some(Ok(ch)) => {
+            match self.first.next()? {
+                Some(ch) => {
                     if self.env.alpha.contains(&ch) {
                         n_chars += 1;
                     }
                 },
-                Some(Err(err)) => return Err(err),
                 None => break
             }
             remain -= 1;

@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_select(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.while{cond}"))
+        return Err(StreamError::new0("expected: stream.select{cond}"))
     };
     Ok(Item::new_stream(Select{head: node.head.clone(), cond: cond.eval_all(env)?, source: stm, env: env.clone()}))
 }
@@ -40,27 +40,23 @@ impl Stream for Select {
     }
 }
 
-impl Iterator for SelectIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for SelectIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         loop {
-            check_stop!(iter);
-            let source = iter_try_expr!(self.source.next()?);
-            let cond_item = iter_try_call!(Node::from(self.cond.clone())
+            check_stop!();
+            let source = iter_try!(self.source.next());
+            let cond_item = Node::from(self.cond.clone())
                 .with_source(source.clone().into())?
-                .eval(self.env)?);
+                .eval(self.env)?;
             let Item::Bool(cond) = cond_item else {
-                return Some(Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone())));
+                return Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone()));
             };
             if cond {
-                return Some(Ok(source));
+                return Ok(Some(source));
             }
         }
     }
-}
 
-impl SIterator for SelectIter<'_> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }

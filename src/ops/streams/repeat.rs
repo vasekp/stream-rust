@@ -60,20 +60,16 @@ impl<I: ItemType> Describe for RepeatItem<I> {
     }
 }
 
-impl<I: ItemType> Iterator for RepeatItemIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         if !self.count_rem.is_zero() {
             self.count_rem -= 1;
-            Some(Ok(self.item.clone()))
+            Ok(Some(self.item.clone()))
         } else {
-            None
+            Ok(None)
         }
     }
-}
 
-impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if n > self.count_rem {
             Ok(Some(n - &self.count_rem))
@@ -134,26 +130,22 @@ struct RepeatStreamIter<'node, I: ItemType> {
     resets_rem: Option<UNumber>
 }
 
-impl<I: ItemType> Iterator for RepeatStreamIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = self.iter.next();
+impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
+        let next = self.iter.next()?;
         if next.is_some() {
-            return next;
+            return Ok(next);
         }
         if let Some(ref mut count) = self.resets_rem {
             if count.is_zero() {
-                return None;
+                return Ok(None);
             }
             *count -= 1;
         }
         self.iter = self.stream.iter();
         self.iter.next()
     }
-}
 
-impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let Some(n) = self.iter.advance(n)? else { return Ok(None); };
 
