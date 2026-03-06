@@ -232,7 +232,7 @@ impl StringOp {
     fn eval(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
         let func = Self::find_fn(&node.head)?; // TODO decorate?
         if node.args.len() < 2 {
-            return Err(StreamError::new("not available for strings", node));
+            return Err(StreamError::new0("not available for strings"));
         }
         let Item::String(first) = node.args.remove(0) else { unreachable!() };
         Ok(Item::new_string(StringOp{first, node_rem: node, func, env: env.clone()}))

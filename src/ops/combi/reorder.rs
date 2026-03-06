@@ -14,8 +14,7 @@ fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let max_index = indices.iter().max().cloned().unwrap_or_default();
     if let Length::Exact(len) | Length::AtMost(len) = stm.len()
         && max_index > len {
-            let node = Node { source: Some(Item::Stream(stm)), ..node };
-            return Err(StreamError::new("requested index exceeds length of source", node));
+            return Err(StreamError::new0("requested index exceeds length of source"));
         }
     Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
@@ -76,12 +75,7 @@ impl SIterator for ReorderIter<'_> {
                                 self.pos += 1;
                                 return Ok(Some(item))
                             },
-                            None => {
-                                return Err(StreamError::new(format!("index past end ({next})"),
-                                    Node::new("[part]",
-                                        Some(Item::from(&self.parent.source).into()),
-                                        vec![Expr::new_number(next.to_owned())])));
-                            }
+                            None => return Err(StreamError::new0("index past end"))
                         }
                     }
                     if usize::try_from(&self.parent.max_index)
