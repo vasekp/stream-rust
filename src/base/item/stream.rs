@@ -99,11 +99,9 @@ impl dyn Stream<Item> {
             Length::Infinite => return Err(StreamError::new("stream is infinite", Item::from(self))),
             _ => ()
         };
-        let mut ret: usize = 0;
-        let mut it = self.iter();
-        while let Some(item) = it.next()? {
+        for item in self.iter().transposed() {
             check_stop!();
-            vec.push(item);
+            vec.push(item?);
         }
         Ok(vec)
     }
@@ -184,11 +182,9 @@ impl dyn Stream<Char> {
             Length::Infinite => return Err(StreamError::new("string is infinite", Item::from(self))),
             _ => ()
         };
-        let mut ret: usize = 0;
-        let mut it = self.iter();
-        while let Some(ch) = it.next()? {
+        for ch in self.iter().transposed() {
             check_stop!();
-            vec.push(ch);
+            vec.push(ch?);
         }
         Ok(vec)
     }

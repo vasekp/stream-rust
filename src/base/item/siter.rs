@@ -51,14 +51,14 @@ pub trait SIterator<I = Item> {
 }
 
 impl<I> dyn SIterator<I> + '_ {
-    pub fn transposed(self: &mut Self) -> impl Iterator<Item = Result<I, StreamError>> {
-        RustIterator(self)
+    pub fn transposed(&mut self) -> impl Iterator<Item = Result<I, StreamError>> {
+        Transposed(self)
     }
 }
 
-struct RustIterator<'a, I>(&'a mut dyn SIterator<I>);
+struct Transposed<'a, I>(&'a mut dyn SIterator<I>);
 
-impl<I> Iterator for RustIterator<'_, I> {
+impl<I> Iterator for Transposed<'_, I> {
     type Item = Result<I, StreamError>;
 
     fn next(&mut self) -> Option<Self::Item> {
