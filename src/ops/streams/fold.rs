@@ -7,7 +7,7 @@ fn eval_fold(node: &Node, env: &Env) -> Result<Item, StreamError> {
         && body.source.is_none() && !body.args.is_empty() {
             body
         } else {
-            return Err(StreamError::new0("expected: stream.sortby{function}"));
+            return Err(StreamError::usage(&node.head));
         };
     Ok(Item::new_stream(Fold{head: node.head.clone(), body: func.eval_all(env)?, source: stm, env: env.clone()}))
 }

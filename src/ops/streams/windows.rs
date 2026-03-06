@@ -7,7 +7,7 @@ fn eval_windows(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let (size, body) = match &node.args[..] {
         [size] => (size, None),
         [size, Expr::Eval(body)] => (size, Some(body)),
-        _ => return Err(StreamError::new0("expected: source.windows(size) or source.windows(size, func)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     let size = size.eval(env)?.as_num()?.try_cast_within(2usize..)?;
     Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body: body.cloned(), env: env.clone()}))

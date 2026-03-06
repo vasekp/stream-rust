@@ -12,7 +12,7 @@ fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![*c2]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
                 (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
-                _ => return Err(StreamError::new0("expected: (char/string, char/string) or (stream, stream)"))
+                _ => return Err(StreamError::usage(&node.head))
             };
             if orig.len() != repl.len() {
                 return Err(StreamError::new0("the replacements lists must be of same length"));
@@ -25,8 +25,7 @@ fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
         },
         (Item::Stream(stm), [orig, repl]) =>
             Ok(Item::new_stream(StreamReplace { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
-        _ => Err(StreamError::new0("expected: string.replace(char, char) or (string, string) or \
-                (list, list) or stream.replace(item, item)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

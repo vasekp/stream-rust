@@ -7,14 +7,14 @@ fn eval_last(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let count: Option<UNumber> = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::new0("expected: source.last or source.last(count)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     match (node.source_checked()?, count) {
         (Item::Stream(stm), None) => eval_last_item(&**stm),
         (Item::Stream(stm), Some(count)) => eval_last_count(&node.head, stm, count),
         (Item::String(stm), None) => eval_last_item(&**stm).map(Item::Char),
         (Item::String(stm), Some(count)) => eval_last_count(&node.head, stm, count),
-        _ => Err(StreamError::new0("expected: source.first or source.last(count)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

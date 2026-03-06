@@ -7,7 +7,7 @@ fn eval_cat(node: &Node, env: &Env) -> Result<Item, StreamError> {
         [] => None,
         [Item::String(fill)] => Some(fill.listout()?),
         [Item::Char(fill)] => Some(vec![*fill]),
-        _ => return Err(StreamError::new0("expected: stream.cat"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_string(Cat {
         source: stm,

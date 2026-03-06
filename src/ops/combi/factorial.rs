@@ -6,7 +6,7 @@ fn eval_factorial(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let x = match (&node.source, &node.args[..]) {
         (Some(Item::Number(x)), []) => x,
         (None, [Item::Number(x)]) => x,
-        _ => return Err(StreamError::new0("expected: number.factorial or factorial(number)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_number(factorial(x.try_cast()?)))
 }
@@ -16,7 +16,7 @@ fn eval_binom(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
     let (n, k) = match &node.args[..] {
         [Item::Number(n), Item::Number(k)] => (n.try_cast()?, k.try_cast()?),
-        _ => return Err(StreamError::new0("expected: binom(n, k)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     if k > n {
         return Err(StreamError::new0("out of range"));

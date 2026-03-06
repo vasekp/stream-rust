@@ -7,7 +7,7 @@ fn eval_seq(node: &Node, env: &Env) -> Result<Item, StreamError> {
         [] => (None, None),
         [Item::Number(from)] => (Some(from), None),
         [Item::Number(from), Item::Number(to)] => (Some(from), Some(to)),
-        _ => return Err(StreamError::new("expected one of: seq(), seq(number), seq(number, number)", node))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_stream(Seq{head: node.head, from: from.cloned(), step: step.cloned() }))
 }

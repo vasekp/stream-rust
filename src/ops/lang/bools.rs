@@ -23,7 +23,7 @@ fn eval_not(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
     match &node.args[..] {
         [Item::Bool(b)] => Ok(Item::Bool(!b)),
-        _ => Err(StreamError::new("one bool argument expected", node))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

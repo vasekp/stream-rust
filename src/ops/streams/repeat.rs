@@ -6,7 +6,7 @@ fn eval_repeat(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::new0("expected one of: source.repeat(), source.repeat(count)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     match (&item, count.as_ref().and_then(|x| u32::try_from(x).ok())) {
         (Item::String(stm), _) if stm.is_empty() => Ok(item.clone()),

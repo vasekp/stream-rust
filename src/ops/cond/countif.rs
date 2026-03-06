@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_countif(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.while{cond}"))
+        return Err(StreamError::usage(&node.head));
     };
     let mut count = 0;
     for item in stm.iter().transposed() {

@@ -2,12 +2,12 @@ use crate::base::*;
 
 fn eval_splitby(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.splitby{cond}"))
+        return Err(StreamError::usage(&node.head));
     };
     match node.source_checked()?.eval(env)? {
         Item::Stream(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
         Item::String(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
-        _ => Err(StreamError::new0("expected: stream.splitby{cond}"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

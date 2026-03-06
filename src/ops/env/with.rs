@@ -4,12 +4,12 @@ use std::collections::HashMap;
 
 fn eval_with(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
-    let Some((body, assigns)) = node.args.split_last() else {
-        return Err(StreamError::new0("at least 2 arguments required"));
+    let (body, assigns) = if let Some((body, assigns)) = node.args.split_last()
+        && !assigns.is_empty() {
+            (body, assigns)
+    } else {
+        return Err(StreamError::usage(&node.head));
     };
-    if assigns.is_empty() {
-        return Err(StreamError::new0("at least 2 arguments required"));
-    }
     let mut replace = HashMap::<&str, Rc<Rhs>>::new();
     for assign in assigns {
         let (body, names) = if let Expr::Eval(node) = assign

@@ -77,7 +77,7 @@ fn eval_contains(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 Ok(Item::from(res))
             }
         },
-        _ => Err(StreamError::new("expected: stream.contains(item...) or string.contains(char or string...)", node))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

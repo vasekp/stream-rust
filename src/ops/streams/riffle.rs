@@ -5,7 +5,7 @@ fn eval_riffle(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let stm = node.source_checked()?.to_stream()?;
     if stm.is_empty() { return Ok(Item::empty_stream()); }
     let [filler] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.riffle(item or stream)"));
+        return Err(StreamError::usage(&node.head));
     };
     Ok(Item::new_stream(Riffle{head: node.head.clone(), source: stm, filler: filler.clone()}))
 }

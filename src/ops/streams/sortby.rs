@@ -7,7 +7,7 @@ fn eval_sortby(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let func = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
         body
     } else {
-        return Err(StreamError::new0("expected: stream.sortby{function}"));
+        return Err(StreamError::usage(&node.head));
     };
     let mut vals_keys = stm.listout()?
         .into_iter()

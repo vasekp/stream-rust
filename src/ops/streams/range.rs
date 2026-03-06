@@ -19,7 +19,7 @@ fn eval_range(node: &Node, env: &Env) -> Result<Item, StreamError> {
             let to_ix = env.alpha.ord(to)?;
             (Some(from_ix.into()), to_ix.into(), Some(step.clone()), RangeType::Character(case))
         },
-        _ => return Err(StreamError::new0("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     if empty_helper(from.as_ref(), &to, step.as_ref()) {
         Ok(Item::empty_stream())

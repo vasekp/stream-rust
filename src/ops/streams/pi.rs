@@ -6,7 +6,7 @@ fn eval_pi(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let radix = match &node.args[..] {
         [] => None,
         [Item::Number(radix)] => Some(radix.try_cast_within(2u32..)?),
-        _ => return Err(StreamError::new0("expected: pi or pi(radix)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_stream(Pi{head: node.head.clone(), radix}))
 }

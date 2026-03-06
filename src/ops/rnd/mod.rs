@@ -6,7 +6,7 @@ fn eval_rnd(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let [Item::Number(seed)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.rnd(seed)"));
+        return Err(StreamError::usage(&node.head));
     };
     let len = stm.try_count()?;
     if len.is_zero() {

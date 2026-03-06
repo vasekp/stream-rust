@@ -4,7 +4,7 @@ use std::cell::RefCell;
 
 fn eval_self(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let [Expr::Eval(body)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: self({body})"));
+        return Err(StreamError::usage(&node.head));
     };
     let pre = match &node.source {
         None => None,

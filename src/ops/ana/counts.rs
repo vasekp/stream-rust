@@ -19,7 +19,7 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
             string_counts_listed_impl(&**stm, &args)
         },
         Some(Item::String(stm)) => counts_free_impl(&**stm),
-        _ => Err(StreamError::new("expected: stream.counts(item...) or string.counts(char or string...) or source.counts", node))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

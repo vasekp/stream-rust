@@ -8,8 +8,7 @@ fn eval_numstr(node: &Node, env: &Env) -> Result<Item, StreamError> {
         [] => (10, None),
         [Item::Number(radix)] => (radix.try_cast_within(2..=36)?, None),
         [Item::Number(radix), Item::Number(minw)] => (radix.try_cast_within(2..=36u32)?, Some(minw.try_unsign()?)),
-        _ => return Err(StreamError::new0("expected: number.numstr or number.numstr(radix) or \
-number.numstr(radix, min_width)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     if radix == 10 && minw.is_none() {
         Ok(Item::new_string(LiteralString::from(format!("{}", num).as_str())))
@@ -45,7 +44,7 @@ fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let radix = match &node.args[..] {
         [] => 10,
         [Item::Number(radix)] => radix.try_cast_within(2..=36)?,
-        _ => return Err(StreamError::new0("expected: string.strnum or string.strnum(radix)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     let st = stm.iter().transposed().map(|ch| -> Result<char, StreamError> {
         check_stop!();

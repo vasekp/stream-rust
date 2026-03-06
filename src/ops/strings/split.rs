@@ -19,7 +19,7 @@ fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
         Some(Item::Stream(stm)) => {
             Ok(Item::new_stream(SplitStream{head: node.head, source: stm, sep: node.args}))
         },
-        _ => Err(StreamError::new0("expected: string.split(separators) or stream.split(separators)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

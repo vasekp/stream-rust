@@ -5,14 +5,14 @@ fn eval_first(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::new0("expected: source.first or source.first(count)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     match (node.source_checked()?, count) {
         (Item::Stream(stm), None) => first_item_impl(&**stm),
         (Item::Stream(stm), Some(count)) => Ok(Item::new_stream(First{head: node.head.clone(), source: Rc::clone(stm), count })),
         (Item::String(stm), None) => first_item_impl(&**stm).map(Item::Char),
         (Item::String(stm), Some(count)) => Ok(Item::new_string(First{head: node.head.clone(), source: Rc::clone(stm), count })),
-        _ => Err(StreamError::new0("expected: source.first or source.first(count)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

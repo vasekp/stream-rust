@@ -83,7 +83,7 @@ fn eval_index(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 Ok(Item::from(res))
             }
         },
-        _ => Err(StreamError::new("expected: stream.index(item...) or string.index(char or string...)", node))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

@@ -6,7 +6,7 @@ fn eval_len(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let len = match node.source_checked()? {
         Item::Stream(stm) => len_impl(&**stm)?,
         Item::String(stm) => len_impl(&**stm)?,
-        _ => return Err(StreamError::new0("expected: source.len"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_number(len))
 }

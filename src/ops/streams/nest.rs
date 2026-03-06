@@ -28,7 +28,7 @@ struct NestIterArgs<'node> {
 
 fn eval_nest(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let [Expr::Eval(body)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: source.nest({body}) or nest({body}(args))"));
+        return Err(StreamError::usage(&node.head));
     };
     body.check_no_source()?;
     if body.args.is_empty() && let Some(source) = &node.source {
@@ -36,7 +36,7 @@ fn eval_nest(node: &Node, env: &Env) -> Result<Item, StreamError> {
     } else if !body.args.is_empty() && node.source.is_none() {
         Ok(Item::new_stream(NestArgs{head: node.head.clone(), body: body.eval_all(env)?, env: env.clone()}))
     } else {
-        Err(StreamError::new0("expected: source.nest({body}) or nest({body}(args))"))
+        Err(StreamError::usage(&node.head))
     }
 }
 

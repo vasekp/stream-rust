@@ -4,12 +4,12 @@ fn eval_map(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let body = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
         Rc::clone(body)
     } else {
-        return Err(StreamError::new0("expected: source:body"));
+        return Err(StreamError::usage(&node.head));
     };
     match node.source_checked()?.eval(env)? {
         Item::Stream(source) => Ok(Item::new_stream(Map{head: node.head.clone(), source, body, env: env.clone()})),
         Item::String(source) => Ok(Item::new_string(CharMap{head: node.head.clone(), source, body, env: env.clone()})),
-        _ => Err(StreamError::new0("expected: source:body"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

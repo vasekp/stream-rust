@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_if(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_no_source()?;
     let [cond, true_expr, false_expr] = &node.args[..] else {
-        return Err(StreamError::new0("expected: if(cond, expr, expr)"));
+        return Err(StreamError::usage(&node.head));
     };
     let expr = if cond.eval(env)?.to_bool()? { true_expr } else { false_expr };
     expr.eval(env)

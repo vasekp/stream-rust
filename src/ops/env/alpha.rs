@@ -23,7 +23,7 @@ fn eval_alpha(node: &Node, env: &Env) -> Result<Item, StreamError> {
             new_env.alpha = Rc::new(alpha);
             body.eval(&new_env)
         },
-        _ => Err(StreamError::new0("expected: alpha or alpha(string or stream, body)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

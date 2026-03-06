@@ -3,9 +3,7 @@ use crate::base::*;
 fn eval_ord(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
-    let Some(Item::Char(ch)) = &node.source else {
-        return Err(StreamError::new("expected: character.ord", node));
-    };
+    let ch = node.source_checked()?.as_char()?;
     let ix = env.alpha.ord(ch)?;
     Ok(Item::new_number(ix))
 }
@@ -13,9 +11,7 @@ fn eval_ord(node: &Node, env: &Env) -> Result<Item, StreamError> {
 fn eval_chr(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
-    let Some(Item::Number(ix)) = &node.source else {
-        return Err(StreamError::new("expected: number.chr", node));
-    };
+    let ix = node.source_checked()?.as_num()?;
     let ch = env.alpha.chr(ix, CharCase::Indeterminate);
     Ok(Item::new_char(ch))
 }

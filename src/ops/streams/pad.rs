@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let [Item::Number(len), item] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.padleft(length, item) or string.padleft(length, char)"));
+        return Err(StreamError::usage(&node.head));
     };
     let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
@@ -11,14 +11,14 @@ fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
             Ok(Item::new_stream(PadLeft { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
         (Item::String(stm), Item::Char(ch)) =>
             Ok(Item::new_string(PadLeft { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
-        _ => Err(StreamError::new0("expected: stream.padleft(length, item) or string.padleft(length, char)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
 fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let [Item::Number(len), item] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.padright(length, item) or string.padright(length, char)"))
+        return Err(StreamError::usage(&node.head));
     };
     let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
@@ -26,7 +26,7 @@ fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
             Ok(Item::new_stream(PadRight { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
         (Item::String(stm), Item::Char(ch)) =>
             Ok(Item::new_string(PadRight { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
-        _ => Err(StreamError::new0("expected: stream.padright(length, item) or string.padright(length, char)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
