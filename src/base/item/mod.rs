@@ -202,9 +202,11 @@ impl Item {
                 let l1 = x1.len();
                 let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
-                for (x, y) in x1.iter().zip(x2.iter()) {
+                let mut it1 = x1.iter();
+                let mut it2 = x2.iter();
+                while let (Some(x), Some(y)) = (it1.next()?, it2.next()?) {
                     check_stop!();
-                    if !x?.try_eq(&y?)? { return Ok(false); }
+                    if !x.try_eq(&y)? { return Ok(false); }
                 }
                 true
             },
@@ -212,9 +214,11 @@ impl Item {
                 let l1 = x1.len();
                 let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
-                for (x, y) in x1.iter().zip(x2.iter()) {
+                let mut it1 = x1.iter();
+                let mut it2 = x2.iter();
+                while let (Some(x), Some(y)) = (it1.next()?, it2.next()?) {
                     check_stop!();
-                    if x? != y? { return Ok(false); }
+                    if x != y { return Ok(false); }
                 }
                 true
             },
@@ -234,8 +238,8 @@ impl Item {
                 let mut yi = y.iter();
                 loop {
                     check_stop!();
-                    let lhs = xi.next().transpose()?;
-                    let rhs = yi.next().transpose()?;
+                    let lhs = xi.next()?;
+                    let rhs = yi.next()?;
                     match (lhs, rhs) {
                         (None, None) => break Ordering::Equal,
                         (Some(_), None) => break Ordering::Greater,
@@ -253,8 +257,8 @@ impl Item {
                 let mut yi = y.iter();
                 loop {
                     check_stop!();
-                    let lhs = xi.next().transpose()?;
-                    let rhs = yi.next().transpose()?;
+                    let lhs = xi.next()?;
+                    let rhs = yi.next()?;
                     match (lhs, rhs) {
                         (None, None) => break Ordering::Equal,
                         (Some(_), None) => break Ordering::Greater,
@@ -352,14 +356,14 @@ impl PartialEq for Item {
                 let l1 = x1.len();
                 let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
-                x1.iter().zip(x2.iter())
+                x1.iter().transpose().zip(x2.iter().transpose())
                     .all(|(x, y)| x == y)
             },
             (String(x1), String(x2)) => {
                 let l1 = x1.len();
                 let l2 = x2.len();
                 if !Length::possibly_eq(&l1, &l2) { return false; }
-                x1.iter().zip(x2.iter())
+                x1.iter().transpose().zip(x2.iter().transpose())
                     .all(|(x, y)| x == y)
             },
             _ => false

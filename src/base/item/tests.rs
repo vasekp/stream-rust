@@ -39,7 +39,7 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
 }
 
 fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) {
-    assert_eq!(stm.iter().map(Result::unwrap).count(), len);
+    assert_eq!(stm.iter().transpose().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.len(), &Length::Exact(len.into())));
     assert!(Length::possibly_eq(&stm.iter().len_remain(), &Length::Exact(len.into())));
     assert_eq!(len == 0, stm.is_empty());
@@ -64,18 +64,18 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
 
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
     assert_eq!(i1.next(), match i2.advance(UNumber::zero()).unwrap() {
-        Some(_) => None,
+        Some(_) => Ok(None),
         None => i2.next() // same None, same element or same error
     }, "advance(0) = no-op on fresh iterator");
 
     if !stm.is_empty() {
-        assert_ne!(stm.iter().next().transpose().unwrap(), None,
+        assert_ne!(stm.iter().next().unwrap(), None,
             "first next() if !is_empty()"); // panics if the first item is Err
 
         let (mut i1, mut i2) = (stm.iter(), stm.iter());
-        i1.next();
+        i1.next().unwrap();
         assert_eq!(i1.next(), match i2.advance(UNumber::one()).unwrap() {
-            Some(_) => None,
+            Some(_) => Ok(None),
             None => i2.next()
         }, "advance(1) = next() on fresh iterator");
 
@@ -114,7 +114,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
                     "advance(1)");
                 assert_eq!(i2.advance(UNumber::from(many)).unwrap(), None,
                     "advance(many)");
-                assert_ne!(i2.next().transpose().unwrap(), None,
+                assert_ne!(i2.next().unwrap(), None,
                     "advance(many) + next() for infinite");
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap(),
                     "advance(many) + advance(1) = advance(many) + next()");
@@ -142,8 +142,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
 
                 let mut iter = stm.iter();
                 for i in 0..TEST {
-                    assert!(matches!(iter.next(), Some(Ok(_))),
-                        "{i}=th next() if advance({TEST}) returned None");
+                    assert!(iter.next().unwrap().is_some(), "{i}=th next() if advance({TEST}) returned None");
                 }
                 let next = iter.next().unwrap();
 
@@ -163,20 +162,16 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
                 const { assert!(REST > 1); }
                 let mut iter = stm.iter();
                 assert_eq!(iter.advance(HALF.into()), Ok(None), "advance({TEST}/2)");
-                assert!(matches!(iter.next(), Some(Ok(_))), "advance({TEST}/2) + next()");
+                assert!(iter.next().unwrap().is_some(), "advance({TEST}/2) + next()");
                 assert_eq!(iter.advance((REST - 1).into()), Ok(None), "advance(rest)");
-                assert_eq!(iter.next().unwrap(), next,
-                    "advance({TEST}/2) + next() + advance(rest) + next()");
+                assert_eq!(iter.next().unwrap(), next, "advance({TEST}/2) + next() + advance(rest) + next()");
 
                 let mut iter = stm.iter();
                 const { assert!(TEST >= 2); }
-                assert!(matches!(iter.next(), Some(Ok(_))),
-                    "next() on fresh nonempty at-most iterator");
+                assert!(iter.next().unwrap().is_some(), "next() on fresh nonempty at-most iterator");
                 assert_eq!(iter.advance((TEST - 2).into()), Ok(None), "advance({TEST} - 2");
-                assert!(matches!(iter.next(), Some(Ok(_))),
-                    "next() after next() + advance({TEST} - 2)");
-                assert_eq!(iter.next().unwrap(), next,
-                    "next() + advance({TEST} - 2) + next() + next()");
+                assert!(iter.next().unwrap().is_some(), "next() after next() + advance({TEST} - 2)");
+                assert_eq!(iter.next().unwrap(), next, "next() + advance({TEST} - 2) + next() + next()");
 
                 let (mut i1, mut i2) = (stm.iter(), stm.iter());
                 assert_eq!(i1.advance(TEST.into()), Ok(None), "advance({TEST})");
@@ -187,7 +182,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) {
     } else {
         assert_eq!(stm.iter().len_remain(), Length::Exact(UNumber::zero()),
             "len_remain = 0 for is_empty()");
-        assert_eq!(stm.iter().next(), None, "next = None for is_empty()");
+        assert_eq!(stm.iter().next().unwrap(), None, "next = None for is_empty()");
         assert_eq!(stm.iter().advance(UNumber::one()).unwrap(), Some(UNumber::one()),
             "advance(1) on empty stream");
     }
@@ -210,7 +205,7 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
                 assert_eq!(it.len_remain(), Length::Exact(UNumber::zero()),
                     "len_remain() after advance(len)");
             }
-            assert_eq!(it.next(), None, "next() after advance(len)");
+            assert_eq!(it.next(), Ok(None), "next() after advance(len)");
         },
         Some(rem) => assert_eq!(rem, UNumber::zero(), "advance(len)")
     }
@@ -240,11 +235,11 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
         assert_eq!(i2.len_remain(), Length::Exact(UNumber::one()),
             "len_remain() after advance(len-1)");
     }
-    let n1 = i1.next().transpose().unwrap();
-    let n2 = i2.next().transpose().unwrap();
+    let n1 = i1.next().unwrap();
+    let n2 = i2.next().unwrap();
     assert!(n1.is_some(), "next() after advance(len-1)");
     assert_eq!(n1, n2, "next() after advance(len-1) direct vs. composed");
-    assert_eq!(i1.next(), None, "advance(len-1) + next() + next()");
+    assert_eq!(i1.next(), Ok(None), "advance(len-1) + next() + next()");
 
     // advance(0) = no-op
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
@@ -270,7 +265,7 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
     assert_eq!(i1.advance(half.clone()).unwrap(), None, "advance(len/2)");
     assert_eq!(i1.advance(UNumber::one()).unwrap(), None, "advance(len/2) + advance(1)");
     assert_eq!(i2.advance(half.clone()).unwrap(), None, "advance(len/2)");
-    assert_ne!(i2.next().transpose().unwrap(), None, "advance(len/2) + next()");
+    assert_ne!(i2.next().unwrap(), None, "advance(len/2) + next()");
     if test_len_remain {
         assert_eq!(i1.len_remain(), i2.len_remain(),
             "len_remain() after advance(len/2) + [advance(1) | next()]");

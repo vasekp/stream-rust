@@ -71,37 +71,12 @@ impl Display for ParseError<'_> {
     }
 }
 
-macro_rules! iter_try_call {
-    ($expr:expr) => {
-        match (|| -> Result<_, StreamError> { Ok($expr) })() {
-            Ok(value) => value,
-            Err(err) => return Some(Err(err))
-        }
-    }
-}
-
-macro_rules! iter_try_expr {
-    ($expr:expr) => {
-        match $expr {
-            Ok(value) => value,
-            Err(err) => return Some(Err(err))
-        }
-    }
-}
-
 macro_rules! check_stop {
     () => {
         if stop::should_stop() {
             Err(StreamError::Interrupt)?;
         }
     };
-    (iter) => {
-        if stop::should_stop() {
-            return Some(Err(StreamError::Interrupt));
-        }
-    }
 }
 
-pub(crate) use iter_try_call;
-pub(crate) use iter_try_expr;
 pub(crate) use check_stop;

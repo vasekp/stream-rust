@@ -16,16 +16,12 @@ impl<'stm, I: ItemType> RandomAccess<'stm, I> {
     }
 }
 
-impl<I: ItemType> Iterator for RandomAccess<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for RandomAccess<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         self.consumed += 1;
         self.iter.next()
     }
-}
 
-impl<I: ItemType> SIterator<I> for RandomAccess<'_, I> {
     fn len_remain(&self) -> Length {
         Length::Unknown
     }
@@ -48,9 +44,9 @@ impl<I: ItemType> RandomAccess<'_, I> {
         ret
     }
 
-    pub(crate) fn nth_from_start(&mut self, index: UNumber) -> Option<Result<I, StreamError>> {
-        if iter_try_expr!(self.move_to(index)).is_some() {
-            return None;
+    pub(crate) fn nth_from_start(&mut self, index: UNumber) -> Result<Option<I>, StreamError> {
+        if self.move_to(index)?.is_some() {
+            return Ok(None);
         }
         self.next()
     }
