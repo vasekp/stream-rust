@@ -1,22 +1,38 @@
 use crate::base::*;
 use std::fmt::{Display, Formatter, Debug};
 
-
 /// The runtime error type.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum StreamError {
-    ExprError { reason: String, expr: Option<Expr> },
-    Interrupt
+pub struct StreamError {
+    reason: Reason,
+    expr: Option<Expr>,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum Reason {
+    Generic(String),
+    Usage(&'static str),
+    Interrupt,
 }
 
 impl StreamError {
-    pub fn new(reason: impl Into<String>, expr: impl Into<Expr>) -> StreamError {
-        StreamError::ExprError{reason: reason.into(), expr: Some(expr.into())}
+    pub fn new(reason: impl Into<Reason>, expr: impl Into<Expr>) -> Self {
+        Self{reason: reason.into(), expr: Some(expr.into())}
     }
 
-    pub fn new0(reason: impl Into<String>) -> StreamError {
-        StreamError::ExprError{reason: reason.into(), expr: None}
+    pub fn new0(reason: impl Into<Reason>) -> Self {
+        Self{reason: reason.into(), expr: None}
+    }
+
+    pub fn usage(head: &Head) -> Self {
+        let head_str = head.as_str().expect("StreamError::usage should be called with Head::Symbol or Head::Oper");
+        Self{reason: Reason::Usage(head_str), expr: None}
+    }
+
+    pub fn interrupt() -> Self {
+        Self{reason: Reason::Interrupt, expr: None}
     }
 }
 
@@ -30,13 +46,29 @@ impl std::error::Error for StreamError { }
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(expr) = &self.expr {
+            write!(f, "{}: ", expr.describe())?;
+        }
+        write!(f, "{}", self.reason)
+    }
+}
+
+impl<T: Into<String>> From<T> for Reason {
+    fn from(s: T) -> Self {
+        Reason::Generic(s.into())
+    }
+}
+
+impl Display for Reason {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ExprError { reason, expr: Some(expr) } => write!(f, "{}: {}", expr.describe(), reason),
-            Self::ExprError { reason, expr: None } => write!(f, "{}", reason),
+            Self::Generic(s) => write!(f, "{s}"),
+            Self::Usage(sym) => write!(f, "invalid call pattern: see ?{sym}"),
             Self::Interrupt => write!(f, "interrupted")
         }
     }
 }
+
 
 /// The error type returned by [`parser::parse`](crate::parser::parse). Contains the description of
 /// the error and its location within the input string. The lifetime is bound to the lifetime of
@@ -74,7 +106,7 @@ impl Display for ParseError<'_> {
 macro_rules! check_stop {
     () => {
         if stop::should_stop() {
-            Err(StreamError::Interrupt)?;
+            Err(StreamError::interrupt())?;
         }
     };
 }
