@@ -2,12 +2,12 @@ use crate::base::*;
 
 fn eval_splitby(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.while{cond}"))
+        return Err(StreamError::new0("expected: stream.splitby{cond}"))
     };
     match node.source_checked()?.eval(env)? {
         Item::Stream(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
         Item::String(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
-        _ => Err(StreamError::new0("expected: stream.splitby{condition}"))
+        _ => Err(StreamError::new0("expected: stream.splitby{cond}"))
     }
 }
 
@@ -44,34 +44,30 @@ impl<I: ItemType> Stream for SplitBy<I> {
     }
 }
 
-impl<I: ItemType> Iterator for SplitByIter<'_, I> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator for SplitByIter<'_, I> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         if self.done {
-            return None;
+            return Ok(None);
         }
         let mut cache = vec![];
-        for item in &mut self.source {
-            check_stop!(iter);
-            let item = iter_try_expr!(item);
-            let cond_item = iter_try_call!(Node::from(self.cond.clone())
+        for item in self.source.transposed() {
+            check_stop!();
+            let item = item?;
+            let cond_item = Node::from(self.cond.clone())
                 .with_source(Expr::from(item.clone().into()))?
-                .eval(self.env)?);
+                .eval(self.env)?;
             let Item::Bool(cond) = cond_item else {
-                return Some(Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone())));
+                return Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone()));
             };
             if cond {
-                return Some(Ok(Item::from(cache)));
+                return Ok(Some(Item::from(cache)));
             }
             cache.push(item);
         }
         self.done = true;
-        Some(Ok(Item::from(cache)))
+        Ok(Some(Item::from(cache)))
     }
-}
 
-impl<I: ItemType> SIterator for SplitByIter<'_, I> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }

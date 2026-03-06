@@ -59,15 +59,13 @@ struct RevIter<'node, I: ItemType> {
     cached: Vec<I>
 }
 
-impl<I: ItemType> Iterator for RevIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         match self.cached.pop() {
-            Some(item) => Some(Ok(item)),
+            Some(item) => Ok(Some(item)),
             None => {
                 if self.start.is_zero() {
-                    None
+                    Ok(None)
                 } else {
                     let size_n = UNumber::from(CACHE_LEN);
                     let (new_start, diff) = if size_n <= self.start {
@@ -77,17 +75,15 @@ impl<I: ItemType> Iterator for RevIter<'_, I> {
                             .expect("start < CACHE_LEN should fit into usize"))
                     };
                     let mut iter = self.source.iter();
-                    iter_try_expr!(iter.advance(new_start.clone()));
+                    iter.advance(new_start.clone())?;
                     self.start = new_start;
-                    self.cached = iter_try_expr!(iter.take(diff).collect());
-                    Ok(self.cached.pop()).transpose()
+                    self.cached = iter.transposed().take(diff).collect::<Result<_, _>>()?;
+                    Ok(self.cached.pop())
                 }
             }
         }
     }
-}
 
-impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let len = self.cached.len();
         match usize::try_from(&n) {

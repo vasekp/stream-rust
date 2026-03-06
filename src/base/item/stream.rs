@@ -41,7 +41,7 @@ pub trait Stream<I = Item>: Describe {
                 match iter.len_remain() {
                     Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
                     Length::Exact(_) | Length::Infinite => false,
-                    _ => iter.next().is_none()
+                    _ => iter.next().transpose().is_none()
                 }
             }
         }
@@ -70,9 +70,9 @@ impl<I: ItemType> dyn Stream<I> {
             Length::Infinite => Err(StreamError::new("stream is infinite", Item::from(self))),
             _ => {
                 let mut ret: usize = 0;
-                for res in self.iter() {
+                let mut it = self.iter();
+                while it.next()?.is_some() {
                     check_stop!();
-                    res?;
                     ret += 1;
                 }
                 Ok(ret.into())
@@ -99,9 +99,9 @@ impl dyn Stream<Item> {
             Length::Infinite => return Err(StreamError::new("stream is infinite", Item::from(self))),
             _ => ()
         };
-        for res in self.iter() {
+        for item in self.iter().transposed() {
             check_stop!();
-            vec.push(res?);
+            vec.push(item?);
         }
         Ok(vec)
     }
@@ -126,11 +126,11 @@ impl dyn Stream<Item> {
         'a: {
             while prec.is_none_or(|prec| s.len() < prec) && max.is_none_or(|max| count.get() < max) {
                 match iter.next() {
-                    None => {
+                    Ok(None) => {
                         s.push(']');
                         break 'a;
                     },
-                    Some(Ok(item)) => {
+                    Ok(Some(item)) => {
                         let plen = s.len();
                         if comma {
                             s += ", ";
@@ -144,7 +144,7 @@ impl dyn Stream<Item> {
                         }
                         comma = true;
                     },
-                    Some(Err(err)) => {
+                    Err(err) => {
                         if comma {
                             s += ", ";
                         }
@@ -154,7 +154,7 @@ impl dyn Stream<Item> {
                     }
                 };
             }
-            if iter.next().is_none() {
+            if iter.next().transpose().is_none() {
                 s.push(']');
             } else {
                 s += if comma { ", ..." } else { "..." };
@@ -182,9 +182,9 @@ impl dyn Stream<Char> {
             Length::Infinite => return Err(StreamError::new("string is infinite", Item::from(self))),
             _ => ()
         };
-        for res in self.iter() {
+        for ch in self.iter().transposed() {
             check_stop!();
-            vec.push(res?);
+            vec.push(ch?);
         }
         Ok(vec)
     }
@@ -202,22 +202,21 @@ impl dyn Stream<Char> {
         s.push('"');
         'a: {
             while prec.is_none_or(|prec| s.len() < prec) && max.is_none_or(|max| i < max) {
-                if let Some(next) = iter.next() {
-                    match next {
-                        Ok(ch) => s += &format!("{ch:#}"),
-                        Err(err) => {
-                            s += "<!>";
-                            error.set(Some(err));
-                            break 'a;
-                        }
+                match iter.next() {
+                    Ok(Some(ch)) => s += &format!("{ch:#}"),
+                    Ok(None) => {
+                        s.push('"');
+                        break 'a;
+                    },
+                    Err(err) => {
+                        s += "<!>";
+                        error.set(Some(err));
+                        break 'a;
                     }
-                } else {
-                    s.push('"');
-                    break 'a;
                 }
                 i += 1;
             }
-            s += match iter.next() {
+            s += match iter.next().transpose() {
                 None => "\"",
                 Some(_) => "..."
             };
@@ -292,15 +291,11 @@ impl<I> std::ops::DerefMut for OwnedStreamIter<I> {
     }
 }
 
-impl<I> Iterator for OwnedStreamIter<I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I> SIterator<I> for OwnedStreamIter<I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         self.iter.next()
     }
-}
 
-impl<I> SIterator<I> for OwnedStreamIter<I> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.advance(n)
     }

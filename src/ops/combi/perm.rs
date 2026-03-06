@@ -77,10 +77,8 @@ struct PermIter<'node> {
     num_read: UNumber,
 }
 
-impl Iterator for PermIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for PermIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         if self.order.is_empty() {
             self.order = vec![0];
         } else {
@@ -96,7 +94,9 @@ impl Iterator for PermIter<'_> {
                     let prev_len = self.order.len();
                     if self.src_len.as_ref()
                         .and_then(|x| usize::try_from(x).ok())
-                        .is_some_and(|x| x == prev_len) { return None; }
+                        .is_some_and(|x| x == prev_len) {
+                            return Ok(None);
+                    }
                     self.order.push(self.order[0]);
                     self.order[0] = prev_len;
                     self.order[0..prev_len].sort();
@@ -107,15 +107,13 @@ impl Iterator for PermIter<'_> {
             .map(|x| Item::new_number(x + 1))
             .collect::<Vec<_>>();
         self.num_read += 1;
-        Some(Expr::from(Node {
+        Expr::from(Node {
             head: "reorder".into(),
             source: Some(Item::from(self.source)),
             args: order
-        }).eval_default())
+        }).eval_default().map(Option::Some)
     }
-}
 
-impl SIterator for PermIter<'_> {
     fn len_remain(&self) -> Length {
         match (self.src_len, &self.self_len) {
             (None, _) => Length::Infinite,

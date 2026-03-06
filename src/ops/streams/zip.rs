@@ -51,19 +51,15 @@ struct ZipIter<'node> {
     iters: Vec<Box<dyn SIterator + 'node>>
 }
 
-impl Iterator for ZipIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for ZipIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         let mut vec = Vec::with_capacity(self.iters.len());
         for iter in &mut self.iters {
-            vec.push(iter_try_expr!(iter.next()?));
+            vec.push(iter_try!(iter.next()));
         }
-        Some(Ok(vec.into()))
+        Ok(Some(vec.into()))
     }
-}
 
-impl SIterator for ZipIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         let mut remain = UNumber::zero();
         for iter in &mut self.iters {

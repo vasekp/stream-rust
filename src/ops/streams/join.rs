@@ -84,26 +84,23 @@ struct JoinIter<'node, I: ItemType> {
     inner: Option<Box<dyn SIterator<I> + 'node>>
 }
 
-impl<I: ItemType> Iterator for JoinIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         loop {
-            check_stop!(iter);
+            check_stop!();
             if let Some(inner) = &mut self.inner {
-                if let Some(res) = inner.next() { return Some(res); }
+                if let Some(res) = inner.next()? { return Ok(Some(res)); }
                 else { self.inner = None; }
             }
             self.index += 1;
-            match self.elems.get(self.index - 1)? {
-                Joinable::Single(item) => return Some(Ok(item.clone())),
-                Joinable::Stream(stm) => self.inner = Some(stm.iter())
+            match self.elems.get(self.index - 1) {
+                Some(Joinable::Single(item)) => return Ok(Some(item.clone())),
+                Some(Joinable::Stream(stm)) => self.inner = Some(stm.iter()),
+                None => return Ok(None),
             }
         }
     }
-}
 
-impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
     fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
         loop {
             check_stop!();

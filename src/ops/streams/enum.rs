@@ -36,17 +36,13 @@ struct EnumIter<'node> {
     index: UNumber
 }
 
-impl Iterator for EnumIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let item = iter_try_expr!(self.iter.next()?);
-        self.index += 1;
-        Some(Ok(vec![item, Item::new_number(self.index.clone())].into()))
-    }
-}
-
 impl SIterator for EnumIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+        let item = iter_try!(self.iter.next());
+        self.index += 1;
+        Ok(Some(vec![item, Item::new_number(self.index.clone())].into()))
+    }
+
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.index += &n;
         self.iter.advance(n)

@@ -31,7 +31,7 @@ fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
-    stm.iter()
+    stm.iter().transposed()
         .map(|item| {
             check_stop!();
             match item? {
@@ -98,27 +98,25 @@ impl<'node> StringReplaceIter<'node> {
     }
 }
 
-impl Iterator for StringReplaceIter<'_> {
-    type Item = Result<Char, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator<Char> for StringReplaceIter<'_> {
+    fn next(&mut self) -> Result<Option<Char>, StreamError> {
         loop {
-            check_stop!(iter);
+            check_stop!();
             if let Some((deplete, done)) = &mut self.queued {
                 if let Some(item) = deplete.next() {
-                    return Some(Ok(item));
+                    return Ok(Some(item));
                 } else if *done {
-                    return None;
+                    return Ok(None);
                 } else {
                     self.queued = None;
                 }
             }
             if self.cache.len() == self.longest
                 && let Some(item) = self.cache.pop_front() {
-                    return Some(Ok(item));
+                    return Ok(Some(item));
                 }
-            if let Some(item) = self.source.next() {
-                self.cache.push_back(iter_try_expr!(item));
+            if let Some(item) = self.source.next()? {
+                self.cache.push_back(item);
                 'a: for (patt, repl) in self.orig.iter().zip(self.repl.iter()) {
                     if patt.len() > self.cache.len() { continue; }
                     /* Match found */
@@ -135,9 +133,7 @@ impl Iterator for StringReplaceIter<'_> {
             }
         }
     }
-}
 
-impl SIterator<Char> for StringReplaceIter<'_> {
     fn len_remain(&self) -> Length {
         match self.source.len_remain() {
             Length::Exact(_) | Length::AtMost(_) | Length::UnknownFinite => 

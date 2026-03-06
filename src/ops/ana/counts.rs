@@ -25,7 +25,7 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
 
 fn stream_counts_listed_impl(stm: &dyn Stream, args: &[Item]) -> Result<Item, StreamError> {
     let mut counts = args.iter().map(|item| (item, 0)).collect::<Vec<_>>();
-    for item in stm.iter() {
+    for item in stm.iter().transposed() {
         check_stop!();
         let item = item?;
         for (cmp, count) in &mut counts {
@@ -44,15 +44,14 @@ fn stream_counts_listed_impl(stm: &dyn Stream, args: &[Item]) -> Result<Item, St
     }
 }
 
-fn string_counts_listed_impl(stm: &dyn Stream<Char>, chars: &[Vec<Char>]) -> Result<Item, StreamError> 
-{
+fn string_counts_listed_impl(stm: &dyn Stream<Char>, chars: &[Vec<Char>]) -> Result<Item, StreamError> {
     let mut counts = chars.iter().map(|arg| (arg, 0)).collect::<Vec<_>>();
     let longest = counts.iter()
         .map(|(s, _)| s.len())
         .reduce(std::cmp::max)
         .unwrap(); // len ≥ 1
     let mut deque = VecDeque::with_capacity(longest);
-    for elm in stm.iter() {
+    for elm in stm.iter().transposed() {
         check_stop!();
         if deque.len() == longest {
             deque.pop_front();
@@ -82,7 +81,7 @@ fn string_counts_listed_impl(stm: &dyn Stream<Char>, chars: &[Vec<Char>]) -> Res
 
 fn counts_free_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<Item, StreamError> {
     let mut counts: Vec<(I, usize)> = Vec::new();
-    for item in stm.iter() {
+    for item in stm.iter().transposed() {
         check_stop!();
         let item = item?;
         'a: {

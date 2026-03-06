@@ -83,20 +83,16 @@ struct PadLeftIter<'node, I: ItemType> {
     padding: &'node I,
 }
 
-impl<I: ItemType> Iterator for PadLeftIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         if !self.pad_remain.is_zero() {
             self.pad_remain -= 1;
-            Some(Ok(self.padding.clone()))
+            Ok(Some(self.padding.clone()))
         } else {
             self.source.next()
         }
     }
-}
 
-impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
     fn len_remain(&self) -> Length {
         self.source.len_remain() + &self.pad_remain
     }
@@ -165,28 +161,24 @@ struct PadRightIter<'node, I: ItemType> {
     padding: &'node I,
 }
 
-impl<I: ItemType> Iterator for PadRightIter<'_, I> {
-    type Item = Result<I, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
         if let Some(ref mut iter) = self.source {
-            if let Some(res) = iter.next() {
+            if let Some(res) = iter.next()? {
                 self.pos += 1;
-                return Some(res);
+                return Ok(Some(res));
             } else {
                 self.source = None;
             }
         }
         if &self.pos < self.len {
             self.pos += 1;
-            Some(Ok(self.padding.clone()))
+            Ok(Some(self.padding.clone()))
         } else {
-            None
+            Ok(None)
         }
     }
-}
 
-impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
     fn len_remain(&self) -> Length {
         match &self.source {
             Some(iter) => iter.len_remain().map(|len|

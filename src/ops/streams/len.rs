@@ -16,7 +16,7 @@ fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, StreamError> {
         Length::Exact(len) => Ok(len),
         Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {
             let mut len = 0usize;
-            for res in stm.iter() {
+            for res in stm.iter().transposed() {
                 check_stop!();
                 let _ = res?;
                 len += 1;

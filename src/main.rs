@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .spawn()
                         .expect("Failed to run less.");
                     let mut stdin = cmd.stdin.take().expect("Failed to open stdin");
-                    for (ix, item) in stm.iter().enumerate() {
+                    for (ix, item) in stm.iter().transposed().enumerate() {
                         match item {
                             Ok(item) => {
                                 let index = format!("[{}]", ix + 1).dimmed();

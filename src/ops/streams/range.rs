@@ -109,10 +109,8 @@ struct RangeIter<'node> {
     value: Number
 }
 
-impl Iterator for RangeIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for RangeIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         if self.parent.step.as_ref().is_some_and(Number::is_zero)
             || (self.parent.step.as_ref().is_none_or(Number::is_positive) && self.value <= self.parent.to)
             || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
@@ -124,14 +122,12 @@ impl Iterator for RangeIter<'_> {
                     Some(step) => self.value += step,
                     None => self.value += 1
                 }
-                Some(Ok(ret))
+                Ok(Some(ret))
         } else {
-            None
+            Ok(None)
         }
     }
-}
 
-impl SIterator for RangeIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         if empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             return Ok(Some(n))

@@ -47,7 +47,7 @@ fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
         [Item::Number(radix)] => radix.try_cast_within(2..=36)?,
         _ => return Err(StreamError::new0("expected: string.strnum or string.strnum(radix)"))
     };
-    let st = stm.iter().map(|ch| -> Result<char, StreamError> {
+    let st = stm.iter().transposed().map(|ch| -> Result<char, StreamError> {
         check_stop!();
         match ch? {
             Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),

@@ -71,10 +71,8 @@ impl<'node> RndIter<'node> {
     }
 }
 
-impl Iterator for RndIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for RndIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         let mut hasher = self.parent.hasher.clone();
         Hash::hash(&self.pos, &mut hasher);
         let seed = hasher.finish();
@@ -93,17 +91,11 @@ impl Iterator for RndIter<'_> {
         };
         let rem = rnd % &self.parent.len;
         let mut iter = self.parent.source.iter();
-        match iter.advance(rem) {
-            Ok(None) => (),
-            Ok(Some(_)) => unreachable!("iterator ended before its length"),
-            Err(err) => return Some(Err(err))
-        };
+        iter.advance(rem)?;
         self.pos += 1;
         iter.next()
     }
-}
 
-impl SIterator for RndIter<'_> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }

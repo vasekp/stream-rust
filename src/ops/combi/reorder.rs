@@ -64,32 +64,29 @@ enum ReorderState<'node> {
     Rest
 }
 
-impl Iterator for ReorderIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl SIterator for ReorderIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
         loop {
-            check_stop!(iter);
+            check_stop!();
             match &mut self.state {
                 ReorderState::Args{vec_iter} => {
                     if let Some(next) = vec_iter.next() {
-                        match self.iter.nth_from_start(next - 1u32) {
-                            Some(Ok(item)) => {
+                        match self.iter.nth_from_start(next - 1u32)? {
+                            Some(item) => {
                                 self.pos += 1;
-                                return Some(Ok(item))
+                                return Ok(Some(item))
                             },
-                            Some(Err(err)) => return Some(Err(err)),
                             None => {
-                                return Some(Err(StreamError::new(format!("index past end ({next})"),
+                                return Err(StreamError::new(format!("index past end ({next})"),
                                     Node::new("[part]",
                                         Some(Item::from(&self.parent.source).into()),
-                                        vec![Expr::new_number(next.to_owned())]))));
+                                        vec![Expr::new_number(next.to_owned())])));
                             }
                         }
                     }
                     if usize::try_from(&self.parent.max_index)
                             .is_ok_and(|max| max == self.parent.indices.len()) {
-                        iter_try_expr!(self.iter.move_to(self.parent.max_index.to_owned()));
+                        self.iter.move_to(self.parent.max_index.to_owned())?;
                         self.state = ReorderState::Rest;
                     } else {
                         self.state = ReorderState::Missed{index: UNumber::one()};
@@ -97,7 +94,7 @@ impl Iterator for ReorderIter<'_> {
                 },
                 ReorderState::Missed{index} => {
                     if *index > self.parent.max_index {
-                        iter_try_expr!(self.iter.move_to(&*index - 1u32));
+                        self.iter.move_to(&*index - 1u32)?;
                         self.state = ReorderState::Rest;
                         continue;
                     }
@@ -118,9 +115,7 @@ impl Iterator for ReorderIter<'_> {
             }
         }
     }
-}
 
-impl SIterator for ReorderIter<'_> {
     fn len_remain(&self) -> Length {
         self.parent.source.len().map(|len| if len >= &self.pos { len - &self.pos }
             else { UNumber::zero() })

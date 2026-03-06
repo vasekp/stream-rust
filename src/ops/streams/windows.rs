@@ -42,12 +42,14 @@ impl Describe for Windows {
 impl Stream for Windows {
     fn iter(&self) -> Box<dyn SIterator + '_> {
         let mut iter = self.source.iter();
-        let res = (&mut iter).take(self.size - 1)
-            .collect::<Result<VecDeque<_>, _>>();
-        let deque = match res {
-            Ok(deque) => deque,
-            Err(err) => return Box::new(std::iter::once(Err(err)))
-        };
+        let mut deque = VecDeque::with_capacity(self.size - 1);
+        for _ in 0..(self.size - 1) {
+            match iter.next() {
+                Ok(Some(item)) => deque.push_back(item),
+                Ok(None) => return Box::new(std::iter::empty()),
+                Err(err) => return Box::new(std::iter::once(Err(err))),
+            }
+        }
         Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_deref(), env: &self.env})
     }
 
@@ -69,26 +71,23 @@ struct WindowsIter<'node> {
     env: &'node Env,
 }
 
-impl Iterator for WindowsIter<'_> {
-    type Item = Result<Item, StreamError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let next = iter_try_expr!(self.iter.next()?);
+impl SIterator for WindowsIter<'_> {
+    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+        let next = iter_try!(self.iter.next());
         let first = self.deque.pop_front().unwrap(); // for size ≥ 2, deque has ≥ 1 element
         self.deque.push_back(next);
         let iter = std::iter::once(first)
             .chain(self.deque.iter().cloned());
         if let Some(body) = self.body {
-            Some(body.clone()
+            body.clone()
                 .with_args(iter.map(Expr::from).collect())
-                .and_then(|expr| expr.eval(self.env)))
+                .and_then(|expr| expr.eval(self.env))
+                .map(Option::Some)
         } else {
-            Some(Ok(Item::from(iter.collect::<Vec<_>>())))
+            Ok(Some(Item::from(iter.collect::<Vec<_>>())))
         }
     }
-}
 
-impl SIterator for WindowsIter<'_> {
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         match (&n).try_into() {
             Ok(num) if num < self.size => { self.deque.drain(0..num); },
@@ -100,7 +99,7 @@ impl SIterator for WindowsIter<'_> {
             }
         }
         for _ in self.deque.len()..(self.size - 1) {
-            let Some(next) = self.iter.next().transpose()? else {
+            let Some(next) = self.iter.next()? else {
                 return Ok(Some((self.size - 1 - self.deque.len()).into()));
             };
             self.deque.push_back(next);
@@ -127,6 +126,7 @@ mod tests {
         test_len!("(1..10).windows(9)" => 2);
         test_len!("(1..10).windows(10)" => 1);
         test_eval!("(1..10).windows(11)" => "[]");
+        test_eval!("(1..10).$lenUU.windows(11)" => "[]");
         test_eval!("(1..5).windows(4)[1]" => "[1, 2, 3, 4]");
         test_eval!("(1..5).windows(4)[2]" => "[2, 3, 4, 5]");
         test_eval!("(1..5).windows(4)[3]" => err);
