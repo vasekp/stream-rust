@@ -43,12 +43,10 @@ impl Stream for While {
 impl SIterator for WhileIter<'_> {
     fn next(&mut self) -> Result<Option<Item>, StreamError> {
         let source = iter_try!(self.source.next());
-        let cond_item = Node::from(self.cond.clone())
+        let cond = Node::from(self.cond)
             .with_source(source.clone().into())?
-            .eval(self.env)?;
-        let Item::Bool(cond) = cond_item else {
-            return Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone()));
-        };
+            .eval(self.env)?
+            .to_bool()?;
         if cond {
             Ok(Some(source))
         } else {

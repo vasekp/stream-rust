@@ -29,15 +29,12 @@ struct SelfRef {
 impl SelfRef {
     fn eval_real(&self) -> Result<(Rc<dyn Stream>, Rc<CacheHistory>), StreamError> {
         let hist = Rc::new(RefCell::new(Vec::new()));
-        let item = self.body.clone()
+        let stm = self.body.clone()
             .with_source(Expr::new_stream(BackRef {
                 parent: Rc::downgrade(&hist)
             }))?
-            .eval(&self.env)?;
-        let stm = match item {
-            Item::Stream(stm) => stm,
-            _ => return Err(StreamError::new0("expected stream"))
-        };
+            .eval(&self.env)?
+            .to_stream()?;
         Ok((stm, hist))
     }
 }

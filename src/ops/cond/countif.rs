@@ -8,9 +8,10 @@ fn eval_countif(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let mut count = 0;
     for item in stm.iter().transposed() {
         check_stop!();
-        match cond.clone().with_source(item?.into())?.eval(env)? {
-            Item::Bool(value) => if value { count += 1; },
-            _other => return Err(StreamError::new0("expected bool")),
+        if cond.with_source(item?.into())?
+            .eval(env)?
+            .to_bool()? {
+                count += 1;
         }
     }
     Ok(Item::new_number(count))

@@ -75,7 +75,7 @@ impl SIterator<Char> for CatIter<'_> {
             match iter_try!(self.outer.next()) {
                 Item::Char(ch) => return Ok(Some(ch)),
                 Item::String(s) => self.inner = Some(s.into_iter()),
-                _item => return Err(StreamError::new0("expected string or character".to_string())) // TODO decorate
+                _item => return Err(StreamError::new0("expected string or character")) // TODO decorate
             }
         }
     }

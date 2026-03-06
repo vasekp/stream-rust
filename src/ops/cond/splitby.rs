@@ -53,12 +53,10 @@ impl<I: ItemType> SIterator for SplitByIter<'_, I> {
         for item in self.source.transposed() {
             check_stop!();
             let item = item?;
-            let cond_item = Node::from(self.cond.clone())
+            let cond = Node::from(self.cond)
                 .with_source(Expr::from(item.clone().into()))?
-                .eval(self.env)?;
-            let Item::Bool(cond) = cond_item else {
-                return Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone()));
-            };
+                .eval(self.env)?
+                .to_bool()?;
             if cond {
                 return Ok(Some(Item::from(cache)));
             }
