@@ -36,10 +36,10 @@ impl Describe for ReorderStream {
 }
 
 impl Stream for ReorderStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(ReorderIter {
             parent: self,
-            iter: RandomAccess::new(&*self.source),
+            iter: RandomAccess::new(&self.source),
             state: ReorderState::Args { vec_iter: self.indices.iter() },
             pos: UNumber::zero()
         })

@@ -51,7 +51,7 @@ impl Describe for RndStream {
 }
 
 impl Stream for RndStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(RndIter::new(self))
     }
 

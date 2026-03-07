@@ -6,8 +6,8 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     match &node.source {
         Some(Item::Stream(stm)) if !node.args.is_empty() =>
-            stream_counts_listed_impl(&**stm, &node.args),
-        Some(Item::Stream(stm)) => counts_free_impl(&**stm),
+            stream_counts_listed_impl(stm, &node.args),
+        Some(Item::Stream(stm)) => counts_free_impl(stm),
         Some(Item::String(stm)) if !node.args.is_empty() => {
             let args = node.args.iter()
                 .map(|item| match item {
@@ -16,14 +16,14 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
                     _item => Err(StreamError::new0("expected character or nonempty string"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            string_counts_listed_impl(&**stm, &args)
+            string_counts_listed_impl(stm, &args)
         },
-        Some(Item::String(stm)) => counts_free_impl(&**stm),
+        Some(Item::String(stm)) => counts_free_impl(stm),
         _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn stream_counts_listed_impl(stm: &dyn Stream, args: &[Item]) -> Result<Item, StreamError> {
+fn stream_counts_listed_impl(stm: &Rc<dyn Stream>, args: &[Item]) -> Result<Item, StreamError> {
     let mut counts = args.iter().map(|item| (item, 0)).collect::<Vec<_>>();
     for item in stm.iter().transposed() {
         check_stop!();
@@ -44,7 +44,7 @@ fn stream_counts_listed_impl(stm: &dyn Stream, args: &[Item]) -> Result<Item, St
     }
 }
 
-fn string_counts_listed_impl(stm: &dyn Stream<Char>, chars: &[Vec<Char>]) -> Result<Item, StreamError> {
+fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) -> Result<Item, StreamError> {
     let mut counts = chars.iter().map(|arg| (arg, 0)).collect::<Vec<_>>();
     let longest = counts.iter()
         .map(|(s, _)| s.len())
@@ -79,7 +79,7 @@ fn string_counts_listed_impl(stm: &dyn Stream<Char>, chars: &[Vec<Char>]) -> Res
     }
 }
 
-fn counts_free_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<Item, StreamError> {
+fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<Item, StreamError> {
     let mut counts: Vec<(I, usize)> = Vec::new();
     for item in stm.iter().transposed() {
         check_stop!();

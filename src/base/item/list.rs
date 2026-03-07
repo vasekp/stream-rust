@@ -4,7 +4,7 @@ use crate::base::*;
 pub struct List(Vec<Item>);
 
 impl Stream for List {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(self.0.iter().map(|x| Ok(x.clone())))
     }
 

@@ -65,7 +65,7 @@ enum RangeType {
 }
 
 impl Stream for Range {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(RangeIter{
             parent: self,
             value: match &self.from {

@@ -29,7 +29,7 @@ impl Describe for ULCase {
 }
 
 impl Stream<Char> for ULCase {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         self.source.map_iter(|ch| Ok((self.func)(&ch)))
     }
 

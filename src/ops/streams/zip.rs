@@ -24,7 +24,7 @@ impl Describe for Zip {
 }
 
 impl Stream for Zip {
-    fn iter(&self) -> Box<dyn SIterator + '_> {
+    fn iter0(&self) -> Box<dyn SIterator + '_> {
         let iters = self.streams.iter()
             .map(|stm| stm.iter())
             .collect();

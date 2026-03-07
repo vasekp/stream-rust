@@ -12,8 +12,8 @@ fn eval_enode(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
         Item::Number(index) => {
             let snode = Node{head: LangItem::Part.into(), source: node.source, args: vec![Item::Number(index.clone())]};
             let part = match snode.source.as_ref().unwrap() { // source checked before calling eval_enode
-                Item::Stream(stm) => eval_index_impl(&**stm, &index),
-                Item::String(stm) => eval_index_impl(&**stm, &index).map(Item::Char),
+                Item::Stream(stm) => eval_index_impl(stm, &index),
+                Item::String(stm) => eval_index_impl(stm, &index).map(Item::Char),
                 _ => return Err(StreamError::new0("expected stream or string"))
             }?; // TODO decorate?
             if node.args.is_empty() {
@@ -43,7 +43,7 @@ fn eval_enode(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_index_impl<I: ItemType>(source: &dyn Stream<I>, index: &Number) -> Result<I, StreamError> {
+fn eval_index_impl<I: ItemType>(source: &Rc<dyn Stream<I>>, index: &Number) -> Result<I, StreamError> {
     let index = UNumber::try_from(index)
         .map_err(|_| StreamError::new0("index must be greater than zero"))?;
     if index.is_zero() {
@@ -77,7 +77,7 @@ struct Part {
 }
 
 impl Stream for Part {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(PartIter{parent: self, iter: self.indices.iter()})
     }
 }
@@ -127,7 +127,7 @@ struct StringPart {
 }
 
 impl Stream<Char> for StringPart {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(StringPartIter{parent: self, iter: self.indices.iter()})
     }
 }
@@ -149,7 +149,7 @@ struct StringPartIter<'node> {
 impl SIterator<Char> for StringPartIter<'_> {
     fn next(&mut self) -> Result<Option<Char>, StreamError> {
         match iter_try!(self.iter.next()) {
-            Item::Number(index) => eval_index_impl(&*self.parent.source, &index).map(Option::Some),
+            Item::Number(index) => eval_index_impl(&self.parent.source, &index).map(Option::Some),
             _ => todo!()
         }
     }

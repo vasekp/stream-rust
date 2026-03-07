@@ -27,7 +27,7 @@ impl Describe for Flatten {
 }
 
 impl Stream for Flatten {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(FlattenIter {
             outer: self.source.iter(),
             iters: vec![],

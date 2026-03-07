@@ -4,7 +4,7 @@ use crate::base::*;
 pub struct LiteralString(Vec<Char>);
 
 impl Stream<Char> for LiteralString {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(self.0.iter().map(Char::clone).map(Result::Ok))
     }
 

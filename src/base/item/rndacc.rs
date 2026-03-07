@@ -1,13 +1,13 @@
 use crate::base::*;
 
 pub(crate) struct RandomAccess<'stm, I: ItemType = Item> {
-    source: &'stm dyn Stream<I>,
+    source: &'stm Rc<dyn Stream<I>>,
     iter: Box<dyn SIterator<I> + 'stm>,
     consumed: UNumber,
 }
 
 impl<'stm, I: ItemType> RandomAccess<'stm, I> {
-    pub fn new(source: &'stm dyn Stream<I>) -> Self {
+    pub fn new(source: &'stm Rc<dyn Stream<I>>) -> Self {
         Self {
             source,
             iter: source.iter(),

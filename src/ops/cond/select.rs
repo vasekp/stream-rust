@@ -31,7 +31,7 @@ impl Describe for Select {
 }
 
 impl Stream for Select {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(SelectIter{cond: &self.cond, source: self.source.iter(), env: &self.env})
     }
 

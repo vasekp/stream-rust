@@ -28,7 +28,7 @@ impl Describe for PermStream {
 }
 
 impl Stream for PermStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(PermIter {
             source: &self.source,
             src_len: &self.len,

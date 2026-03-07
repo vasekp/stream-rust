@@ -156,7 +156,7 @@ impl Describe for MathOp {
 }
 
 impl Stream for MathOp {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
@@ -286,7 +286,7 @@ impl Describe for StringOp {
 }
 
 impl Stream<Char> for StringOp {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         let first = self.first.iter();
         let rest = self.node_rem.args.iter()
             .map(|item| match item {

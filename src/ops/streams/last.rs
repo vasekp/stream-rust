@@ -10,15 +10,15 @@ fn eval_last(node: &Node, env: &Env) -> Result<Item, StreamError> {
         _ => return Err(StreamError::usage(&node.head))
     };
     match (node.source_checked()?, count) {
-        (Item::Stream(stm), None) => eval_last_item(&**stm),
+        (Item::Stream(stm), None) => eval_last_item(stm),
         (Item::Stream(stm), Some(count)) => eval_last_count(&node.head, stm, count),
-        (Item::String(stm), None) => eval_last_item(&**stm).map(Item::Char),
+        (Item::String(stm), None) => eval_last_item(stm).map(Item::Char),
         (Item::String(stm), Some(count)) => eval_last_count(&node.head, stm, count),
         _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
+fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<I, StreamError> {
     match stm.len() {
         Length::Exact(len) if !len.is_zero() => {
             let mut it = stm.iter();
@@ -80,7 +80,7 @@ struct Last<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Last<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         let mut it = self.source.iter();
         match it.advance(self.skip.to_owned()) {
             Ok(None) => it,

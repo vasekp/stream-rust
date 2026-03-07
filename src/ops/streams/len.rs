@@ -4,14 +4,14 @@ fn eval_len(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let len = match node.source_checked()? {
-        Item::Stream(stm) => len_impl(&**stm)?,
-        Item::String(stm) => len_impl(&**stm)?,
+        Item::Stream(stm) => len_impl(stm)?,
+        Item::String(stm) => len_impl(stm)?,
         _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_number(len))
 }
 
-fn len_impl<I>(stm: &dyn Stream<I>) -> Result<UNumber, StreamError> {
+fn len_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<UNumber, StreamError> {
     match stm.len() {
         Length::Exact(len) => Ok(len),
         Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {

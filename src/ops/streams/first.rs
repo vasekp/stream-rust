@@ -8,15 +8,15 @@ fn eval_first(node: &Node, env: &Env) -> Result<Item, StreamError> {
         _ => return Err(StreamError::usage(&node.head))
     };
     match (node.source_checked()?, count) {
-        (Item::Stream(stm), None) => first_item_impl(&**stm),
+        (Item::Stream(stm), None) => first_item_impl(stm),
         (Item::Stream(stm), Some(count)) => Ok(Item::new_stream(First{head: node.head.clone(), source: Rc::clone(stm), count })),
-        (Item::String(stm), None) => first_item_impl(&**stm).map(Item::Char),
+        (Item::String(stm), None) => first_item_impl(stm).map(Item::Char),
         (Item::String(stm), Some(count)) => Ok(Item::new_string(First{head: node.head.clone(), source: Rc::clone(stm), count })),
         _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
+fn first_item_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<I, StreamError> {
     stm.iter().next()?.ok_or(StreamError::new0("stream is empty"))
 }
 
@@ -32,7 +32,7 @@ struct FirstIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for First<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(FirstIter { source: self.source.iter(), count_rem: self.count.clone() })
     }
 

@@ -31,9 +31,9 @@ pub struct Rev<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Rev<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
         Box::new(RevIter {
-            source: &*self.source,
+            source: &self.source,
             start: self.length.clone(),
             cached: Vec::new()
         })
@@ -53,7 +53,7 @@ impl<I: ItemType> Describe for Rev<I> {
 }
 
 struct RevIter<'node, I: ItemType> {
-    source: &'node (dyn Stream<I> + 'static),
+    source: &'node Rc<dyn Stream<I>>,
     start: UNumber,
     cached: Vec<I>
 }

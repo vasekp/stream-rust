@@ -32,7 +32,7 @@ impl Describe for Cat {
 }
 
 impl Stream<Char> for Cat {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         match &self.filler {
             None => Box::new(CatIter::new(self)),
             Some(fill) => RiffleCatIter::new_boxed(self, fill)
@@ -150,7 +150,7 @@ impl SIterator<Char> for RiffleCatIter<'_> {
                 RiffleCatState::Source => {
                     let next = iter_try!(Self::next_cs(&mut *self.outer));
                     self.state = RiffleCatState::Filler{next};
-                    self.inner = self.filler.iter();
+                    self.inner = self.filler.iter0();
                 },
                 RiffleCatState::Filler{next} => {
                     self.state = RiffleCatState::Source;
@@ -177,7 +177,7 @@ impl SIterator<Char> for RiffleCatIter<'_> {
                         Some(cs) => cs,
                     };
                     self.state = RiffleCatState::Filler{next};
-                    self.inner = self.filler.iter();
+                    self.inner = self.filler.iter0();
                 },
                 RiffleCatState::Filler{next} => {
                     self.state = RiffleCatState::Source;

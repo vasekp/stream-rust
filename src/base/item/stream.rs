@@ -14,7 +14,7 @@ pub trait Stream<I = Item>: Describe {
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
     #[must_use]
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node>;
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -22,7 +22,7 @@ pub trait Stream<I = Item>: Describe {
     ///
     /// The default implementation forwards to [`SIterator::len_remain()`].
     fn len(&self) -> Length {
-        self.iter().len_remain()
+        self.iter0().len_remain()
     }
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
@@ -37,7 +37,7 @@ pub trait Stream<I = Item>: Describe {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
             Length::Exact(_) | Length::Infinite => false,
             _ => {
-                let mut iter = self.iter();
+                let mut iter = self.iter0();
                 match iter.len_remain() {
                     Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
                     Length::Exact(_) | Length::Infinite => false,
@@ -58,6 +58,10 @@ impl<I: ItemType> dyn Stream<I> {
     #[allow(clippy::should_implement_trait)]
     pub fn into_iter(self: Rc<Self>) -> OwnedStreamIter<I> {
         OwnedStreamIter::from(self)
+    }
+
+    pub fn iter<'node>(self: &'node Rc<Self>) -> Box<dyn SIterator<I> + 'node> {
+        (**self).iter0()
     }
 
     pub(crate) fn listout(self: &Rc<Self>) -> Result<Vec<I>, StreamError> {
@@ -106,7 +110,7 @@ impl dyn Stream<Item> {
         Ok(vec)
     }
 
-    pub(crate) fn writeout(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
+    pub(crate) fn writeout(self: &Rc<Self>, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -189,7 +193,7 @@ impl dyn Stream<Char> {
         Ok(vec)
     }
 
-    pub(crate) fn writeout(&self, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
+    pub(crate) fn writeout(self: &Rc<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
         let mut iter = self.iter();
@@ -239,7 +243,7 @@ impl<I: ItemType> Describe for Rc<dyn Stream<I>> {
 pub(crate) struct EmptyStream;
 
 impl Stream<Item> for EmptyStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
         Box::new(std::iter::empty())
     }
 }
@@ -254,7 +258,7 @@ impl Describe for EmptyStream {
 pub(crate) struct EmptyString;
 
 impl Stream<Char> for EmptyString {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(std::iter::empty())
     }
 }
@@ -270,9 +274,9 @@ pub struct OwnedStreamIter<I = Item> {
     _stream: Rc<dyn Stream<I>>,
 }
 
-impl<I: 'static> From<Rc<dyn Stream<I>>> for OwnedStreamIter<I> {
+impl<I: ItemType> From<Rc<dyn Stream<I>>> for OwnedStreamIter<I> {
     fn from(stm: Rc<dyn Stream<I>>) -> Self {
-        let iter = unsafe { &*Rc::as_ptr(&stm) as &'static dyn Stream<I> }.iter();
+        let iter = unsafe { &*Rc::as_ptr(&stm) as &'static dyn Stream<I> }.iter0();
         OwnedStreamIter { iter, _stream: stm }
     }
 }

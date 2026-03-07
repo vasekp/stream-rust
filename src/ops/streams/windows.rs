@@ -40,7 +40,7 @@ impl Describe for Windows {
 }
 
 impl Stream for Windows {
-    fn iter(&self) -> Box<dyn SIterator + '_> {
+    fn iter0(&self) -> Box<dyn SIterator + '_> {
         let mut iter = self.source.iter();
         let mut deque = VecDeque::with_capacity(self.size - 1);
         for _ in 0..(self.size - 1) {

@@ -22,7 +22,7 @@ impl Describe for DDup {
 }
 
 impl Stream for DDup {
-    fn iter(&self) -> Box<dyn SIterator + '_> {
+    fn iter0(&self) -> Box<dyn SIterator + '_> {
         Box::new(DDupIter{iter: self.source.iter(), seen: vec![]})
     }
 
