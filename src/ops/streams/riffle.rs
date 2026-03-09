@@ -50,10 +50,6 @@ impl Stream for Riffle {
         };
         Length::intersection(len1.map(|u| 2u32 * u - 1u32), len2.map(|v| 2u32 * v + 1u32))
     }
-
-    fn is_empty(&self) -> bool {
-        false
-    }
 }
 
 struct RiffleIter<'node> {
@@ -149,6 +145,7 @@ mod tests {
         test_eval!("[1,2,3].riffle('a')" => "[1, 'a', 2, 'a', 3]");
         test_eval!("seq.riffle(['a'])" => "[1, 'a', 2]");
         test_eval!("seq.riffle([])" => "[1]");
+        test_eval!("[].riffle(1)" => "[]");
         test_eval!("[1,2].riffle(['a', 'b'])" => "[1, 'a', 2]");
         test_eval!("['a','b'].riffle(seq)" => "['a', 1, 'b']");
         test_eval!("\"abc\".riffle(',')" => err);

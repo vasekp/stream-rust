@@ -174,14 +174,6 @@ impl Stream for MathOp {
             .reduce(Length::intersection)
             .unwrap() // args checked to be nonempty in eval_with()
     }
-
-    fn is_empty(&self) -> bool {
-        self.node.args.iter()
-            .any(|item| match item {
-                Item::Stream(stm) => stm.is_empty(),
-                _ => false
-            })
-    }
 }
 
 struct MathOpIter<'node> {
@@ -309,14 +301,6 @@ impl Stream<Char> for StringOp {
                 _ => Length::Unknown
             })
             .fold(self.first.len(), Length::intersection)
-    }
-
-    fn is_empty(&self) -> bool {
-        self.first.is_empty() || self.node_rem.args.iter()
-            .any(|item| match item {
-                Item::Stream(stm) => stm.is_empty(),
-                _ => false
-            })
     }
 }
 

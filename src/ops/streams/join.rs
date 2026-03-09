@@ -68,14 +68,6 @@ impl<I: ItemType> Stream<I> for Join<I> {
             })
             .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
     }
-
-    fn is_empty(&self) -> bool {
-        self.elems.iter()
-            .all(|item| match item {
-                Joinable::Stream(stm) => stm.is_empty(),
-                _ => false
-            })
-    }
 }
 
 struct JoinIter<'node, I: ItemType> {

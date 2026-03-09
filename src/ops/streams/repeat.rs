@@ -226,9 +226,11 @@ mod tests {
         test_eval!("[].repeat(0)" => "[]");
         test_eval!("[].repeat(1)" => "[]");
         test_eval!("[].repeat(10)" => "[]");
+        test_eval!("[].repeat" => "[]");
         test_eval!("\"\".repeat(0)" => "\"\"");
         test_eval!("\"\".repeat(1)" => "\"\"");
         test_eval!("\"\".repeat(10)" => "\"\"");
+        test_eval!("\"\".repeat" => "\"\"");
 
         test_eval!("\"abc\".repeat[10^10]" => "'a'");
         test_eval!("[].repeat~1" => "[1]");

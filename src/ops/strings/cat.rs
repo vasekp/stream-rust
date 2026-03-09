@@ -40,11 +40,7 @@ impl Stream<Char> for Cat {
     }
 
     fn len(&self) -> Length {
-        if self.source.is_empty() {
-            Length::Exact(UNumber::zero())
-        } else {
-            Length::Unknown
-        }
+        Length::Unknown
     }
 }
 
@@ -205,6 +201,8 @@ mod tests {
         test_eval!("\"abc\".chars.cat(' ')" => "\"a b c\"");
         test_eval!("['a'].repeat.cat(\", \")" => "\"a, a, a, a, a, a, a,...");
         test_eval!("\"abc\".chars.cat(' '.repeat)" => err);
+        test_eval!("[].cat(' ')" => "\"\"");
+        test_len!("[].cat(' ')" => 0);
         test_advance("['a', 'b'].cat(' ')");
         test_advance("[\"abcde\"].repeat(10).cat");
         test_advance("[\"abcde\"].repeat.cat(\", \")");

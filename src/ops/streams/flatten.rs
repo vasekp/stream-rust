@@ -36,11 +36,7 @@ impl Stream for Flatten {
     }
 
     fn len(&self) -> Length {
-        if self.source.is_empty() {
-            Length::Exact(UNumber::zero())
-        } else {
-            Length::Unknown
-        }
+        Length::Unknown
     }
 }
 
@@ -128,6 +124,7 @@ mod tests {
         test_eval!("[0].nest{[#]}.flatten(3)" => "[0, 0, [0], [...], ...]");
         test_eval!("[0].nest{[#]}.flatten(10^10)" => "[0, 0, 0, 0, 0, ...]");
         test_eval!("[\"ab\",\"cd\"].flatten" => "[\"ab\", \"cd\"]");
+        test_len!("[].flatten" => 0);
         test_advance("[1,range(3)].repeat(10).flatten");
         test_advance("[1,[2,[3]]].repeat(10).flatten");
         test_advance("[1,[2,[3]]].repeat(10).flatten(1)");

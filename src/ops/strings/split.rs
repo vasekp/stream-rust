@@ -8,7 +8,7 @@ fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
             let sep = node.args.iter() // TODO decorate?
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![ch.to_owned()]),
-                    Item::String(s) if !s.is_empty() => s.listout(),
+                    Item::String(s) => s.listout_check_nonempty(),
                     _ => Err(StreamError::new0("expected character or nonempty string"))
                 })
                 .map(|res| res.map(LiteralString::from))
