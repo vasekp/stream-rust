@@ -19,7 +19,7 @@ pub struct Seq {
 }
 
 impl Stream for Seq {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(Box::new(SeqIter{
             value: match &self.from {
                 Some(from) => from.clone(),

@@ -31,7 +31,7 @@ pub struct Rev<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Rev<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         Ok(Box::new(RevIter {
             source: &self.source,
             start: self.length.clone(),

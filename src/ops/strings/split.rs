@@ -45,7 +45,7 @@ impl Describe for SplitString {
 }
 
 impl Stream for SplitString {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
@@ -104,7 +104,7 @@ impl Describe for SplitStream {
 }
 
 impl Stream for SplitStream {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 

@@ -36,7 +36,7 @@ impl Describe for ReorderStream {
 }
 
 impl Stream for ReorderStream {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(Box::new(ReorderIter {
             parent: self,
             iter: RandomAccess::new(&self.source),

@@ -32,7 +32,7 @@ impl Describe for Cat {
 }
 
 impl Stream<Char> for Cat {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
         match &self.filler {
             None => Ok(Box::new(CatIter::new(self))),
             Some(fill) => RiffleCatIter::new_boxed(self, fill)

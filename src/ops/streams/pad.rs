@@ -48,7 +48,7 @@ impl<I: ItemType> Describe for PadLeft<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadLeft<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         if self.source.len() == Length::Infinite {
             Ok(self.source.iter())
         } else {
@@ -126,7 +126,7 @@ impl<I: ItemType> Describe for PadRight<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadRight<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         if self.source.len() == Length::Infinite {
             Ok(self.source.iter())
         } else {

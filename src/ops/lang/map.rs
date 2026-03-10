@@ -30,7 +30,7 @@ impl Describe for Map {
 }
 
 impl Stream for Map {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(Box::new(SMap::new(&self.source, |item| {
             self.body
                 .with_source(item.into())
@@ -60,7 +60,7 @@ impl Describe for CharMap {
 }
 
 impl Stream<Char> for CharMap {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
         Ok(Box::new(SMap::new(&self.source, |ch| {
             self.body
                 .with_source(Item::Char(ch).into())

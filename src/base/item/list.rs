@@ -4,13 +4,13 @@ use crate::base::*;
 pub struct List(Vec<Item>);
 
 impl List {
-    pub fn iter<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
+    pub fn iter(&self) -> Box<dyn SIterator<Item> + '_> {
         Box::new(self.0.iter().map(|x| Ok(x.clone())))
     }
 }
 
 impl Stream for List {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(self.iter())
     }
 

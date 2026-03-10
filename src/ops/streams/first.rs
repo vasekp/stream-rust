@@ -32,7 +32,7 @@ struct FirstIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for First<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         Ok(Box::new(FirstIter { source: self.source.iter(), count_rem: self.count.clone() }))
     }
 

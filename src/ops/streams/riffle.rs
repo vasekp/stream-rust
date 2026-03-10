@@ -26,7 +26,7 @@ impl Describe for Riffle {
 }
 
 impl Stream for Riffle {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         let mut source_iter = self.source.iter();
         let filler_iter = match &self.filler {
             Item::Stream(stm) => stm.iter(),

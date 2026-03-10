@@ -13,7 +13,7 @@ pub trait Stream<I = Item>: Describe {
     /// This method does not return a `Result` and thus can't fail. Implementors may return 
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError>;
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -57,7 +57,7 @@ impl<I: ItemType> dyn Stream<I> {
         OwnedStreamIter::from(self)
     }
 
-    pub fn iter<'node>(self: &'node Rc<Self>) -> Box<dyn SIterator<I> + 'node> {
+    pub fn iter(self: &Rc<Self>) -> Box<dyn SIterator<I> + '_> {
         match (**self).iter() {
             Ok(iter) => Box::new(WrappedIter{iter, parent: self}),
             Err(err) => Box::new(std::iter::once(Err(err.wrap(self))))
@@ -249,7 +249,7 @@ impl<I: ItemType> Describe for Rc<dyn Stream<I>> {
 pub(crate) struct EmptyStream;
 
 impl Stream<Item> for EmptyStream {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<Item> + '_>, StreamError> {
         Ok(Box::new(std::iter::empty()))
     }
 
@@ -266,13 +266,13 @@ impl Describe for EmptyStream {
 pub(crate) struct EmptyString;
 
 impl EmptyString {
-    pub fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    pub fn iter(&self) -> Box<dyn SIterator<Char> + '_> {
         Box::new(std::iter::empty())
     }
 }
 
 impl Stream<Char> for EmptyString {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
         Ok(self.iter())
     }
 

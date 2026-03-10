@@ -63,7 +63,7 @@ struct Part {
 }
 
 impl Stream for Part {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(Box::new(PartIter{parent: self, iter: self.indices.iter()}))
     }
 
@@ -119,7 +119,7 @@ struct StringPart {
 }
 
 impl Stream<Char> for StringPart {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
         Ok(Box::new(StringPartIter{parent: self, iter: self.indices.iter()}))
     }
 

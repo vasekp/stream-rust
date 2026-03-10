@@ -21,7 +21,7 @@ struct Skip<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Skip<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         let mut iter = self.source.iter();
         match iter.advance(self.count.as_ref().cloned().unwrap_or_else(UNumber::one))? {
             None => Ok(iter),

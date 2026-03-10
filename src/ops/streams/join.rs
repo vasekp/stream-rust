@@ -56,7 +56,7 @@ impl<I: ItemType> Describe for Join<I> {
 }
 
 impl<I: ItemType> Stream<I> for Join<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         Ok(Box::new(JoinIter{elems: &self.elems, index: 0, inner: None}))
     }
 

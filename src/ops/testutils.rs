@@ -24,7 +24,7 @@ impl<I: ItemType> Describe for LenAM<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenAM<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         Ok(Box::new(LenAMIter { iter: self.src.iter() }))
     }
 
@@ -75,7 +75,7 @@ impl<I: ItemType> Describe for LenUF<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUF<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         Ok(Box::new(LenUFIter { iter: self.src.iter() }))
     }
 
@@ -126,7 +126,7 @@ impl<I: ItemType> Describe for LenUU<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUU<I> {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
         Ok(Box::new(LenUUIter { iter: self.src.iter() }))
     }
 

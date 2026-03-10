@@ -18,7 +18,7 @@ pub struct Pi {
 }
 
 impl Stream for Pi {
-    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
         Ok(Box::new(PiIter::new(self)))
     }
 
