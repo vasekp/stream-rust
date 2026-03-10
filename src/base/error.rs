@@ -22,10 +22,6 @@ impl StreamError {
         Self{reason: reason.into(), trace: vec![expr.to_expr()]}
     }
 
-    pub fn new0(reason: impl Into<Reason>) -> Self {
-        Self{reason: reason.into(), trace: vec![]}
-    }
-
     pub fn usage(head: &Head) -> Self {
         let head_str = head.as_str().expect("StreamError::usage should be called with Head::Symbol or Head::Oper");
         Self{reason: Reason::Usage(head_str), trace: vec![]}
@@ -91,6 +87,18 @@ impl ToExpr for Expr {
 impl ToExpr for Node {
     fn to_expr(&self) -> Expr {
         Expr::Eval(Rc::new(self.clone()))
+    }
+}
+
+impl ToExpr for Node<Item> {
+    fn to_expr(&self) -> Expr {
+        Expr::Eval(Rc::new(self.clone().into()))
+    }
+}
+
+impl ToExpr for Rc<Node> {
+    fn to_expr(&self) -> Expr {
+        Expr::Eval(Rc::clone(self))
     }
 }
 

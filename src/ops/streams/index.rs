@@ -40,7 +40,7 @@ fn eval_index(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 .map(|item| match item {
                     Item::Char(ch) => Ok(Query::Pending(vec![*ch])),
                     Item::String(s) => s.listout_check_nonempty().map(Query::Pending),
-                    _item => Err(StreamError::new0("expected character or nonempty string"))
+                    item => Err(StreamError::with_expr("expected character or nonempty string", item))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let longest = queries.iter()

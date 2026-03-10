@@ -7,7 +7,7 @@ fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
     match (node.source_checked()?, &node.args[..]) {
         (Item::String(stm), [x, y]) => {
             let (orig, repl) = match (x, y) {
-                (Item::Char(c1), Item::Char(c2)) => (vec![vec![*c1]], vec![vec![*c2]]),
+                (Item::Char(c1), Item::Char(c2)) => (vec![vec![*c1]], vec![vec![*c2]]), // TODO unify
                 (Item::Char(c1), Item::String(s2)) => (vec![vec![*c1]], vec![s2.listout()?]),
                 (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![*c2]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
@@ -15,10 +15,10 @@ fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 _ => return Err(StreamError::usage(&node.head))
             };
             if orig.len() != repl.len() {
-                return Err(StreamError::new0("the replacements lists must be of same length"));
+                return Err("the replacements lists must be of same length".into());
             }
             if orig.iter().any(Vec::is_empty) {
-                return Err(StreamError::new0("the sought string can't be empty"));
+                return Err("the sought string can't be empty".into());
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
             Ok(Item::new_string(StringReplace { head: node.head.clone(), source: Rc::clone(stm), orig, repl, longest }))
@@ -36,7 +36,7 @@ fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
             match item? {
                 Item::Char(ch) => Ok(vec![ch]),
                 Item::String(s) => s.listout(),
-                _item => Err(StreamError::new0("expected character or string"))
+                item => Err(StreamError::with_expr("expected character or string", &item))
             }})
         .collect()
 }

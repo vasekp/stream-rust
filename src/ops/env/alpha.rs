@@ -17,7 +17,7 @@ fn eval_alpha(node: &Node, env: &Env) -> Result<Item, StreamError> {
                     .collect::<Result<Vec<_>, _>>()?
                     .try_into()?,
                 Item::String(stm) => stm.listout()?.try_into()?,
-                _ => return Err(StreamError::new0("expected stream or string"))
+                _ => return Err(StreamError::usage(&node.head))
             };
             let mut new_env = env.clone();
             new_env.alpha = Rc::new(alpha);

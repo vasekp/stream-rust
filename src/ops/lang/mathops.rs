@@ -27,7 +27,7 @@ impl MathOp {
         if node.args.iter().any(Item::is_stream) {
             Ok(Item::new_stream(MathOp{node, func, env: env.clone()}))
         } else {
-            func(&node.args, env) // TODO decorate?
+            func(&node.args, env)
         }
     }
 
@@ -60,12 +60,12 @@ impl MathOp {
                         match e {
                             Item::Number(num) => Ok(a + num),
                             Item::Char(ch) => Ok(a + env.alpha.ord(ch)?),
-                            _ => Err(StreamError::new0("expected number or character"))
+                            _ => Err(StreamError::with_expr("expected number or character", e))
                         }
                     })?;
                 Ok(Item::new_char(env.alpha.chr(&ans, case)))
             },
-            _item => Err(StreamError::new0("expected number or character"))
+            item => Err(StreamError::with_expr("expected number or character", item))
         }
     }
 
@@ -80,13 +80,13 @@ impl MathOp {
                     let ord = match rhs {
                         Item::Number(num) => index - num,
                         Item::Char(ch) => (index - env.alpha.ord(ch)?).into(),
-                        _ => return Err(StreamError::new0("expected number or character"))
+                        _ => return Err(StreamError::with_expr("expected number or character", rhs))
                     };
                     Ok(Item::new_char(env.alpha.chr(&ord, case)))
                 },
-                _ => Err(StreamError::new0("expected number or character"))
+                _ => Err(StreamError::with_expr("expected number or character", lhs))
             },
-            _ => Err(StreamError::new0("1 or 2 arguments required"))
+            _ => Err("1 or 2 arguments required".into())
         }
     }
 
@@ -104,7 +104,7 @@ impl MathOp {
                 let ans = iter.try_fold(index.into(), |a, e| e.as_num().map(|num| a * num))?;
                 Ok(Item::new_char(env.alpha.chr(&ans, case)))
             },
-            _ => Err(StreamError::new0("expected number or character"))
+            item => Err(StreamError::with_expr("expected number or character", item))
         }
     }
 
@@ -113,12 +113,12 @@ impl MathOp {
             [lhs, rhs] => {
                 let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);
                 if rhs.is_zero() {
-                    Err(StreamError::new0("division by zero"))
+                    Err("division by zero".into())
                 } else {
                     Ok(Item::new_number(lhs / rhs))
                 }
             },
-            _ => Err(StreamError::new0("exactly 2 arguments required"))
+            _ => Err("exactly 2 arguments required".into())
         }
     }
 
@@ -127,12 +127,12 @@ impl MathOp {
             [lhs, rhs] => {
                 let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);
                 if rhs.is_zero() {
-                    Err(StreamError::new0("division by zero"))
+                    Err("division by zero".into())
                 } else {
                     Ok(Item::new_number(lhs % rhs))
                 }
             },
-            _ => Err(StreamError::new0("exactly 2 arguments required"))
+            _ => Err("exactly 2 arguments required".into())
         }
     }
 
@@ -142,7 +142,7 @@ impl MathOp {
                 let (base, exp) = (base.as_num()?, exp.as_num()?);
                 Ok(Item::new_number(base.pow(exp.try_cast()?)))
             },
-            _ => Err(StreamError::new0("exactly 2 arguments required"))
+            _ => Err("exactly 2 arguments required".into())
         }
     }
 }
@@ -222,9 +222,9 @@ type StringFunc = fn(&Char, &[Item], &Env) -> Result<Char, StreamError>;
 
 impl StringOp {
     fn eval(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
-        let func = Self::find_fn(&node.head)?; // TODO decorate?
+        let func = Self::find_fn(&node.head)?;
         if node.args.len() < 2 {
-            return Err(StreamError::new0("not available for strings"));
+            return Err("not available for strings".into());
         }
         let Item::String(first) = node.args.remove(0) else { unreachable!() };
         Ok(Item::new_string(StringOp{first, node_rem: node, func, env: env.clone()}))
@@ -235,7 +235,7 @@ impl StringOp {
             "+" => Ok(Self::plus_func),
             "plus" => Ok(Self::plus_func),
             "-" => Ok(Self::minus_func),
-            sym => Err(StreamError::new0(format!("operation {sym} not available for strings")))
+            sym => Err(format!("operation {sym} not available for strings").into())
         }
     }
 
@@ -247,7 +247,7 @@ impl StringOp {
                 match e {
                     Item::Number(num) => Ok(a + num),
                     Item::Char(ch) => Ok(a + env.alpha.ord(ch)?),
-                    _ => Err(StreamError::new0("expected number or character"))
+                    _ => Err(StreamError::with_expr("expected number or character", e))
                 }
             })?;
         Ok(env.alpha.chr(&ans, case))
@@ -260,9 +260,9 @@ impl StringOp {
             [other] => match other {
                 Item::Number(num) => index - num,
                 Item::Char(ch) => (index - env.alpha.ord(ch)?).into(),
-                _ => return Err(StreamError::new0("expected number or character"))
+                _ => return Err(StreamError::with_expr("expected number or character", other))
             },
-            _ => return Err(StreamError::new0("not available for strings"))
+            _ => return Err("not available for strings".into())
         };
         Ok(env.alpha.chr(&ord, case))
     }

@@ -50,12 +50,12 @@ fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
         check_stop!();
         match ch? {
             Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
-            _ => Err(StreamError::new0("invalid character"))
+            c => Err(StreamError::with_expr("invalid character", &c))
         }
     }).collect::<Result<String, _>>()?;
     match Number::from_str_radix(&st, radix) {
         Ok(num) => Ok(Item::new_number(num)),
-        Err(_) => Err(StreamError::new0("invalid input"))
+        Err(_) => Err("invalid input".into())
     }
 }
 

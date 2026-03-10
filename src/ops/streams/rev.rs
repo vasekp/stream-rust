@@ -6,13 +6,13 @@ fn eval_rev(node: &Node, env: &Env) -> Result<Item, StreamError> {
     match node.source_checked()? {
         Item::Stream(stm) => eval_rev_impl(&node.head, stm),
         Item::String(stm) => eval_rev_impl(&node.head, stm),
-        _ => Err(StreamError::new0("expected stream or string"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
 fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> Result<Item, StreamError> {
     match source.len() {
-        Length::Infinite => Err(StreamError::new0("input is infinite")),
+        Length::Infinite => Err("input is infinite".into()),
         Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) =>
             Ok(Item::from(Rc::new(Rev{head: head.clone(), source: Rc::clone(source), length: len})
                     as Rc<dyn Stream<I>>)),

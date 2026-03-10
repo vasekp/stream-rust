@@ -71,7 +71,7 @@ impl SIterator<Char> for CatIter<'_> {
             match iter_try!(self.outer.next()) {
                 Item::Char(ch) => return Ok(Some(ch)),
                 Item::String(s) => self.inner = Some(s.into_iter()),
-                _item => return Err(StreamError::new0("expected string or character")) // TODO decorate
+                item => return Err(StreamError::with_expr("expected string or character", &item))
             }
         }
     }
@@ -129,7 +129,7 @@ impl<'node> RiffleCatIter<'node> {
             Some(Item::Char(ch)) => Ok(Some(Box::new(std::iter::once(Ok(ch))))),
             Some(Item::String(s)) => Ok(Some(Box::new(s.into_iter()))),
             None => Ok(None),
-            Some(_) => Err(StreamError::new0("expected character or string")),
+            Some(item) => Err(StreamError::with_expr("expected character or string", &item)),
         }
     }
 }

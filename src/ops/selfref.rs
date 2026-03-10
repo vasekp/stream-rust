@@ -102,7 +102,7 @@ struct BackRefIter {
 
 impl Describe for BackRef {
     fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
-        "[self]".to_owned()
+        "#".to_owned()
     }
 }
 
@@ -110,7 +110,7 @@ impl Stream for BackRef {
     fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         match Weak::upgrade(&self.parent) {
             Some(rc) => Ok(Box::new(BackRefIter{vec: rc, pos: 0})),
-            None => Err(StreamError::new0("back-reference detached from cache"))
+            None => Err("back-reference detached from cache".into())
         }
     }
 

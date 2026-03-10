@@ -17,7 +17,7 @@ fn eval_first(node: &Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 fn first_item_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<I, StreamError> {
-    stm.iter().next()?.ok_or(StreamError::new0("stream is empty"))
+    stm.iter().next()?.ok_or("stream is empty".into())
 }
 
 struct First<I: ItemType> {

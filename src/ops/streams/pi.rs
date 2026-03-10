@@ -84,7 +84,7 @@ impl SIterator for PiIter {
                 self.inner.advance(n)?;
                 Ok(None)
             },
-            _ => Err(StreamError::new0("numerical overflow"))
+            _ => Err("numerical overflow".into())
         }
     }
 }

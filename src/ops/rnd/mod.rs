@@ -10,7 +10,7 @@ fn eval_rnd(node: &Node, env: &Env) -> Result<Item, StreamError> {
     };
     let len = stm.try_count()?;
     if len.is_zero() {
-        return Err(StreamError::new0("stream is empty"));
+        return Err("stream is empty".into());
     }
     let mut hasher = DefaultHasher::default();
     Hash::hash(seed, &mut hasher);

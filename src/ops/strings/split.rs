@@ -5,11 +5,11 @@ fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
     node.check_args_nonempty()?;
     match node.source {
         Some(Item::String(_)) => {
-            let sep = node.args.iter() // TODO decorate?
+            let sep = node.args.iter()
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![ch.to_owned()]),
                     Item::String(s) => s.listout_check_nonempty(),
-                    _ => Err(StreamError::new0("expected character or nonempty string"))
+                    _ => Err(StreamError::with_expr("expected character or nonempty string", item))
                 })
                 .map(|res| res.map(LiteralString::from))
                 .collect::<Result<Vec<_>, _>>()?;

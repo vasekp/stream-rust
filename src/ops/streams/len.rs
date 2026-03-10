@@ -23,7 +23,7 @@ fn len_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<UNumber, StreamError
             }
             Ok(len.into())
         },
-        Length::Infinite => Err(StreamError::new0("stream is infinite"))
+        Length::Infinite => Err("stream is infinite".into())
     }
 }
 

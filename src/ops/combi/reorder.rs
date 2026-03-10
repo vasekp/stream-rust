@@ -7,14 +7,14 @@ fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
     for arg in &node.args {
         let index = arg.to_num()?.try_cast_within(UNumber::one()..)?;
         if indices.contains(&index) {
-            return Err(StreamError::new0(format!("index {} repeats", index)));
+            return Err(format!("index {} repeats", index).into());
         }
         indices.push(index);
     }
     let max_index = indices.iter().max().cloned().unwrap_or_default();
     if let Length::Exact(len) | Length::AtMost(len) = stm.len()
         && max_index > len {
-            return Err(StreamError::new0("requested index exceeds length of source"));
+            return Err("requested index exceeds length of source".into());
         }
     Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
@@ -75,7 +75,7 @@ impl SIterator for ReorderIter<'_> {
                                 self.pos += 1;
                                 return Ok(Some(item))
                             },
-                            None => return Err(StreamError::new0("index past end"))
+                            None => return Err("index past end".into())
                         }
                     }
                     if usize::try_from(&self.parent.max_index)

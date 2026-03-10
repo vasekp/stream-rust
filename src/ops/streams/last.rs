@@ -25,12 +25,12 @@ fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<I, StreamError
             it.advance(len - 1u32)?;
             it.next().transpose().expect("1 item should remain after skip(len - 1)")
         },
-        Length::Infinite => Err(StreamError::new0("stream is infinite")),
+        Length::Infinite => Err("stream is infinite".into()),
         _ => {
             let mut iter = stm.iter();
             let mut last = match iter.next()? {
                 Some(item) => item,
-                None => return Err(StreamError::new0("stream is empty"))
+                None => return Err("stream is empty".into())
             };
             for res in iter.transposed() {
                 check_stop!();
@@ -55,7 +55,7 @@ fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNu
                 count
             }) as Rc<dyn Stream<I>>))
         },
-        Length::Infinite => Err(StreamError::new0("stream is infinite")),
+        Length::Infinite => Err("stream is infinite".into()),
         _ => {
             let size = count.try_cast()?;
             let mut vec = VecDeque::with_capacity(size);

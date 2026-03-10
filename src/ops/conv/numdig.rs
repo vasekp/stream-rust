@@ -35,7 +35,7 @@ fn eval_dignum(node: &Node, env: &Env) -> Result<Item, StreamError> {
             item?.into_num()?.try_cast_within(0..radix)
         }).collect::<Result<Vec<u32>, _>>()?;
     if vec.is_empty() {
-        return Err(StreamError::new0("stream is empty"));
+        return Err("stream is empty".into());
     }
     let mut num = UNumber::zero();
     for digit in vec {

@@ -19,7 +19,7 @@ fn eval_binom(node: &Node, env: &Env) -> Result<Item, StreamError> {
         _ => return Err(StreamError::usage(&node.head))
     };
     if k > n {
-        return Err(StreamError::new0("out of range"));
+        return Err("out of range".into());
     }
     Ok(Item::new_number(factorial(n) / (factorial(k) * factorial(n - k))))
 }
@@ -32,7 +32,7 @@ fn eval_multi(node: &Node, env: &Env) -> Result<Item, StreamError> {
     for arg in &node.args {
         let k = arg.to_num()?.try_cast()?;
         total = total.checked_add(&k)
-            .ok_or(StreamError::new0("input too large"))?;
+            .ok_or("input too large")?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))
@@ -51,7 +51,7 @@ fn eval_rmulti(node: &Node, env: &Env) -> Result<Item, StreamError> {
         }
         vec.push(k);
         total = total.checked_add(&k)
-            .ok_or(StreamError::new0("input too large"))?;
+            .ok_or("input too large")?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))
