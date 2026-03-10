@@ -21,8 +21,8 @@ impl Describe for Chars {
 }
 
 impl Stream for Chars {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        self.source.map_iter(|ch| Ok(Item::Char(ch)))
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(self.source.map_iter(|ch| Ok(Item::Char(ch))))
     }
 
     fn len(&self) -> Length {
@@ -51,8 +51,8 @@ impl Describe for Str {
 }
 
 impl Stream<Char> for Str {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        self.source.map_iter(Item::into_char)
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+        Ok(self.source.map_iter(Item::into_char))
     }
 
     fn len(&self) -> Length {

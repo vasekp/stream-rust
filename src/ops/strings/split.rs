@@ -45,8 +45,8 @@ impl Describe for SplitString {
 }
 
 impl Stream for SplitString {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false})
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
     fn len(&self) -> Length {
@@ -64,8 +64,9 @@ impl SIterator for SplitStringIter<'_> {
             check_stop!();
             cache.push(item?);
             for sep in self.sep {
-                if (**sep).len() > cache.len() { continue; }
-                let bkpt = cache.len() - (**sep).len();
+                let sep = sep.as_slice();
+                if sep.len() > cache.len() { continue; }
+                let bkpt = cache.len() - sep.len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
                     return Ok(Some(Item::new_string(LiteralString::from(cache))));
@@ -103,8 +104,8 @@ impl Describe for SplitStream {
 }
 
 impl Stream for SplitStream {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false})
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
     fn len(&self) -> Length {

@@ -22,8 +22,8 @@ impl Describe for Enum {
 }
 
 impl Stream for Enum {
-    fn iter0(&self) -> Box<dyn SIterator + '_> {
-        Box::new(EnumIter{iter: self.stream.iter(), index: UNumber::zero()})
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(EnumIter{iter: self.stream.iter(), index: UNumber::zero()}))
     }
 
     fn len(&self) -> Length {

@@ -27,12 +27,12 @@ impl Describe for Flatten {
 }
 
 impl Stream for Flatten {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(FlattenIter {
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(FlattenIter {
             outer: self.source.iter(),
             iters: vec![],
             depth: self.depth.as_ref().and_then(|d| d.try_into().ok())
-        })
+        }))
     }
 
     fn len(&self) -> Length {

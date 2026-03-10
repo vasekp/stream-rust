@@ -62,8 +62,8 @@ impl Describe for StringReplace {
 }
 
 impl Stream<Char> for StringReplace {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(StringReplaceIter::new(self))
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+        Ok(Box::new(StringReplaceIter::new(self)))
     }
 
     fn len(&self) -> Length {
@@ -160,8 +160,8 @@ impl Describe for StreamReplace {
 }
 
 impl Stream for StreamReplace {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        self.source.map_iter(|item| Ok(if item.try_eq(&self.orig)? { self.repl.clone() } else { item }))
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(self.source.map_iter(|item| Ok(if item.try_eq(&self.orig)? { self.repl.clone() } else { item })))
     }
 
     fn len(&self) -> Length {

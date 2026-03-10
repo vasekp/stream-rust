@@ -18,8 +18,8 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> Result<bool, StreamError> 
         "isodd" => Ok(item.as_num()?.unsigned_abs().bit(0)),
         "iseven" => Ok(!item.as_num()?.unsigned_abs().bit(0)),
         "isempty" => match item {
-            Item::Stream(stm) => Ok(stm.is_empty()),
-            Item::String(stm) => Ok(stm.is_empty()),
+            Item::Stream(stm) => stm.is_empty(),
+            Item::String(stm) => stm.is_empty(),
             _ => Err(StreamError::new0("expected stream or string"))
         },
         "isalpha" => Ok(env.alpha.contains(item.as_char()?)),

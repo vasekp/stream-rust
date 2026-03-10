@@ -28,8 +28,8 @@ impl Describe for PermStream {
 }
 
 impl Stream for PermStream {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(PermIter {
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+        Ok(Box::new(PermIter {
             source: &self.source,
             src_len: &self.len,
             self_len: self.len.as_ref()
@@ -37,7 +37,7 @@ impl Stream for PermStream {
                 .map(factorial),
             order: vec![],
             num_read: UNumber::zero()
-        })
+        }))
     }
 
     fn len(&self) -> Length {

@@ -40,17 +40,16 @@ impl Describe for Windows {
 }
 
 impl Stream for Windows {
-    fn iter0(&self) -> Box<dyn SIterator + '_> {
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         let mut iter = self.source.iter();
         let mut deque = VecDeque::with_capacity(self.size - 1);
         for _ in 0..(self.size - 1) {
-            match iter.next() {
-                Ok(Some(item)) => deque.push_back(item),
-                Ok(None) => return Box::new(std::iter::empty()),
-                Err(err) => return Box::new(std::iter::once(Err(err))),
+            match iter.next()? {
+                Some(item) => deque.push_back(item),
+                None => return Ok(Box::new(std::iter::empty())),
             }
         }
-        Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_deref(), env: &self.env})
+        Ok(Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_deref(), env: &self.env}))
     }
 
     fn len(&self) -> Length {

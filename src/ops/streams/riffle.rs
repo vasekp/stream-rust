@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_riffle(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
-    if stm.is_empty() { return Ok(Item::empty_stream()); }
+    if stm.is_empty()? { return Ok(Item::empty_stream()); }
     let [filler] = &node.args[..] else {
         return Err(StreamError::usage(&node.head));
     };
@@ -26,19 +26,19 @@ impl Describe for Riffle {
 }
 
 impl Stream for Riffle {
-    fn iter0(&self) -> Box<dyn SIterator + '_> {
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         let mut source_iter = self.source.iter();
         let filler_iter = match &self.filler {
             Item::Stream(stm) => stm.iter(),
             item => Box::new(std::iter::repeat(Ok(item.clone())))
         };
         let source_next = source_iter.next().transpose();
-        Box::new(RiffleIter {
+        Ok(Box::new(RiffleIter {
             source: source_iter,
             filler: filler_iter,
             source_next,
             which: RiffleState::Source
-        })
+        }))
     }
 
     fn len(&self) -> Length {

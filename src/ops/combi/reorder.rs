@@ -36,13 +36,13 @@ impl Describe for ReorderStream {
 }
 
 impl Stream for ReorderStream {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(ReorderIter {
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+        Ok(Box::new(ReorderIter {
             parent: self,
             iter: RandomAccess::new(&self.source),
             state: ReorderState::Args { vec_iter: self.indices.iter() },
             pos: UNumber::zero()
-        })
+        }))
     }
 
     fn len(&self) -> Length {

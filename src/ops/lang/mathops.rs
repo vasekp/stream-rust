@@ -156,13 +156,13 @@ impl Describe for MathOp {
 }
 
 impl Stream for MathOp {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         let args = self.node.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
-        Box::new(MathOpIter{head: &self.node.head, args, env: &self.env, func: self.func})
+        Ok(Box::new(MathOpIter{head: &self.node.head, args, env: &self.env, func: self.func}))
     }
 
     fn len(&self) -> Length {
@@ -278,7 +278,7 @@ impl Describe for StringOp {
 }
 
 impl Stream<Char> for StringOp {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
         let first = self.first.iter();
         let rest = self.node_rem.args.iter()
             .map(|item| match item {
@@ -286,7 +286,7 @@ impl Stream<Char> for StringOp {
                 Item::String(stm) => stm.map_iter(|ch| Ok(Item::Char(ch))),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
-        Box::new(StringOpIter{first, rest, env: &self.env, func: self.func})
+        Ok(Box::new(StringOpIter{first, rest, env: &self.env, func: self.func}))
     }
 
     fn len(&self) -> Length {

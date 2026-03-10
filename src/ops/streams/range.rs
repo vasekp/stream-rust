@@ -65,14 +65,14 @@ enum RangeType {
 }
 
 impl Stream for Range {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(RangeIter{
+    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(RangeIter{
             parent: self,
             value: match &self.from {
                 Some(from) => from.clone(),
                 None => Number::one()
             }
-        })
+        }))
     }
 
     fn len(&self) -> Length {
