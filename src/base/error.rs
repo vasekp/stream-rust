@@ -37,6 +37,14 @@ impl StreamError {
         self.trace.push(expr.to_expr());
         self
     }
+
+    pub fn backtrace(&self) -> &[Expr] {
+        &self.trace[..]
+    }
+
+    pub fn reason(&self) -> impl Display {
+        &self.reason
+    }
 }
 
 impl std::error::Error for StreamError { }
@@ -49,12 +57,8 @@ impl<T: Into<Reason>> From<T> for StreamError {
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        //if let Some(expr) = &self.trace.first() {
-        //    write!(f, "{}: ", expr.describe())?;
-        //}
-        // TODO
-        for expr in self.trace.iter().rev() {
-            writeln!(f, "{}:", expr.describe())?;
+        if let Some(expr) = &self.trace.first() {
+            write!(f, "{}: ", expr.describe())?;
         }
         write!(f, "{}", self.reason)
     }
