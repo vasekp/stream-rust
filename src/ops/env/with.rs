@@ -56,19 +56,19 @@ fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
         Node { head: Head::Symbol("with"), source: None, .. } => {
             let mut node = (**node).clone();
             let Some((body, assigns)) = node.args.split_last_mut() else {
-                return Err(StreamError::with_expr("at least 2 arguments required", &node));
+                return Err(StreamError::usage(&node.head));
             };
             let mut replace = replace.clone();
             for assign in assigns {
                 let Expr::Eval(assign_node) = assign else {
-                    return Err(StreamError::with_expr("expected assignment", assign));
+                    return Err(StreamError::usage(&node.head));
                 };
                 let mut new_assign = (**assign_node).clone();
                 let (body, names) = if &new_assign.head == "="
                     && new_assign.source.is_none() {
                         new_assign.args.split_last_mut()
                 } else {
-                    return Err(StreamError::with_expr("expected assignment", assign));
+                    return Err(StreamError::usage(&node.head));
                 }.expect("= should have at least 2 arguments by construction");
                 if let Cow::Owned(new_body) = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? { *body = new_body }
                 for expr in names {

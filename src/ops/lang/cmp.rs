@@ -37,7 +37,7 @@ fn eq_func(items: &[Item]) -> Result<bool, StreamError> {
 fn ineq_func(items: &[Item]) -> Result<bool, StreamError> {
     match items {
         [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
-        _ => Err("exactly 2 arguments required".into()) // TODO usage
+        _ => Err("exactly 2 arguments required".into())
     }
 }
 
