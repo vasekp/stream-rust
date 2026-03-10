@@ -86,7 +86,7 @@ impl Node<Expr> {
 
     pub(crate) fn with_source(&self, source: Expr) -> Result<Self, StreamError> {
         if self.source.is_some() {
-            Err(StreamError::with_expr("already has source", self.to_owned()))
+            Err(StreamError::with_expr("already has source", self))
         } else {
             Ok(Node{head: self.head.clone(), source: Some(source), args: self.args.clone()})
         }
@@ -94,7 +94,7 @@ impl Node<Expr> {
 
     pub(crate) fn with_args(&self, args: Vec<Expr>) -> Result<Self, StreamError> {
         if !self.args.is_empty() {
-            Err(StreamError::with_expr("already has arguments", self.to_owned()))
+            Err(StreamError::with_expr("already has arguments", self))
         } else {
             Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
         }
@@ -124,7 +124,7 @@ impl<I: Clone> Node<I> {
     }
 
     pub(crate) fn source_checked(&self) -> Result<&I, StreamError> {
-        self.source.as_ref().ok_or(StreamError::usage(&self.head))
+        self.source.as_ref().ok_or_else(|| StreamError::usage(&self.head))
     }
 
     pub(crate) fn check_no_args(&self) -> Result<(), StreamError> {

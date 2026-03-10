@@ -83,7 +83,7 @@ impl Item {
     pub fn into_num(self) -> Result<Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(StreamError::with_expr("expected number", self))
+            _ => Err(StreamError::with_expr("expected number", &self))
         }
     }
 
@@ -104,7 +104,7 @@ impl Item {
     pub fn into_char(self) -> Result<Char, StreamError> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(StreamError::with_expr("expected character", self))
+            _ => Err(StreamError::with_expr("expected character", &self))
         }
     }
 

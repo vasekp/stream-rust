@@ -57,10 +57,10 @@ impl Expr {
             Expr::Repl(Subst::Input(index)) =>
                 match index {
                     None => source.as_ref()
-                        .ok_or(StreamError::with_expr("no source provided", self.clone()))
+                        .ok_or(StreamError::with_expr("no source provided", self))
                         .map(|item| item.clone().into()),
                     Some(ix) => args.get(ix - 1)
-                        .ok_or(StreamError::with_expr("no such input", self.clone()))
+                        .ok_or(StreamError::with_expr("no such input", self))
                         .map(|item| item.clone().into()),
                 },
             Expr::Repl(Subst::InputList) =>
@@ -80,8 +80,8 @@ impl Expr {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => node.eval(env),
-            Expr::Repl(_) => Err(StreamError::with_expr("out of context", self.clone()))
-        }.map_err(|expr| expr.wrap(self.clone()))
+            Expr::Repl(_) => Err(StreamError::with_expr("out of context", self))
+        }.map_err(|expr| expr.wrap(self))
     }
 
     pub fn replace(&self, func: &impl Fn(&Expr) -> Result<std::borrow::Cow<'_, Expr>, StreamError>) -> Result<std::borrow::Cow<'_, Expr>, StreamError> {

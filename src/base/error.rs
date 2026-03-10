@@ -18,8 +18,8 @@ pub enum Reason {
 }
 
 impl StreamError {
-    pub fn with_expr(reason: impl Into<Reason>, expr: impl Into<Expr>) -> Self {
-        Self{reason: reason.into(), trace: vec![expr.into()]}
+    pub fn with_expr(reason: impl Into<Reason>, expr: &impl ToExpr) -> Self {
+        Self{reason: reason.into(), trace: vec![expr.to_expr()]}
     }
 
     pub fn new0(reason: impl Into<Reason>) -> Self {
@@ -35,8 +35,8 @@ impl StreamError {
         Self{reason: Reason::Interrupt, trace: vec![]}
     }
 
-    pub(crate) fn wrap(mut self, expr: impl Into<Expr>) -> Self {
-        self.trace.push(expr.into());
+    pub(crate) fn wrap(mut self, expr: &impl ToExpr) -> Self {
+        self.trace.push(expr.to_expr());
         self
     }
 }
@@ -75,6 +75,40 @@ impl Display for Reason {
             Self::Usage(sym) => write!(f, "invalid call pattern: see ?{sym}"),
             Self::Interrupt => write!(f, "interrupted")
         }
+    }
+}
+
+pub trait ToExpr {
+    fn to_expr(&self) -> Expr;
+}
+
+impl ToExpr for Expr {
+    fn to_expr(&self) -> Expr {
+        self.clone()
+    }
+}
+
+impl ToExpr for Node {
+    fn to_expr(&self) -> Expr {
+        Expr::Eval(Rc::new(self.clone()))
+    }
+}
+
+impl ToExpr for Item {
+    fn to_expr(&self) -> Expr {
+        Expr::Imm(self.clone())
+    }
+}
+
+impl<I: ItemType> ToExpr for Rc<dyn Stream<I>> {
+    fn to_expr(&self) -> Expr {
+        Expr::Imm(Item::from(self))
+    }
+}
+
+impl ToExpr for Char {
+    fn to_expr(&self) -> Expr {
+        Expr::Imm(Item::from(*self))
     }
 }
 
