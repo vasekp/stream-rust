@@ -6,11 +6,11 @@ fn eval_windows(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let (size, body) = match &node.args[..] {
         [size] => (size, None),
-        [size, Expr::Eval(body)] => (size, Some(body)),
+        [size, Expr::Eval(node)] if node.args.is_empty() => (size, Some(Rc::clone(node))),
         _ => return Err(StreamError::usage(&node.head))
     };
     let size = size.eval(env)?.as_num()?.try_cast_within(2usize..)?;
-    Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body: body.cloned(), env: env.clone()}))
+    Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body, env: env.clone()}))
 }
 
 struct Windows {
@@ -49,7 +49,7 @@ impl Stream for Windows {
                 None => return Ok(Box::new(std::iter::empty())),
             }
         }
-        Ok(Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_deref(), env: &self.env}))
+        Ok(Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_ref(), env: &self.env}))
     }
 
     fn len(&self) -> Length {
@@ -66,7 +66,7 @@ struct WindowsIter<'node> {
     iter: Box<dyn SIterator + 'node>,
     size: usize,
     deque: VecDeque<Item>,
-    body: Option<&'node Node>,
+    body: Option<&'node Rc<Node>>,
     env: &'node Env,
 }
 
@@ -78,8 +78,7 @@ impl SIterator for WindowsIter<'_> {
         let iter = std::iter::once(first)
             .chain(self.deque.iter().cloned());
         if let Some(body) = self.body {
-            body.clone()
-                .with_args(iter.map(Expr::from).collect())
+            body.with_args(iter.map(Expr::from).collect())
                 .and_then(|expr| expr.eval(self.env))
                 .map(Option::Some)
         } else {

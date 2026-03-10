@@ -18,18 +18,18 @@ impl Alphabet {
         match self {
             Alphabet::Std26 => {
                 let Char::Single(ch) = chr else {
-                    return Err(StreamError::new0(format!("{chr}: not in alphabet")));
+                    return Err(StreamError::with_expr("not in alphabet", Item::from(*chr)));
                 };
                 match ch.to_ascii_lowercase().try_into() {
                     Ok(ord @ b'a'..=b'z') => Ok((ord - b'a' + 1).into()),
-                    _ => Err(StreamError::new0(format!("{chr}: not in alphabet")))
+                    _ => Err(StreamError::with_expr("not in alphabet", Item::from(*chr)))
                 }
             },
             Alphabet::Listed{map, ..} => {
                 map.get(chr)
                     .or_else(|| map.get(&chr.to_lowercase()))
                     .copied()
-                    .ok_or_else(|| StreamError::new0(format!("{chr}: not in alphabet")))
+                    .ok_or_else(|| StreamError::with_expr("not in alphabet", Item::from(*chr)))
             }
         }
     }
@@ -132,7 +132,7 @@ impl TryFrom<Vec<Char>> for Alphabet {
                 map.insert(lcase, ix).or(map.insert(ucase, ix))
             };
             if prev.is_some() {
-                return Err(StreamError::new0(format!("duplicate character {chr}")));
+                return Err(StreamError::with_expr("duplicate character", Item::from(chr)));
             }
             res_vec.push(chr);
         }

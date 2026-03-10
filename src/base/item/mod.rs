@@ -69,42 +69,42 @@ impl Item {
     pub fn as_num(&self) -> Result<&Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(StreamError::new0("expected number"))
+            _ => Err(StreamError::with_expr("expected number", self))
         }
     }
 
     pub fn to_num(&self) -> Result<Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x.clone()),
-            _ => Err(StreamError::new0("expected number"))
+            _ => Err(StreamError::with_expr("expected number", self))
         }
     }
 
     pub fn into_num(self) -> Result<Number, StreamError> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(StreamError::new0("expected number"))
+            _ => Err(StreamError::with_expr("expected number", self))
         }
     }
 
     pub fn to_bool(&self) -> Result<bool, StreamError> {
         match self {
             Item::Bool(x) => Ok(*x),
-            _ => Err(StreamError::new0("expected boolean value"))
+            _ => Err(StreamError::with_expr("expected boolean value", self))
         }
     }
 
     pub fn as_char(&self) -> Result<&Char, StreamError> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(StreamError::new0("expected character"))
+            _ => Err(StreamError::with_expr("expected character", self))
         }
     }
 
     pub fn into_char(self) -> Result<Char, StreamError> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(StreamError::new0("expected character"))
+            _ => Err(StreamError::with_expr("expected character", self))
         }
     }
 
@@ -115,14 +115,14 @@ impl Item {
     pub fn as_stream(&self) -> Result<&Rc<dyn Stream>, StreamError> {
         match self {
             Item::Stream(stm) => Ok(stm),
-            _ => Err(StreamError::new0("expected stream"))
+            _ => Err(StreamError::with_expr("expected stream", self))
         }
     }
 
     pub fn to_stream(&self) -> Result<Rc<dyn Stream>, StreamError> {
         match self {
             Item::Stream(stm) => Ok(Rc::clone(stm)),
-            _ => Err(StreamError::new0("expected stream"))
+            _ => Err(StreamError::with_expr("expected stream", self))
         }
     }
 
@@ -133,14 +133,14 @@ impl Item {
     pub fn as_char_stream(&self) -> Result<&Rc<dyn Stream<Char>>, StreamError> {
         match self {
             Item::String(stm) => Ok(stm),
-            _ => Err(StreamError::new0("expected string"))
+            _ => Err(StreamError::with_expr("expected string", self))
         }
     }
 
     pub fn to_char_stream(&self) -> Result<Rc<dyn Stream<Char>>, StreamError> {
         match self {
             Item::String(stm) => Ok(Rc::clone(stm)),
-            _ => Err(StreamError::new0("expected string"))
+            _ => Err(StreamError::with_expr("expected string", self))
         }
     }
 
@@ -271,7 +271,7 @@ impl Item {
                     }
                 }
             },
-            (x, y) => return Err(StreamError::new0(format!("can't compare {x:?} with {y:?}")))
+            (x, y) => return Err(format!("can't compare {x:?} with {y:?}").into())
         })
     }
 }

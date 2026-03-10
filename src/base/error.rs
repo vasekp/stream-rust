@@ -43,16 +43,20 @@ impl StreamError {
 
 impl std::error::Error for StreamError { }
 
-/*impl From<T: Into<String>> for StreamError {
-    fn from(s: T) -> StreamError {
-        StreamError::ExprError{reason: t.into(), expr: None}
+impl<T: Into<Reason>> From<T> for StreamError {
+    fn from(reason: T) -> Self {
+        Self{reason: reason.into(), trace: vec![]}
     }
-}*/
+}
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some(expr) = &self.trace.first() {
-            write!(f, "{}: ", expr.describe())?;
+        //if let Some(expr) = &self.trace.first() {
+        //    write!(f, "{}: ", expr.describe())?;
+        //}
+        // TODO
+        for expr in self.trace.iter().rev() {
+            writeln!(f, "{}:", expr.describe())?;
         }
         write!(f, "{}", self.reason)
     }

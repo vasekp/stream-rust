@@ -40,7 +40,7 @@ impl Node<Expr> {
                     if let Some(ctor) = Symbols::find_ctor(sym) {
                         ctor(self, env)
                     } else {
-                        Err(StreamError::new0(format!("symbol '{sym}' not found")))
+                        Err(format!("symbol '{sym}' not found").into())
                     }
                 },
                 Head::Lang(lang) => {
@@ -83,6 +83,22 @@ impl Node<Expr> {
                 .collect::<Result<Vec<_>, _>>()?
         })
     }
+
+    pub(crate) fn with_source(&self, source: Expr) -> Result<Self, StreamError> {
+        if self.source.is_some() {
+            Err(StreamError::with_expr("already has source", self.to_owned()))
+        } else {
+            Ok(Node{head: self.head.clone(), source: Some(source), args: self.args.clone()})
+        }
+    }
+
+    pub(crate) fn with_args(&self, args: Vec<Expr>) -> Result<Self, StreamError> {
+        if !self.args.is_empty() {
+            Err(StreamError::with_expr("already has arguments", self.to_owned()))
+        } else {
+            Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
+        }
+    }
 }
 
 impl<I: Clone> Node<I> {
@@ -93,43 +109,27 @@ impl<I: Clone> Node<I> {
         Node{head: head.into(), source, args}
     }
 
-    pub(crate) fn with_source(&self, source: I) -> Result<Self, StreamError> {
-        if self.source.is_some() {
-            Err(StreamError::new0("already has source"))
-        } else {
-            Ok(Node{head: self.head.clone(), source: Some(source), args: self.args.clone()})
-        }
-    }
-
-    pub(crate) fn with_args(&self, args: Vec<I>) -> Result<Self, StreamError> {
-        if !self.args.is_empty() {
-            Err(StreamError::new0("already has arguments"))
-        } else {
-            Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
-        }
-    }
-
     pub(crate) fn check_source(&self) -> Result<(), StreamError> {
         match &self.source {
             Some(_) => Ok(()),
-            None => Err(StreamError::new0("source required")),
+            None => Err(StreamError::usage(&self.head))
         }
     }
 
     pub(crate) fn check_no_source(&self) -> Result<(), StreamError> {
         match &self.source {
-            Some(_) => Err(StreamError::new0("no source accepted")),
+            Some(_) => Err(StreamError::usage(&self.head)),
             None => Ok(())
         }
     }
 
     pub(crate) fn source_checked(&self) -> Result<&I, StreamError> {
-        self.source.as_ref().ok_or(StreamError::new0("source required"))
+        self.source.as_ref().ok_or(StreamError::usage(&self.head))
     }
 
     pub(crate) fn check_no_args(&self) -> Result<(), StreamError> {
         if !self.args.is_empty() {
-            Err(StreamError::new0("no arguments expected"))
+            Err(StreamError::usage(&self.head))
         } else {
             Ok(())
         }
@@ -137,14 +137,14 @@ impl<I: Clone> Node<I> {
 
     pub(crate) fn check_args_nonempty(&self) -> Result<(), StreamError> {
         if self.args.is_empty() {
-            Err(StreamError::new0("at least 1 argument required"))
+            Err(StreamError::usage(&self.head))
         } else {
             Ok(())
         }
     }
 
     pub(crate) fn first_arg_checked(&self) -> Result<&I, StreamError> {
-        self.args.first().ok_or(StreamError::new0("at least 1 argument required"))
+        self.args.first().ok_or(StreamError::usage(&self.head))
     }
 }
 

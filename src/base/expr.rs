@@ -57,10 +57,10 @@ impl Expr {
             Expr::Repl(Subst::Input(index)) =>
                 match index {
                     None => source.as_ref()
-                        .ok_or(StreamError::new0("no source provided"))
+                        .ok_or(StreamError::with_expr("no source provided", self.clone()))
                         .map(|item| item.clone().into()),
                     Some(ix) => args.get(ix - 1)
-                        .ok_or(StreamError::new0("no such input"))
+                        .ok_or(StreamError::with_expr("no such input", self.clone()))
                         .map(|item| item.clone().into()),
                 },
             Expr::Repl(Subst::InputList) =>
@@ -80,7 +80,7 @@ impl Expr {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => node.eval(env),
-            Expr::Repl(_) => Err(StreamError::new0("out of context"))
+            Expr::Repl(_) => Err(StreamError::with_expr("out of context", self.clone()))
         }.map_err(|expr| expr.wrap(self.clone()))
     }
 
@@ -131,6 +131,18 @@ impl Default for Expr {
 impl From<Item> for Expr {
     fn from(item: Item) -> Expr {
         Expr::Imm(item)
+    }
+}
+
+impl From<&Item> for Expr {
+    fn from(item: &Item) -> Expr {
+        Expr::Imm(item.clone())
+    }
+}
+
+impl From<&Rc<Node>> for Expr {
+    fn from(node: &Rc<Node>) -> Expr {
+        Expr::Eval(Rc::clone(node))
     }
 }
 

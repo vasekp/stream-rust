@@ -13,7 +13,6 @@ pub trait Stream<I = Item>: Describe {
     /// This method does not return a `Result` and thus can't fail. Implementors may return 
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
-    #[must_use]
     fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
