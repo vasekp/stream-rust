@@ -21,9 +21,7 @@ pub trait Stream<I = Item>: Describe {
     /// consistent with the actual behaviour of the stream.
     ///
     /// The default implementation forwards to [`SIterator::len_remain()`].
-    fn len(&self) -> Length {
-        self.iter0().len_remain()
-    }
+    fn len(&self) -> Length;
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
     /// looking at [`len()`](Stream::len). If the information is insufficient, constructs the
@@ -252,6 +250,8 @@ impl Stream<Item> for EmptyStream {
     fn iter0<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
         Box::new(std::iter::empty())
     }
+
+    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
 }
 
 impl Describe for EmptyStream {
@@ -267,6 +267,8 @@ impl Stream<Char> for EmptyString {
     fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(std::iter::empty())
     }
+
+    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
 }
 
 impl Describe for EmptyString {

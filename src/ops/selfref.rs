@@ -64,6 +64,10 @@ impl Stream for SelfRef {
             hist,
         })
     }
+
+    fn len(&self) -> Length {
+        Length::Unknown
+    }
 }
 
 type CacheHistory = RefCell<Vec<Item>>;

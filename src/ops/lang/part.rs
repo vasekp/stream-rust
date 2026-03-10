@@ -80,6 +80,10 @@ impl Stream for Part {
     fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
         Box::new(PartIter{parent: self, iter: self.indices.iter()})
     }
+
+    fn len(&self) -> Length {
+        self.indices.len()
+    }
 }
 
 impl Describe for Part {
@@ -129,6 +133,10 @@ struct StringPart {
 impl Stream<Char> for StringPart {
     fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(StringPartIter{parent: self, iter: self.indices.iter()})
+    }
+
+    fn len(&self) -> Length {
+        self.indices.len()
     }
 }
 
