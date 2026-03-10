@@ -18,7 +18,7 @@ pub enum Reason {
 }
 
 impl StreamError {
-    pub fn new(reason: impl Into<Reason>, expr: impl Into<Expr>) -> Self {
+    pub fn with_expr(reason: impl Into<Reason>, expr: impl Into<Expr>) -> Self {
         Self{reason: reason.into(), expr: Some(expr.into())}
     }
 

@@ -72,13 +72,13 @@ impl<I: ItemType> dyn Stream<I> {
     pub(crate) fn listout_check_nonempty(self: &Rc<Self>) -> Result<Vec<I>, StreamError> {
         let vec = I::listout(self)?;
         if !vec.is_empty() { Ok(vec) }
-        else { Err(StreamError::new("can't be empty", Item::from(self))) }
+        else { Err(StreamError::with_expr("can't be empty", Item::from(self))) }
     }
 
     pub(crate) fn try_count(self: &Rc<Self>) -> Result<UNumber, StreamError> {
         match self.len() {
             Length::Exact(len) => Ok(len),
-            Length::Infinite => Err(StreamError::new("stream is infinite", Item::from(self))),
+            Length::Infinite => Err(StreamError::with_expr("stream is infinite", Item::from(self))),
             _ => {
                 let mut ret: usize = 0;
                 let mut it = self.iter();
@@ -104,10 +104,10 @@ impl dyn Stream<Item> {
                 if let Ok(len) = len.try_into() {
                     vec.reserve(len);
                 } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::new("stream is too long", Item::from(self)));
+                    return Err(StreamError::with_expr("stream is too long", Item::from(self)));
                 }
             },
-            Length::Infinite => return Err(StreamError::new("stream is infinite", Item::from(self))),
+            Length::Infinite => return Err(StreamError::with_expr("stream is infinite", Item::from(self))),
             _ => ()
         };
         for item in self.iter().transposed() {
@@ -187,10 +187,10 @@ impl dyn Stream<Char> {
                 if let Ok(len) = len.try_into() {
                     vec.reserve(len);
                 } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::new("string is too long", Item::from(self)));
+                    return Err(StreamError::with_expr("string is too long", Item::from(self)));
                 }
             },
-            Length::Infinite => return Err(StreamError::new("string is infinite", Item::from(self))),
+            Length::Infinite => return Err(StreamError::with_expr("string is infinite", Item::from(self))),
             _ => ()
         };
         for ch in self.iter().transposed() {
