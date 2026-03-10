@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter, Debug};
 #[cfg_attr(test, derive(PartialEq))]
 pub struct StreamError {
     reason: Reason,
-    expr: Option<Expr>,
+    trace: Vec<Expr>,
 }
 
 #[derive(Clone, Debug)]
@@ -19,20 +19,20 @@ pub enum Reason {
 
 impl StreamError {
     pub fn with_expr(reason: impl Into<Reason>, expr: impl Into<Expr>) -> Self {
-        Self{reason: reason.into(), expr: Some(expr.into())}
+        Self{reason: reason.into(), trace: vec![expr.into()]}
     }
 
     pub fn new0(reason: impl Into<Reason>) -> Self {
-        Self{reason: reason.into(), expr: None}
+        Self{reason: reason.into(), trace: vec![]}
     }
 
     pub fn usage(head: &Head) -> Self {
         let head_str = head.as_str().expect("StreamError::usage should be called with Head::Symbol or Head::Oper");
-        Self{reason: Reason::Usage(head_str), expr: None}
+        Self{reason: Reason::Usage(head_str), trace: vec![]}
     }
 
     pub fn interrupt() -> Self {
-        Self{reason: Reason::Interrupt, expr: None}
+        Self{reason: Reason::Interrupt, trace: vec![]}
     }
 }
 
@@ -46,7 +46,7 @@ impl std::error::Error for StreamError { }
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some(expr) = &self.expr {
+        if let Some(expr) = &self.trace.first() {
             write!(f, "{}: ", expr.describe())?;
         }
         write!(f, "{}", self.reason)
