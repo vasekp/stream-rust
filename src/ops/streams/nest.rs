@@ -82,7 +82,7 @@ impl Stream for NestArgs {
 impl SIterator for NestIterSource<'_> {
     fn next(&mut self) -> SResult<Option<Item>> {
         let node = Node::new(self.body.head.clone(),
-            Some(std::mem::take(&mut self.prev).into()),
+            Some(Expr::from(&self.prev)),
             vec![]);
         let item = node.eval(self.env)?;
         self.prev = item.clone();

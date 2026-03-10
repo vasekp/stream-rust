@@ -276,12 +276,6 @@ impl Item {
     }
 }
 
-impl Default for Item {
-    fn default() -> Item {
-        Item::Number(Default::default())
-    }
-}
-
 impl Display for Item {
     /// Format this `Item` in human-readable form. For streams and strings, the formatter may specify
     /// a maximum number of items (using `{:n}`) or maximum width in characters (using `"{:.n}"`),

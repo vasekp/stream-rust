@@ -122,12 +122,6 @@ impl Expr {
     }
 }
 
-impl Default for Expr {
-    fn default() -> Expr {
-        Expr::Imm(Default::default())
-    }
-}
-
 impl From<Item> for Expr {
     fn from(item: Item) -> Expr {
         Expr::Imm(item)

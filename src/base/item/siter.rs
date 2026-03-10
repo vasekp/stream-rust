@@ -190,52 +190,54 @@ mod tests {
         let mut iter = std::iter::empty::<SResult<Item>>();
         assert_eq!(iter.advance(UNumber::one()), Ok(Some(UNumber::one())));
 
-        let mut iter = std::iter::once(Ok(Item::default()));
+        let some_item = || Item::Number(Default::default());
+
+        let mut iter = std::iter::once(Ok(some_item()));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
-        let mut iter = std::iter::once(Ok(Item::default()));
+        let mut iter = std::iter::once(Ok(some_item()));
         assert_eq!(iter.advance(UNumber::one()), Ok(None));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
-        let mut iter = std::iter::once(Ok(Item::default()));
+        let mut iter = std::iter::once(Ok(some_item()));
         assert_eq!(iter.advance(2u32.into()), Ok(Some(UNumber::one())));
 
-        let mut iter = std::iter::repeat(Ok(Item::default()));
+        let mut iter = std::iter::repeat(Ok(some_item()));
         assert_eq!(iter.len_remain(), Length::Infinite);
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
-        assert_eq!(iter.len_remain(), Length::Infinite);
-        assert_eq!(iter.advance(100u32.into()), Ok(None));
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
-        assert_eq!(iter.len_remain(), Length::Infinite);
-
-        let mut iter = std::iter::repeat_with(|| Ok(Item::default()));
-        assert_eq!(iter.len_remain(), Length::Infinite);
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(iter.advance(100u32.into()), Ok(None));
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Infinite);
 
-        let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+        let mut iter = std::iter::repeat_with(|| Ok(some_item()));
+        assert_eq!(iter.len_remain(), Length::Infinite);
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
+        assert_eq!(iter.len_remain(), Length::Infinite);
+        assert_eq!(iter.advance(100u32.into()), Ok(None));
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
+        assert_eq!(iter.len_remain(), Length::Infinite);
+
+        let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
         assert_eq!(iter.len_remain(), Length::Exact(2u32.into()));
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
-        let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+        let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
         assert_eq!(iter.advance(UNumber::one()), Ok(None));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
-        assert_eq!(SIterator::next(&mut iter), Ok(Some(Item::default())));
+        assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
-        let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+        let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
         assert_eq!(iter.advance(2u32.into()), Ok(None));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
-        let mut iter = [Item::default(), Item::default()].into_iter().map(Result::Ok);
+        let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
         assert_eq!(iter.advance(3u32.into()), Ok(Some(UNumber::one())));
     }
 }
