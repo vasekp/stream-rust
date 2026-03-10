@@ -1,31 +1,36 @@
 use crate::base::*;
 
+fn eval_op(node: &Node, env: &Env) -> Result<Item, StreamError> {
+    node.check_no_source()?;
+    let node = node.eval_all(env)?;
+    match node.first_arg_checked()? {
+        Item::String(_) => StringOp::eval(&node, env),
+        _ => MathOp::eval(&node, env)
+    }
+}
+
 struct MathOp {
-    node: Node<Item>,
+    head: Head,
+    args: Vec<Item>,
     func: MathFunc,
     env: Env,
 }
 
 type MathFunc = fn(&[Item], &Env) -> Result<Item, StreamError>;
 
-fn eval_op(node: &Node, env: &Env) -> Result<Item, StreamError> {
-    node.check_no_source()?;
-    let node = node.eval_all(env)?;
-    match node.first_arg_checked()? {
-        Item::String(_) => StringOp::eval(node, env),
-        _ => MathOp::eval(node, env)
-    }
-}
-
 impl MathOp {
-    fn eval(node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node<Item>, env: &Env) -> Result<Item, StreamError> {
         let func = Self::find_fn(&node.head);
         Self::eval_with(node, env, func)
     }
 
-    fn eval_with(node: Node<Item>, env: &Env, func: MathFunc) -> Result<Item, StreamError> {
+    fn eval_with(node: &Node<Item>, env: &Env, func: MathFunc) -> Result<Item, StreamError> {
         if node.args.iter().any(Item::is_stream) {
-            Ok(Item::new_stream(MathOp{node, func, env: env.clone()}))
+            Ok(Item::new_stream(MathOp{
+                head: node.head.clone(),
+                args: node.args.clone(),
+                func,
+                env: env.clone()}))
         } else {
             func(&node.args, env)
         }
@@ -149,24 +154,24 @@ impl MathOp {
 
 impl Describe for MathOp {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.node.head, env, &self.env)
-            .push_args(&self.node.args)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+            .push_args(&self.args)
             .finish(prec)
     }
 }
 
 impl Stream for MathOp {
     fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
-        let args = self.node.args.iter()
+        let args = self.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
                 item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
             }).collect();
-        Ok(Box::new(MathOpIter{head: &self.node.head, args, env: &self.env, func: self.func}))
+        Ok(Box::new(MathOpIter{head: &self.head, args, env: &self.env, func: self.func}))
     }
 
     fn len(&self) -> Length {
-        self.node.args.iter()
+        self.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.len(),
                 _ => Length::Infinite
@@ -189,7 +194,7 @@ impl SIterator for MathOpIter<'_> {
             .map(|iter| iter.next())
             .collect::<Result<Option<Vec<_>>, _>>());
         let node = Node { head: self.head.clone(), source: None, args: inputs };
-        MathOp::eval_with(node, self.env, self.func).map(Option::Some)
+        MathOp::eval_with(&node, self.env, self.func).map(Option::Some)
     }
 
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
@@ -213,7 +218,8 @@ impl SIterator for MathOpIter<'_> {
 
 struct StringOp {
     first: Rc<dyn Stream<Char>>,
-    node_rem: Node<Item>,
+    rest: Vec<Item>,
+    head: Head,
     func: StringFunc,
     env: Env,
 }
@@ -221,13 +227,20 @@ struct StringOp {
 type StringFunc = fn(&Char, &[Item], &Env) -> Result<Char, StreamError>;
 
 impl StringOp {
-    fn eval(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node<Item>, env: &Env) -> Result<Item, StreamError> {
         let func = Self::find_fn(&node.head)?;
-        if node.args.len() < 2 {
+        let Some((Item::String(first), rest)) = node.args.split_first() else {
+            unreachable!()
+        };
+        if rest.is_empty() {
             return Err("not available for strings".into());
         }
-        let Item::String(first) = node.args.remove(0) else { unreachable!() };
-        Ok(Item::new_string(StringOp{first, node_rem: node, func, env: env.clone()}))
+        Ok(Item::new_string(StringOp{
+            first: Rc::clone(first),
+            rest: rest.to_owned(),
+            head: node.head.clone(),
+            func,
+            env: env.clone()}))
     }
 
     fn find_fn(head: &Head) -> Result<StringFunc, StreamError> {
@@ -270,9 +283,9 @@ impl StringOp {
 
 impl Describe for StringOp {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.node_rem.head, env, &self.env)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .push_arg(&self.first)
-            .push_args(&self.node_rem.args)
+            .push_args(&self.rest)
             .finish(prec)
     }
 }
@@ -280,7 +293,7 @@ impl Describe for StringOp {
 impl Stream<Char> for StringOp {
     fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
         let first = self.first.iter();
-        let rest = self.node_rem.args.iter()
+        let rest = self.rest.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
                 Item::String(stm) => stm.map_iter(|ch| Ok(Item::Char(ch))),
@@ -290,7 +303,7 @@ impl Stream<Char> for StringOp {
     }
 
     fn len(&self) -> Length {
-        self.node_rem.args.iter()
+        self.rest.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.len(),
                 Item::String(stm) => stm.len(),
