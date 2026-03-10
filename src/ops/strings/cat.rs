@@ -33,10 +33,10 @@ impl Describe for Cat {
 
 impl Stream<Char> for Cat {
     fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
-        Ok(match &self.filler {
-            None => Box::new(CatIter::new(self)),
+        match &self.filler {
+            None => Ok(Box::new(CatIter::new(self))),
             Some(fill) => RiffleCatIter::new_boxed(self, fill)
-        })
+        }
     }
 
     fn len(&self) -> Length {
@@ -115,14 +115,13 @@ enum RiffleCatState<'node> {
 }
 
 impl<'node> RiffleCatIter<'node> {
-    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> Box<dyn SIterator<Char> + 'node> {
+    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
         let mut outer = parent.source.iter();
-        let inner = match Self::next_cs(&mut *outer) {
-            Ok(Some(cs)) => cs,
-            Ok(None) => return Box::new(std::iter::empty()),
-            Err(err) => return Box::new(std::iter::once(Err(err))),
+        let inner = match Self::next_cs(&mut *outer)? {
+            Some(cs) => cs,
+            None => Box::new(std::iter::empty()),
         };
-        Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source})
+        Ok(Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source}))
     }
 
     fn next_cs(outer: &mut (dyn SIterator + 'node)) -> Result<Option<Box<dyn SIterator<Char> + 'node>>, StreamError> {
