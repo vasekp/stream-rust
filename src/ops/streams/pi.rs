@@ -35,24 +35,22 @@ impl Describe for Pi {
     }
 }
 
-struct PiIter<'node> {
-    parent: &'node Pi,
+struct PiIter {
     inner: PiIterInner,
     cached: Vec<u32>
 }
 
-impl PiIter<'_> {
-    fn new(node: &Pi) -> PiIter<'_> {
+impl PiIter {
+    fn new(node: &Pi) -> PiIter {
         let radix = node.radix.unwrap_or(10);
         PiIter {
-            parent: node,
             inner: PiIterInner::new(radix),
             cached: if radix <= 3 { vec![0] } else { vec![] }
         }
     }
 }
 
-impl SIterator for PiIter<'_> {
+impl SIterator for PiIter {
     fn next(&mut self) -> Result<Option<Item>, StreamError> {
         if self.cached.len() >= 2 {
             return Ok(Some(Item::new_number(self.cached.remove(0))));
@@ -86,7 +84,7 @@ impl SIterator for PiIter<'_> {
                 self.inner.advance(n)?;
                 Ok(None)
             },
-            _ => Err(StreamError::new("numerical overflow", Item::new_stream(self.parent.clone())))
+            _ => Err(StreamError::new0("numerical overflow"))
         }
     }
 }

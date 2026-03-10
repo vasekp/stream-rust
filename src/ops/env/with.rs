@@ -77,7 +77,7 @@ fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                         && node.source.is_none() && node.args.is_empty() {
                             replace.remove(sym);
                     } else {
-                        return Err(StreamError::new("expected variable name", assign.clone()))
+                        return Err(StreamError::new0("expected variable name"))
                     }
                 }
                 *assign = new_assign.into();
