@@ -80,7 +80,7 @@ struct Last<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Last<I> {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
         let mut it = self.source.iter();
         match it.advance(self.skip.to_owned())? {
             None => Ok(it),

@@ -24,7 +24,7 @@ impl Describe for Zip {
 }
 
 impl Stream for Zip {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         let iters = self.streams.iter()
             .map(|stm| stm.iter())
             .collect();

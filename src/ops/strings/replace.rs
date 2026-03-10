@@ -62,7 +62,7 @@ impl Describe for StringReplace {
 }
 
 impl Stream<Char> for StringReplace {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
         Ok(Box::new(StringReplaceIter::new(self)))
     }
 
@@ -160,7 +160,7 @@ impl Describe for StreamReplace {
 }
 
 impl Stream for StreamReplace {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         Ok(self.source.map_iter(|item| Ok(if item.try_eq(&self.orig)? { self.repl.clone() } else { item })))
     }
 

@@ -31,7 +31,7 @@ impl Describe for While {
 }
 
 impl Stream for While {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         Ok(Box::new(WhileIter{cond: &self.cond, source: self.source.iter(), env: &self.env}))
     }
 

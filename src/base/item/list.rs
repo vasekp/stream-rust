@@ -10,7 +10,7 @@ impl List {
 }
 
 impl Stream for List {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
         Ok(self.iter())
     }
 

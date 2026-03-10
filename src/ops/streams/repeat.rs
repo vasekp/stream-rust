@@ -35,7 +35,7 @@ struct RepeatItemIter<'node, I: ItemType> {
 
 
 impl<I: ItemType> Stream<I> for RepeatItem<I> {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
         Ok(match &self.count {
             Some(count) => Box::new(RepeatItemIter{item: &self.item, count_rem: count.to_owned()}),
             None => Box::new(std::iter::repeat_with(|| Ok(self.item.clone())))
@@ -91,7 +91,7 @@ pub struct RepeatStream<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for RepeatStream<I> {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
         Ok(Box::new(RepeatStreamIter {
             stream: &self.stream,
             iter: self.stream.iter(),

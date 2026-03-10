@@ -35,7 +35,7 @@ impl<I: ItemType> Describe for SplitBy<I> {
 }
 
 impl<I: ItemType> Stream for SplitBy<I> {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
         Ok(Box::new(SplitByIter{source: self.source.iter(), cond: &self.cond, env: &self.env, done: false}))
     }
 

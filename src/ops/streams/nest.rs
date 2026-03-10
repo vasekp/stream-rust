@@ -58,7 +58,7 @@ impl Describe for NestArgs {
 }
 
 impl Stream for NestSource {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         Ok(Box::new(NestIterSource{body: &self.body, prev: self.source.clone(), env: &self.env}))
     }
 
@@ -68,7 +68,7 @@ impl Stream for NestSource {
 }
 
 impl Stream for NestArgs {
-    fn iter0<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         let args = self.body.args.iter().cloned().collect();
         Ok(Box::new(NestIterArgs{body: &self.body, prev: args, env: &self.env}))
     }

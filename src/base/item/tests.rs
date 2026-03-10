@@ -39,9 +39,9 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
 }
 
 fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) -> Result<(), StreamError> {
-    assert_eq!(stm.iter0()?.transposed().map(Result::unwrap).count(), len);
+    assert_eq!(stm.iter()?.transposed().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.len(), &Length::Exact(len.into())));
-    assert!(Length::possibly_eq(&stm.iter0()?.len_remain(), &Length::Exact(len.into())));
+    assert!(Length::possibly_eq(&stm.iter()?.len_remain(), &Length::Exact(len.into())));
     assert_eq!(len == 0, stm.is_empty()?);
     Ok(())
 }
@@ -61,19 +61,19 @@ const TEST: u32 = 5;
 #[cfg(test)]
 #[track_caller]
 fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), StreamError> {
-    assert_eq!(stm.iter0()?.len_remain(), stm.len(), "len_remain on fresh iterator == len");
+    assert_eq!(stm.iter()?.len_remain(), stm.len(), "len_remain on fresh iterator == len");
 
-    let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+    let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
     assert_eq!(i1.next(), match i2.advance(UNumber::zero()).unwrap() {
         Some(_) => Ok(None),
         None => i2.next() // same None, same element or same error
     }, "advance(0) = no-op on fresh iterator");
 
     if !stm.is_empty()? {
-        assert_ne!(stm.iter0()?.next().unwrap(), None,
+        assert_ne!(stm.iter()?.next().unwrap(), None,
             "first next() if !is_empty()"); // panics if the first item is Err
 
-        let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+        let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
         i1.next().unwrap();
         assert_eq!(i1.next(), match i2.advance(UNumber::one()).unwrap() {
             Some(_) => Ok(None),
@@ -86,7 +86,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
                 let many = 10000000000u64;
 
                 // advance() following advance()
-                let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+                let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
                 assert_eq!(i1.advance(UNumber::from(many)).unwrap(), None,
                     "advance(many)");
                 assert_eq!(i1.len_remain(), Length::Infinite,
@@ -98,7 +98,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap(),
                     "advance(many) + advance(many) = advance(2*many)");
 
-                let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+                let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
                 assert_eq!(i1.advance(UNumber::from(many)).unwrap(), None,
                     "advance(many)");
                 assert_eq!(i1.advance(UNumber::zero()).unwrap(), None,
@@ -108,7 +108,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
                 assert_eq!(i1.next().unwrap().unwrap(), i2.next().unwrap().unwrap(),
                     "advance(0) = no-op later in stream");
 
-                let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+                let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
                 assert_eq!(i1.advance(UNumber::from(many)).unwrap(), None,
                     "advance(many)");
                 assert_eq!(i1.advance(UNumber::one()).unwrap(), None,
@@ -121,7 +121,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
                     "advance(many) + advance(1) = advance(many) + next()");
 
                 // test actually comparing a few elements after a small skip
-                let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+                let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
                 assert_eq!(i1.advance(TEST.into()).unwrap(), None,
                     "advance({TEST})");
                 for _ in 0..TEST {
@@ -133,26 +133,26 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
                 }
             },
             _ => {
-                let mut iter = stm.iter0()?;
+                let mut iter = stm.iter()?;
                 if let Some(rem) = iter.advance(UNumber::from(TEST + 1)).unwrap() {
                     assert!(rem <= UNumber::from(TEST + 1), "remain after advance(n) <= n");
                     let len_real = TEST + 1 - u32::try_from(rem).unwrap();
                     return test_advance_exact_impl(stm, UNumber::from(len_real), false);
                 }
 
-                let mut iter = stm.iter0()?;
+                let mut iter = stm.iter()?;
                 for i in 0..TEST {
                     assert!(iter.next().unwrap().is_some(), "{i}=th next() if advance({TEST}) returned None");
                 }
                 let next = iter.next().unwrap();
 
-                let mut iter = stm.iter0()?;
+                let mut iter = stm.iter()?;
                 assert_eq!(iter.advance(TEST.into()), Ok(None), "advance({TEST})");
                 assert_eq!(iter.next().unwrap(), next, "advance({TEST} + next()");
 
                 const HALF: u32 = TEST / 2;
                 const REST: u32 = TEST - HALF;
-                let mut iter = stm.iter0()?;
+                let mut iter = stm.iter()?;
                 assert_eq!(iter.advance(HALF.into()), Ok(None), "advance({TEST}/2)");
                 assert_eq!(iter.advance(UNumber::zero()), Ok(None), "advance(0)");
                 assert_eq!(iter.advance(REST.into()), Ok(None), "advance({TEST}-{TEST}/2)");
@@ -160,30 +160,30 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
                     "advance({TEST}/2) + advance(0) + advance(rest) + next()");
 
                 const { assert!(REST > 1); }
-                let mut iter = stm.iter0()?;
+                let mut iter = stm.iter()?;
                 assert_eq!(iter.advance(HALF.into()), Ok(None), "advance({TEST}/2)");
                 assert!(iter.next().unwrap().is_some(), "advance({TEST}/2) + next()");
                 assert_eq!(iter.advance((REST - 1).into()), Ok(None), "advance(rest)");
                 assert_eq!(iter.next().unwrap(), next, "advance({TEST}/2) + next() + advance(rest) + next()");
 
-                let mut iter = stm.iter0()?;
+                let mut iter = stm.iter()?;
                 const { assert!(TEST >= 2); }
                 assert!(iter.next().unwrap().is_some(), "next() on fresh nonempty at-most iterator");
                 assert_eq!(iter.advance((TEST - 2).into()), Ok(None), "advance({TEST} - 2");
                 assert!(iter.next().unwrap().is_some(), "next() after next() + advance({TEST} - 2)");
                 assert_eq!(iter.next().unwrap(), next, "next() + advance({TEST} - 2) + next() + next()");
 
-                let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+                let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
                 assert_eq!(i1.advance(TEST.into()), Ok(None), "advance({TEST})");
                 assert_eq!(i1.advance(TEST.into()), i2.advance((2*TEST).into()),
                     "advance({TEST}) + advance({TEST}) = advance(2*{TEST})");
             }
         }
     } else {
-        assert_eq!(stm.iter0()?.len_remain(), Length::Exact(UNumber::zero()),
+        assert_eq!(stm.iter()?.len_remain(), Length::Exact(UNumber::zero()),
             "len_remain = 0 for is_empty()");
-        assert_eq!(stm.iter0()?.next().unwrap(), None, "next = None for is_empty()");
-        assert_eq!(stm.iter0()?.advance(UNumber::one()).unwrap(), Some(UNumber::one()),
+        assert_eq!(stm.iter()?.next().unwrap(), None, "next = None for is_empty()");
+        assert_eq!(stm.iter()?.advance(UNumber::one()).unwrap(), Some(UNumber::one()),
             "advance(1) on empty stream");
     }
     Ok(())
@@ -193,13 +193,13 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
 #[track_caller]
 fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumber, test_len_remain: bool) -> Result<(), StreamError> {
     if len.is_zero() {
-        assert_eq!(stm.iter0()?.advance(100u32.into()).unwrap(), Some(100u32.into()),
+        assert_eq!(stm.iter()?.advance(100u32.into()).unwrap(), Some(100u32.into()),
             "advance() on an empty iter");
         return Ok(());
     }
 
     // advance(len) leaves nothing
-    let mut it = stm.iter0()?;
+    let mut it = stm.iter()?;
     match it.advance(len.clone()).unwrap() {
         None => {
             if test_len_remain {
@@ -212,15 +212,15 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
     }
 
     // advance(len + N) reports N remaining elements
-    let mut it = stm.iter0()?;
+    let mut it = stm.iter()?;
     assert_eq!(it.advance(&len + 1u32).unwrap(), Some(UNumber::one()), "advance(len+x)");
-    let mut it = stm.iter0()?;
+    let mut it = stm.iter()?;
     assert_eq!(it.advance(&len + 100u32).unwrap(), Some(100u32.into()), "advance(len+x)");
 
     // advance() following advance()
     let mut half = (&len - 1u32) / 2u32;
     let mut rest = &len - 1u32 - &half;
-    let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+    let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
     assert_eq!(i1.advance(half.clone()).unwrap(), None, "advance(len/2)");
     if test_len_remain {
         assert_eq!(i1.len_remain(), Length::Exact(&len - &half),
@@ -243,7 +243,7 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
     assert_eq!(i1.next(), Ok(None), "advance(len-1) + next() + next()");
 
     // advance(0) = no-op
-    let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+    let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
     assert_eq!(i1.advance(UNumber::zero()).unwrap(), None, "advance(0)");
     if test_len_remain {
         assert_eq!(i1.len_remain(), i2.len_remain(), "len_remain() after advance(0)");
@@ -251,7 +251,7 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
     assert_eq!(i1.next(), i2.next(), "next() after advance(0)");
 
     // advance(0) = no-op later in stream
-    let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+    let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
     assert_eq!(i1.advance(half.clone()).unwrap(), None, "advance(len/2)");
     assert_eq!(i1.advance(UNumber::zero()).unwrap(), None, "advance(0) after advance(len/2)");
     assert_eq!(i2.advance(half.clone()).unwrap(), None, "advance(len/2)");
@@ -262,7 +262,7 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
     assert_eq!(i1.next(), i2.next(), "advance(len/2) direct vs. after advance(0)");
 
     // advance(1) = next() later in stream
-    let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+    let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
     assert_eq!(i1.advance(half.clone()).unwrap(), None, "advance(len/2)");
     assert_eq!(i1.advance(UNumber::one()).unwrap(), None, "advance(len/2) + advance(1)");
     assert_eq!(i2.advance(half.clone()).unwrap(), None, "advance(len/2)");
@@ -276,14 +276,14 @@ fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumb
     // advance() from within past end
     half += 1;
     rest += 1; // now half + rest = len + 1
-    let mut it = stm.iter0()?;
+    let mut it = stm.iter()?;
     assert_eq!(it.advance(half.clone()).unwrap(), None, "advance(len/2)");
     assert_eq!(it.advance(rest.clone()).unwrap(), Some(UNumber::one()),
         "advance(len/2) + advance(rest + 1)");
 
     // test actually comparing a few elements after a small skip
     if len > (2 * TEST).into() {
-        let (mut i1, mut i2) = (stm.iter0()?, stm.iter0()?);
+        let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
         assert_eq!(i1.advance(TEST.into()).unwrap(), None, "advance({TEST})");
         for _ in 0..TEST {
             i2.next().unwrap().unwrap();
