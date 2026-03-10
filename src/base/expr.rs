@@ -81,7 +81,7 @@ impl Expr {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => node.eval(env),
             Expr::Repl(_) => Err(StreamError::new0("out of context"))
-        }
+        }.map_err(|expr| expr.wrap(self.clone()))
     }
 
     pub fn replace(&self, func: &impl Fn(&Expr) -> Result<std::borrow::Cow<'_, Expr>, StreamError>) -> Result<std::borrow::Cow<'_, Expr>, StreamError> {

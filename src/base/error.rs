@@ -34,6 +34,11 @@ impl StreamError {
     pub fn interrupt() -> Self {
         Self{reason: Reason::Interrupt, trace: vec![]}
     }
+
+    pub(crate) fn wrap(mut self, expr: impl Into<Expr>) -> Self {
+        self.trace.push(expr.into());
+        self
+    }
 }
 
 impl std::error::Error for StreamError { }

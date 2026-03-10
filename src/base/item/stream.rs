@@ -60,8 +60,8 @@ impl<I: ItemType> dyn Stream<I> {
 
     pub fn iter<'node>(self: &'node Rc<Self>) -> Box<dyn SIterator<I> + 'node> {
         match (**self).iter() {
-            Ok(boxed) => boxed,
-            Err(err) => Box::new(std::iter::once(Err(err)))
+            Ok(iter) => Box::new(WrappedIter{iter, parent: self}),
+            Err(err) => Box::new(std::iter::once(Err(err.wrap(Item::from(self)))))
         }
     }
 
@@ -288,40 +288,49 @@ impl Describe for EmptyString {
 
 pub struct OwnedStreamIter<I = Item> {
     iter: Box<dyn SIterator<I>>,
-    _stream: Rc<dyn Stream<I>>,
+    stream: Rc<dyn Stream<I>>,
 }
 
 impl<I: ItemType> From<Rc<dyn Stream<I>>> for OwnedStreamIter<I> {
     fn from(stm: Rc<dyn Stream<I>>) -> Self {
         let iter = match unsafe { &*Rc::as_ptr(&stm) as &'static dyn Stream<I> }.iter() {
             Ok(iter) => iter,
-            Err(err) => Box::new(std::iter::once(Err(err))),
+            Err(err) => Box::new(std::iter::once(Err(err.wrap(Item::from(&stm))))),
         };
-        OwnedStreamIter { iter, _stream: stm }
+        OwnedStreamIter { iter, stream: stm }
     }
 }
 
-impl<I> std::ops::Deref for OwnedStreamIter<I> {
-    type Target = dyn SIterator<I>;
-
-    fn deref(&self) -> &Self::Target {
-        self.iter.deref()
-    }
-}
-
-impl<I> std::ops::DerefMut for OwnedStreamIter<I> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.iter.deref_mut()
-    }
-}
-
-impl<I> SIterator<I> for OwnedStreamIter<I> {
+impl<I: ItemType> SIterator<I> for OwnedStreamIter<I> {
     fn next(&mut self) -> Result<Option<I>, StreamError> {
         self.iter.next()
+            .map_err(|err| err.wrap(Item::from(&self.stream)))
     }
 
     fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
         self.iter.advance(n)
+            .map_err(|err| err.wrap(Item::from(&self.stream)))
+    }
+
+    fn len_remain(&self) -> Length {
+        self.iter.len_remain()
+    }
+}
+
+struct WrappedIter<'node, I: ItemType> {
+    iter: Box<dyn SIterator<I> + 'node>,
+    parent: &'node Rc<dyn Stream<I>>,
+}
+
+impl<I: ItemType> SIterator<I> for WrappedIter<'_, I> {
+    fn next(&mut self) -> Result<Option<I>, StreamError> {
+        self.iter.next()
+            .map_err(|err| err.wrap(Item::from(self.parent)))
+    }
+
+    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+        self.iter.advance(n)
+            .map_err(|err| err.wrap(Item::from(self.parent)))
     }
 
     fn len_remain(&self) -> Length {
