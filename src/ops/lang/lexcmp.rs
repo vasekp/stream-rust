@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 
 type CritFunc = fn(Ordering) -> bool;
 
-fn eval_lex(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_lex(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let func = find_fn(&node.head);
     node.check_no_source()?;
@@ -22,7 +22,7 @@ fn find_fn(head: &Head) -> CritFunc {
     }
 }
 
-fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> Result<bool, StreamError> {
+fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> SResult<bool> {
     let mut iter = items.iter();
     let mut prev = iter.next().unwrap(); // args checked to be nonempty in eval()
     for next in iter {

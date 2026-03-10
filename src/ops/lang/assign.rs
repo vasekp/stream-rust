@@ -1,7 +1,7 @@
 use crate::base::*;
 
-fn eval_assign(_node: &Node, _env: &Env) -> Result<Item, StreamError> {
-    Err(StreamError::new0("assignment not possible here, use == for comparisons"))
+fn eval_assign(_node: &Node, _env: &Env) -> SResult<Item> {
+    Err("assignment not possible here, use == for comparisons".into())
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {

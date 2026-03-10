@@ -2,42 +2,41 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     match (node.source_checked()?, &node.args[..]) {
         (Item::String(stm), [x, y]) => {
             let (orig, repl) = match (x, y) {
-                (Item::Char(c1), Item::Char(c2)) => (vec![vec![*c1]], vec![vec![*c2]]),
+                (Item::Char(c1), Item::Char(c2)) => (vec![vec![*c1]], vec![vec![*c2]]), // TODO unify
                 (Item::Char(c1), Item::String(s2)) => (vec![vec![*c1]], vec![s2.listout()?]),
                 (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![*c2]]),
                 (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
                 (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
-                _ => return Err(StreamError::new0("expected: (char/string, char/string) or (stream, stream)"))
+                _ => return Err(StreamError::usage(&node.head))
             };
             if orig.len() != repl.len() {
-                return Err(StreamError::new0("the replacements lists must be of same length"));
+                return Err("the replacements lists must be of same length".into());
             }
             if orig.iter().any(Vec::is_empty) {
-                return Err(StreamError::new0("the sought string can't be empty"));
+                return Err("the sought string can't be empty".into());
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
             Ok(Item::new_string(StringReplace { head: node.head.clone(), source: Rc::clone(stm), orig, repl, longest }))
         },
         (Item::Stream(stm), [orig, repl]) =>
             Ok(Item::new_stream(StreamReplace { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
-        _ => Err(StreamError::new0("expected: string.replace(char, char) or (string, string) or \
-                (list, list) or stream.replace(item, item)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
+fn read_stream(stm: &Rc<dyn Stream>) -> SResult<Vec<Vec<Char>>> {
     stm.iter().transposed()
         .map(|item| {
             check_stop!();
             match item? {
                 Item::Char(ch) => Ok(vec![ch]),
                 Item::String(s) => s.listout(),
-                _item => Err(StreamError::new0("expected character or string"))
+                item => Err(StreamError::with_expr("expected character or string", &item))
             }})
         .collect()
 }
@@ -63,8 +62,8 @@ impl Describe for StringReplace {
 }
 
 impl Stream<Char> for StringReplace {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(StringReplaceIter::new(self))
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
+        Ok(Box::new(StringReplaceIter::new(self)))
     }
 
     fn len(&self) -> Length {
@@ -99,7 +98,7 @@ impl<'node> StringReplaceIter<'node> {
 }
 
 impl SIterator<Char> for StringReplaceIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
             if let Some((deplete, done)) = &mut self.queued {
@@ -161,8 +160,8 @@ impl Describe for StreamReplace {
 }
 
 impl Stream for StreamReplace {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        self.source.map_iter(|item| Ok(if item.try_eq(&self.orig)? { self.repl.clone() } else { item }))
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(self.source.map_iter(|item| Ok(if item.try_eq(&self.orig)? { self.repl.clone() } else { item })))
     }
 
     fn len(&self) -> Length {

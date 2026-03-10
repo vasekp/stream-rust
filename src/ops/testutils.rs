@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_len_am(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len_am(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     match node.source_checked()? {
@@ -24,8 +24,8 @@ impl<I: ItemType> Describe for LenAM<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenAM<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(LenAMIter { iter: self.src.iter() })
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(Box::new(LenAMIter { iter: self.src.iter() }))
     }
 
     fn len(&self) -> Length {
@@ -38,11 +38,11 @@ struct LenAMIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 
@@ -51,7 +51,7 @@ impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
     }
 }
 
-fn eval_len_uf(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len_uf(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     match node.source_checked()? {
@@ -75,8 +75,8 @@ impl<I: ItemType> Describe for LenUF<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUF<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(LenUFIter { iter: self.src.iter() })
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(Box::new(LenUFIter { iter: self.src.iter() }))
     }
 
     fn len(&self) -> Length {
@@ -89,11 +89,11 @@ struct LenUFIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 
@@ -102,7 +102,7 @@ impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
     }
 }
 
-fn eval_len_uu(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len_uu(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     match node.source_checked()? {
@@ -126,8 +126,8 @@ impl<I: ItemType> Describe for LenUU<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUU<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(LenUUIter { iter: self.src.iter() })
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(Box::new(LenUUIter { iter: self.src.iter() }))
     }
 
     fn len(&self) -> Length {
@@ -140,11 +140,11 @@ struct LenUUIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 

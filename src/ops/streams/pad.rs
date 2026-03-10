@@ -1,9 +1,9 @@
 use crate::base::*;
 
-fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_padl(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let [Item::Number(len), item] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.padleft(length, item) or string.padleft(length, char)"));
+        return Err(StreamError::usage(&node.head));
     };
     let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
@@ -11,14 +11,14 @@ fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
             Ok(Item::new_stream(PadLeft { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
         (Item::String(stm), Item::Char(ch)) =>
             Ok(Item::new_string(PadLeft { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
-        _ => Err(StreamError::new0("expected: stream.padleft(length, item) or string.padleft(length, char)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_padr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let [Item::Number(len), item] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.padright(length, item) or string.padright(length, char)"))
+        return Err(StreamError::usage(&node.head));
     };
     let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
@@ -26,7 +26,7 @@ fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
             Ok(Item::new_stream(PadRight { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
         (Item::String(stm), Item::Char(ch)) =>
             Ok(Item::new_string(PadRight { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
-        _ => Err(StreamError::new0("expected: stream.padright(length, item) or string.padright(length, char)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
@@ -48,20 +48,17 @@ impl<I: ItemType> Describe for PadLeft<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadLeft<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         if self.source.len() == Length::Infinite {
-            self.source.iter()
+            Ok(self.source.iter())
         } else {
-            let len = match self.source.try_count() {
-                Ok(count) => count,
-                Err(err) => return Box::new(std::iter::once(Err(err)))
-            };
+            let len = self.source.try_count()?;
             let pad_remain = if len < self.len { &self.len - &len } else { UNumber::zero() };
-            Box::new(PadLeftIter {
+            Ok(Box::new(PadLeftIter {
                 source: self.source.iter(),
                 pad_remain,
                 padding: &self.padding
-            })
+            }))
         }
     }
 
@@ -84,7 +81,7 @@ struct PadLeftIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         if !self.pad_remain.is_zero() {
             self.pad_remain -= 1;
             Ok(Some(self.padding.clone()))
@@ -97,7 +94,7 @@ impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
         self.source.len_remain() + &self.pad_remain
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         if n < self.pad_remain {
             self.pad_remain -= n;
             Ok(None)
@@ -129,16 +126,16 @@ impl<I: ItemType> Describe for PadRight<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadRight<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         if self.source.len() == Length::Infinite {
-            self.source.iter()
+            Ok(self.source.iter())
         } else {
-            Box::new(PadRightIter {
+            Ok(Box::new(PadRightIter {
                 source: Some(self.source.iter()),
                 len: &self.len,
                 pos: UNumber::zero(),
                 padding: &self.padding
-            })
+            }))
         }
     }
 
@@ -162,7 +159,7 @@ struct PadRightIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         if let Some(ref mut iter) = self.source {
             if let Some(res) = iter.next()? {
                 self.pos += 1;
@@ -187,7 +184,7 @@ impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.pos += &n;
         if let Some(ref mut iter) = self.source {
             if iter.advance(n)?.is_none() {

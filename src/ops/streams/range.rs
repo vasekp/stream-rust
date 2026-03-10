@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_range(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_range(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let (from, to, step, rtype) = match &node.args[..] {
@@ -19,7 +19,7 @@ fn eval_range(node: &Node, env: &Env) -> Result<Item, StreamError> {
             let to_ix = env.alpha.ord(to)?;
             (Some(from_ix.into()), to_ix.into(), Some(step.clone()), RangeType::Character(case))
         },
-        _ => return Err(StreamError::new0("expected one of: range(num), range(num, num), range(num, num, num), range(char, char), range(char, char, num)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     if empty_helper(from.as_ref(), &to, step.as_ref()) {
         Ok(Item::empty_stream())
@@ -65,14 +65,14 @@ enum RangeType {
 }
 
 impl Stream for Range {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(RangeIter{
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(RangeIter{
             parent: self,
             value: match &self.from {
                 Some(from) => from.clone(),
                 None => Number::one()
             }
-        })
+        }))
     }
 
     fn len(&self) -> Length {
@@ -110,7 +110,7 @@ struct RangeIter<'node> {
 }
 
 impl SIterator for RangeIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.parent.step.as_ref().is_some_and(Number::is_zero)
             || (self.parent.step.as_ref().is_none_or(Number::is_positive) && self.value <= self.parent.to)
             || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
@@ -128,7 +128,7 @@ impl SIterator for RangeIter<'_> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         if empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             return Ok(Some(n))
         };

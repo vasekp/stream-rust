@@ -1,16 +1,16 @@
 use crate::base::*;
 
-fn eval_repeat(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_repeat(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let item = node.source_checked()?;
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::new0("expected one of: source.repeat(), source.repeat(count)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     match (&item, count.as_ref().and_then(|x| u32::try_from(x).ok())) {
-        (Item::String(stm), _) if stm.is_empty() => Ok(item.clone()),
-        (Item::Stream(stm), _) if stm.is_empty() => Ok(item.clone()),
+        (Item::String(stm), _) if stm.is_empty()? => Ok(item.clone()),
+        (Item::Stream(stm), _) if stm.is_empty()? => Ok(item.clone()),
         (Item::Char(_) | Item::String(_), Some(0)) => Ok(Item::empty_string()),
         (_, Some(0)) => Ok(Item::empty_stream()),
         (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item.clone()),
@@ -35,11 +35,11 @@ struct RepeatItemIter<'node, I: ItemType> {
 
 
 impl<I: ItemType> Stream<I> for RepeatItem<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        match &self.count {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(match &self.count {
             Some(count) => Box::new(RepeatItemIter{item: &self.item, count_rem: count.to_owned()}),
             None => Box::new(std::iter::repeat_with(|| Ok(self.item.clone())))
-        }
+        })
     }
 
     fn len(&self) -> Length {
@@ -61,7 +61,7 @@ impl<I: ItemType> Describe for RepeatItem<I> {
 }
 
 impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         if !self.count_rem.is_zero() {
             self.count_rem -= 1;
             Ok(Some(self.item.clone()))
@@ -70,7 +70,7 @@ impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         if n > self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
@@ -91,14 +91,14 @@ pub struct RepeatStream<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for RepeatStream<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(RepeatStreamIter {
-            stream: &*self.stream,
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(Box::new(RepeatStreamIter {
+            stream: &self.stream,
             iter: self.stream.iter(),
             len: self.stream.len(),
             resets_rem: self.count.as_ref()
                 .map(|count| count - 1u32)
-        })
+        }))
     }
 
     fn len(&self) -> Length {
@@ -124,14 +124,14 @@ impl<I: ItemType> Describe for RepeatStream<I> {
 }
 
 struct RepeatStreamIter<'node, I: ItemType> {
-    stream: &'node dyn Stream<I>,
+    stream: &'node Rc<dyn Stream<I>>,
     iter: Box<dyn SIterator<I> + 'node>,
     len: Length,
     resets_rem: Option<UNumber>
 }
 
 impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         let next = self.iter.next()?;
         if next.is_some() {
             return Ok(next);
@@ -146,7 +146,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let Some(n) = self.iter.advance(n)? else { return Ok(None); };
 
         // If advance returned Some, iter is depleted. Restart.
@@ -226,9 +226,11 @@ mod tests {
         test_eval!("[].repeat(0)" => "[]");
         test_eval!("[].repeat(1)" => "[]");
         test_eval!("[].repeat(10)" => "[]");
+        test_eval!("[].repeat" => "[]");
         test_eval!("\"\".repeat(0)" => "\"\"");
         test_eval!("\"\".repeat(1)" => "\"\"");
         test_eval!("\"\".repeat(10)" => "\"\"");
+        test_eval!("\"\".repeat" => "\"\"");
 
         test_eval!("\"abc\".repeat[10^10]" => "'a'");
         test_eval!("[].repeat~1" => "[1]");

@@ -1,70 +1,56 @@
 use crate::base::*;
 
-fn eval_part(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_part(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_source()?;
     node.check_args_nonempty()?;
-    eval_enode(node, env)
+    eval_enode(&node, env)
 }
 
-fn eval_enode(mut node: Node<Item>, env: &Env) -> Result<Item, StreamError> {
-    match node.args.remove(0) {
-        Item::Number(index) => {
-            let snode = Node{head: LangItem::Part.into(), source: node.source, args: vec![Item::Number(index.clone())]};
-            let part = match snode.source.as_ref().unwrap() { // source checked before calling eval_enode
-                Item::Stream(stm) => eval_index_impl(&**stm, &index),
-                Item::String(stm) => eval_index_impl(&**stm, &index).map(Item::Char),
-                _ => return Err(StreamError::new0("expected stream or string"))
-            }?; // TODO decorate?
-            if node.args.is_empty() {
+fn eval_enode(node: &Node<Item>, env: &Env) -> SResult<Item> {
+    let source = node.source.as_ref().expect("source should be nonempty by precondition");
+    match node.args.split_first().expect("args should be nonempty by precondition") {
+        (Item::Number(index), rest) => {
+            let part = match source {
+                Item::Stream(stm) => eval_index_impl(stm, index)?,
+                Item::String(stm) => eval_index_impl(stm, index).map(Item::Char)?,
+                _ => return Err("expected stream or string".into())
+            };
+            if rest.is_empty() {
                 Ok(part)
             } else {
-                let nnode = Node{head: node.head, source: Some(part), args: node.args};
-                eval_enode(nnode, env)
+                let nnode = Node{head: node.head.clone(), source: Some(part), args: rest.to_owned()};
+                eval_enode(&nnode, env).map_err(|err| err.wrap(&nnode))
             }
         },
-        Item::Stream(stm) => {
-            match node.source {
-                Some(Item::Stream(source)) =>
-                    Ok(Item::new_stream(Part{source, indices: stm, rest: node.args, env: env.clone(), head: node.head})),
-                Some(Item::String(source)) if node.args.is_empty() =>
-                    Ok(Item::new_string(StringPart{source, indices: stm, head: node.head})),
-                Some(Item::String(_)) => {
-                    node.args.insert(0, Item::Stream(stm));
-                    Err(StreamError::new0("expected only one level of parts"))
-                },
-                _ => {
-                    node.args.insert(0, Item::Stream(stm));
-                    Err(StreamError::new0("expected stream or string"))
-                }
+        (Item::Stream(indices), rest) => {
+            match source {
+                Item::Stream(stm) =>
+                    Ok(Item::new_stream(Part{source: stm.clone(), indices: Rc::clone(indices), rest: rest.to_owned(), env: env.clone(), head: node.head.clone()})),
+                Item::String(stm) if rest.is_empty() =>
+                    Ok(Item::new_string(StringPart{source: stm.clone(), indices: Rc::clone(indices), head: node.head.clone()})),
+                Item::String(_) => Err("expected only one level of parts".into()),
+                _ => Err("expected stream or string".into())
             }
         },
-        _ => Err(StreamError::new0("expected number or stream"))
+        _ => Err("expected number or stream".into())
     }
 }
 
-fn eval_index_impl<I: ItemType>(source: &dyn Stream<I>, index: &Number) -> Result<I, StreamError> {
-    let index = UNumber::try_from(index)
-        .map_err(|_| StreamError::new0("index must be greater than zero"))?;
-    if index.is_zero() {
-        return Err(StreamError::new0("index must be greater than zero"));
-    }
+fn eval_index_impl<I: ItemType>(source: &Rc<dyn Stream<I>>, index: &Number) -> SResult<I> {
+    let index = index.try_cast_within(UNumber::one()..)?;
     match source.len() {
         Length::Exact(len) | Length::AtMost(len) if len < index =>
-            return Err(StreamError::new0("index past end of stream")),
+            return Err("index past end of stream".into()),
         _ => ()
     }
     let mut iter = source.iter();
     if iter.advance(index - 1u32)?.is_some() {
-        drop(iter);
-        return Err(StreamError::new0("index past end of stream"));
+        return Err("index past end of stream".into());
     }
     match iter.next()? {
         Some(value) => Ok(value),
-        None => {
-            drop(iter);
-            Err(StreamError::new0("index past end of stream"))
-        }
+        None => Err("index past end of stream".into())
     }
 }
 
@@ -77,8 +63,12 @@ struct Part {
 }
 
 impl Stream for Part {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(PartIter{parent: self, iter: self.indices.iter()})
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(PartIter{parent: self, iter: self.indices.iter()}))
+    }
+
+    fn len(&self) -> Length {
+        self.indices.len()
     }
 }
 
@@ -98,7 +88,7 @@ struct PartIter<'node> {
 }
 
 impl SIterator for PartIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let part = iter_try!(self.iter.next());
         // TODO: smarter - number tracks increments, stream unfolds?
         let mut args = self.parent.rest.clone();
@@ -108,10 +98,12 @@ impl SIterator for PartIter<'_> {
             source: Some(self.parent.source.clone().into()),
             args
         };
-        eval_enode(node, &self.parent.env).map(Option::Some)
+        eval_enode(&node, &self.parent.env)
+            .map(Option::Some)
+            .map_err(|err| err.wrap(&node))
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 
@@ -127,8 +119,12 @@ struct StringPart {
 }
 
 impl Stream<Char> for StringPart {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(StringPartIter{parent: self, iter: self.indices.iter()})
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
+        Ok(Box::new(StringPartIter{parent: self, iter: self.indices.iter()}))
+    }
+
+    fn len(&self) -> Length {
+        self.indices.len()
     }
 }
 
@@ -147,14 +143,14 @@ struct StringPartIter<'node> {
 }
 
 impl SIterator<Char> for StringPartIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         match iter_try!(self.iter.next()) {
-            Item::Number(index) => eval_index_impl(&*self.parent.source, &index).map(Option::Some),
+            Item::Number(index) => eval_index_impl(&self.parent.source, &index).map(Option::Some),
             _ => todo!()
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 

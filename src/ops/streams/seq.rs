@@ -1,13 +1,13 @@
 use crate::base::*;
 
-fn eval_seq(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_seq(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let (from, step) = match &node.args[..] {
         [] => (None, None),
         [Item::Number(from)] => (Some(from), None),
         [Item::Number(from), Item::Number(to)] => (Some(from), Some(to)),
-        _ => return Err(StreamError::new("expected one of: seq(), seq(number), seq(number, number)", node))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_stream(Seq{head: node.head, from: from.cloned(), step: step.cloned() }))
 }
@@ -19,14 +19,14 @@ pub struct Seq {
 }
 
 impl Stream for Seq {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SeqIter{
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(SeqIter{
             value: match &self.from {
                 Some(from) => from.clone(),
                 None => Number::one()
             },
             step: &self.step
-        })
+        }))
     }
 
     fn len(&self) -> Length {
@@ -49,7 +49,7 @@ struct SeqIter<'node> {
 }
 
 impl SIterator for SeqIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let ret = Item::new_number(self.value.clone());
         match self.step {
             Some(step) => self.value += step,
@@ -62,7 +62,7 @@ impl SIterator for SeqIter<'_> {
         Length::Infinite
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         match self.step {
             Some(step) => self.value += step * Number::from(n),
             None => self.value += Number::from(n)

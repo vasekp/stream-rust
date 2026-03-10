@@ -1,15 +1,14 @@
 use crate::base::*;
 use super::digits::Digits;
 
-fn eval_numdig(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_numdig(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let num = node.source_checked()?.to_num()?;
     let (radix, minw) = match &node.args[..] {
         [] => (10, None),
         [Item::Number(radix)] => (radix.try_cast_within(2u32..)?, None),
         [Item::Number(radix), Item::Number(minw)] => (radix.try_cast_within(2u32..)?, Some(minw.try_unsign()?)),
-        _ => return Err(StreamError::new0("expected: number.numdig or number.numdig(radix) or \
-number.numdig(radix, min_width)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     let digits = Digits::new(num.try_unsign()?, radix)
         .map(Item::new_number)
@@ -23,22 +22,21 @@ number.numdig(radix, min_width)"))
     }
 }
 
-fn eval_dignum(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_stream()?;
     let radix = match &node.args[..] {
         [] => 10,
         [Item::Number(radix)] => radix.try_cast_within(2u32..)?,
-        _ => return Err(StreamError::new0("expected: stream.dignum or stream.dignum(radix) or \
-stream.dignum(radix, min_width)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
-    if stm.is_empty() {
-        return Err(StreamError::new0("stream is empty"));
-    }
     let vec = stm.iter().transposed().map(|item| {
             check_stop!();
             item?.into_num()?.try_cast_within(0..radix)
-        }).collect::<Result<Vec<u32>, _>>()?;
+        }).collect::<SResult<Vec<u32>>>()?;
+    if vec.is_empty() {
+        return Err("stream is empty".into());
+    }
     let mut num = UNumber::zero();
     for digit in vec {
         num *= radix;

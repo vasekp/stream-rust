@@ -3,8 +3,8 @@ use crate::base::*;
 pub trait ItemType: Clone + Describe + Into<Item> + 'static {
     fn from_vec(vec: Vec<Self>) -> Item;
     fn from_rc(stm: Rc<dyn Stream<Self>>) -> Item;
-    fn listout(stm: &Rc<dyn Stream<Self>>) -> Result<Vec<Self>, StreamError>;
-    fn try_eq(&self, other: &Self) -> Result<bool, StreamError>;
+    fn listout(stm: &Rc<dyn Stream<Self>>) -> SResult<Vec<Self>>;
+    fn try_eq(&self, other: &Self) -> SResult<bool>;
 }
 
 impl ItemType for Item {
@@ -16,11 +16,11 @@ impl ItemType for Item {
         Item::Stream(stm)
     }
 
-    fn listout(stm: &Rc<dyn Stream<Self>>) -> Result<Vec<Self>, StreamError> {
+    fn listout(stm: &Rc<dyn Stream<Self>>) -> SResult<Vec<Self>> {
         stm.listout_impl()
     }
 
-    fn try_eq(&self, other: &Item) -> Result<bool, StreamError> {
+    fn try_eq(&self, other: &Item) -> SResult<bool> {
         self.try_eq(other)
     }
 }
@@ -34,11 +34,11 @@ impl ItemType for Char {
         Item::String(stm)
     }
 
-    fn listout(stm: &Rc<dyn Stream<Self>>) -> Result<Vec<Self>, StreamError> {
+    fn listout(stm: &Rc<dyn Stream<Self>>) -> SResult<Vec<Self>> {
         stm.listout_impl()
     }
 
-    fn try_eq(&self, other: &Char) -> Result<bool, StreamError> {
+    fn try_eq(&self, other: &Char) -> SResult<bool> {
         Ok(self == other)
     }
 }

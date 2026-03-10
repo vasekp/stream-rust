@@ -6,7 +6,7 @@ pub trait Tracer {
 
 pub enum Event<'a> {
     Enter(&'a Node),
-    Leave(&'a Result<Item, StreamError>)
+    Leave(&'a SResult<Item>)
 }
 
 impl Tracer for () {

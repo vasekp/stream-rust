@@ -14,22 +14,22 @@ pub enum Alphabet {
 impl Alphabet {
     /// Returns the order of `chr` in the alphabet. Counts between 1 and the size.
     /// The information about the case of the character is preserved using `CharCase`.
-    pub fn ord(&self, chr: &Char) -> Result<isize, StreamError> {
+    pub fn ord(&self, chr: &Char) -> SResult<isize> {
         match self {
             Alphabet::Std26 => {
                 let Char::Single(ch) = chr else {
-                    return Err(StreamError::new0(format!("{chr}: not in alphabet")));
+                    return Err(StreamError::with_expr("not in alphabet", chr));
                 };
                 match ch.to_ascii_lowercase().try_into() {
                     Ok(ord @ b'a'..=b'z') => Ok((ord - b'a' + 1).into()),
-                    _ => Err(StreamError::new0(format!("{chr}: not in alphabet")))
+                    _ => Err(StreamError::with_expr("not in alphabet", chr))
                 }
             },
             Alphabet::Listed{map, ..} => {
                 map.get(chr)
                     .or_else(|| map.get(&chr.to_lowercase()))
                     .copied()
-                    .ok_or_else(|| StreamError::new0(format!("{chr}: not in alphabet")))
+                    .ok_or_else(|| StreamError::with_expr("not in alphabet", chr))
             }
         }
     }
@@ -73,7 +73,7 @@ impl Alphabet {
     }
 
     #[cfg(test)]
-    fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, StreamError> {
+    fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> SResult<Char> {
         let case = lhs.case();
         let index1 = self.ord(lhs)?;
         let index2 = self.ord(rhs)?;
@@ -88,7 +88,7 @@ impl Alphabet {
     }
 
     /// Compares two characters
-    pub fn cmp(&self, x: &Char, y: &Char) -> Result<std::cmp::Ordering, StreamError> {
+    pub fn cmp(&self, x: &Char, y: &Char) -> SResult<std::cmp::Ordering> {
         let (ox, oy) = (self.ord(x)?, self.ord(y)?);
         Ok(ox.cmp(&oy))
     }
@@ -116,7 +116,7 @@ impl Alphabet {
 impl TryFrom<Vec<Char>> for Alphabet {
     type Error = StreamError;
 
-    fn try_from(src_vec: Vec<Char>) -> Result<Alphabet, StreamError> {
+    fn try_from(src_vec: Vec<Char>) -> SResult<Alphabet> {
         let mut map = HashMap::new();
         if src_vec.is_empty() {
             return Ok(Alphabet::default());
@@ -132,7 +132,7 @@ impl TryFrom<Vec<Char>> for Alphabet {
                 map.insert(lcase, ix).or(map.insert(ucase, ix))
             };
             if prev.is_some() {
-                return Err(StreamError::new0(format!("duplicate character {chr}")));
+                return Err(StreamError::with_expr("duplicate character", &chr));
             }
             res_vec.push(chr);
         }

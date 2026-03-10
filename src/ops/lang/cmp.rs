@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_cmp(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_cmp(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let func = find_fn(&node.head);
     node.check_no_source()?;
@@ -8,7 +8,7 @@ fn eval_cmp(node: &Node, env: &Env) -> Result<Item, StreamError> {
     func(&node.args).map(Item::Bool)
 }
 
-type CmpFunc = fn(&[Item]) -> Result<bool, StreamError>;
+type CmpFunc = fn(&[Item]) -> SResult<bool>;
 
 fn find_fn(head: &Head) -> CmpFunc {
     match head.as_str().expect("head should be symbol or oper") {
@@ -23,7 +23,7 @@ fn find_fn(head: &Head) -> CmpFunc {
     }
 }
 
-fn eq_func(items: &[Item]) -> Result<bool, StreamError> {
+fn eq_func(items: &[Item]) -> SResult<bool> {
     let mut iter = items.iter();
     let first = iter.next().unwrap(); // args checked to be nonempty in eval()
     for item in iter {
@@ -34,30 +34,30 @@ fn eq_func(items: &[Item]) -> Result<bool, StreamError> {
     Ok(true)
 }
 
-fn ineq_func(items: &[Item]) -> Result<bool, StreamError> {
+fn ineq_func(items: &[Item]) -> SResult<bool> {
     match items {
         [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
-        _ => Err(StreamError::new0("exactly 2 arguments required"))
+        _ => Err("exactly 2 arguments required".into())
     }
 }
 
-fn lt_func(items: &[Item]) -> Result<bool, StreamError> {
+fn lt_func(items: &[Item]) -> SResult<bool> {
     ineq_chain(items, Number::lt)
 }
 
-fn gt_func(items: &[Item]) -> Result<bool, StreamError> {
+fn gt_func(items: &[Item]) -> SResult<bool> {
     ineq_chain(items, Number::gt)
 }
 
-fn le_func(items: &[Item]) -> Result<bool, StreamError> {
+fn le_func(items: &[Item]) -> SResult<bool> {
     ineq_chain(items, Number::le)
 }
 
-fn ge_func(items: &[Item]) -> Result<bool, StreamError> {
+fn ge_func(items: &[Item]) -> SResult<bool> {
     ineq_chain(items, Number::ge)
 }
 
-fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> Result<bool, StreamError> {
+fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> SResult<bool> {
     let mut iter = items.iter();
     let mut prev = iter.next()
         .unwrap() // args checked to be nonempty in eval()

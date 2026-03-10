@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_alpha(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_alpha(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     match &node.args[..] {
         [] => {
@@ -14,16 +14,16 @@ fn eval_alpha(node: &Node, env: &Env) -> Result<Item, StreamError> {
                 Item::Stream(stm) => stm.listout()?
                     .into_iter()
                     .map(Item::into_char)
-                    .collect::<Result<Vec<_>, _>>()?
+                    .collect::<SResult<Vec<_>>>()?
                     .try_into()?,
                 Item::String(stm) => stm.listout()?.try_into()?,
-                _ => return Err(StreamError::new0("expected stream or string"))
+                _ => return Err(StreamError::usage(&node.head))
             };
             let mut new_env = env.clone();
             new_env.alpha = Rc::new(alpha);
             body.eval(&new_env)
         },
-        _ => Err(StreamError::new0("expected: alpha or alpha(string or stream, body)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 

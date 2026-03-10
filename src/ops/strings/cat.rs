@@ -1,13 +1,13 @@
 use crate::base::*;
 
-fn eval_cat(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_cat(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let filler = match &node.args[..] {
         [] => None,
         [Item::String(fill)] => Some(fill.listout()?),
         [Item::Char(fill)] => Some(vec![*fill]),
-        _ => return Err(StreamError::new0("expected: stream.cat"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_string(Cat {
         source: stm,
@@ -32,19 +32,15 @@ impl Describe for Cat {
 }
 
 impl Stream<Char> for Cat {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         match &self.filler {
-            None => Box::new(CatIter::new(self)),
+            None => Ok(Box::new(CatIter::new(self))),
             Some(fill) => RiffleCatIter::new_boxed(self, fill)
         }
     }
 
     fn len(&self) -> Length {
-        if self.source.is_empty() {
-            Length::Exact(UNumber::zero())
-        } else {
-            Length::Unknown
-        }
+        Length::Unknown
     }
 }
 
@@ -63,7 +59,7 @@ impl<'node> CatIter<'node> {
 }
 
 impl SIterator<Char> for CatIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
             if let Some(iter) = &mut self.inner {
@@ -75,12 +71,12 @@ impl SIterator<Char> for CatIter<'_> {
             match iter_try!(self.outer.next()) {
                 Item::Char(ch) => return Ok(Some(ch)),
                 Item::String(s) => self.inner = Some(s.into_iter()),
-                _item => return Err(StreamError::new0("expected string or character".to_string())) // TODO decorate
+                item => return Err(StreamError::with_expr("expected string or character", &item))
             }
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             if n.is_zero() {
@@ -119,28 +115,27 @@ enum RiffleCatState<'node> {
 }
 
 impl<'node> RiffleCatIter<'node> {
-    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> Box<dyn SIterator<Char> + 'node> {
+    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> SResult<Box<dyn SIterator<Char> + 'node>> {
         let mut outer = parent.source.iter();
-        let inner = match Self::next_cs(&mut *outer) {
-            Ok(Some(cs)) => cs,
-            Ok(None) => return Box::new(std::iter::empty()),
-            Err(err) => return Box::new(std::iter::once(Err(err))),
+        let inner = match Self::next_cs(&mut *outer)? {
+            Some(cs) => cs,
+            None => Box::new(std::iter::empty()),
         };
-        Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source})
+        Ok(Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source}))
     }
 
-    fn next_cs(outer: &mut (dyn SIterator + 'node)) -> Result<Option<Box<dyn SIterator<Char> + 'node>>, StreamError> {
+    fn next_cs(outer: &mut (dyn SIterator + 'node)) -> SResult<Option<Box<dyn SIterator<Char> + 'node>>> {
         match outer.next()? {
             Some(Item::Char(ch)) => Ok(Some(Box::new(std::iter::once(Ok(ch))))),
             Some(Item::String(s)) => Ok(Some(Box::new(s.into_iter()))),
             None => Ok(None),
-            Some(_) => Err(StreamError::new0("expected character or string")),
+            Some(item) => Err(StreamError::with_expr("expected character or string", &item)),
         }
     }
 }
 
 impl SIterator<Char> for RiffleCatIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
             if let Some(ch) = self.inner.next()? {
@@ -160,7 +155,7 @@ impl SIterator<Char> for RiffleCatIter<'_> {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             n = match self.inner.advance(n) {
@@ -205,6 +200,8 @@ mod tests {
         test_eval!("\"abc\".chars.cat(' ')" => "\"a b c\"");
         test_eval!("['a'].repeat.cat(\", \")" => "\"a, a, a, a, a, a, a,...");
         test_eval!("\"abc\".chars.cat(' '.repeat)" => err);
+        test_eval!("[].cat(' ')" => "\"\"");
+        test_len!("[].cat(' ')" => 0);
         test_advance("['a', 'b'].cat(' ')");
         test_advance("[\"abcde\"].repeat(10).cat");
         test_advance("[\"abcde\"].repeat.cat(\", \")");

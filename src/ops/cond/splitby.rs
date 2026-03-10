@@ -1,13 +1,13 @@
 use crate::base::*;
 
-fn eval_splitby(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_splitby(node: &Node, env: &Env) -> SResult<Item> {
     let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.splitby{cond}"))
+        return Err(StreamError::usage(&node.head));
     };
     match node.source_checked()?.eval(env)? {
         Item::Stream(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
         Item::String(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
-        _ => Err(StreamError::new0("expected: stream.splitby{cond}"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
@@ -35,8 +35,8 @@ impl<I: ItemType> Describe for SplitBy<I> {
 }
 
 impl<I: ItemType> Stream for SplitBy<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitByIter{source: self.source.iter(), cond: &self.cond, env: &self.env, done: false})
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(SplitByIter{source: self.source.iter(), cond: &self.cond, env: &self.env, done: false}))
     }
 
     fn len(&self) -> Length {
@@ -45,7 +45,7 @@ impl<I: ItemType> Stream for SplitBy<I> {
 }
 
 impl<I: ItemType> SIterator for SplitByIter<'_, I> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
         }
@@ -53,12 +53,10 @@ impl<I: ItemType> SIterator for SplitByIter<'_, I> {
         for item in self.source.transposed() {
             check_stop!();
             let item = item?;
-            let cond_item = Node::from(self.cond.clone())
+            let cond = Node::from(self.cond)
                 .with_source(Expr::from(item.clone().into()))?
-                .eval(self.env)?;
-            let Item::Bool(cond) = cond_item else {
-                return Err(StreamError::new(format!("expected bool, found {:?}", cond_item), self.cond.clone()));
-            };
+                .eval(self.env)?
+                .to_bool()?;
             if cond {
                 return Ok(Some(Item::from(cache)));
             }

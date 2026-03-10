@@ -2,15 +2,15 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_windows(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_windows(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let (size, body) = match &node.args[..] {
         [size] => (size, None),
-        [size, Expr::Eval(body)] => (size, Some(body)),
-        _ => return Err(StreamError::new0("expected: source.windows(size) or source.windows(size, func)"))
+        [size, Expr::Eval(node)] if node.args.is_empty() => (size, Some(Rc::clone(node))),
+        _ => return Err(StreamError::usage(&node.head))
     };
     let size = size.eval(env)?.as_num()?.try_cast_within(2usize..)?;
-    Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body: body.cloned(), env: env.clone()}))
+    Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body, env: env.clone()}))
 }
 
 struct Windows {
@@ -40,17 +40,16 @@ impl Describe for Windows {
 }
 
 impl Stream for Windows {
-    fn iter(&self) -> Box<dyn SIterator + '_> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         let mut iter = self.source.iter();
         let mut deque = VecDeque::with_capacity(self.size - 1);
         for _ in 0..(self.size - 1) {
-            match iter.next() {
-                Ok(Some(item)) => deque.push_back(item),
-                Ok(None) => return Box::new(std::iter::empty()),
-                Err(err) => return Box::new(std::iter::once(Err(err))),
+            match iter.next()? {
+                Some(item) => deque.push_back(item),
+                None => return Ok(Box::new(std::iter::empty())),
             }
         }
-        Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_deref(), env: &self.env})
+        Ok(Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_ref(), env: &self.env}))
     }
 
     fn len(&self) -> Length {
@@ -67,20 +66,19 @@ struct WindowsIter<'node> {
     iter: Box<dyn SIterator + 'node>,
     size: usize,
     deque: VecDeque<Item>,
-    body: Option<&'node Node>,
+    body: Option<&'node Rc<Node>>,
     env: &'node Env,
 }
 
 impl SIterator for WindowsIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let next = iter_try!(self.iter.next());
         let first = self.deque.pop_front().unwrap(); // for size ≥ 2, deque has ≥ 1 element
         self.deque.push_back(next);
         let iter = std::iter::once(first)
             .chain(self.deque.iter().cloned());
         if let Some(body) = self.body {
-            body.clone()
-                .with_args(iter.map(Expr::from).collect())
+            body.with_args(iter.map(Expr::from).collect())
                 .and_then(|expr| expr.eval(self.env))
                 .map(Option::Some)
         } else {
@@ -88,7 +86,7 @@ impl SIterator for WindowsIter<'_> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         match (&n).try_into() {
             Ok(num) if num < self.size => { self.deque.drain(0..num); },
             _ => {

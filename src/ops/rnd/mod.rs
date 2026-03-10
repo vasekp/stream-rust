@@ -2,15 +2,15 @@ use crate::base::*;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
-fn eval_rnd(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rnd(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let [Item::Number(seed)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.rnd(seed)"));
+        return Err(StreamError::usage(&node.head));
     };
     let len = stm.try_count()?;
     if len.is_zero() {
-        return Err(StreamError::new0("stream is empty"));
+        return Err("stream is empty".into());
     }
     let mut hasher = DefaultHasher::default();
     Hash::hash(seed, &mut hasher);
@@ -51,8 +51,8 @@ impl Describe for RndStream {
 }
 
 impl Stream for RndStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(RndIter::new(self))
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(RndIter::new(self)))
     }
 
     fn len(&self) -> Length {
@@ -72,7 +72,7 @@ impl<'node> RndIter<'node> {
 }
 
 impl SIterator for RndIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let mut hasher = self.parent.hasher.clone();
         Hash::hash(&self.pos, &mut hasher);
         let seed = hasher.finish();
@@ -100,7 +100,7 @@ impl SIterator for RndIter<'_> {
         Length::Infinite
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.pos += n;
         Ok(None)
     }

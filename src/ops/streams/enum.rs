@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_enum(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_enum(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
@@ -22,8 +22,8 @@ impl Describe for Enum {
 }
 
 impl Stream for Enum {
-    fn iter(&self) -> Box<dyn SIterator + '_> {
-        Box::new(EnumIter{iter: self.stream.iter(), index: UNumber::zero()})
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(EnumIter{iter: self.stream.iter(), index: UNumber::zero()}))
     }
 
     fn len(&self) -> Length {
@@ -37,13 +37,13 @@ struct EnumIter<'node> {
 }
 
 impl SIterator for EnumIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let item = iter_try!(self.iter.next());
         self.index += 1;
         Ok(Some(vec![item, Item::new_number(self.index.clone())].into()))
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.index += &n;
         self.iter.advance(n)
     }

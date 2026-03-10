@@ -1,21 +1,20 @@
 use crate::base::*;
 
-fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_reorder(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let mut indices = Vec::with_capacity(node.args.len());
     for arg in &node.args {
         let index = arg.to_num()?.try_cast_within(UNumber::one()..)?;
         if indices.contains(&index) {
-            return Err(StreamError::new0(format!("index {} repeats", index)));
+            return Err(format!("index {} repeats", index).into());
         }
         indices.push(index);
     }
     let max_index = indices.iter().max().cloned().unwrap_or_default();
     if let Length::Exact(len) | Length::AtMost(len) = stm.len()
         && max_index > len {
-            let node = Node { source: Some(Item::Stream(stm)), ..node };
-            return Err(StreamError::new("requested index exceeds length of source", node));
+            return Err("requested index exceeds length of source".into());
         }
     Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
@@ -37,13 +36,13 @@ impl Describe for ReorderStream {
 }
 
 impl Stream for ReorderStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(ReorderIter {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(ReorderIter {
             parent: self,
-            iter: RandomAccess::new(&*self.source),
+            iter: RandomAccess::new(&self.source),
             state: ReorderState::Args { vec_iter: self.indices.iter() },
             pos: UNumber::zero()
-        })
+        }))
     }
 
     fn len(&self) -> Length {
@@ -65,7 +64,7 @@ enum ReorderState<'node> {
 }
 
 impl SIterator for ReorderIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
             match &mut self.state {
@@ -76,12 +75,7 @@ impl SIterator for ReorderIter<'_> {
                                 self.pos += 1;
                                 return Ok(Some(item))
                             },
-                            None => {
-                                return Err(StreamError::new(format!("index past end ({next})"),
-                                    Node::new("[part]",
-                                        Some(Item::from(&self.parent.source).into()),
-                                        vec![Expr::new_number(next.to_owned())])));
-                            }
+                            None => return Err("index past end".into())
                         }
                     }
                     if usize::try_from(&self.parent.max_index)
@@ -121,7 +115,7 @@ impl SIterator for ReorderIter<'_> {
             else { UNumber::zero() })
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             if n.is_zero() {

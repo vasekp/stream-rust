@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_chars(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_chars(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_char_stream()?;
@@ -21,8 +21,8 @@ impl Describe for Chars {
 }
 
 impl Stream for Chars {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        self.source.map_iter(|ch| Ok(Item::Char(ch)))
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(self.source.map_iter(|ch| Ok(Item::Char(ch))))
     }
 
     fn len(&self) -> Length {
@@ -30,7 +30,7 @@ impl Stream for Chars {
     }
 }
 
-fn eval_str(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_str(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
@@ -51,8 +51,8 @@ impl Describe for Str {
 }
 
 impl Stream<Char> for Str {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        self.source.map_iter(Item::into_char)
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
+        Ok(self.source.map_iter(Item::into_char))
     }
 
     fn len(&self) -> Length {

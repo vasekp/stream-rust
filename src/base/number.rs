@@ -14,20 +14,20 @@ pub use ibig::ops::{DivRem, DivRemEuclid, RemEuclid, UnsignedAbs};
 pub(crate) const CACHE_LEN: usize = 100;
 
 pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<'a> TryFrom<&'a Self> {
-    fn try_cast(&self) -> Result<T, StreamError> {
+    fn try_cast(&self) -> SResult<T> {
         if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {
-            Err(StreamError::new0("value can't be negative"))
+            Err("value can't be negative".into())
         } else {
-            self.try_into().map_err(|_| StreamError::new0("value too large"))
+            self.try_into().map_err(|_| "value too large".into())
         }
     }
 
-    fn try_cast_within(&self, range: impl std::ops::RangeBounds<T>) -> Result<T, StreamError>
+    fn try_cast_within(&self, range: impl std::ops::RangeBounds<T>) -> SResult<T>
     where T: Ord + std::fmt::Display {
         if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {
-            Err(StreamError::new0("value can't be negative"))
+            Err("value can't be negative".into())
         } else {
-            let x = self.try_into().map_err(|_| StreamError::new0("value too large"))?;
+            let x = self.try_into().map_err(|_| "value too large")?;
             if range.contains(&x) {
                 Ok(x)
             } else {
@@ -38,7 +38,7 @@ pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<
                     (Included(min), Included(max)) => format!("value must be between {min} and {max}"),
                     _ => "value out of range".into()
                 };
-                Err(StreamError::new0(err))
+                Err(err.into())
             }
         }
     }
@@ -72,15 +72,15 @@ impl TryCast<usize> for UNumber { }
 pub(crate) trait TryUnsign {
     type Unsigned;
 
-    fn try_unsign(&self) -> Result<Self::Unsigned, StreamError>;
+    fn try_unsign(&self) -> SResult<Self::Unsigned>;
 }
 
 impl TryUnsign for Number {
     type Unsigned = UNumber;
 
-    fn try_unsign(&self) -> Result<Self::Unsigned, StreamError> {
+    fn try_unsign(&self) -> SResult<Self::Unsigned> {
         if self.is_negative() {
-            Err(StreamError::new0("value can't be negative"))
+            Err("value can't be negative".into())
         } else {
             Ok(self.unsigned_abs())
         }

@@ -4,7 +4,7 @@ use crate::interner;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
-type Constructor = fn(&Node, &'_ Env) -> Result<Item, StreamError>;
+type Constructor = fn(&Node, &'_ Env) -> SResult<Item>;
 
 #[derive(Default)]
 pub(crate) struct Symbols(HashMap<&'static str, Arc<(Constructor, Option<DocRecord>)>>);

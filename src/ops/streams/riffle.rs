@@ -1,11 +1,11 @@
 use crate::base::*;
 
-fn eval_riffle(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_riffle(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
-    if stm.is_empty() { return Ok(Item::empty_stream()); }
+    if stm.is_empty()? { return Ok(Item::empty_stream()); }
     let [filler] = &node.args[..] else {
-        return Err(StreamError::new0("expected: stream.riffle(item or stream)"));
+        return Err(StreamError::usage(&node.head));
     };
     Ok(Item::new_stream(Riffle{head: node.head.clone(), source: stm, filler: filler.clone()}))
 }
@@ -26,19 +26,19 @@ impl Describe for Riffle {
 }
 
 impl Stream for Riffle {
-    fn iter(&self) -> Box<dyn SIterator + '_> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         let mut source_iter = self.source.iter();
         let filler_iter = match &self.filler {
             Item::Stream(stm) => stm.iter(),
             item => Box::new(std::iter::repeat(Ok(item.clone())))
         };
         let source_next = source_iter.next().transpose();
-        Box::new(RiffleIter {
+        Ok(Box::new(RiffleIter {
             source: source_iter,
             filler: filler_iter,
             source_next,
             which: RiffleState::Source
-        })
+        }))
     }
 
     fn len(&self) -> Length {
@@ -50,16 +50,12 @@ impl Stream for Riffle {
         };
         Length::intersection(len1.map(|u| 2u32 * u - 1u32), len2.map(|v| 2u32 * v + 1u32))
     }
-
-    fn is_empty(&self) -> bool {
-        false
-    }
 }
 
 struct RiffleIter<'node> {
     source: Box<dyn SIterator + 'node>,
     filler: Box<dyn SIterator + 'node>,
-    source_next: Option<Result<Item, StreamError>>,
+    source_next: Option<SResult<Item>>,
     which: RiffleState
 }
 
@@ -70,7 +66,7 @@ enum RiffleState {
 }
 
 impl SIterator for RiffleIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         use RiffleState::*;
         match self.which {
             Source => {
@@ -88,7 +84,7 @@ impl SIterator for RiffleIter<'_> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let common = Length::intersection(self.source.len_remain(), self.filler.len_remain());
         let skip = match Length::intersection(common, Length::Exact(&n / 2u32)) {
             Length::Exact(len) => len,
@@ -149,6 +145,7 @@ mod tests {
         test_eval!("[1,2,3].riffle('a')" => "[1, 'a', 2, 'a', 3]");
         test_eval!("seq.riffle(['a'])" => "[1, 'a', 2]");
         test_eval!("seq.riffle([])" => "[1]");
+        test_eval!("[].riffle(1)" => "[]");
         test_eval!("[1,2].riffle(['a', 'b'])" => "[1, 'a', 2]");
         test_eval!("['a','b'].riffle(seq)" => "['a', 1, 'b']");
         test_eval!("\"abc\".riffle(',')" => err);

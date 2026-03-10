@@ -1,19 +1,18 @@
 use crate::base::*;
 
-fn eval_rev(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rev(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     match node.source_checked()? {
         Item::Stream(stm) => eval_rev_impl(&node.head, stm),
         Item::String(stm) => eval_rev_impl(&node.head, stm),
-        _ => Err(StreamError::new0("expected stream or string"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> Result<Item, StreamError> {
+fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> SResult<Item> {
     match source.len() {
-        Length::Infinite
-            => Err(StreamError::new("input is infinite", Item::from(source))),
+        Length::Infinite => Err("input is infinite".into()),
         Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) =>
             Ok(Item::from(Rc::new(Rev{head: head.clone(), source: Rc::clone(source), length: len})
                     as Rc<dyn Stream<I>>)),
@@ -32,12 +31,12 @@ pub struct Rev<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Rev<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(RevIter {
-            source: &*self.source,
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(Box::new(RevIter {
+            source: &self.source,
             start: self.length.clone(),
             cached: Vec::new()
-        })
+        }))
     }
 
     fn len(&self) -> Length {
@@ -54,13 +53,13 @@ impl<I: ItemType> Describe for Rev<I> {
 }
 
 struct RevIter<'node, I: ItemType> {
-    source: &'node (dyn Stream<I> + 'static),
+    source: &'node Rc<dyn Stream<I>>,
     start: UNumber,
     cached: Vec<I>
 }
 
 impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         match self.cached.pop() {
             Some(item) => Ok(Some(item)),
             None => {
@@ -77,14 +76,14 @@ impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
                     let mut iter = self.source.iter();
                     iter.advance(new_start.clone())?;
                     self.start = new_start;
-                    self.cached = iter.transposed().take(diff).collect::<Result<_, _>>()?;
+                    self.cached = iter.transposed().take(diff).collect::<SResult<_>>()?;
                     Ok(self.cached.pop())
                 }
             }
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let len = self.cached.len();
         match usize::try_from(&n) {
             Ok(n) if n <= len => {

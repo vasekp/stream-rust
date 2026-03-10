@@ -1,23 +1,23 @@
 use crate::base::*;
 
-fn eval_first(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_first(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::new0("expected: source.first or source.first(count)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     match (node.source_checked()?, count) {
-        (Item::Stream(stm), None) => first_item_impl(&**stm),
+        (Item::Stream(stm), None) => first_item_impl(stm),
         (Item::Stream(stm), Some(count)) => Ok(Item::new_stream(First{head: node.head.clone(), source: Rc::clone(stm), count })),
-        (Item::String(stm), None) => first_item_impl(&**stm).map(Item::Char),
+        (Item::String(stm), None) => first_item_impl(stm).map(Item::Char),
         (Item::String(stm), Some(count)) => Ok(Item::new_string(First{head: node.head.clone(), source: Rc::clone(stm), count })),
-        _ => Err(StreamError::new0("expected: source.first or source.first(count)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn first_item_impl<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
-    stm.iter().next()?.ok_or(StreamError::new0("stream is empty"))
+fn first_item_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
+    stm.iter().next()?.ok_or("stream is empty".into())
 }
 
 struct First<I: ItemType> {
@@ -32,8 +32,8 @@ struct FirstIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for First<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(FirstIter { source: self.source.iter(), count_rem: self.count.clone() })
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(Box::new(FirstIter { source: self.source.iter(), count_rem: self.count.clone() }))
     }
 
     fn len(&self) -> Length {
@@ -51,7 +51,7 @@ impl<I: ItemType> Describe for First<I> {
 }
 
 impl<I: ItemType> SIterator<I> for FirstIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         if !self.count_rem.is_zero() {
             self.count_rem -= 1;
             self.source.next()
@@ -64,7 +64,7 @@ impl<I: ItemType> SIterator<I> for FirstIter<'_, I> {
         Length::intersection(self.source.len_remain(), Length::Exact(self.count_rem.to_owned()))
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         if n > self.count_rem {
             n -= &self.count_rem;
             self.count_rem = UNumber::zero();

@@ -2,9 +2,9 @@ use crate::base::*;
 
 use std::cell::RefCell;
 
-fn eval_self(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_self(node: &Node, env: &Env) -> SResult<Item> {
     let [Expr::Eval(body)] = &node.args[..] else {
-        return Err(StreamError::new0("expected: self({body})"));
+        return Err(StreamError::usage(&node.head));
     };
     let pre = match &node.source {
         None => None,
@@ -27,17 +27,14 @@ struct SelfRef {
 }
 
 impl SelfRef {
-    fn eval_real(&self) -> Result<(Rc<dyn Stream>, Rc<CacheHistory>), StreamError> {
+    fn eval_real(&self) -> SResult<(Rc<dyn Stream>, Rc<CacheHistory>)> {
         let hist = Rc::new(RefCell::new(Vec::new()));
-        let item = self.body.clone()
+        let stm = self.body.clone()
             .with_source(Expr::new_stream(BackRef {
                 parent: Rc::downgrade(&hist)
             }))?
-            .eval(&self.env)?;
-        let stm = match item {
-            Item::Stream(stm) => stm,
-            _ => return Err(StreamError::new0("expected stream"))
-        };
+            .eval(&self.env)?
+            .to_stream()?;
         Ok((stm, hist))
     }
 }
@@ -51,17 +48,22 @@ impl Describe for SelfRef {
 }
 
 impl Stream for SelfRef {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let (stm, hist) = match self.eval_real() {
-            Ok((stm, hist)) => (stm, hist),
-            Err(err) => return Box::new(std::iter::once(Err(err)))
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        let (stm, hist) = self.eval_real()?;
+        let iter = if let Some(vec) = &self.pre {
+            vec.iter()
+        } else {
+            Box::new(std::iter::empty())
         };
-        let iter = if let Some(vec) = &self.pre { vec.iter() } else { EmptyStream.iter() };
-        Box::new(SelfRefIter {
+        Ok(Box::new(SelfRefIter {
             pre: iter,
             inner: stm.into_iter(),
             hist,
-        })
+        }))
+    }
+
+    fn len(&self) -> Length {
+        Length::Unknown
     }
 }
 
@@ -74,7 +76,7 @@ struct SelfRefIter<'node> {
 }
 
 impl SIterator for SelfRefIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let item = if let Some(item) = self.pre.next()? {
             item.clone()
         } else {
@@ -100,15 +102,15 @@ struct BackRefIter {
 
 impl Describe for BackRef {
     fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
-        "[self]".to_owned()
+        "#".to_owned()
     }
 }
 
 impl Stream for BackRef {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         match Weak::upgrade(&self.parent) {
-            Some(rc) => Box::new(BackRefIter{vec: rc, pos: 0}),
-            None => Box::new(std::iter::once(Err(StreamError::new0("back-reference detached from cache"))))
+            Some(rc) => Ok(Box::new(BackRefIter{vec: rc, pos: 0})),
+            None => Err("back-reference detached from cache".into())
         }
     }
 
@@ -118,7 +120,7 @@ impl Stream for BackRef {
 }
 
 impl SIterator for BackRefIter {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let opos = self.pos;
         self.pos += 1;
         Ok(self.vec.borrow().get(opos).cloned())

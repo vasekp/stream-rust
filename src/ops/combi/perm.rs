@@ -1,7 +1,7 @@
 use crate::base::*;
 use super::util::factorial;
 
-fn eval_perm(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_perm(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
@@ -28,8 +28,8 @@ impl Describe for PermStream {
 }
 
 impl Stream for PermStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(PermIter {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(PermIter {
             source: &self.source,
             src_len: &self.len,
             self_len: self.len.as_ref()
@@ -37,7 +37,7 @@ impl Stream for PermStream {
                 .map(factorial),
             order: vec![],
             num_read: UNumber::zero()
-        })
+        }))
     }
 
     fn len(&self) -> Length {
@@ -78,7 +78,7 @@ struct PermIter<'node> {
 }
 
 impl SIterator for PermIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.order.is_empty() {
             self.order = vec![0];
         } else {
@@ -122,7 +122,7 @@ impl SIterator for PermIter<'_> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.num_read += n;
         if let Some(len) = &self.self_len
             && &self.num_read >= len {

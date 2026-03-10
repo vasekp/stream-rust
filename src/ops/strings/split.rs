@@ -1,25 +1,25 @@
 use crate::base::*;
 
-fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_args_nonempty()?;
     match node.source {
         Some(Item::String(_)) => {
-            let sep = node.args.iter() // TODO decorate?
+            let sep = node.args.iter()
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![ch.to_owned()]),
-                    Item::String(s) if !s.is_empty() => s.listout(),
-                    _ => Err(StreamError::new0("expected character or nonempty string"))
+                    Item::String(s) => s.listout_check_nonempty(),
+                    _ => Err(StreamError::with_expr("expected character or nonempty string", item))
                 })
                 .map(|res| res.map(LiteralString::from))
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<SResult<Vec<_>>>()?;
             let Some(Item::String(stm)) = node.source else { unreachable!() };
             Ok(Item::new_stream(SplitString{head: node.head, source: stm, sep}))
         },
         Some(Item::Stream(stm)) => {
             Ok(Item::new_stream(SplitStream{head: node.head, source: stm, sep: node.args}))
         },
-        _ => Err(StreamError::new0("expected: string.split(separators) or stream.split(separators)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
@@ -45,8 +45,8 @@ impl Describe for SplitString {
 }
 
 impl Stream for SplitString {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false})
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
     fn len(&self) -> Length {
@@ -55,7 +55,7 @@ impl Stream for SplitString {
 }
 
 impl SIterator for SplitStringIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
         }
@@ -64,8 +64,9 @@ impl SIterator for SplitStringIter<'_> {
             check_stop!();
             cache.push(item?);
             for sep in self.sep {
-                if (**sep).len() > cache.len() { continue; }
-                let bkpt = cache.len() - (**sep).len();
+                let sep = sep.as_slice();
+                if sep.len() > cache.len() { continue; }
+                let bkpt = cache.len() - sep.len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
                     return Ok(Some(Item::new_string(LiteralString::from(cache))));
@@ -103,8 +104,8 @@ impl Describe for SplitStream {
 }
 
 impl Stream for SplitStream {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false})
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
     fn len(&self) -> Length {
@@ -113,7 +114,7 @@ impl Stream for SplitStream {
 }
 
 impl SIterator for SplitStreamIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
         }

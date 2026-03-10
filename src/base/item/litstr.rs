@@ -3,9 +3,19 @@ use crate::base::*;
 #[derive(Clone)]
 pub struct LiteralString(Vec<Char>);
 
-impl Stream<Char> for LiteralString {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+impl LiteralString {
+    pub fn iter(&self) -> Box<dyn SIterator<Char> + '_> {
         Box::new(self.0.iter().map(Char::clone).map(Result::Ok))
+    }
+
+    pub fn as_slice(&self) -> &[Char] {
+        &self.0
+    }
+}
+
+impl Stream<Char> for LiteralString {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
+        Ok(self.iter())
     }
 
     fn len(&self) -> Length {
@@ -34,13 +44,5 @@ impl From<&str> for LiteralString {
 impl From<Vec<Char>> for LiteralString {
     fn from(s: Vec<Char>) -> Self {
         LiteralString(s)
-    }
-}
-
-impl std::ops::Deref for LiteralString {
-    type Target = [Char];
-
-    fn deref(&self) -> &[Char] {
-        &self.0
     }
 }

@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_and(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_and(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     for arg in &node.args {
         let val = arg.eval(env)?.to_bool()?;
@@ -9,7 +9,7 @@ fn eval_and(node: &Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::Bool(true))
 }
 
-fn eval_or(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_or(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     for arg in &node.args {
         let val = arg.eval(env)?.to_bool()?;
@@ -18,16 +18,16 @@ fn eval_or(node: &Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::Bool(false))
 }
 
-fn eval_not(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_not(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     match &node.args[..] {
         [Item::Bool(b)] => Ok(Item::Bool(!b)),
-        _ => Err(StreamError::new("one bool argument expected", node))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn eval_xor(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_xor(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let res = node.args.iter().try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))?;

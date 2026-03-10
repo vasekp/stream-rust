@@ -1,15 +1,15 @@
 use crate::base::*;
 
-fn eval_map(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_map(node: &Node, env: &Env) -> SResult<Item> {
     let body = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
         Rc::clone(body)
     } else {
-        return Err(StreamError::new0("expected: source:body"));
+        return Err(StreamError::usage(&node.head));
     };
     match node.source_checked()?.eval(env)? {
         Item::Stream(source) => Ok(Item::new_stream(Map{head: node.head.clone(), source, body, env: env.clone()})),
         Item::String(source) => Ok(Item::new_string(CharMap{head: node.head.clone(), source, body, env: env.clone()})),
-        _ => Err(StreamError::new0("expected: source:body"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
@@ -30,12 +30,12 @@ impl Describe for Map {
 }
 
 impl Stream for Map {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SMap::new(&self.source, |item| {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(SMap::new(&self.source, |item| {
             self.body
                 .with_source(item.into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
-        }))
+        })))
     }
 
     fn len(&self) -> Length {
@@ -60,13 +60,13 @@ impl Describe for CharMap {
 }
 
 impl Stream<Char> for CharMap {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
-        Box::new(SMap::new(&self.source, |ch| {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
+        Ok(Box::new(SMap::new(&self.source, |ch| {
             self.body
                 .with_source(Item::Char(ch).into())
                 .and_then(|node| Expr::from(node).eval(&self.env))
                 .and_then(Item::into_char)
-        }))
+        })))
     }
 
     fn len(&self) -> Length {

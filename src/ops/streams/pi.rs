@@ -1,12 +1,12 @@
 use crate::base::*;
 
-fn eval_pi(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_pi(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let radix = match &node.args[..] {
         [] => None,
         [Item::Number(radix)] => Some(radix.try_cast_within(2u32..)?),
-        _ => return Err(StreamError::new0("expected: pi or pi(radix)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_stream(Pi{head: node.head.clone(), radix}))
 }
@@ -18,8 +18,8 @@ pub struct Pi {
 }
 
 impl Stream for Pi {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(PiIter::new(self))
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(PiIter::new(self)))
     }
 
     fn len(&self) -> Length {
@@ -35,25 +35,23 @@ impl Describe for Pi {
     }
 }
 
-struct PiIter<'node> {
-    parent: &'node Pi,
+struct PiIter {
     inner: PiIterInner,
     cached: Vec<u32>
 }
 
-impl PiIter<'_> {
-    fn new(node: &Pi) -> PiIter<'_> {
+impl PiIter {
+    fn new(node: &Pi) -> PiIter {
         let radix = node.radix.unwrap_or(10);
         PiIter {
-            parent: node,
             inner: PiIterInner::new(radix),
             cached: if radix <= 3 { vec![0] } else { vec![] }
         }
     }
 }
 
-impl SIterator for PiIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+impl SIterator for PiIter {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.cached.len() >= 2 {
             return Ok(Some(Item::new_number(self.cached.remove(0))));
         }
@@ -80,13 +78,13 @@ impl SIterator for PiIter<'_> {
         Length::Infinite
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         match n.try_into() {
             Ok(n) => {
                 self.inner.advance(n)?;
                 Ok(None)
             },
-            _ => Err(StreamError::new("numerical overflow", Item::new_stream(self.parent.clone())))
+            _ => Err("numerical overflow".into())
         }
     }
 }
@@ -106,7 +104,7 @@ impl PiIterInner {
         }
     }
 
-    fn next(&mut self) -> Result<(u32, bool), StreamError> {
+    fn next(&mut self) -> SResult<(u32, bool)> {
         self.power *= self.radix;
         let bits = self.power.bit_len() - 1;
         let prev_len = self.cdigits.len();
@@ -125,7 +123,7 @@ impl PiIterInner {
         Ok((rem.try_into().unwrap(), !div.is_zero()))
     }
 
-    fn advance(&mut self, n: usize) -> Result<(), StreamError> {
+    fn advance(&mut self, n: usize) -> SResult<()> {
         let mul = UNumber::from(self.radix).pow(n);
         let len = self.cdigits.len();
         let mut carry = UNumber::zero();

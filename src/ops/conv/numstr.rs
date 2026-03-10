@@ -1,15 +1,14 @@
 use crate::base::*;
 use super::digits::Digits;
 
-fn eval_numstr(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_numstr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let num = node.source_checked()?.to_num()?;
     let (radix, minw) = match &node.args[..] {
         [] => (10, None),
         [Item::Number(radix)] => (radix.try_cast_within(2..=36)?, None),
         [Item::Number(radix), Item::Number(minw)] => (radix.try_cast_within(2..=36u32)?, Some(minw.try_unsign()?)),
-        _ => return Err(StreamError::new0("expected: number.numstr or number.numstr(radix) or \
-number.numstr(radix, min_width)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     if radix == 10 && minw.is_none() {
         Ok(Item::new_string(LiteralString::from(format!("{}", num).as_str())))
@@ -39,24 +38,24 @@ number.numstr(radix, min_width)"))
     }
 }
 
-fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_strnum(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_char_stream()?;
     let radix = match &node.args[..] {
         [] => 10,
         [Item::Number(radix)] => radix.try_cast_within(2..=36)?,
-        _ => return Err(StreamError::new0("expected: string.strnum or string.strnum(radix)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
-    let st = stm.iter().transposed().map(|ch| -> Result<char, StreamError> {
+    let st = stm.iter().transposed().map(|ch| -> SResult<char> {
         check_stop!();
         match ch? {
             Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
-            _ => Err(StreamError::new0("invalid character"))
+            c => Err(StreamError::with_expr("invalid character", &c))
         }
-    }).collect::<Result<String, _>>()?;
+    }).collect::<SResult<String>>()?;
     match Number::from_str_radix(&st, radix) {
         Ok(num) => Ok(Item::new_number(num)),
-        Err(_) => Err(StreamError::new0("invalid input"))
+        Err(_) => Err("invalid input".into())
     }
 }
 

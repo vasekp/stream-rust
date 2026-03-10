@@ -1,16 +1,16 @@
 use crate::base::*;
 
-fn eval_skip(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_skip(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::new0("expected: source.skip or source.skip(count)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     match node.source_checked()? {
         Item::Stream(stm) => Ok(Item::new_stream(Skip{head: node.head.clone(), source: Rc::clone(stm), count })),
         Item::String(stm) => Ok(Item::new_string(Skip{head: node.head.clone(), source: Rc::clone(stm), count })),
-        _ => Err(StreamError::new0("expected: source.skip or source.skip(count)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
@@ -21,12 +21,11 @@ struct Skip<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Skip<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         let mut iter = self.source.iter();
-        match iter.advance(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
-            Ok(None) => iter,
-            Ok(Some(_)) => Box::new(std::iter::empty()),
-            Err(err) => Box::new(std::iter::once(Err(err)))
+        match iter.advance(self.count.as_ref().cloned().unwrap_or_else(UNumber::one))? {
+            None => Ok(iter),
+            Some(_) => Ok(Box::new(std::iter::empty())),
         }
     }
 

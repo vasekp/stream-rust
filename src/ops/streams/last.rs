@@ -2,35 +2,35 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_last(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_last(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let count: Option<UNumber> = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::new0("expected: source.last or source.last(count)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     match (node.source_checked()?, count) {
-        (Item::Stream(stm), None) => eval_last_item(&**stm),
+        (Item::Stream(stm), None) => eval_last_item(stm),
         (Item::Stream(stm), Some(count)) => eval_last_count(&node.head, stm, count),
-        (Item::String(stm), None) => eval_last_item(&**stm).map(Item::Char),
+        (Item::String(stm), None) => eval_last_item(stm).map(Item::Char),
         (Item::String(stm), Some(count)) => eval_last_count(&node.head, stm, count),
-        _ => Err(StreamError::new0("expected: source.first or source.last(count)"))
+        _ => Err(StreamError::usage(&node.head))
     }
 }
 
-fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
+fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
     match stm.len() {
         Length::Exact(len) if !len.is_zero() => {
             let mut it = stm.iter();
             it.advance(len - 1u32)?;
             it.next().transpose().expect("1 item should remain after skip(len - 1)")
         },
-        Length::Infinite => Err(StreamError::new0("stream is infinite")),
+        Length::Infinite => Err("stream is infinite".into()),
         _ => {
             let mut iter = stm.iter();
             let mut last = match iter.next()? {
                 Some(item) => item,
-                None => return Err(StreamError::new0("stream is empty"))
+                None => return Err("stream is empty".into())
             };
             for res in iter.transposed() {
                 check_stop!();
@@ -41,7 +41,7 @@ fn eval_last_item<I: ItemType>(stm: &dyn Stream<I>) -> Result<I, StreamError> {
     }
 }
 
-fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumber) -> Result<Item, StreamError> {
+fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumber) -> SResult<Item> {
     if count.is_zero() {
         return Ok(I::from_vec(vec![]));
     }
@@ -55,7 +55,7 @@ fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNu
                 count
             }) as Rc<dyn Stream<I>>))
         },
-        Length::Infinite => Err(StreamError::new0("stream is infinite")),
+        Length::Infinite => Err("stream is infinite".into()),
         _ => {
             let size = count.try_cast()?;
             let mut vec = VecDeque::with_capacity(size);
@@ -80,12 +80,11 @@ struct Last<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Last<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         let mut it = self.source.iter();
-        match it.advance(self.skip.to_owned()) {
-            Ok(None) => it,
-            Ok(Some(_)) => Box::new(std::iter::empty()),
-            Err(err) => Box::new(std::iter::once(Err(err)))
+        match it.advance(self.skip.to_owned())? {
+            None => Ok(it),
+            Some(_) => Ok(Box::new(std::iter::empty())),
         }
     }
 

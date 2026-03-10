@@ -1,12 +1,12 @@
 use crate::base::*;
 
-fn eval_flatten(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_flatten(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let depth = match &node.args[..] {
         [] => None,
         [Item::Number(depth)] => Some(depth.try_unsign()?),
-        _ => return Err(StreamError::new0("expected: stream.flatten or stream.flatten(depth)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_stream(Flatten { source: stm, head: node.head.clone(), depth }))
 }
@@ -27,20 +27,16 @@ impl Describe for Flatten {
 }
 
 impl Stream for Flatten {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(FlattenIter {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+        Ok(Box::new(FlattenIter {
             outer: self.source.iter(),
             iters: vec![],
             depth: self.depth.as_ref().and_then(|d| d.try_into().ok())
-        })
+        }))
     }
 
     fn len(&self) -> Length {
-        if self.source.is_empty() {
-            Length::Exact(UNumber::zero())
-        } else {
-            Length::Unknown
-        }
+        Length::Unknown
     }
 }
 
@@ -51,7 +47,7 @@ struct FlattenIter<'node> {
 }
 
 impl SIterator for FlattenIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
             let next = match self.iters.last_mut() {
@@ -78,7 +74,7 @@ impl SIterator for FlattenIter<'_> {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             if n.is_zero() {
@@ -128,6 +124,7 @@ mod tests {
         test_eval!("[0].nest{[#]}.flatten(3)" => "[0, 0, [0], [...], ...]");
         test_eval!("[0].nest{[#]}.flatten(10^10)" => "[0, 0, 0, 0, 0, ...]");
         test_eval!("[\"ab\",\"cd\"].flatten" => "[\"ab\", \"cd\"]");
+        test_len!("[].flatten" => 0);
         test_advance("[1,range(3)].repeat(10).flatten");
         test_advance("[1,[2,[3]]].repeat(10).flatten");
         test_advance("[1,[2,[3]]].repeat(10).flatten(1)");

@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_join(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_join(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     node.check_args_nonempty()?;
@@ -56,8 +56,8 @@ impl<I: ItemType> Describe for Join<I> {
 }
 
 impl<I: ItemType> Stream<I> for Join<I> {
-    fn iter<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(JoinIter{elems: &self.elems, index: 0, inner: None})
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+        Ok(Box::new(JoinIter{elems: &self.elems, index: 0, inner: None}))
     }
 
     fn len(&self) -> Length {
@@ -68,14 +68,6 @@ impl<I: ItemType> Stream<I> for Join<I> {
             })
             .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
     }
-
-    fn is_empty(&self) -> bool {
-        self.elems.iter()
-            .all(|item| match item {
-                Joinable::Stream(stm) => stm.is_empty(),
-                _ => false
-            })
-    }
 }
 
 struct JoinIter<'node, I: ItemType> {
@@ -85,7 +77,7 @@ struct JoinIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         loop {
             check_stop!();
             if let Some(inner) = &mut self.inner {
@@ -101,7 +93,7 @@ impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             if let Some(inner) = &mut self.inner {

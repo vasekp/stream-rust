@@ -26,6 +26,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let tracer = Rc::new(std::cell::RefCell::new(tracer::TextTracer::default()));
     sess.set_tracer(Rc::clone(&tracer));
 
+    let mut last_err: Option<StreamError> = None;
+
     while let Ok(input) = rl.readline("> ") {
         let input = input.trim();
         if input.is_empty() { continue; }
@@ -38,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         continue;
                     }
                     let Some(Item::Stream(stm)) = sess.history().last() else {
-                        println!("{}", "Can only use after a stream.".red());
+                        eprintln!("{}", "Can only use after a stream.".red());
                         continue;
                     };
                     let mut cmd = Command::new("less")
@@ -58,6 +60,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             },
                             Err(err) => {
                                 let _ = writeln!(stdin, "{}", format!("error: {err}").red());
+                                last_err = Some(err);
                                 break;
                             }
                         }
@@ -103,10 +106,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         continue;
                     }
                     let Some(item) = sess.history().last() else {
-                        println!("{}", "History is empty.".red());
+                        eprintln!("{}", "History is empty.".red());
                         continue;
                     };
                     println!("{}", item.describe());
+                },
+                Some("bt") => {
+                    if iter.next().is_some() {
+                        eprintln!("{}", "invalid command".red());
+                        continue;
+                    }
+                    let Some(err) = &last_err else {
+                        eprintln!("{}", "Can only use after an evaluation error.".red());
+                        continue;
+                    };
+                    let Some((first, rest)) = err.backtrace().split_first() else {
+                        eprintln!("{}", "No backtrace available.".red());
+                        continue;
+                    };
+                    for expr in rest.iter().rev() {
+                        println!("{}:", expr.describe());
+                    }
+                    println!("{}: {}", first.describe(), err.reason());
                 },
                 None => eprintln!("{}", "malformed command".red()),
                 _ => eprintln!("{}", "unknown command".red()),
@@ -187,12 +208,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         match stream::parse(input) {
             Ok(expr) => {
+                last_err = None;
                 match sess.process(expr) {
                     Ok(SessionUpdate::History(index, item)) => {
                         let (s, _, err) = item.format(None, Some(80));
                         println!("{} {s}", format!("%{index}:").dimmed());
                         if let Some(err) = err {
                             println!("{}", format!("{err}").red());
+                            last_err = Some(err);
                         }
                     },
                     Ok(SessionUpdate::Globals(list)) => {
@@ -203,7 +226,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         }
                     },
-                    Err(err) => println!("{}", format!("{err}").red())
+                    Err(err) => {
+                        println!("{}", format!("{err}").red());
+                        last_err = Some(err);
+                    }
                 }
             },
             Err(err) => {

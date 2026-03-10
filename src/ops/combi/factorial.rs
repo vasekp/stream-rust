@@ -1,30 +1,30 @@
 use crate::base::*;
 use super::util::factorial;
 
-fn eval_factorial(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_factorial(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let x = match (&node.source, &node.args[..]) {
         (Some(Item::Number(x)), []) => x,
         (None, [Item::Number(x)]) => x,
-        _ => return Err(StreamError::new0("expected: number.factorial or factorial(number)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_number(factorial(x.try_cast()?)))
 }
 
-fn eval_binom(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_binom(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let (n, k) = match &node.args[..] {
         [Item::Number(n), Item::Number(k)] => (n.try_cast()?, k.try_cast()?),
-        _ => return Err(StreamError::new0("expected: binom(n, k)"))
+        _ => return Err(StreamError::usage(&node.head))
     };
     if k > n {
-        return Err(StreamError::new0("out of range"));
+        return Err("out of range".into());
     }
     Ok(Item::new_number(factorial(n) / (factorial(k) * factorial(n - k))))
 }
 
-fn eval_multi(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_multi(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let mut total = 0;
@@ -32,12 +32,12 @@ fn eval_multi(node: &Node, env: &Env) -> Result<Item, StreamError> {
     for arg in &node.args {
         let k = arg.to_num()?.try_cast()?;
         total = total.checked_add(&k)
-            .ok_or(StreamError::new0("input too large"))?;
+            .ok_or("input too large")?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))
 }
-fn eval_rmulti(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rmulti(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let mut total = 0;
@@ -51,7 +51,7 @@ fn eval_rmulti(node: &Node, env: &Env) -> Result<Item, StreamError> {
         }
         vec.push(k);
         total = total.checked_add(&k)
-            .ok_or(StreamError::new0("input too large"))?;
+            .ok_or("input too large")?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))

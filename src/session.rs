@@ -25,7 +25,7 @@ impl Session {
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
+    pub fn process(&mut self, expr: Expr) -> SResult<SessionUpdate<'_>> {
         stop::reset_stop();
         match &expr {
             Expr::Eval(node) => match &**node {
@@ -46,12 +46,12 @@ impl Session {
                             && let Head::Symbol(sym) = &node.head
                             && sym.starts_with('$') {
                                 if sym.as_bytes()[1].is_ascii_digit() {
-                                    return Err(StreamError::new0("reserved variable name"));
+                                    return Err(StreamError::with_expr("reserved variable name", arg));
                                 } else {
                                     *sym
                                 }
                             } else {
-                                return Err(StreamError::new0("expected global variable ($name)"));
+                                return Err(StreamError::with_expr("expected global variable ($name)", arg));
                             };
                         names.push(name);
                     }
@@ -75,12 +75,12 @@ impl Session {
                             && let Head::Symbol(sym) = &node.head
                             && sym.starts_with('$') {
                                 if sym.as_bytes()[1].is_ascii_digit() {
-                                    return Err(StreamError::new0("reserved variable name"));
+                                    return Err(StreamError::with_expr("reserved variable name", arg));
                                 } else {
                                     *sym
                                 }
                             } else {
-                                return Err(StreamError::new0("expected global variable ($name)"));
+                                return Err(StreamError::with_expr("expected global variable ($name)", arg));
                             };
                         names.push(name);
                     }
@@ -108,7 +108,7 @@ impl Session {
         }
     }
 
-    fn apply_context(&self, expr: Expr) -> Result<Expr, StreamError> {
+    fn apply_context(&self, expr: Expr) -> SResult<Expr> {
         use std::borrow::Cow;
         let res = expr.replace(&|sub_expr| {
             match sub_expr {
@@ -117,13 +117,13 @@ impl Session {
                         self.hist.get(ix - 1)
                             .cloned()
                             .map(Expr::from)
-                            .ok_or(StreamError::new0(format!("history item %{ix} does not exist")))?)),
-                    Some(0) => Err(StreamError::new0("invalid history index")),
+                            .ok_or(StreamError::with_expr("history item does not exist", sub_expr))?)),
+                    Some(0) => Err(StreamError::with_expr("invalid history index", sub_expr)),
                     None => Ok(Cow::Owned(
                         self.hist.last()
                             .cloned()
                             .map(Expr::from)
-                            .ok_or(StreamError::new0("history is empty"))?)),
+                            .ok_or(StreamError::with_expr("history is empty", sub_expr))?)),
                 },
                 Expr::Repl(Subst::Counter) =>
                     Ok(Cow::Owned(Expr::new_number(self.counter))),
@@ -133,7 +133,7 @@ impl Session {
                             match self.vars.get(sym) {
                                 Some(Rhs::Value(item)) => {
                                     if source.is_some() || !args.is_empty() {
-                                        Err(StreamError::new0("no source or arguments allowed"))
+                                        Err(StreamError::with_expr("no source or arguments allowed", sub_expr))
                                     } else {
                                         Ok(Cow::Owned(Expr::Imm(item.clone())))
                                     }
@@ -145,7 +145,7 @@ impl Session {
                                         args.clone()
                                     )))
                                 },
-                                None => Err(StreamError::new0("variable not defined"))
+                                None => Err(StreamError::with_expr("variable not defined", sub_expr))
                             }
                         },
                         _ => Ok(Cow::Borrowed(sub_expr))

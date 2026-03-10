@@ -1,42 +1,131 @@
 use crate::base::*;
 use std::fmt::{Display, Formatter, Debug};
 
+pub type SResult<T> = std::result::Result<T, StreamError>;
 
 /// The runtime error type.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub enum StreamError {
-    ExprError { reason: String, expr: Option<Expr> },
-    Interrupt
+pub struct StreamError {
+    reason: Reason,
+    trace: Vec<Expr>,
+}
+
+#[derive(Clone, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum Reason {
+    Generic(String),
+    Usage(&'static str),
+    Interrupt,
 }
 
 impl StreamError {
-    pub fn new(reason: impl Into<String>, expr: impl Into<Expr>) -> StreamError {
-        StreamError::ExprError{reason: reason.into(), expr: Some(expr.into())}
+    pub fn with_expr(reason: impl Into<Reason>, expr: &impl ToExpr) -> Self {
+        Self{reason: reason.into(), trace: vec![expr.to_expr()]}
     }
 
-    pub fn new0(reason: impl Into<String>) -> StreamError {
-        StreamError::ExprError{reason: reason.into(), expr: None}
+    pub fn usage(head: &Head) -> Self {
+        let head_str = head.as_str().expect("StreamError::usage should be called with Head::Symbol or Head::Oper");
+        Self{reason: Reason::Usage(head_str), trace: vec![]}
+    }
+
+    pub fn interrupt() -> Self {
+        Self{reason: Reason::Interrupt, trace: vec![]}
+    }
+
+    pub(crate) fn wrap(mut self, expr: &impl ToExpr) -> Self {
+        self.trace.push(expr.to_expr());
+        self
+    }
+
+    pub fn backtrace(&self) -> &[Expr] {
+        &self.trace[..]
+    }
+
+    pub fn reason(&self) -> impl Display {
+        &self.reason
     }
 }
 
 impl std::error::Error for StreamError { }
 
-/*impl From<T: Into<String>> for StreamError {
-    fn from(s: T) -> StreamError {
-        StreamError::ExprError{reason: t.into(), expr: None}
+impl<T: Into<Reason>> From<T> for StreamError {
+    fn from(reason: T) -> Self {
+        Self{reason: reason.into(), trace: vec![]}
     }
-}*/
+}
 
 impl Display for StreamError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(expr) = &self.trace.first() {
+            write!(f, "{}: ", expr.describe())?;
+        }
+        write!(f, "{}", self.reason)
+    }
+}
+
+impl<T: Into<String>> From<T> for Reason {
+    fn from(s: T) -> Self {
+        Reason::Generic(s.into())
+    }
+}
+
+impl Display for Reason {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ExprError { reason, expr: Some(expr) } => write!(f, "{}: {}", expr.describe(), reason),
-            Self::ExprError { reason, expr: None } => write!(f, "{}", reason),
+            Self::Generic(s) => write!(f, "{s}"),
+            Self::Usage(sym) => write!(f, "invalid call pattern: see ?{sym}"),
             Self::Interrupt => write!(f, "interrupted")
         }
     }
 }
+
+pub trait ToExpr {
+    fn to_expr(&self) -> Expr;
+}
+
+impl ToExpr for Expr {
+    fn to_expr(&self) -> Expr {
+        self.clone()
+    }
+}
+
+impl ToExpr for Node {
+    fn to_expr(&self) -> Expr {
+        Expr::Eval(Rc::new(self.clone()))
+    }
+}
+
+impl ToExpr for Node<Item> {
+    fn to_expr(&self) -> Expr {
+        Expr::Eval(Rc::new(self.clone().into()))
+    }
+}
+
+impl ToExpr for Rc<Node> {
+    fn to_expr(&self) -> Expr {
+        Expr::Eval(Rc::clone(self))
+    }
+}
+
+impl ToExpr for Item {
+    fn to_expr(&self) -> Expr {
+        Expr::Imm(self.clone())
+    }
+}
+
+impl<I: ItemType> ToExpr for Rc<dyn Stream<I>> {
+    fn to_expr(&self) -> Expr {
+        Expr::Imm(Item::from(self))
+    }
+}
+
+impl ToExpr for Char {
+    fn to_expr(&self) -> Expr {
+        Expr::Imm(Item::from(*self))
+    }
+}
+
 
 /// The error type returned by [`parser::parse`](crate::parser::parse). Contains the description of
 /// the error and its location within the input string. The lifetime is bound to the lifetime of
@@ -74,7 +163,7 @@ impl Display for ParseError<'_> {
 macro_rules! check_stop {
     () => {
         if stop::should_stop() {
-            Err(StreamError::Interrupt)?;
+            Err(StreamError::interrupt())?;
         }
     };
 }

@@ -1,10 +1,10 @@
 use crate::base::*;
 
-fn eval_list(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_list(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     let list = node.args.iter()
         .map(|expr| expr.eval(env))
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<SResult<Vec<_>>>()?;
     Ok(Item::new_stream(List::from(list)))
 }
 
