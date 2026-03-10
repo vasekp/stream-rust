@@ -19,14 +19,14 @@ pub struct Seq {
 }
 
 impl Stream for Seq {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SeqIter{
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(SeqIter{
             value: match &self.from {
                 Some(from) => from.clone(),
                 None => Number::one()
             },
             step: &self.step
-        })
+        }))
     }
 
     fn len(&self) -> Length {

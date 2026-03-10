@@ -14,16 +14,14 @@ pub trait Stream<I = Item>: Describe {
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
     #[must_use]
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node>;
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
     /// consistent with the actual behaviour of the stream.
     ///
     /// The default implementation forwards to [`SIterator::len_remain()`].
-    fn len(&self) -> Length {
-        self.iter0().len_remain()
-    }
+    fn len(&self) -> Length;
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
     /// looking at [`len()`](Stream::len). If the information is insufficient, constructs the
@@ -32,19 +30,19 @@ pub trait Stream<I = Item>: Describe {
     ///
     /// This function can't return an error. If the first call to `iter().next()` produces an
     /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
-    fn is_empty(&self) -> bool {
-        match self.len() {
+    fn is_empty(&self) -> Result<bool, StreamError> {
+        Ok(match self.len() {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
             Length::Exact(_) | Length::Infinite => false,
             _ => {
-                let mut iter = self.iter0();
+                let mut iter = self.iter()?;
                 match iter.len_remain() {
                     Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
                     Length::Exact(_) | Length::Infinite => false,
-                    _ => iter.next().transpose().is_none()
+                    _ => iter.next()?.is_none()
                 }
             }
-        }
+        })
     }
 }
 
@@ -61,11 +59,20 @@ impl<I: ItemType> dyn Stream<I> {
     }
 
     pub fn iter<'node>(self: &'node Rc<Self>) -> Box<dyn SIterator<I> + 'node> {
-        (**self).iter0()
+        match (**self).iter() {
+            Ok(boxed) => boxed,
+            Err(err) => Box::new(std::iter::once(Err(err)))
+        }
     }
 
     pub(crate) fn listout(self: &Rc<Self>) -> Result<Vec<I>, StreamError> {
         I::listout(self)
+    }
+
+    pub(crate) fn listout_check_nonempty(self: &Rc<Self>) -> Result<Vec<I>, StreamError> {
+        let vec = I::listout(self)?;
+        if !vec.is_empty() { Ok(vec) }
+        else { Err(StreamError::new("can't be empty", Item::from(self))) }
     }
 
     pub(crate) fn try_count(self: &Rc<Self>) -> Result<UNumber, StreamError> {
@@ -243,9 +250,11 @@ impl<I: ItemType> Describe for Rc<dyn Stream<I>> {
 pub(crate) struct EmptyStream;
 
 impl Stream<Item> for EmptyStream {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
-        Box::new(std::iter::empty())
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+        Ok(Box::new(std::iter::empty()))
     }
+
+    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
 }
 
 impl Describe for EmptyStream {
@@ -257,10 +266,18 @@ impl Describe for EmptyStream {
 #[derive(Clone, Copy)]
 pub(crate) struct EmptyString;
 
-impl Stream<Char> for EmptyString {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+impl EmptyString {
+    pub fn iter<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
         Box::new(std::iter::empty())
     }
+}
+
+impl Stream<Char> for EmptyString {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+        Ok(self.iter())
+    }
+
+    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
 }
 
 impl Describe for EmptyString {
@@ -276,7 +293,10 @@ pub struct OwnedStreamIter<I = Item> {
 
 impl<I: ItemType> From<Rc<dyn Stream<I>>> for OwnedStreamIter<I> {
     fn from(stm: Rc<dyn Stream<I>>) -> Self {
-        let iter = unsafe { &*Rc::as_ptr(&stm) as &'static dyn Stream<I> }.iter0();
+        let iter = match unsafe { &*Rc::as_ptr(&stm) as &'static dyn Stream<I> }.iter() {
+            Ok(iter) => iter,
+            Err(err) => Box::new(std::iter::once(Err(err))),
+        };
         OwnedStreamIter { iter, _stream: stm }
     }
 }

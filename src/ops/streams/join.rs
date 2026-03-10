@@ -56,8 +56,8 @@ impl<I: ItemType> Describe for Join<I> {
 }
 
 impl<I: ItemType> Stream<I> for Join<I> {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(JoinIter{elems: &self.elems, index: 0, inner: None})
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+        Ok(Box::new(JoinIter{elems: &self.elems, index: 0, inner: None}))
     }
 
     fn len(&self) -> Length {
@@ -67,14 +67,6 @@ impl<I: ItemType> Stream<I> for Join<I> {
                 Joinable::Stream(stm) => stm.len()
             })
             .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.elems.iter()
-            .all(|item| match item {
-                Joinable::Stream(stm) => stm.is_empty(),
-                _ => false
-            })
     }
 }
 

@@ -48,21 +48,22 @@ impl Describe for SelfRef {
 }
 
 impl Stream for SelfRef {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        let (stm, hist) = match self.eval_real() {
-            Ok((stm, hist)) => (stm, hist),
-            Err(err) => return Box::new(std::iter::once(Err(err)))
-        };
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        let (stm, hist) = self.eval_real()?;
         let iter = if let Some(vec) = &self.pre {
             vec.iter()
         } else {
             Box::new(std::iter::empty())
         };
-        Box::new(SelfRefIter {
+        Ok(Box::new(SelfRefIter {
             pre: iter,
             inner: stm.into_iter(),
             hist,
-        })
+        }))
+    }
+
+    fn len(&self) -> Length {
+        Length::Unknown
     }
 }
 
@@ -106,10 +107,10 @@ impl Describe for BackRef {
 }
 
 impl Stream for BackRef {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         match Weak::upgrade(&self.parent) {
-            Some(rc) => Box::new(BackRefIter{vec: rc, pos: 0}),
-            None => Box::new(std::iter::once(Err(StreamError::new0("back-reference detached from cache"))))
+            Some(rc) => Ok(Box::new(BackRefIter{vec: rc, pos: 0})),
+            None => Err(StreamError::new0("back-reference detached from cache"))
         }
     }
 

@@ -24,11 +24,11 @@ impl Describe for Zip {
 }
 
 impl Stream for Zip {
-    fn iter0(&self) -> Box<dyn SIterator + '_> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
         let iters = self.streams.iter()
             .map(|stm| stm.iter())
             .collect();
-        Box::new(ZipIter{iters})
+        Ok(Box::new(ZipIter{iters}))
     }
 
     fn len(&self) -> Length {

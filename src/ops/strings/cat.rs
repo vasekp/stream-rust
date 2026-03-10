@@ -32,19 +32,15 @@ impl Describe for Cat {
 }
 
 impl Stream<Char> for Cat {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<Char> + 'node> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
         match &self.filler {
-            None => Box::new(CatIter::new(self)),
+            None => Ok(Box::new(CatIter::new(self))),
             Some(fill) => RiffleCatIter::new_boxed(self, fill)
         }
     }
 
     fn len(&self) -> Length {
-        if self.source.is_empty() {
-            Length::Exact(UNumber::zero())
-        } else {
-            Length::Unknown
-        }
+        Length::Unknown
     }
 }
 
@@ -119,14 +115,13 @@ enum RiffleCatState<'node> {
 }
 
 impl<'node> RiffleCatIter<'node> {
-    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> Box<dyn SIterator<Char> + 'node> {
+    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
         let mut outer = parent.source.iter();
-        let inner = match Self::next_cs(&mut *outer) {
-            Ok(Some(cs)) => cs,
-            Ok(None) => return Box::new(std::iter::empty()),
-            Err(err) => return Box::new(std::iter::once(Err(err))),
+        let inner = match Self::next_cs(&mut *outer)? {
+            Some(cs) => cs,
+            None => Box::new(std::iter::empty()),
         };
-        Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source})
+        Ok(Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source}))
     }
 
     fn next_cs(outer: &mut (dyn SIterator + 'node)) -> Result<Option<Box<dyn SIterator<Char> + 'node>>, StreamError> {
@@ -150,7 +145,7 @@ impl SIterator<Char> for RiffleCatIter<'_> {
                 RiffleCatState::Source => {
                     let next = iter_try!(Self::next_cs(&mut *self.outer));
                     self.state = RiffleCatState::Filler{next};
-                    self.inner = self.filler.iter0();
+                    self.inner = self.filler.iter();
                 },
                 RiffleCatState::Filler{next} => {
                     self.state = RiffleCatState::Source;
@@ -177,7 +172,7 @@ impl SIterator<Char> for RiffleCatIter<'_> {
                         Some(cs) => cs,
                     };
                     self.state = RiffleCatState::Filler{next};
-                    self.inner = self.filler.iter0();
+                    self.inner = self.filler.iter();
                 },
                 RiffleCatState::Filler{next} => {
                     self.state = RiffleCatState::Source;
@@ -205,6 +200,8 @@ mod tests {
         test_eval!("\"abc\".chars.cat(' ')" => "\"a b c\"");
         test_eval!("['a'].repeat.cat(\", \")" => "\"a, a, a, a, a, a, a,...");
         test_eval!("\"abc\".chars.cat(' '.repeat)" => err);
+        test_eval!("[].cat(' ')" => "\"\"");
+        test_len!("[].cat(' ')" => 0);
         test_advance("['a', 'b'].cat(' ')");
         test_advance("[\"abcde\"].repeat(10).cat");
         test_advance("[\"abcde\"].repeat.cat(\", \")");

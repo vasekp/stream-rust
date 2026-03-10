@@ -48,20 +48,17 @@ impl<I: ItemType> Describe for PadLeft<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadLeft<I> {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
         if self.source.len() == Length::Infinite {
-            self.source.iter()
+            Ok(self.source.iter())
         } else {
-            let len = match self.source.try_count() {
-                Ok(count) => count,
-                Err(err) => return Box::new(std::iter::once(Err(err)))
-            };
+            let len = self.source.try_count()?;
             let pad_remain = if len < self.len { &self.len - &len } else { UNumber::zero() };
-            Box::new(PadLeftIter {
+            Ok(Box::new(PadLeftIter {
                 source: self.source.iter(),
                 pad_remain,
                 padding: &self.padding
-            })
+            }))
         }
     }
 
@@ -129,16 +126,16 @@ impl<I: ItemType> Describe for PadRight<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadRight<I> {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
         if self.source.len() == Length::Infinite {
-            self.source.iter()
+            Ok(self.source.iter())
         } else {
-            Box::new(PadRightIter {
+            Ok(Box::new(PadRightIter {
                 source: Some(self.source.iter()),
                 len: &self.len,
                 pos: UNumber::zero(),
                 padding: &self.padding
-            })
+            }))
         }
     }
 

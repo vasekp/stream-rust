@@ -8,7 +8,7 @@ fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
             let sep = node.args.iter() // TODO decorate?
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![ch.to_owned()]),
-                    Item::String(s) if !s.is_empty() => s.listout(),
+                    Item::String(s) => s.listout_check_nonempty(),
                     _ => Err(StreamError::new0("expected character or nonempty string"))
                 })
                 .map(|res| res.map(LiteralString::from))
@@ -45,8 +45,8 @@ impl Describe for SplitString {
 }
 
 impl Stream for SplitString {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false})
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
     fn len(&self) -> Length {
@@ -64,8 +64,9 @@ impl SIterator for SplitStringIter<'_> {
             check_stop!();
             cache.push(item?);
             for sep in self.sep {
-                if (**sep).len() > cache.len() { continue; }
-                let bkpt = cache.len() - (**sep).len();
+                let sep = sep.as_slice();
+                if sep.len() > cache.len() { continue; }
+                let bkpt = cache.len() - sep.len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
                     return Ok(Some(Item::new_string(LiteralString::from(cache))));
@@ -103,8 +104,8 @@ impl Describe for SplitStream {
 }
 
 impl Stream for SplitStream {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
-        Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false})
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator + 'node>, StreamError> {
+        Ok(Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
     fn len(&self) -> Length {

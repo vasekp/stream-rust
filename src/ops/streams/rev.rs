@@ -31,12 +31,12 @@ pub struct Rev<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Rev<I> {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator<I> + 'node> {
-        Box::new(RevIter {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<I> + 'node>, StreamError> {
+        Ok(Box::new(RevIter {
             source: &self.source,
             start: self.length.clone(),
             cached: Vec::new()
-        })
+        }))
     }
 
     fn len(&self) -> Length {

@@ -3,9 +3,15 @@ use crate::base::*;
 #[derive(Clone)]
 pub struct List(Vec<Item>);
 
-impl Stream for List {
-    fn iter0<'node>(&'node self) -> Box<dyn SIterator + 'node> {
+impl List {
+    pub fn iter<'node>(&'node self) -> Box<dyn SIterator<Item> + 'node> {
         Box::new(self.0.iter().map(|x| Ok(x.clone())))
+    }
+}
+
+impl Stream for List {
+    fn iter<'node>(&'node self) -> Result<Box<dyn SIterator<Item> + 'node>, StreamError> {
+        Ok(self.iter())
     }
 
     fn len(&self) -> Length {

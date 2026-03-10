@@ -12,7 +12,7 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
             let args = node.args.iter()
                 .map(|item| match item {
                     Item::Char(ch) => Ok(vec![*ch]),
-                    Item::String(s) if !s.is_empty() => Ok(s.listout()?),
+                    Item::String(s) => Ok(s.listout_check_nonempty()?),
                     _item => Err(StreamError::new0("expected character or nonempty string"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
