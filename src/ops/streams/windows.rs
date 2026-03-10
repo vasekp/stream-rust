@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_windows(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_windows(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let (size, body) = match &node.args[..] {
         [size] => (size, None),
@@ -40,7 +40,7 @@ impl Describe for Windows {
 }
 
 impl Stream for Windows {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         let mut iter = self.source.iter();
         let mut deque = VecDeque::with_capacity(self.size - 1);
         for _ in 0..(self.size - 1) {
@@ -71,7 +71,7 @@ struct WindowsIter<'node> {
 }
 
 impl SIterator for WindowsIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let next = iter_try!(self.iter.next());
         let first = self.deque.pop_front().unwrap(); // for size ≥ 2, deque has ≥ 1 element
         self.deque.push_back(next);
@@ -86,7 +86,7 @@ impl SIterator for WindowsIter<'_> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         match (&n).try_into() {
             Ok(num) if num < self.size => { self.deque.drain(0..num); },
             _ => {

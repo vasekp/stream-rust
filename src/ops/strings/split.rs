@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_args_nonempty()?;
     match node.source {
@@ -12,7 +12,7 @@ fn eval_split(node: &Node, env: &Env) -> Result<Item, StreamError> {
                     _ => Err(StreamError::with_expr("expected character or nonempty string", item))
                 })
                 .map(|res| res.map(LiteralString::from))
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<SResult<Vec<_>>>()?;
             let Some(Item::String(stm)) = node.source else { unreachable!() };
             Ok(Item::new_stream(SplitString{head: node.head, source: stm, sep}))
         },
@@ -45,7 +45,7 @@ impl Describe for SplitString {
 }
 
 impl Stream for SplitString {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
@@ -55,7 +55,7 @@ impl Stream for SplitString {
 }
 
 impl SIterator for SplitStringIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
         }
@@ -104,7 +104,7 @@ impl Describe for SplitStream {
 }
 
 impl Stream for SplitStream {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false}))
     }
 
@@ -114,7 +114,7 @@ impl Stream for SplitStream {
 }
 
 impl SIterator for SplitStreamIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
         }

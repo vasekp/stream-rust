@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_skip(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_skip(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let count = match &node.args[..] {
         [] => None,
@@ -21,7 +21,7 @@ struct Skip<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Skip<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         let mut iter = self.source.iter();
         match iter.advance(self.count.as_ref().cloned().unwrap_or_else(UNumber::one))? {
             None => Ok(iter),

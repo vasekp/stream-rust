@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_rev(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_rev(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     match node.source_checked()? {
@@ -10,7 +10,7 @@ fn eval_rev(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> Result<Item, StreamError> {
+fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> SResult<Item> {
     match source.len() {
         Length::Infinite => Err("input is infinite".into()),
         Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) =>
@@ -31,7 +31,7 @@ pub struct Rev<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Rev<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         Ok(Box::new(RevIter {
             source: &self.source,
             start: self.length.clone(),
@@ -59,7 +59,7 @@ struct RevIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         match self.cached.pop() {
             Some(item) => Ok(Some(item)),
             None => {
@@ -76,14 +76,14 @@ impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
                     let mut iter = self.source.iter();
                     iter.advance(new_start.clone())?;
                     self.start = new_start;
-                    self.cached = iter.transposed().take(diff).collect::<Result<_, _>>()?;
+                    self.cached = iter.transposed().take(diff).collect::<SResult<_>>()?;
                     Ok(self.cached.pop())
                 }
             }
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let len = self.cached.len();
         match usize::try_from(&n) {
             Ok(n) if n <= len => {

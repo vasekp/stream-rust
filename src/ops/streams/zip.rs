@@ -1,11 +1,11 @@
 use crate::base::*;
 
-fn eval_zip(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_zip(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_args_nonempty()?;
     let streams = node.source.iter().chain(&node.args)
         .map(Item::to_stream)
-        .collect::<Result<_, _>>()?;
+        .collect::<SResult<_>>()?;
     Ok(Item::new_stream(Zip{head: node.head, streams}))
 }
 
@@ -24,7 +24,7 @@ impl Describe for Zip {
 }
 
 impl Stream for Zip {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         let iters = self.streams.iter()
             .map(|stm| stm.iter())
             .collect();
@@ -44,7 +44,7 @@ struct ZipIter<'node> {
 }
 
 impl SIterator for ZipIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let mut vec = Vec::with_capacity(self.iters.len());
         for iter in &mut self.iters {
             vec.push(iter_try!(iter.next()));
@@ -52,7 +52,7 @@ impl SIterator for ZipIter<'_> {
         Ok(Some(vec.into()))
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let mut remain = UNumber::zero();
         for iter in &mut self.iters {
             if let Some(r) = iter.advance(n.clone())? {

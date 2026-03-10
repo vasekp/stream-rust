@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_repeat(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_repeat(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let item = node.source_checked()?;
     let count = match &node.args[..] {
@@ -35,7 +35,7 @@ struct RepeatItemIter<'node, I: ItemType> {
 
 
 impl<I: ItemType> Stream<I> for RepeatItem<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         Ok(match &self.count {
             Some(count) => Box::new(RepeatItemIter{item: &self.item, count_rem: count.to_owned()}),
             None => Box::new(std::iter::repeat_with(|| Ok(self.item.clone())))
@@ -61,7 +61,7 @@ impl<I: ItemType> Describe for RepeatItem<I> {
 }
 
 impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         if !self.count_rem.is_zero() {
             self.count_rem -= 1;
             Ok(Some(self.item.clone()))
@@ -70,7 +70,7 @@ impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         if n > self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
@@ -91,7 +91,7 @@ pub struct RepeatStream<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for RepeatStream<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         Ok(Box::new(RepeatStreamIter {
             stream: &self.stream,
             iter: self.stream.iter(),
@@ -131,7 +131,7 @@ struct RepeatStreamIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         let next = self.iter.next()?;
         if next.is_some() {
             return Ok(next);
@@ -146,7 +146,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let Some(n) = self.iter.advance(n)? else { return Ok(None); };
 
         // If advance returned Some, iter is depleted. Restart.

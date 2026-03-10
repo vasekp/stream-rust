@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_ulcase(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_ulcase(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_args()?;
     let func = match node.head.as_str() {
         Some("ucase") => Char::to_uppercase,
@@ -29,7 +29,7 @@ impl Describe for ULCase {
 }
 
 impl Stream<Char> for ULCase {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         Ok(self.source.map_iter(|ch| Ok((self.func)(&ch))))
     }
 

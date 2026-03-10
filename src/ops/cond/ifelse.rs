@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_if(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_if(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     let [cond, true_expr, false_expr] = &node.args[..] else {
         return Err(StreamError::usage(&node.head));

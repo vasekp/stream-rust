@@ -1,7 +1,7 @@
 use crate::base::*;
 use std::collections::VecDeque;
 
-fn eval_fold(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_fold(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = if let [Expr::Eval(body)] = &node.args[..]
         && body.source.is_none() && !body.args.is_empty() {
@@ -36,7 +36,7 @@ impl Describe for Fold {
 }
 
 impl Stream for Fold {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         let args = self.body.args.iter().cloned().collect();
         Ok(Box::new(FoldIter{body: &self.body, source: self.source.iter(), prev: args, env: &self.env}))
     }
@@ -47,7 +47,7 @@ impl Stream for Fold {
 }
 
 impl SIterator for FoldIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))

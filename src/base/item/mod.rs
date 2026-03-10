@@ -66,42 +66,42 @@ impl Item {
         Item::String(Rc::new(EmptyString))
     }
 
-    pub fn as_num(&self) -> Result<&Number, StreamError> {
+    pub fn as_num(&self) -> SResult<&Number> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(StreamError::with_expr("expected number", self))
         }
     }
 
-    pub fn to_num(&self) -> Result<Number, StreamError> {
+    pub fn to_num(&self) -> SResult<Number> {
         match self {
             Item::Number(x) => Ok(x.clone()),
             _ => Err(StreamError::with_expr("expected number", self))
         }
     }
 
-    pub fn into_num(self) -> Result<Number, StreamError> {
+    pub fn into_num(self) -> SResult<Number> {
         match self {
             Item::Number(x) => Ok(x),
             _ => Err(StreamError::with_expr("expected number", &self))
         }
     }
 
-    pub fn to_bool(&self) -> Result<bool, StreamError> {
+    pub fn to_bool(&self) -> SResult<bool> {
         match self {
             Item::Bool(x) => Ok(*x),
             _ => Err(StreamError::with_expr("expected boolean value", self))
         }
     }
 
-    pub fn as_char(&self) -> Result<&Char, StreamError> {
+    pub fn as_char(&self) -> SResult<&Char> {
         match self {
             Item::Char(x) => Ok(x),
             _ => Err(StreamError::with_expr("expected character", self))
         }
     }
 
-    pub fn into_char(self) -> Result<Char, StreamError> {
+    pub fn into_char(self) -> SResult<Char> {
         match self {
             Item::Char(x) => Ok(x),
             _ => Err(StreamError::with_expr("expected character", &self))
@@ -112,14 +112,14 @@ impl Item {
         matches!(self, Item::Stream(_))
     }
 
-    pub fn as_stream(&self) -> Result<&Rc<dyn Stream>, StreamError> {
+    pub fn as_stream(&self) -> SResult<&Rc<dyn Stream>> {
         match self {
             Item::Stream(stm) => Ok(stm),
             _ => Err(StreamError::with_expr("expected stream", self))
         }
     }
 
-    pub fn to_stream(&self) -> Result<Rc<dyn Stream>, StreamError> {
+    pub fn to_stream(&self) -> SResult<Rc<dyn Stream>> {
         match self {
             Item::Stream(stm) => Ok(Rc::clone(stm)),
             _ => Err(StreamError::with_expr("expected stream", self))
@@ -130,14 +130,14 @@ impl Item {
         matches!(self, Item::String(_))
     }
 
-    pub fn as_char_stream(&self) -> Result<&Rc<dyn Stream<Char>>, StreamError> {
+    pub fn as_char_stream(&self) -> SResult<&Rc<dyn Stream<Char>>> {
         match self {
             Item::String(stm) => Ok(stm),
             _ => Err(StreamError::with_expr("expected string", self))
         }
     }
 
-    pub fn to_char_stream(&self) -> Result<Rc<dyn Stream<Char>>, StreamError> {
+    pub fn to_char_stream(&self) -> SResult<Rc<dyn Stream<Char>>> {
         match self {
             Item::String(stm) => Ok(Rc::clone(stm)),
             _ => Err(StreamError::with_expr("expected string", self))
@@ -192,7 +192,7 @@ impl Item {
         }
     }
 
-    pub(crate) fn try_eq(&self, other: &Self) -> Result<bool, StreamError> {
+    pub(crate) fn try_eq(&self, other: &Self) -> SResult<bool> {
         use Item::*;
         Ok(match (self, other) {
             (Number(x1), Number(x2)) => x1 == x2,
@@ -226,7 +226,7 @@ impl Item {
         })
     }
 
-    pub(crate) fn lex_cmp(&self, other: &Self, alpha: &Rc<Alphabet>) -> Result<std::cmp::Ordering, StreamError> {
+    pub(crate) fn lex_cmp(&self, other: &Self, alpha: &Rc<Alphabet>) -> SResult<std::cmp::Ordering> {
         use Item::*;
         use std::cmp::Ordering;
         Ok(match (self, other) {

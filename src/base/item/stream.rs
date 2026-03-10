@@ -13,7 +13,8 @@ pub trait Stream<I = Item>: Describe {
     /// This method does not return a `Result` and thus can't fail. Implementors may return 
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError>;
+    // TODO docstring
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -29,7 +30,7 @@ pub trait Stream<I = Item>: Describe {
     ///
     /// This function can't return an error. If the first call to `iter().next()` produces an
     /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
-    fn is_empty(&self) -> Result<bool, StreamError> {
+    fn is_empty(&self) -> SResult<bool> {
         Ok(match self.len() {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
             Length::Exact(_) | Length::Infinite => false,
@@ -64,17 +65,17 @@ impl<I: ItemType> dyn Stream<I> {
         }
     }
 
-    pub(crate) fn listout(self: &Rc<Self>) -> Result<Vec<I>, StreamError> {
+    pub(crate) fn listout(self: &Rc<Self>) -> SResult<Vec<I>> {
         I::listout(self)
     }
 
-    pub(crate) fn listout_check_nonempty(self: &Rc<Self>) -> Result<Vec<I>, StreamError> {
+    pub(crate) fn listout_check_nonempty(self: &Rc<Self>) -> SResult<Vec<I>> {
         let vec = I::listout(self)?;
         if !vec.is_empty() { Ok(vec) }
         else { Err(StreamError::with_expr("can't be empty", self)) }
     }
 
-    pub(crate) fn try_count(self: &Rc<Self>) -> Result<UNumber, StreamError> {
+    pub(crate) fn try_count(self: &Rc<Self>) -> SResult<UNumber> {
         match self.len() {
             Length::Exact(len) => Ok(len),
             Length::Infinite => Err(StreamError::with_expr("stream is infinite", self)),
@@ -90,13 +91,13 @@ impl<I: ItemType> dyn Stream<I> {
         }
     }
 
-    pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> Result<I2, StreamError> + 'node>(self: &'node Rc<Self>, func: F) -> Box<dyn SIterator<I2> + 'node> {
+    pub(crate) fn map_iter<'node, I2: 'static, F: Fn(I) -> SResult<I2> + 'node>(self: &'node Rc<Self>, func: F) -> Box<dyn SIterator<I2> + 'node> {
         Box::new(SMap::new(self, func))
     }
 }
 
 impl dyn Stream<Item> {
-    pub(crate) fn listout_impl(self: &Rc<Self>) -> Result<Vec<Item>, StreamError> {
+    pub(crate) fn listout_impl(self: &Rc<Self>) -> SResult<Vec<Item>> {
         let mut vec = Vec::new();
         match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
@@ -179,7 +180,7 @@ impl dyn Stream<Item> {
 }
 
 impl dyn Stream<Char> {
-    pub(crate) fn listout_impl(self: &Rc<Self>) -> Result<Vec<Char>, StreamError> {
+    pub(crate) fn listout_impl(self: &Rc<Self>) -> SResult<Vec<Char>> {
         let mut vec = Vec::new();
         match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
@@ -249,7 +250,7 @@ impl<I: ItemType> Describe for Rc<dyn Stream<I>> {
 pub(crate) struct EmptyStream;
 
 impl Stream<Item> for EmptyStream {
-    fn iter(&self) -> Result<Box<dyn SIterator<Item> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Item> + '_>> {
         Ok(Box::new(std::iter::empty()))
     }
 
@@ -272,7 +273,7 @@ impl EmptyString {
 }
 
 impl Stream<Char> for EmptyString {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         Ok(self.iter())
     }
 
@@ -301,12 +302,12 @@ impl<I: ItemType> From<Rc<dyn Stream<I>>> for OwnedStreamIter<I> {
 }
 
 impl<I: ItemType> SIterator<I> for OwnedStreamIter<I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
             .map_err(|err| err.wrap(&self.stream))
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
             .map_err(|err| err.wrap(&self.stream))
     }
@@ -322,12 +323,12 @@ struct WrappedIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for WrappedIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
             .map_err(|err| err.wrap(self.parent))
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
             .map_err(|err| err.wrap(self.parent))
     }

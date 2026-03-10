@@ -1,7 +1,7 @@
 use crate::base::*;
 use super::digits::Digits;
 
-fn eval_numstr(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_numstr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let num = node.source_checked()?.to_num()?;
     let (radix, minw) = match &node.args[..] {
@@ -38,7 +38,7 @@ fn eval_numstr(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_strnum(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_char_stream()?;
     let radix = match &node.args[..] {
@@ -46,13 +46,13 @@ fn eval_strnum(node: &Node, env: &Env) -> Result<Item, StreamError> {
         [Item::Number(radix)] => radix.try_cast_within(2..=36)?,
         _ => return Err(StreamError::usage(&node.head))
     };
-    let st = stm.iter().transposed().map(|ch| -> Result<char, StreamError> {
+    let st = stm.iter().transposed().map(|ch| -> SResult<char> {
         check_stop!();
         match ch? {
             Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
             c => Err(StreamError::with_expr("invalid character", &c))
         }
-    }).collect::<Result<String, _>>()?;
+    }).collect::<SResult<String>>()?;
     match Number::from_str_radix(&st, radix) {
         Ok(num) => Ok(Item::new_number(num)),
         Err(_) => Err("invalid input".into())

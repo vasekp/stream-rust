@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_splitby(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_splitby(node: &Node, env: &Env) -> SResult<Item> {
     let [Expr::Eval(cond)] = &node.args[..] else {
         return Err(StreamError::usage(&node.head));
     };
@@ -35,7 +35,7 @@ impl<I: ItemType> Describe for SplitBy<I> {
 }
 
 impl<I: ItemType> Stream for SplitBy<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(SplitByIter{source: self.source.iter(), cond: &self.cond, env: &self.env, done: false}))
     }
 
@@ -45,7 +45,7 @@ impl<I: ItemType> Stream for SplitBy<I> {
 }
 
 impl<I: ItemType> SIterator for SplitByIter<'_, I> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
         }

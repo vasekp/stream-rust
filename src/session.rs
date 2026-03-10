@@ -25,7 +25,7 @@ impl Session {
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
-    pub fn process(&mut self, expr: Expr) -> Result<SessionUpdate<'_>, StreamError> {
+    pub fn process(&mut self, expr: Expr) -> SResult<SessionUpdate<'_>> {
         stop::reset_stop();
         match &expr {
             Expr::Eval(node) => match &**node {
@@ -108,7 +108,7 @@ impl Session {
         }
     }
 
-    fn apply_context(&self, expr: Expr) -> Result<Expr, StreamError> {
+    fn apply_context(&self, expr: Expr) -> SResult<Expr> {
         use std::borrow::Cow;
         let res = expr.replace(&|sub_expr| {
             match sub_expr {

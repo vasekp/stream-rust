@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_assign(_node: &Node, _env: &Env) -> Result<Item, StreamError> {
+fn eval_assign(_node: &Node, _env: &Env) -> SResult<Item> {
     Err("assignment not possible here, use == for comparisons".into())
 }
 

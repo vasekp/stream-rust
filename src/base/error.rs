@@ -1,6 +1,8 @@
 use crate::base::*;
 use std::fmt::{Display, Formatter, Debug};
 
+pub type SResult<T> = std::result::Result<T, StreamError>;
+
 /// The runtime error type.
 #[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]

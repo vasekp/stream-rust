@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_while(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_while(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let [Expr::Eval(cond)] = &node.args[..] else {
         return Err(StreamError::usage(&node.head));
@@ -31,7 +31,7 @@ impl Describe for While {
 }
 
 impl Stream for While {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(WhileIter{cond: &self.cond, source: self.source.iter(), env: &self.env}))
     }
 
@@ -41,7 +41,7 @@ impl Stream for While {
 }
 
 impl SIterator for WhileIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
         let cond = Node::from(self.cond)
             .with_source(source.clone().into())?

@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_map(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_map(node: &Node, env: &Env) -> SResult<Item> {
     let body = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
         Rc::clone(body)
     } else {
@@ -30,7 +30,7 @@ impl Describe for Map {
 }
 
 impl Stream for Map {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(SMap::new(&self.source, |item| {
             self.body
                 .with_source(item.into())
@@ -60,7 +60,7 @@ impl Describe for CharMap {
 }
 
 impl Stream<Char> for CharMap {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         Ok(Box::new(SMap::new(&self.source, |ch| {
             self.body
                 .with_source(Item::Char(ch).into())

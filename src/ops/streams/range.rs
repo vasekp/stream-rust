@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_range(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_range(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let (from, to, step, rtype) = match &node.args[..] {
@@ -65,7 +65,7 @@ enum RangeType {
 }
 
 impl Stream for Range {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(RangeIter{
             parent: self,
             value: match &self.from {
@@ -110,7 +110,7 @@ struct RangeIter<'node> {
 }
 
 impl SIterator for RangeIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.parent.step.as_ref().is_some_and(Number::is_zero)
             || (self.parent.step.as_ref().is_none_or(Number::is_positive) && self.value <= self.parent.to)
             || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
@@ -128,7 +128,7 @@ impl SIterator for RangeIter<'_> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         if empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
             return Ok(Some(n))
         };

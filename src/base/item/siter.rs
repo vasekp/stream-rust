@@ -9,7 +9,7 @@ use crate::base::*;
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is undefined.
 pub trait SIterator<I = Item> {
-    fn next(&mut self) -> Result<Option<I>, StreamError>;
+    fn next(&mut self) -> SResult<Option<I>>;
 
     /// Returns the number of items remaining in the iterator, if it can be deduced from its
     /// current state. The return value must be consistent with the actual behaviour of the stream.
@@ -33,7 +33,7 @@ pub trait SIterator<I = Item> {
     /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
     /// value given by [`SIterator::len_remain()`].
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         if let Length::Exact(len) = self.len_remain()
             && n > len {
                 return Ok(Some(n - &len));
@@ -51,7 +51,7 @@ pub trait SIterator<I = Item> {
 }
 
 impl<I> dyn SIterator<I> + '_ {
-    pub fn transposed(&mut self) -> impl Iterator<Item = Result<I, StreamError>> {
+    pub fn transposed(&mut self) -> impl Iterator<Item = SResult<I>> {
         Transposed(self)
     }
 }
@@ -59,7 +59,7 @@ impl<I> dyn SIterator<I> + '_ {
 struct Transposed<'a, I>(&'a mut dyn SIterator<I>);
 
 impl<I> Iterator for Transposed<'_, I> {
-    type Item = Result<I, StreamError>;
+    type Item = SResult<I>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().transpose()
@@ -68,9 +68,9 @@ impl<I> Iterator for Transposed<'_, I> {
 
 impl<I, T, U, V> SIterator<I> for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
-      U: FnMut(V) -> Result<I, StreamError>
+      U: FnMut(V) -> SResult<I>
 {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
     }
 
@@ -83,8 +83,8 @@ where T: Iterator<Item = V>,
     }
 }
 
-impl<I> SIterator<I> for std::iter::Once<Result<I, StreamError>> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+impl<I> SIterator<I> for std::iter::Once<SResult<I>> {
+    fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
     }
 
@@ -96,8 +96,8 @@ impl<I> SIterator<I> for std::iter::Once<Result<I, StreamError>> {
     }
 }
 
-impl<I> SIterator<I> for std::iter::Empty<Result<I, StreamError>> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+impl<I> SIterator<I> for std::iter::Empty<SResult<I>> {
+    fn next(&mut self) -> SResult<Option<I>> {
         Ok(None)
     }
 
@@ -106,8 +106,8 @@ impl<I> SIterator<I> for std::iter::Empty<Result<I, StreamError>> {
     }
 }
 
-impl<I: Clone> SIterator<I> for std::iter::Repeat<Result<I, StreamError>> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+impl<I: Clone> SIterator<I> for std::iter::Repeat<SResult<I>> {
+    fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
     }
 
@@ -115,15 +115,15 @@ impl<I: Clone> SIterator<I> for std::iter::Repeat<Result<I, StreamError>> {
         Length::Infinite
     }
 
-    fn advance(&mut self, _n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, _n: UNumber) -> SResult<Option<UNumber>> {
         Ok(None)
     }
 }
 
 impl<I: Clone, F> SIterator<I> for std::iter::RepeatWith<F>
-where F: FnMut() -> Result<I, StreamError>
+where F: FnMut() -> SResult<I>
 {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
     }
 
@@ -131,25 +131,25 @@ where F: FnMut() -> Result<I, StreamError>
         Length::Infinite
     }
 
-    fn advance(&mut self, _n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, _n: UNumber) -> SResult<Option<UNumber>> {
         Ok(None)
     }
 }
 
-pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> {
+pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> {
     _parent: Rc<dyn Stream<I1>>,
     source: Box<dyn SIterator<I1> + 'node>,
     func: F
 }
 
-impl<'node, I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> SMap<'node, I1, I2, F> {
+impl<'node, I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SMap<'node, I1, I2, F> {
     pub(crate) fn new(stream: &'node Rc<dyn Stream<I1>>, func: F) -> Self {
         SMap{_parent: Rc::clone(stream), source: stream.iter(), func}
     }
 }
 
-impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> SIterator<I2> for SMap<'_, I1, I2, F> {
-    fn next(&mut self) -> Result<Option<I2>, StreamError> {
+impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<'_, I1, I2, F> {
+    fn next(&mut self) -> SResult<Option<I2>> {
         self.source.next()?
             .map(&self.func)
             .transpose()
@@ -159,7 +159,7 @@ impl<I1: ItemType, I2, F: Fn(I1) -> Result<I2, StreamError>> SIterator<I2> for S
         self.source.len_remain()
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.source.advance(n)
     }
 }
@@ -181,13 +181,13 @@ mod tests {
 
     #[test]
     fn test_simple_iters() {
-        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
+        let mut iter = std::iter::empty::<SResult<Item>>();
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
-        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
+        let mut iter = std::iter::empty::<SResult<Item>>();
         assert_eq!(iter.advance(UNumber::zero()), Ok(None));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
-        let mut iter = std::iter::empty::<Result<Item, StreamError>>();
+        let mut iter = std::iter::empty::<SResult<Item>>();
         assert_eq!(iter.advance(UNumber::one()), Ok(Some(UNumber::one())));
 
         let mut iter = std::iter::once(Ok(Item::default()));

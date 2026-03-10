@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_args(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_args(node: &Node, env: &Env) -> SResult<Item> {
     debug_assert!(node.args.len() == 2);
     let head = if let Expr::Eval(head_node) = &node.args[0]
         && head_node.source.is_none() && head_node.args.is_empty() {

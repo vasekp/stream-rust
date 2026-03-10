@@ -1,13 +1,13 @@
 use crate::base::*;
 
-fn eval_class(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_class(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let item = node.source_checked()?;
     eval_inner(&node.head, item, env).map(Item::Bool)
 }
 
-fn eval_inner(head: &Head, item: &Item, env: &Env) -> Result<bool, StreamError> {
+fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
     let Head::Symbol(sym) = head else { unreachable!() };
     match *sym {
         "isnum" => Ok(matches!(item, Item::Number(_))),

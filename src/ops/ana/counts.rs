@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_counts(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     match &node.source {
         Some(Item::Stream(stm)) if !node.args.is_empty() =>
@@ -15,7 +15,7 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
                     Item::String(s) => Ok(s.listout_check_nonempty()?),
                     _ => Err(StreamError::with_expr("expected character or nonempty string", item))
                 })
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<SResult<Vec<_>>>()?;
             string_counts_listed_impl(stm, &args)
         },
         Some(Item::String(stm)) => counts_free_impl(stm),
@@ -23,7 +23,7 @@ fn eval_counts(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn stream_counts_listed_impl(stm: &Rc<dyn Stream>, args: &[Item]) -> Result<Item, StreamError> {
+fn stream_counts_listed_impl(stm: &Rc<dyn Stream>, args: &[Item]) -> SResult<Item> {
     let mut counts = args.iter().map(|item| (item, 0)).collect::<Vec<_>>();
     for item in stm.iter().transposed() {
         check_stop!();
@@ -44,7 +44,7 @@ fn stream_counts_listed_impl(stm: &Rc<dyn Stream>, args: &[Item]) -> Result<Item
     }
 }
 
-fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) -> Result<Item, StreamError> {
+fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) -> SResult<Item> {
     let mut counts = chars.iter().map(|arg| (arg, 0)).collect::<Vec<_>>();
     let longest = counts.iter()
         .map(|(s, _)| s.len())
@@ -79,7 +79,7 @@ fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) ->
     }
 }
 
-fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<Item, StreamError> {
+fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<Item> {
     let mut counts: Vec<(I, usize)> = Vec::new();
     for item in stm.iter().transposed() {
         check_stop!();

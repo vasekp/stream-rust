@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_len(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_len(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let len = match node.source_checked()? {
@@ -11,7 +11,7 @@ fn eval_len(node: &Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(len))
 }
 
-fn len_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<UNumber, StreamError> {
+fn len_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<UNumber> {
     match stm.len() {
         Length::Exact(len) => Ok(len),
         Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {

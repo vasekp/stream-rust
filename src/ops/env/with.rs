@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::HashMap;
 
-fn eval_with(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     let (body, assigns) = if let Some((body, assigns)) = node.args.split_last()
         && !assigns.is_empty() {
@@ -26,7 +26,7 @@ fn eval_with(node: &Node, env: &Env) -> Result<Item, StreamError> {
             } else {
                 Err(StreamError::with_expr("expected variable name", expr))
             }
-        ).collect::<Result<Vec<_>, _>>()?;
+        ).collect::<SResult<Vec<_>>>()?;
         let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
         let rhs = Rc::new(if let Expr::Eval(node) = &*body
             && let Head::Block(block) = &node.head
@@ -44,7 +44,7 @@ fn eval_with(node: &Node, env: &Env) -> Result<Item, StreamError> {
 }
 
 fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
-    -> Result<std::borrow::Cow<'a, Expr>, StreamError>
+    -> SResult<std::borrow::Cow<'a, Expr>>
 {
     use std::borrow::Cow;
     let Expr::Eval(node) = expr else {

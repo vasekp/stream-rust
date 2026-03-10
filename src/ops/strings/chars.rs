@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_chars(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_chars(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_char_stream()?;
@@ -21,7 +21,7 @@ impl Describe for Chars {
 }
 
 impl Stream for Chars {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(self.source.map_iter(|ch| Ok(Item::Char(ch))))
     }
 
@@ -30,7 +30,7 @@ impl Stream for Chars {
     }
 }
 
-fn eval_str(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_str(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
@@ -51,7 +51,7 @@ impl Describe for Str {
 }
 
 impl Stream<Char> for Str {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         Ok(self.source.map_iter(Item::into_char))
     }
 

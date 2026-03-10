@@ -1,7 +1,7 @@
 use crate::base::*;
 use super::digits::Digits;
 
-fn eval_numdig(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_numdig(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let num = node.source_checked()?.to_num()?;
     let (radix, minw) = match &node.args[..] {
@@ -22,7 +22,7 @@ fn eval_numdig(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_dignum(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_stream()?;
     let radix = match &node.args[..] {
@@ -33,7 +33,7 @@ fn eval_dignum(node: &Node, env: &Env) -> Result<Item, StreamError> {
     let vec = stm.iter().transposed().map(|item| {
             check_stop!();
             item?.into_num()?.try_cast_within(0..radix)
-        }).collect::<Result<Vec<u32>, _>>()?;
+        }).collect::<SResult<Vec<u32>>>()?;
     if vec.is_empty() {
         return Err("stream is empty".into());
     }

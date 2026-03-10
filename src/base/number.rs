@@ -14,7 +14,7 @@ pub use ibig::ops::{DivRem, DivRemEuclid, RemEuclid, UnsignedAbs};
 pub(crate) const CACHE_LEN: usize = 100;
 
 pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<'a> TryFrom<&'a Self> {
-    fn try_cast(&self) -> Result<T, StreamError> {
+    fn try_cast(&self) -> SResult<T> {
         if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {
             Err("value can't be negative".into())
         } else {
@@ -22,7 +22,7 @@ pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<
         }
     }
 
-    fn try_cast_within(&self, range: impl std::ops::RangeBounds<T>) -> Result<T, StreamError>
+    fn try_cast_within(&self, range: impl std::ops::RangeBounds<T>) -> SResult<T>
     where T: Ord + std::fmt::Display {
         if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {
             Err("value can't be negative".into())
@@ -72,13 +72,13 @@ impl TryCast<usize> for UNumber { }
 pub(crate) trait TryUnsign {
     type Unsigned;
 
-    fn try_unsign(&self) -> Result<Self::Unsigned, StreamError>;
+    fn try_unsign(&self) -> SResult<Self::Unsigned>;
 }
 
 impl TryUnsign for Number {
     type Unsigned = UNumber;
 
-    fn try_unsign(&self) -> Result<Self::Unsigned, StreamError> {
+    fn try_unsign(&self) -> SResult<Self::Unsigned> {
         if self.is_negative() {
             Err("value can't be negative".into())
         } else {

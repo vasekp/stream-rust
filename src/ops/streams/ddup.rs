@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_ddup(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_ddup(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
@@ -22,7 +22,7 @@ impl Describe for DDup {
 }
 
 impl Stream for DDup {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(DDupIter{iter: self.source.iter(), seen: vec![]}))
     }
 
@@ -37,7 +37,7 @@ struct DDupIter<'node> {
 }
 
 impl SIterator for DDupIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         'a: loop {
             check_stop!();
             let item = iter_try!(self.iter.next());

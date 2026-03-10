@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_pi(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_pi(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     let radix = match &node.args[..] {
@@ -18,7 +18,7 @@ pub struct Pi {
 }
 
 impl Stream for Pi {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(PiIter::new(self)))
     }
 
@@ -51,7 +51,7 @@ impl PiIter {
 }
 
 impl SIterator for PiIter {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         if self.cached.len() >= 2 {
             return Ok(Some(Item::new_number(self.cached.remove(0))));
         }
@@ -78,7 +78,7 @@ impl SIterator for PiIter {
         Length::Infinite
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         match n.try_into() {
             Ok(n) => {
                 self.inner.advance(n)?;
@@ -104,7 +104,7 @@ impl PiIterInner {
         }
     }
 
-    fn next(&mut self) -> Result<(u32, bool), StreamError> {
+    fn next(&mut self) -> SResult<(u32, bool)> {
         self.power *= self.radix;
         let bits = self.power.bit_len() - 1;
         let prev_len = self.cdigits.len();
@@ -123,7 +123,7 @@ impl PiIterInner {
         Ok((rem.try_into().unwrap(), !div.is_zero()))
     }
 
-    fn advance(&mut self, n: usize) -> Result<(), StreamError> {
+    fn advance(&mut self, n: usize) -> SResult<()> {
         let mul = UNumber::from(self.radix).pow(n);
         let len = self.cdigits.len();
         let mut carry = UNumber::zero();

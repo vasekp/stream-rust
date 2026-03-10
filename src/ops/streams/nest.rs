@@ -26,7 +26,7 @@ struct NestIterArgs<'node> {
     env: &'node Env
 }
 
-fn eval_nest(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
     let body = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
         body
     } else {
@@ -59,7 +59,7 @@ impl Describe for NestArgs {
 }
 
 impl Stream for NestSource {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(NestIterSource{body: &self.body, prev: self.source.clone(), env: &self.env}))
     }
 
@@ -69,7 +69,7 @@ impl Stream for NestSource {
 }
 
 impl Stream for NestArgs {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         let args = self.body.args.iter().cloned().collect();
         Ok(Box::new(NestIterArgs{body: &self.body, prev: args, env: &self.env}))
     }
@@ -80,7 +80,7 @@ impl Stream for NestArgs {
 }
 
 impl SIterator for NestIterSource<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let node = Node::new(self.body.head.clone(),
             Some(std::mem::take(&mut self.prev).into()),
             vec![]);
@@ -95,7 +95,7 @@ impl SIterator for NestIterSource<'_> {
 }
 
 impl SIterator for NestIterArgs<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();

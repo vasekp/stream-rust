@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     match (node.source_checked()?, &node.args[..]) {
         (Item::String(stm), [x, y]) => {
@@ -29,7 +29,7 @@ fn eval_replace(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn read_stream(stm: &Rc<dyn Stream>) -> Result<Vec<Vec<Char>>, StreamError> {
+fn read_stream(stm: &Rc<dyn Stream>) -> SResult<Vec<Vec<Char>>> {
     stm.iter().transposed()
         .map(|item| {
             check_stop!();
@@ -62,7 +62,7 @@ impl Describe for StringReplace {
 }
 
 impl Stream<Char> for StringReplace {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         Ok(Box::new(StringReplaceIter::new(self)))
     }
 
@@ -98,7 +98,7 @@ impl<'node> StringReplaceIter<'node> {
 }
 
 impl SIterator<Char> for StringReplaceIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
             if let Some((deplete, done)) = &mut self.queued {
@@ -160,7 +160,7 @@ impl Describe for StreamReplace {
 }
 
 impl Stream for StreamReplace {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(self.source.map_iter(|item| Ok(if item.try_eq(&self.orig)? { self.repl.clone() } else { item })))
     }
 

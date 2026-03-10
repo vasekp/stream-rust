@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_reorder(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_reorder(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let mut indices = Vec::with_capacity(node.args.len());
@@ -36,7 +36,7 @@ impl Describe for ReorderStream {
 }
 
 impl Stream for ReorderStream {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(ReorderIter {
             parent: self,
             iter: RandomAccess::new(&self.source),
@@ -64,7 +64,7 @@ enum ReorderState<'node> {
 }
 
 impl SIterator for ReorderIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
             match &mut self.state {
@@ -115,7 +115,7 @@ impl SIterator for ReorderIter<'_> {
             else { UNumber::zero() })
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             if n.is_zero() {

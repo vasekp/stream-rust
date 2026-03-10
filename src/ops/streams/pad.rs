@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_padl(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let [Item::Number(len), item] = &node.args[..] else {
         return Err(StreamError::usage(&node.head));
@@ -15,7 +15,7 @@ fn eval_padl(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_padr(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_padr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let [Item::Number(len), item] = &node.args[..] else {
         return Err(StreamError::usage(&node.head));
@@ -48,7 +48,7 @@ impl<I: ItemType> Describe for PadLeft<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadLeft<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         if self.source.len() == Length::Infinite {
             Ok(self.source.iter())
         } else {
@@ -81,7 +81,7 @@ struct PadLeftIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         if !self.pad_remain.is_zero() {
             self.pad_remain -= 1;
             Ok(Some(self.padding.clone()))
@@ -94,7 +94,7 @@ impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
         self.source.len_remain() + &self.pad_remain
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         if n < self.pad_remain {
             self.pad_remain -= n;
             Ok(None)
@@ -126,7 +126,7 @@ impl<I: ItemType> Describe for PadRight<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadRight<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         if self.source.len() == Length::Infinite {
             Ok(self.source.iter())
         } else {
@@ -159,7 +159,7 @@ struct PadRightIter<'node, I: ItemType> {
 }
 
 impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
-    fn next(&mut self) -> Result<Option<I>, StreamError> {
+    fn next(&mut self) -> SResult<Option<I>> {
         if let Some(ref mut iter) = self.source {
             if let Some(res) = iter.next()? {
                 self.pos += 1;
@@ -184,7 +184,7 @@ impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.pos += &n;
         if let Some(ref mut iter) = self.source {
             if iter.advance(n)?.is_none() {

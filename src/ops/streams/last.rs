@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_last(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_last(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let count: Option<UNumber> = match &node.args[..] {
         [] => None,
@@ -18,7 +18,7 @@ fn eval_last(node: &Node, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<I, StreamError> {
+fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
     match stm.len() {
         Length::Exact(len) if !len.is_zero() => {
             let mut it = stm.iter();
@@ -41,7 +41,7 @@ fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> Result<I, StreamError
     }
 }
 
-fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumber) -> Result<Item, StreamError> {
+fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumber) -> SResult<Item> {
     if count.is_zero() {
         return Ok(I::from_vec(vec![]));
     }
@@ -80,7 +80,7 @@ struct Last<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Last<I> {
-    fn iter(&self) -> Result<Box<dyn SIterator<I> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
         let mut it = self.source.iter();
         match it.advance(self.skip.to_owned())? {
             None => Ok(it),

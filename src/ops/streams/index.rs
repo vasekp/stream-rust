@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_index(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_args_nonempty()?;
     match &node.source {
@@ -42,7 +42,7 @@ fn eval_index(node: &Node, env: &Env) -> Result<Item, StreamError> {
                     Item::String(s) => s.listout_check_nonempty().map(Query::Pending),
                     item => Err(StreamError::with_expr("expected character or nonempty string", item))
                 })
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<SResult<Vec<_>>>()?;
             let longest = queries.iter()
                 .map(|q| match q { Query::Pending(vec) => vec.len(), _ => unreachable!() })
                 .reduce(std::cmp::max)

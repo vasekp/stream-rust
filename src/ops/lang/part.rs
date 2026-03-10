@@ -1,13 +1,13 @@
 use crate::base::*;
 
-fn eval_part(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_part(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_source()?;
     node.check_args_nonempty()?;
     eval_enode(&node, env)
 }
 
-fn eval_enode(node: &Node<Item>, env: &Env) -> Result<Item, StreamError> {
+fn eval_enode(node: &Node<Item>, env: &Env) -> SResult<Item> {
     let source = node.source.as_ref().expect("source should be nonempty by precondition");
     match node.args.split_first().expect("args should be nonempty by precondition") {
         (Item::Number(index), rest) => {
@@ -37,7 +37,7 @@ fn eval_enode(node: &Node<Item>, env: &Env) -> Result<Item, StreamError> {
     }
 }
 
-fn eval_index_impl<I: ItemType>(source: &Rc<dyn Stream<I>>, index: &Number) -> Result<I, StreamError> {
+fn eval_index_impl<I: ItemType>(source: &Rc<dyn Stream<I>>, index: &Number) -> SResult<I> {
     let index = index.try_cast_within(UNumber::one()..)?;
     match source.len() {
         Length::Exact(len) | Length::AtMost(len) if len < index =>
@@ -63,7 +63,7 @@ struct Part {
 }
 
 impl Stream for Part {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(PartIter{parent: self, iter: self.indices.iter()}))
     }
 
@@ -88,7 +88,7 @@ struct PartIter<'node> {
 }
 
 impl SIterator for PartIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let part = iter_try!(self.iter.next());
         // TODO: smarter - number tracks increments, stream unfolds?
         let mut args = self.parent.rest.clone();
@@ -103,7 +103,7 @@ impl SIterator for PartIter<'_> {
             .map_err(|err| err.wrap(&node))
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 
@@ -119,7 +119,7 @@ struct StringPart {
 }
 
 impl Stream<Char> for StringPart {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         Ok(Box::new(StringPartIter{parent: self, iter: self.indices.iter()}))
     }
 
@@ -143,14 +143,14 @@ struct StringPartIter<'node> {
 }
 
 impl SIterator<Char> for StringPartIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         match iter_try!(self.iter.next()) {
             Item::Number(index) => eval_index_impl(&self.parent.source, &index).map(Option::Some),
             _ => todo!()
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 

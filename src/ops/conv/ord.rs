@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_ord(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_ord(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let ch = node.source_checked()?.as_char()?;
@@ -8,7 +8,7 @@ fn eval_ord(node: &Node, env: &Env) -> Result<Item, StreamError> {
     Ok(Item::new_number(ix))
 }
 
-fn eval_chr(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_chr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let ix = node.source_checked()?.as_num()?;

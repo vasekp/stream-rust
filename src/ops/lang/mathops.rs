@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_op(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_op(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     let node = node.eval_all(env)?;
     match node.first_arg_checked()? {
@@ -16,15 +16,15 @@ struct MathOp {
     env: Env,
 }
 
-type MathFunc = fn(&[Item], &Env) -> Result<Item, StreamError>;
+type MathFunc = fn(&[Item], &Env) -> SResult<Item>;
 
 impl MathOp {
-    fn eval(node: &Node<Item>, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node<Item>, env: &Env) -> SResult<Item> {
         let func = Self::find_fn(&node.head);
         Self::eval_with(node, env, func)
     }
 
-    fn eval_with(node: &Node<Item>, env: &Env, func: MathFunc) -> Result<Item, StreamError> {
+    fn eval_with(node: &Node<Item>, env: &Env, func: MathFunc) -> SResult<Item> {
         if node.args.iter().any(Item::is_stream) {
             Ok(Item::new_stream(MathOp{
                 head: node.head.clone(),
@@ -50,7 +50,7 @@ impl MathOp {
         }
     }
 
-    fn plus_func(items: &[Item], env: &Env) -> Result<Item, StreamError> {
+    fn plus_func(items: &[Item], env: &Env) -> SResult<Item> {
         let mut iter = items.iter();
         match iter.next().unwrap() { // args checked to be nonempty in eval_with()
             Item::Number(init) => {
@@ -74,7 +74,7 @@ impl MathOp {
         }
     }
 
-    fn minus_func(items: &[Item], env: &Env) -> Result<Item, StreamError> {
+    fn minus_func(items: &[Item], env: &Env) -> SResult<Item> {
         match items {
             [item] => Ok(Item::new_number(-item.as_num()?)),
             [lhs, rhs] => match lhs {
@@ -95,7 +95,7 @@ impl MathOp {
         }
     }
 
-    fn mul_func(items: &[Item], env: &Env) -> Result<Item, StreamError> {
+    fn mul_func(items: &[Item], env: &Env) -> SResult<Item> {
         let mut iter = items.iter();
         debug_assert!(!items.is_empty());
         match iter.next().unwrap() { // args checked to be nonempty in eval_with()
@@ -113,7 +113,7 @@ impl MathOp {
         }
     }
 
-    fn div_func(items: &[Item], _env: &Env) -> Result<Item, StreamError> {
+    fn div_func(items: &[Item], _env: &Env) -> SResult<Item> {
         match items {
             [lhs, rhs] => {
                 let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);
@@ -127,7 +127,7 @@ impl MathOp {
         }
     }
 
-    fn mod_func(items: &[Item], _env: &Env) -> Result<Item, StreamError> {
+    fn mod_func(items: &[Item], _env: &Env) -> SResult<Item> {
         match items {
             [lhs, rhs] => {
                 let (lhs, rhs) = (lhs.as_num()?, rhs.as_num()?);
@@ -141,7 +141,7 @@ impl MathOp {
         }
     }
 
-    fn pow_func(items: &[Item], _env: &Env) -> Result<Item, StreamError> {
+    fn pow_func(items: &[Item], _env: &Env) -> SResult<Item> {
         match items {
             [base, exp] => {
                 let (base, exp) = (base.as_num()?, exp.as_num()?);
@@ -161,7 +161,7 @@ impl Describe for MathOp {
 }
 
 impl Stream for MathOp {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         let args = self.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
@@ -189,15 +189,15 @@ struct MathOpIter<'node> {
 }
 
 impl SIterator for MathOpIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         let inputs = iter_try!(self.args.iter_mut()
             .map(|iter| iter.next())
-            .collect::<Result<Option<Vec<_>>, _>>());
+            .collect::<SResult<Option<Vec<_>>>>());
         let node = Node { head: self.head.clone(), source: None, args: inputs };
         MathOp::eval_with(&node, self.env, self.func).map(Option::Some)
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let mut remain = UNumber::zero();
         for iter in &mut self.args {
             if let Some(r) = iter.advance(n.clone())? {
@@ -224,10 +224,10 @@ struct StringOp {
     env: Env,
 }
 
-type StringFunc = fn(&Char, &[Item], &Env) -> Result<Char, StreamError>;
+type StringFunc = fn(&Char, &[Item], &Env) -> SResult<Char>;
 
 impl StringOp {
-    fn eval(node: &Node<Item>, env: &Env) -> Result<Item, StreamError> {
+    fn eval(node: &Node<Item>, env: &Env) -> SResult<Item> {
         let func = Self::find_fn(&node.head)?;
         let Some((Item::String(first), rest)) = node.args.split_first() else {
             unreachable!()
@@ -243,7 +243,7 @@ impl StringOp {
             env: env.clone()}))
     }
 
-    fn find_fn(head: &Head) -> Result<StringFunc, StreamError> {
+    fn find_fn(head: &Head) -> SResult<StringFunc> {
         match head.as_str().expect("head should be symbol or oper") {
             "+" => Ok(Self::plus_func),
             "plus" => Ok(Self::plus_func),
@@ -252,7 +252,7 @@ impl StringOp {
         }
     }
 
-    fn plus_func(first: &Char, rest: &[Item], env: &Env) -> Result<Char, StreamError> {
+    fn plus_func(first: &Char, rest: &[Item], env: &Env) -> SResult<Char> {
         let index = env.alpha.ord(first)?;
         let case = first.case();
         let ans = rest.iter().try_fold(index.into(),
@@ -266,7 +266,7 @@ impl StringOp {
         Ok(env.alpha.chr(&ans, case))
     }
 
-    fn minus_func(first: &Char, rest: &[Item], env: &Env) -> Result<Char, StreamError> {
+    fn minus_func(first: &Char, rest: &[Item], env: &Env) -> SResult<Char> {
         let index = env.alpha.ord(first)?;
         let case = first.case();
         let ord = match rest {
@@ -291,7 +291,7 @@ impl Describe for StringOp {
 }
 
 impl Stream<Char> for StringOp {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         let first = self.first.iter();
         let rest = self.rest.iter()
             .map(|item| match item {
@@ -325,7 +325,7 @@ struct StringOpIter<'node> {
 }
 
 impl SIterator<Char> for StringOpIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         let ch = iter_try!(self.first.next());
         if !self.env.alpha.contains(&ch) {
             return Ok(Some(ch));
@@ -333,11 +333,11 @@ impl SIterator<Char> for StringOpIter<'_> {
 
         let inputs = iter_try!(self.rest.iter_mut()
             .map(|iter| iter.next())
-            .collect::<Result<Option<Vec<_>>, _>>());
+            .collect::<SResult<Option<Vec<_>>>>());
         (self.func)(&ch, &inputs, self.env).map(Option::Some)
     }
 
-    fn advance(&mut self, n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let mut n_chars: usize = 0;
         let mut remain = n;
         while !remain.is_zero() {

@@ -32,7 +32,7 @@ impl Node<Expr> {
     /// Locally defined symbols aren't handled here.
     // Note to self: for assignments, this will happen in Session::process. For `with`, this will
     // happen in Expr::apply(Context).
-    pub fn eval(&self, env: &Env) -> Result<Item, StreamError> {
+    pub fn eval(&self, env: &Env) -> SResult<Item> {
         env.tracer.borrow_mut().log(tracing::Event::Enter(self));
         let res = (|| {
             match &self.head {
@@ -51,7 +51,7 @@ impl Node<Expr> {
                     let source = self.source.as_ref().map(|expr| expr.eval(env)).transpose()?;
                     let args = self.args.iter()
                         .map(|expr| expr.eval(env))
-                        .collect::<Result<_, _>>()?;
+                        .collect::<SResult<_>>()?;
                     blk.apply(&source, &args)?.eval(env)
                 },
             }
@@ -60,18 +60,18 @@ impl Node<Expr> {
         res
     }
 
-    pub(crate) fn eval_all(&self, env: &Env) -> Result<Node<Item>, StreamError> {
+    pub(crate) fn eval_all(&self, env: &Env) -> SResult<Node<Item>> {
         let source = match &self.source {
             Some(source) => Some(source.eval(env)?),
             None => None
         };
         let args = self.args.iter()
             .map(|x| x.eval(env))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<SResult<Vec<_>>>()?;
         Ok(Node{head: self.head.clone(), source, args})
     }
 
-    pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Node, StreamError> {
+    pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> SResult<Node> {
         Ok(Node {
             head: self.head.clone(),
             source: match &self.source {
@@ -80,11 +80,11 @@ impl Node<Expr> {
             },
             args: self.args.iter()
                 .map(|expr| expr.apply(source, args))
-                .collect::<Result<Vec<_>, _>>()?
+                .collect::<SResult<Vec<_>>>()?
         })
     }
 
-    pub(crate) fn with_source(&self, source: Expr) -> Result<Self, StreamError> {
+    pub(crate) fn with_source(&self, source: Expr) -> SResult<Self> {
         if self.source.is_some() {
             Err(StreamError::with_expr("already has source", self))
         } else {
@@ -92,7 +92,7 @@ impl Node<Expr> {
         }
     }
 
-    pub(crate) fn with_args(&self, args: Vec<Expr>) -> Result<Self, StreamError> {
+    pub(crate) fn with_args(&self, args: Vec<Expr>) -> SResult<Self> {
         if !self.args.is_empty() {
             Err(StreamError::with_expr("already has arguments", self))
         } else {
@@ -109,25 +109,25 @@ impl<I: Clone> Node<I> {
         Node{head: head.into(), source, args}
     }
 
-    pub(crate) fn check_source(&self) -> Result<(), StreamError> {
+    pub(crate) fn check_source(&self) -> SResult<()> {
         match &self.source {
             Some(_) => Ok(()),
             None => Err(StreamError::usage(&self.head))
         }
     }
 
-    pub(crate) fn check_no_source(&self) -> Result<(), StreamError> {
+    pub(crate) fn check_no_source(&self) -> SResult<()> {
         match &self.source {
             Some(_) => Err(StreamError::usage(&self.head)),
             None => Ok(())
         }
     }
 
-    pub(crate) fn source_checked(&self) -> Result<&I, StreamError> {
+    pub(crate) fn source_checked(&self) -> SResult<&I> {
         self.source.as_ref().ok_or_else(|| StreamError::usage(&self.head))
     }
 
-    pub(crate) fn check_no_args(&self) -> Result<(), StreamError> {
+    pub(crate) fn check_no_args(&self) -> SResult<()> {
         if !self.args.is_empty() {
             Err(StreamError::usage(&self.head))
         } else {
@@ -135,7 +135,7 @@ impl<I: Clone> Node<I> {
         }
     }
 
-    pub(crate) fn check_args_nonempty(&self) -> Result<(), StreamError> {
+    pub(crate) fn check_args_nonempty(&self) -> SResult<()> {
         if self.args.is_empty() {
             Err(StreamError::usage(&self.head))
         } else {
@@ -143,7 +143,7 @@ impl<I: Clone> Node<I> {
         }
     }
 
-    pub(crate) fn first_arg_checked(&self) -> Result<&I, StreamError> {
+    pub(crate) fn first_arg_checked(&self) -> SResult<&I> {
         self.args.first().ok_or(StreamError::usage(&self.head))
     }
 }

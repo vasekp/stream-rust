@@ -38,7 +38,7 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
     }
 }
 
-fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) -> Result<(), StreamError> {
+fn test_len_exact_impl<I>(stm: &dyn Stream<I>, len: usize) -> SResult<()> {
     assert_eq!(stm.iter()?.transposed().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.len(), &Length::Exact(len.into())));
     assert!(Length::possibly_eq(&stm.iter()?.len_remain(), &Length::Exact(len.into())));
@@ -60,7 +60,7 @@ const TEST: u32 = 5;
 
 #[cfg(test)]
 #[track_caller]
-fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), StreamError> {
+fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> SResult<()> {
     assert_eq!(stm.iter()?.len_remain(), stm.len(), "len_remain on fresh iterator == len");
 
     let (mut i1, mut i2) = (stm.iter()?, stm.iter()?);
@@ -191,7 +191,7 @@ fn test_advance_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>) -> Result<(), St
 
 #[cfg(test)]
 #[track_caller]
-fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumber, test_len_remain: bool) -> Result<(), StreamError> {
+fn test_advance_exact_impl<I: PartialEq + Debug>(stm: &dyn Stream<I>, len: UNumber, test_len_remain: bool) -> SResult<()> {
     if len.is_zero() {
         assert_eq!(stm.iter()?.advance(100u32.into())?, Some(100u32.into()),
             "advance() on an empty iter");

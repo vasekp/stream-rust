@@ -14,7 +14,7 @@ pub enum Alphabet {
 impl Alphabet {
     /// Returns the order of `chr` in the alphabet. Counts between 1 and the size.
     /// The information about the case of the character is preserved using `CharCase`.
-    pub fn ord(&self, chr: &Char) -> Result<isize, StreamError> {
+    pub fn ord(&self, chr: &Char) -> SResult<isize> {
         match self {
             Alphabet::Std26 => {
                 let Char::Single(ch) = chr else {
@@ -73,7 +73,7 @@ impl Alphabet {
     }
 
     #[cfg(test)]
-    fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> Result<Char, StreamError> {
+    fn c_plus_c(&self, lhs: &Char, rhs: &Char) -> SResult<Char> {
         let case = lhs.case();
         let index1 = self.ord(lhs)?;
         let index2 = self.ord(rhs)?;
@@ -88,7 +88,7 @@ impl Alphabet {
     }
 
     /// Compares two characters
-    pub fn cmp(&self, x: &Char, y: &Char) -> Result<std::cmp::Ordering, StreamError> {
+    pub fn cmp(&self, x: &Char, y: &Char) -> SResult<std::cmp::Ordering> {
         let (ox, oy) = (self.ord(x)?, self.ord(y)?);
         Ok(ox.cmp(&oy))
     }
@@ -116,7 +116,7 @@ impl Alphabet {
 impl TryFrom<Vec<Char>> for Alphabet {
     type Error = StreamError;
 
-    fn try_from(src_vec: Vec<Char>) -> Result<Alphabet, StreamError> {
+    fn try_from(src_vec: Vec<Char>) -> SResult<Alphabet> {
         let mut map = HashMap::new();
         if src_vec.is_empty() {
             return Ok(Alphabet::default());

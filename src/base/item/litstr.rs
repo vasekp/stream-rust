@@ -14,7 +14,7 @@ impl LiteralString {
 }
 
 impl Stream<Char> for LiteralString {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         Ok(self.iter())
     }
 

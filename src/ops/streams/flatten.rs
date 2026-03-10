@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_flatten(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_flatten(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let depth = match &node.args[..] {
@@ -27,7 +27,7 @@ impl Describe for Flatten {
 }
 
 impl Stream for Flatten {
-    fn iter(&self) -> Result<Box<dyn SIterator + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
         Ok(Box::new(FlattenIter {
             outer: self.source.iter(),
             iters: vec![],
@@ -47,7 +47,7 @@ struct FlattenIter<'node> {
 }
 
 impl SIterator for FlattenIter<'_> {
-    fn next(&mut self) -> Result<Option<Item>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
             let next = match self.iters.last_mut() {
@@ -74,7 +74,7 @@ impl SIterator for FlattenIter<'_> {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             if n.is_zero() {

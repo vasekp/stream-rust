@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_cat(node: &Node, env: &Env) -> Result<Item, StreamError> {
+fn eval_cat(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     let filler = match &node.args[..] {
@@ -32,7 +32,7 @@ impl Describe for Cat {
 }
 
 impl Stream<Char> for Cat {
-    fn iter(&self) -> Result<Box<dyn SIterator<Char> + '_>, StreamError> {
+    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
         match &self.filler {
             None => Ok(Box::new(CatIter::new(self))),
             Some(fill) => RiffleCatIter::new_boxed(self, fill)
@@ -59,7 +59,7 @@ impl<'node> CatIter<'node> {
 }
 
 impl SIterator<Char> for CatIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
             if let Some(iter) = &mut self.inner {
@@ -76,7 +76,7 @@ impl SIterator<Char> for CatIter<'_> {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             if n.is_zero() {
@@ -115,7 +115,7 @@ enum RiffleCatState<'node> {
 }
 
 impl<'node> RiffleCatIter<'node> {
-    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> Result<Box<dyn SIterator<Char> + 'node>, StreamError> {
+    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> SResult<Box<dyn SIterator<Char> + 'node>> {
         let mut outer = parent.source.iter();
         let inner = match Self::next_cs(&mut *outer)? {
             Some(cs) => cs,
@@ -124,7 +124,7 @@ impl<'node> RiffleCatIter<'node> {
         Ok(Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source}))
     }
 
-    fn next_cs(outer: &mut (dyn SIterator + 'node)) -> Result<Option<Box<dyn SIterator<Char> + 'node>>, StreamError> {
+    fn next_cs(outer: &mut (dyn SIterator + 'node)) -> SResult<Option<Box<dyn SIterator<Char> + 'node>>> {
         match outer.next()? {
             Some(Item::Char(ch)) => Ok(Some(Box::new(std::iter::once(Ok(ch))))),
             Some(Item::String(s)) => Ok(Some(Box::new(s.into_iter()))),
@@ -135,7 +135,7 @@ impl<'node> RiffleCatIter<'node> {
 }
 
 impl SIterator<Char> for RiffleCatIter<'_> {
-    fn next(&mut self) -> Result<Option<Char>, StreamError> {
+    fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
             if let Some(ch) = self.inner.next()? {
@@ -155,7 +155,7 @@ impl SIterator<Char> for RiffleCatIter<'_> {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> Result<Option<UNumber>, StreamError> {
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
             n = match self.inner.advance(n) {

@@ -51,7 +51,7 @@ impl Expr {
         }))
     }
 
-    pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> Result<Expr, StreamError> {
+    pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> SResult<Expr> {
         match self {
             Expr::Eval(node) => Ok(Expr::Eval(Rc::new(node.apply(source, args)?))),
             Expr::Repl(Subst::Input(index)) =>
@@ -70,13 +70,13 @@ impl Expr {
     }
 
     /// Evaluates this `Expr` in a default environment.
-    pub fn eval_default(&self) -> Result<Item, StreamError> {
+    pub fn eval_default(&self) -> SResult<Item> {
         self.eval(&Default::default())
     }
 
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
     /// `Node::eval()`.
-    pub fn eval(&self, env: &Env) -> Result<Item, StreamError> {
+    pub fn eval(&self, env: &Env) -> SResult<Item> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => node.eval(env),
@@ -84,7 +84,7 @@ impl Expr {
         }.map_err(|expr| expr.wrap(self))
     }
 
-    pub fn replace(&self, func: &impl Fn(&Expr) -> Result<std::borrow::Cow<'_, Expr>, StreamError>) -> Result<std::borrow::Cow<'_, Expr>, StreamError> {
+    pub fn replace(&self, func: &impl Fn(&Expr) -> SResult<std::borrow::Cow<'_, Expr>>) -> SResult<std::borrow::Cow<'_, Expr>> {
         use std::borrow::Cow;
         if let Cow::Owned(expr) = func(self)? {
             Ok(Cow::Owned(expr))
@@ -103,7 +103,7 @@ impl Expr {
             };
             let new_args = node.args.iter()
                 .map(|expr| expr.replace(func))
-                .collect::<Result<Vec<_>, _>>()?;
+                .collect::<SResult<Vec<_>>>()?;
             let res = if matches!(new_head, Cow::Owned(_))
                 || matches!(new_source, Cow::Owned(_))
                 || new_args.iter().any(|cow| matches!(cow, Cow::Owned(_))) {
