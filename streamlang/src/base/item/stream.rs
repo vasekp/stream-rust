@@ -6,6 +6,7 @@ use std::cell::Cell;
 /// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
 /// types implementing this trait need to hold enough information to produce a reconstructible
 /// [`Iterator`].
+#[allow(clippy::len_without_is_empty)]
 pub trait Stream<I = Item>: Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
@@ -22,28 +23,6 @@ pub trait Stream<I = Item>: Describe {
     ///
     /// The default implementation forwards to [`SIterator::len_remain()`].
     fn len(&self) -> Length;
-
-    /// Checks for emptiness. The default implementation first tries to answer statically from
-    /// looking at [`len()`](Stream::len). If the information is insufficient, constructs the
-    /// iterator and tries answering using [`SIterator::len_remain()`]. As a last resort, the
-    /// iterator is consumed. This usually does not need to be overridden.
-    ///
-    /// This function can't return an error. If the first call to `iter().next()` produces an
-    /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
-    fn is_empty(&self) -> SResult<bool> {
-        Ok(match self.len() {
-            Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
-            Length::Exact(_) | Length::Infinite => false,
-            _ => {
-                let mut iter = self.iter()?;
-                match iter.len_remain() {
-                    Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
-                    Length::Exact(_) | Length::Infinite => false,
-                    _ => iter.next()?.is_none()
-                }
-            }
-        })
-    }
 }
 
 impl<I: ItemType> dyn Stream<I> {
@@ -63,6 +42,28 @@ impl<I: ItemType> dyn Stream<I> {
             Ok(iter) => Box::new(WrappedIter{iter, parent: self}),
             Err(err) => Box::new(std::iter::once(Err(err.wrap(self))))
         }
+    }
+
+    /// Checks for emptiness. The default implementation first tries to answer statically from
+    /// looking at [`len()`](Stream::len). If the information is insufficient, constructs the
+    /// iterator and tries answering using [`SIterator::len_remain()`]. As a last resort, the
+    /// iterator is consumed. This usually does not need to be overridden.
+    ///
+    /// This function can't return an error. If the first call to `iter().next()` produces an
+    /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
+    pub fn is_empty(&self) -> SResult<bool> {
+        Ok(match self.len() {
+            Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
+            Length::Exact(_) | Length::Infinite => false,
+            _ => {
+                let mut iter = self.iter()?;
+                match iter.len_remain() {
+                    Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
+                    Length::Exact(_) | Length::Infinite => false,
+                    _ => iter.next()?.is_none()
+                }
+            }
+        })
     }
 
     pub(crate) fn listout(self: &Rc<Self>) -> SResult<Vec<I>> {
