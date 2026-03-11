@@ -59,11 +59,11 @@ impl Item {
     }
 
     pub fn empty_stream() -> Item {
-        Item::Stream(Rc::new(EmptyStream))
+        Item::Stream(EmptyStream::new_rc())
     }
 
     pub fn empty_string() -> Item {
-        Item::String(Rc::new(EmptyString))
+        Item::String(EmptyString::new_rc())
     }
 
     pub fn as_num(&self) -> SResult<&Number> {

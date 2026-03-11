@@ -249,6 +249,12 @@ impl<I: ItemType> Describe for Rc<dyn Stream<I>> {
 #[derive(Clone, Copy)]
 pub(crate) struct EmptyStream;
 
+impl EmptyStream {
+    pub(crate) fn new_rc() -> Rc<dyn Stream> {
+        EMPTY_STREAM.with(Rc::clone)
+    }
+}
+
 impl Stream<Item> for EmptyStream {
     fn iter(&self) -> SResult<Box<dyn SIterator<Item> + '_>> {
         Ok(Box::new(std::iter::empty()))
@@ -265,6 +271,12 @@ impl Describe for EmptyStream {
 
 #[derive(Clone, Copy)]
 pub(crate) struct EmptyString;
+
+impl EmptyString {
+    pub(crate) fn new_rc() -> Rc<dyn Stream<Char>> {
+        EMPTY_STRING.with(Rc::clone)
+    }
+}
 
 impl EmptyString {
     pub fn iter(&self) -> Box<dyn SIterator<Char> + '_> {
@@ -284,6 +296,11 @@ impl Describe for EmptyString {
     fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
         "\"\"".into()
     }
+}
+
+thread_local! {
+    static EMPTY_STREAM: Rc<EmptyStream> = Rc::new(EmptyStream);
+    static EMPTY_STRING: Rc<EmptyString> = Rc::new(EmptyString);
 }
 
 pub struct OwnedStreamIter<I = Item> {
