@@ -15,7 +15,7 @@ pub trait Stream<I = Item>: Describe {
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
     // TODO docstring
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>>;
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -26,22 +26,8 @@ pub trait Stream<I = Item>: Describe {
 }
 
 impl<I: ItemType> dyn Stream<I> {
-    /// Consume this `Stream` and turn it into a one-time standalone [`SIterator`].
-    ///
-    /// To avoid a large amount of code duplication, a `Stream` only needs to implement
-    /// [`iter()`](Stream::iter), which takes it by reference. This metod creates
-    /// a self-referential struct which holds the owned instance for the duration
-    /// of its lifetime.
-    #[allow(clippy::should_implement_trait)]
-    pub fn into_iter(self: Rc<Self>) -> OwnedStreamIter<I> {
-        OwnedStreamIter::from(self)
-    }
-
-    pub fn iter(self: &Rc<Self>) -> Box<dyn SIterator<I> + '_> {
-        match (**self).iter() {
-            Ok(iter) => Box::new(WrappedIter{iter, parent: self}),
-            Err(err) => Box::new(std::iter::once(Err(err.wrap(self))))
-        }
+    pub fn iter(self: &Rc<Self>) -> Box<dyn SIterator<I>> {
+        Rc::clone(self).into_iter()
     }
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
@@ -51,12 +37,12 @@ impl<I: ItemType> dyn Stream<I> {
     ///
     /// This function can't return an error. If the first call to `iter().next()` produces an
     /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
-    pub fn is_empty(&self) -> SResult<bool> {
+    pub fn is_empty(self: &Rc<Self>) -> SResult<bool> {
         Ok(match self.len() {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
             Length::Exact(_) | Length::Infinite => false,
             _ => {
-                let mut iter = self.iter()?;
+                let mut iter = self.iter();
                 match iter.len_remain() {
                     Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
                     Length::Exact(_) | Length::Infinite => false,
@@ -257,8 +243,8 @@ impl EmptyStream {
 }
 
 impl Stream<Item> for EmptyStream {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Item> + '_>> {
-        Ok(Box::new(std::iter::empty()))
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Item>> {
+        Box::new(std::iter::empty())
     }
 
     fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
@@ -279,15 +265,9 @@ impl EmptyString {
     }
 }
 
-impl EmptyString {
-    pub fn iter(&self) -> Box<dyn SIterator<Char> + '_> {
-        Box::new(std::iter::empty())
-    }
-}
-
 impl Stream<Char> for EmptyString {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
-        Ok(self.iter())
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+        Box::new(std::iter::empty())
     }
 
     fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
@@ -302,37 +282,6 @@ impl Describe for EmptyString {
 thread_local! {
     static EMPTY_STREAM: Rc<EmptyStream> = Rc::new(EmptyStream);
     static EMPTY_STRING: Rc<EmptyString> = Rc::new(EmptyString);
-}
-
-pub struct OwnedStreamIter<I = Item> {
-    iter: Box<dyn SIterator<I>>,
-    stream: Rc<dyn Stream<I>>,
-}
-
-impl<I: ItemType> From<Rc<dyn Stream<I>>> for OwnedStreamIter<I> {
-    fn from(stm: Rc<dyn Stream<I>>) -> Self {
-        let iter = match unsafe { &*Rc::as_ptr(&stm) as &'static dyn Stream<I> }.iter() {
-            Ok(iter) => iter,
-            Err(err) => Box::new(std::iter::once(Err(err.wrap(&stm)))),
-        };
-        OwnedStreamIter { iter, stream: stm }
-    }
-}
-
-impl<I: ItemType> SIterator<I> for OwnedStreamIter<I> {
-    fn next(&mut self) -> SResult<Option<I>> {
-        self.iter.next()
-            .map_err(|err| err.wrap(&self.stream))
-    }
-
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        self.iter.advance(n)
-            .map_err(|err| err.wrap(&self.stream))
-    }
-
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
-    }
 }
 
 struct WrappedIter<'node, I: ItemType> {

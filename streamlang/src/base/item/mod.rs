@@ -9,7 +9,6 @@ mod length;
 mod siter;
 mod itemtype;
 mod list;
-mod litstr;
 mod rndacc;
 
 pub use chr::{Char, CharCase};
@@ -17,8 +16,7 @@ pub use stream::*;
 pub use length::Length;
 pub use siter::*;
 pub use itemtype::*;
-pub(crate) use list::List;
-pub(crate) use litstr::LiteralString;
+pub(crate) use list::*;
 pub(crate) use rndacc::RandomAccess;
 
 #[cfg(test)]

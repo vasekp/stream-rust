@@ -1,31 +1,31 @@
-mod lang;
-mod streams;
-mod selfref;
-mod env;
-mod strings;
-mod cond;
-mod conv;
-mod ana;
-mod rnd;
-mod combi;
-
-#[cfg(test)]
-mod testutils;
+//mod lang;
+//mod streams;
+//mod selfref;
+//mod env;
+//mod strings;
+//mod cond;
+//mod conv;
+//mod ana;
+//mod rnd;
+//mod combi;
+//
+//#[cfg(test)]
+//mod testutils;
 
 pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
-    lang::init(symbols);
-    streams::init(symbols);
-    selfref::init(symbols);
-    env::init(symbols);
-    strings::init(symbols);
-    cond::init(symbols);
-    conv::init(symbols);
-    ana::init(symbols);
-    rnd::init(symbols);
-    combi::init(symbols);
+    //lang::init(symbols);
+    //streams::init(symbols);
+    //selfref::init(symbols);
+    //env::init(symbols);
+    //strings::init(symbols);
+    //cond::init(symbols);
+    //conv::init(symbols);
+    //ana::init(symbols);
+    //rnd::init(symbols);
+    //combi::init(symbols);
 
-    #[cfg(test)]
-    testutils::init(symbols);
+    //#[cfg(test)]
+    //testutils::init(symbols);
 }
 
 #[cfg(test)]
