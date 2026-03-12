@@ -1,7 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::LazyLock;
 
-static STOP: LazyLock<AtomicBool> = LazyLock::new(|| AtomicBool::new(false));
+static STOP: AtomicBool = AtomicBool::new(false);
 
 pub fn reset_stop() {
     STOP.store(false, Ordering::SeqCst);
