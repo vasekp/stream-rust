@@ -80,11 +80,12 @@ struct Last<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Last<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         let mut it = self.source.iter();
-        match it.advance(self.skip.to_owned())? {
-            None => Ok(it),
-            Some(_) => Ok(Box::new(std::iter::empty())),
+        match it.advance(self.skip.to_owned()) {
+            Ok(None) => it,
+            Ok(Some(_)) => Box::new(std::iter::empty()),
+            Err(err) => iter_error(err, &self),
         }
     }
 

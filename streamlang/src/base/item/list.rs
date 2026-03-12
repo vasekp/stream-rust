@@ -5,6 +5,12 @@ pub struct List<I: ItemType>(Vec<I>);
 
 pub type LiteralString = List<Char>;
 
+impl<I: ItemType> List<I> where List<I>: Describe {
+    pub fn iter(self: &Rc<Self>) -> Box<dyn SIterator<I>> {
+        Rc::clone(self).into_iter()
+    }
+}
+
 impl<I: ItemType> Stream<I> for List<I> where List<I>: Describe {
     fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Box::new(ListIter::new(self))
@@ -44,6 +50,12 @@ impl<I: ItemType> From<Vec<I>> for List<I> {
 impl From<&str> for List<Char> {
     fn from(s: &str) -> Self {
         List(s.chars().map(Char::from).collect())
+    }
+}
+
+impl List<Char> {
+    pub fn as_slice(&self) -> &[Char] {
+        &self.0[..]
     }
 }
 

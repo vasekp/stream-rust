@@ -51,8 +51,8 @@ impl Describe for RndStream {
 }
 
 impl Stream for RndStream {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(RndIter::new(self)))
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        RndIter::new(self).wrap()
     }
 
     fn len(&self) -> Length {
@@ -60,37 +60,37 @@ impl Stream for RndStream {
     }
 }
 
-struct RndIter<'node> {
-    parent: &'node RndStream,
+struct RndIter {
+    node: Rc<RndStream>,
     pos: UNumber,
 }
 
-impl<'node> RndIter<'node> {
-    fn new(parent: &'node RndStream) -> Self {
-        RndIter { parent, pos: UNumber::zero() }
+impl RndIter {
+    fn new(node: Rc<RndStream>) -> Self {
+        RndIter { node, pos: UNumber::zero() }
     }
 }
 
-impl SIterator for RndIter<'_> {
+impl PreIterator for RndIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let mut hasher = self.parent.hasher.clone();
+        let mut hasher = self.node.hasher.clone();
         Hash::hash(&self.pos, &mut hasher);
         let seed = hasher.finish();
         let mut rng = SmallRng::seed_from_u64(seed);
         let rnd = loop {
-            let mut digits = Vec::with_capacity(self.parent.num_digits);
-            for _ in 0..self.parent.num_digits {
+            let mut digits = Vec::with_capacity(self.node.num_digits);
+            for _ in 0..self.node.num_digits {
                 digits.push(rng.random());
             }
             let rnd = UNumber::from_be_bytes(&digits[..]);
-            if rnd < self.parent.cutoff {
+            if rnd < self.node.cutoff {
                 break rnd;
             } else {
                 //eprintln!("drop");
             }
         };
-        let rem = rnd % &self.parent.len;
-        let mut iter = self.parent.source.iter();
+        let rem = rnd % &self.node.len;
+        let mut iter = self.node.source.iter();
         iter.advance(rem)?;
         self.pos += 1;
         iter.next()
@@ -103,6 +103,10 @@ impl SIterator for RndIter<'_> {
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.pos += n;
         Ok(None)
+    }
+
+    fn origin(&self) -> &Rc<RndStream> {
+        &self.node
     }
 }
 

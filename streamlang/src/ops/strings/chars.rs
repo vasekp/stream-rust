@@ -21,8 +21,8 @@ impl Describe for Chars {
 }
 
 impl Stream for Chars {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(self.source.map_iter(|ch| Ok(Item::Char(ch))))
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        self.source.map(Item::Char)
     }
 
     fn len(&self) -> Length {
@@ -51,8 +51,8 @@ impl Describe for Str {
 }
 
 impl Stream<Char> for Str {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
-        Ok(self.source.map_iter(Item::into_char))
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+        Box::new(SMap::new(&self.source, Item::into_char, &self))
     }
 
     fn len(&self) -> Length {

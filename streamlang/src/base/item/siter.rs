@@ -68,8 +68,25 @@ impl<I> Iterator for Transposed<'_, I> {
 
 pub(crate) trait PreIterator<I: ItemType = Item>: Sized + 'static {
     fn next(&mut self) -> SResult<Option<I>>;
+
     fn len_remain(&self) -> Length;
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>>;
+
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+        if let Length::Exact(len) = self.len_remain()
+            && n > len {
+                return Ok(Some(n - &len));
+            }
+        while !n.is_zero() {
+            check_stop!();
+            match self.next()? {
+                Some(_) => (),
+                None => return Ok(Some(n))
+            }
+            n -= 1;
+        }
+        Ok(None)
+    }
+
     fn origin(&self) -> &Rc<impl Stream<I> + 'static>;
 
     fn get_blame(&self) -> Rc<dyn Stream<I>> {
@@ -196,8 +213,7 @@ impl<I1: ItemType, I2, F: Fn(I1) -> I2> Map<I1, I2, F> {
 
 impl<I1: ItemType, I2, F: Fn(I1) -> I2> SIterator<I2> for Map<I1, I2, F> {
     fn next(&mut self) -> SResult<Option<I2>> {
-        Ok(self.source.next()?
-            .map(&self.func))
+        Ok(self.source.next()?.map(&self.func))
     }
 
     fn len_remain(&self) -> Length {

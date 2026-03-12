@@ -17,7 +17,7 @@ fn eval_ulcase(node: &Node, env: &Env) -> SResult<Item> {
 struct ULCase {
     head: Head,
     source: Rc<dyn Stream<Char>>,
-    func: fn(&Char) -> Char
+    func: fn(&Char) -> Char,
 }
 
 impl Describe for ULCase {
@@ -29,8 +29,9 @@ impl Describe for ULCase {
 }
 
 impl Stream<Char> for ULCase {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
-        Ok(self.source.map_iter(|ch| Ok((self.func)(&ch))))
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+        let func = self.func;
+        self.source.map(move |ch| (func)(&ch))
     }
 
     fn len(&self) -> Length {

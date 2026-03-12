@@ -28,18 +28,18 @@ pub struct RepeatItem<I: ItemType> {
     count: Option<UNumber>
 }
 
-struct RepeatItemIter<'node, I: ItemType> {
-    item: &'node I,
+struct RepeatItemIter<I: ItemType> {
+    node: Rc<RepeatItem<I>>,
     count_rem: UNumber // None covered by std::iter::repeat_with
 }
 
 
 impl<I: ItemType> Stream<I> for RepeatItem<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(match &self.count {
-            Some(count) => Box::new(RepeatItemIter{item: &self.item, count_rem: count.to_owned()}),
-            None => Box::new(std::iter::repeat_with(|| Ok(self.item.clone())))
-        })
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        match &self.count {
+            Some(count) => RepeatItemIter{count_rem: count.to_owned(), node: self}.wrap(),
+            None => Box::new(std::iter::repeat(Ok(self.item.clone()))),
+        }
     }
 
     fn len(&self) -> Length {
@@ -60,11 +60,11 @@ impl<I: ItemType> Describe for RepeatItem<I> {
     }
 }
 
-impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
+impl<I: ItemType> PreIterator<I> for RepeatItemIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         if !self.count_rem.is_zero() {
             self.count_rem -= 1;
-            Ok(Some(self.item.clone()))
+            Ok(Some(self.node.item.clone()))
         } else {
             Ok(None)
         }
@@ -82,6 +82,10 @@ impl<I: ItemType> SIterator<I> for RepeatItemIter<'_, I> {
     fn len_remain(&self) -> Length {
         Length::Exact(self.count_rem.to_owned())
     }
+
+    fn origin(&self) -> &Rc<RepeatItem<I>> {
+        &self.node
+    }
 }
 
 pub struct RepeatStream<I: ItemType> {
@@ -91,14 +95,14 @@ pub struct RepeatStream<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for RepeatStream<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(Box::new(RepeatStreamIter {
-            stream: &self.stream,
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        RepeatStreamIter {
             iter: self.stream.iter(),
             len: self.stream.len(),
             resets_rem: self.count.as_ref()
-                .map(|count| count - 1u32)
-        }))
+                .map(|count| count - 1u32),
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -123,14 +127,14 @@ impl<I: ItemType> Describe for RepeatStream<I> {
     }
 }
 
-struct RepeatStreamIter<'node, I: ItemType> {
-    stream: &'node Rc<dyn Stream<I>>,
-    iter: Box<dyn SIterator<I> + 'node>,
+struct RepeatStreamIter<I: ItemType> {
+    node: Rc<RepeatStream<I>>,
+    iter: Box<dyn SIterator<I>>,
     len: Length,
     resets_rem: Option<UNumber>
 }
 
-impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
+impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         let next = self.iter.next()?;
         if next.is_some() {
@@ -142,7 +146,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
             }
             *count -= 1;
         }
-        self.iter = self.stream.iter();
+        self.iter = self.node.stream.iter();
         self.iter.next()
     }
 
@@ -156,7 +160,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
             }
             *count -= 1;
         }
-        self.iter = self.stream.iter();
+        self.iter = self.node.stream.iter();
 
         // This point is special: we know that iter() is now newly initiated, so we can use it to
         // determine the length regardless of whether it's statically known.
@@ -185,7 +189,7 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
             }
             *count -= 1;
         }
-        self.iter = self.stream.iter();
+        self.iter = self.node.stream.iter();
         debug_assert!(n < full_length);
         self.iter.advance(n)
     }
@@ -199,6 +203,10 @@ impl<I: ItemType> SIterator<I> for RepeatStreamIter<'_, I> {
                 _ => Length::Unknown
             }
         }
+    }
+
+    fn origin(&self) -> &Rc<RepeatStream<I>> {
+        &self.node
     }
 }
 

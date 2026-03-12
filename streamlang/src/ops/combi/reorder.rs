@@ -36,13 +36,13 @@ impl Describe for ReorderStream {
 }
 
 impl Stream for ReorderStream {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(ReorderIter {
-            parent: self,
-            iter: RandomAccess::new(&self.source),
-            state: ReorderState::Args { vec_iter: self.indices.iter() },
-            pos: UNumber::zero()
-        }))
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        ReorderIter {
+            iter: RandomAccess::new(Rc::clone(&self.source)),
+            state: ReorderState::Args { iter: 0..self.indices.len() },
+            pos: UNumber::zero(),
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -50,27 +50,27 @@ impl Stream for ReorderStream {
     }
 }
 
-struct ReorderIter<'node> {
-    parent: &'node ReorderStream,
-    iter: RandomAccess<'node, Item>,
-    state: ReorderState<'node>,
+struct ReorderIter {
+    node: Rc<ReorderStream>,
+    iter: RandomAccess,
+    state: ReorderState,
     pos: UNumber,
 }
 
-enum ReorderState<'node> {
-    Args { vec_iter: std::slice::Iter<'node, UNumber> },
+enum ReorderState {
+    Args { iter: std::ops::Range<usize> },
     Missed { index: UNumber },
     Rest
 }
 
-impl SIterator for ReorderIter<'_> {
+impl PreIterator for ReorderIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
             match &mut self.state {
-                ReorderState::Args{vec_iter} => {
-                    if let Some(next) = vec_iter.next() {
-                        match self.iter.nth_from_start(next - 1u32)? {
+                ReorderState::Args{iter} => {
+                    if let Some(next) = iter.next() {
+                        match self.iter.nth_from_start(&self.node.indices[next] - 1u32)? {
                             Some(item) => {
                                 self.pos += 1;
                                 return Ok(Some(item))
@@ -78,21 +78,21 @@ impl SIterator for ReorderIter<'_> {
                             None => return Err("index past end".into())
                         }
                     }
-                    if usize::try_from(&self.parent.max_index)
-                            .is_ok_and(|max| max == self.parent.indices.len()) {
-                        self.iter.move_to(self.parent.max_index.to_owned())?;
+                    if usize::try_from(&self.node.max_index)
+                            .is_ok_and(|max| max == self.node.indices.len()) {
+                        self.iter.move_to(self.node.max_index.to_owned())?;
                         self.state = ReorderState::Rest;
                     } else {
                         self.state = ReorderState::Missed{index: UNumber::one()};
                     }
                 },
                 ReorderState::Missed{index} => {
-                    if *index > self.parent.max_index {
+                    if *index > self.node.max_index {
                         self.iter.move_to(&*index - 1u32)?;
                         self.state = ReorderState::Rest;
                         continue;
                     }
-                    if self.parent.indices.contains(index) {
+                    if self.node.indices.contains(index) {
                         *index += 1;
                         continue;
                     } else {
@@ -111,8 +111,8 @@ impl SIterator for ReorderIter<'_> {
     }
 
     fn len_remain(&self) -> Length {
-        self.parent.source.len().map(|len| if len >= &self.pos { len - &self.pos }
-            else { UNumber::zero() })
+        self.node.source.len()
+            .map(|len| if len >= &self.pos { len - &self.pos } else { UNumber::zero() })
     }
 
     fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
@@ -122,8 +122,8 @@ impl SIterator for ReorderIter<'_> {
                 return Ok(None);
             }
             match &mut self.state {
-                ReorderState::Args{vec_iter} => {
-                    while !n.is_zero() && vec_iter.next().is_some() {
+                ReorderState::Args{iter} => {
+                    while !n.is_zero() && iter.next().is_some() {
                         n -= 1;
                         self.pos += 1;
                     }
@@ -134,7 +134,7 @@ impl SIterator for ReorderIter<'_> {
                 },
                 ReorderState::Missed{index} => {
                     let new_index = &*index + &n;
-                    let skipped = self.parent.indices.iter()
+                    let skipped = self.node.indices.iter()
                         .filter(|ix| (&*index..&new_index).contains(ix))
                         .count();
                     self.pos += &n - skipped;
@@ -146,7 +146,7 @@ impl SIterator for ReorderIter<'_> {
                         Ok(Some(remain)) => return Ok(Some(remain + skipped)),
                         Err(err) => return Err(err)
                     }
-                    if self.pos > self.parent.max_index {
+                    if self.pos > self.node.max_index {
                         self.state = ReorderState::Rest;
                     }
                 },
@@ -156,6 +156,10 @@ impl SIterator for ReorderIter<'_> {
                 }
             }
         }
+    }
+
+    fn origin(&self) -> &Rc<ReorderStream> {
+        &self.node
     }
 }
 

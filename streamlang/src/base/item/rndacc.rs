@@ -1,22 +1,22 @@
 use crate::base::*;
 
-pub(crate) struct RandomAccess<'stm, I: ItemType = Item> {
-    source: &'stm Rc<dyn Stream<I>>,
-    iter: Box<dyn SIterator<I> + 'stm>,
+pub(crate) struct RandomAccess<I: ItemType = Item> {
+    source: Rc<dyn Stream<I>>,
+    iter: Box<dyn SIterator<I>>,
     consumed: UNumber,
 }
 
-impl<'stm, I: ItemType> RandomAccess<'stm, I> {
-    pub fn new(source: &'stm Rc<dyn Stream<I>>) -> Self {
+impl<I: ItemType> RandomAccess<I> {
+    pub fn new(source: Rc<dyn Stream<I>>) -> Self {
         Self {
-            source,
             iter: source.iter(),
             consumed: UNumber::zero(),
+            source,
         }
     }
 }
 
-impl<I: ItemType> SIterator<I> for RandomAccess<'_, I> {
+impl<I: ItemType> SIterator<I> for RandomAccess<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         self.consumed += 1;
         self.iter.next()
@@ -32,7 +32,7 @@ impl<I: ItemType> SIterator<I> for RandomAccess<'_, I> {
     }
 }
 
-impl<I: ItemType> RandomAccess<'_, I> {
+impl<I: ItemType> RandomAccess<I> {
     pub(crate) fn move_to(&mut self, index: UNumber) -> SResult<Option<UNumber>> {
         if index < self.consumed {
             self.iter = self.source.iter();

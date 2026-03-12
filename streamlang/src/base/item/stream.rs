@@ -232,6 +232,9 @@ impl<I: ItemType> Describe for Rc<dyn Stream<I>> {
     }
 }
 
+pub(crate) fn iter_error<I: ItemType, T: Stream<I> + 'static>(err: impl Into<StreamError>, blame: &Rc<T>) -> Box<dyn SIterator<I>> {
+    Box::new(std::iter::once(Err(err.into().wrap(&(Rc::clone(blame) as Rc<dyn Stream<I>>)))))
+}
 
 #[derive(Clone, Copy)]
 pub(crate) struct EmptyStream;
@@ -240,11 +243,15 @@ impl EmptyStream {
     pub(crate) fn new_rc() -> Rc<dyn Stream> {
         EMPTY_STREAM.with(Rc::clone)
     }
+
+    pub fn iter() -> Box<dyn SIterator<Item>> {
+        Box::new(std::iter::empty())
+    }
 }
 
 impl Stream<Item> for EmptyStream {
     fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Item>> {
-        Box::new(std::iter::empty())
+        Self::iter()
     }
 
     fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
@@ -263,11 +270,15 @@ impl EmptyString {
     pub(crate) fn new_rc() -> Rc<dyn Stream<Char>> {
         EMPTY_STRING.with(Rc::clone)
     }
+
+    pub fn iter() -> Box<dyn SIterator<Char>> {
+        Box::new(std::iter::empty())
+    }
 }
 
 impl Stream<Char> for EmptyString {
     fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        Box::new(std::iter::empty())
+        Self::iter()
     }
 
     fn len(&self) -> Length { Length::Exact(UNumber::zero()) }

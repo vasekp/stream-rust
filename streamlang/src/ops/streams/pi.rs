@@ -8,18 +8,18 @@ fn eval_pi(node: &Node, env: &Env) -> SResult<Item> {
         [Item::Number(radix)] => Some(radix.try_cast_within(2u32..)?),
         _ => return Err(StreamError::usage(&node.head))
     };
-    Ok(Item::new_stream(Pi{head: node.head.clone(), radix}))
+    Ok(Item::new_stream(PiStream{head: node.head.clone(), radix}))
 }
 
 #[derive(Clone)]
-pub struct Pi {
+pub struct PiStream {
     head: Head,
     radix: Option<u32>,
 }
 
-impl Stream for Pi {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(PiIter::new(self)))
+impl Stream for PiStream {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        PiIter::new(self).wrap()
     }
 
     fn len(&self) -> Length {
@@ -27,7 +27,7 @@ impl Stream for Pi {
     }
 }
 
-impl Describe for Pi {
+impl Describe for PiStream {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
             .push_args(&self.radix)
@@ -36,21 +36,23 @@ impl Describe for Pi {
 }
 
 struct PiIter {
+    node: Rc<PiStream>,
     inner: PiIterInner,
     cached: Vec<u32>
 }
 
 impl PiIter {
-    fn new(node: &Pi) -> PiIter {
+    fn new(node: Rc<PiStream>) -> PiIter {
         let radix = node.radix.unwrap_or(10);
         PiIter {
             inner: PiIterInner::new(radix),
-            cached: if radix <= 3 { vec![0] } else { vec![] }
+            cached: if radix <= 3 { vec![0] } else { vec![] },
+            node,
         }
     }
 }
 
-impl SIterator for PiIter {
+impl PreIterator for PiIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         if self.cached.len() >= 2 {
             return Ok(Some(Item::new_number(self.cached.remove(0))));
@@ -86,6 +88,10 @@ impl SIterator for PiIter {
             },
             _ => Err("numerical overflow".into())
         }
+    }
+
+    fn origin(&self) -> &Rc<PiStream> {
+        &self.node
     }
 }
 

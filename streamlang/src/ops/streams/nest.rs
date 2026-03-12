@@ -8,10 +8,9 @@ struct NestSource {
     env: Env
 }
 
-struct NestIterSource<'node> {
-    body: &'node Node,
+struct NestIterSource {
+    node: Rc<NestSource>,
     prev: Item,
-    env: &'node Env
 }
 
 struct NestArgs {
@@ -20,10 +19,9 @@ struct NestArgs {
     env: Env
 }
 
-struct NestIterArgs<'node> {
-    body: &'node Node<Item>,
+struct NestIterArgs {
+    node: Rc<NestArgs>,
     prev: VecDeque<Item>,
-    env: &'node Env
 }
 
 fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
@@ -33,9 +31,16 @@ fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
         return Err(StreamError::usage(&node.head));
     };
     if body.args.is_empty() && let Some(source) = &node.source {
-        Ok(Item::new_stream(NestSource{head: node.head.clone(), source: source.eval(env)?, body: Rc::clone(body), env: env.clone()}))
+        Ok(Item::new_stream(NestSource{
+            head: node.head.clone(),
+            source: source.eval(env)?,
+            body: Rc::clone(body),
+            env: env.clone()}))
     } else if !body.args.is_empty() && node.source.is_none() {
-        Ok(Item::new_stream(NestArgs{head: node.head.clone(), body: body.eval_all(env)?, env: env.clone()}))
+        Ok(Item::new_stream(NestArgs{
+            head: node.head.clone(),
+            body: body.eval_all(env)?,
+            env: env.clone()}))
     } else {
         Err(StreamError::usage(&node.head))
     }
@@ -59,8 +64,8 @@ impl Describe for NestArgs {
 }
 
 impl Stream for NestSource {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(NestIterSource{body: &self.body, prev: self.source.clone(), env: &self.env}))
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        NestIterSource{prev: self.source.clone(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -69,9 +74,9 @@ impl Stream for NestSource {
 }
 
 impl Stream for NestArgs {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let args = self.body.args.iter().cloned().collect();
-        Ok(Box::new(NestIterArgs{body: &self.body, prev: args, env: &self.env}))
+        NestIterArgs{prev: args, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -79,12 +84,12 @@ impl Stream for NestArgs {
     }
 }
 
-impl SIterator for NestIterSource<'_> {
+impl PreIterator for NestIterSource {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let node = Node::new(self.body.head.clone(),
+        let node = Node::new(self.node.body.head.clone(),
             Some(Expr::from(&self.prev)),
             vec![]);
-        let item = node.eval(self.env)?;
+        let item = node.eval(&self.node.env)?;
         self.prev = item.clone();
         Ok(Some(item))
     }
@@ -92,15 +97,19 @@ impl SIterator for NestIterSource<'_> {
     fn len_remain(&self) -> Length {
         Length::Infinite
     }
+
+    fn origin(&self) -> &Rc<NestSource> {
+        &self.node
+    }
 }
 
-impl SIterator for NestIterArgs<'_> {
+impl PreIterator for NestIterArgs {
     fn next(&mut self) -> SResult<Option<Item>> {
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();
-        let node = Node::new(self.body.head.clone(), None, args);
-        let item = node.eval(self.env)?;
+        let node = Node::new(self.node.body.head.clone(), None, args);
+        let item = node.eval(&self.node.env)?;
         self.prev.pop_front();
         self.prev.push_back(item.clone());
         Ok(Some(item))
@@ -108,6 +117,10 @@ impl SIterator for NestIterArgs<'_> {
 
     fn len_remain(&self) -> Length {
         Length::Infinite
+    }
+
+    fn origin(&self) -> &Rc<NestArgs> {
+        &self.node
     }
 }
 

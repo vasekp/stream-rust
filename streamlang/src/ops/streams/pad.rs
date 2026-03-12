@@ -48,18 +48,24 @@ impl<I: ItemType> Describe for PadLeft<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadLeft<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         if self.source.len() == Length::Infinite {
-            Ok(self.source.iter())
-        } else {
-            let len = self.source.try_count()?;
-            let pad_remain = if len < self.len { &self.len - &len } else { UNumber::zero() };
-            Ok(Box::new(PadLeftIter {
-                source: self.source.iter(),
-                pad_remain,
-                padding: &self.padding
-            }))
+            return self.source.iter();
         }
+        let len = match self.source.try_count() {
+            Ok(len) => len,
+            Err(err) => return iter_error(err, &self),
+        };
+        let pad_remain = if len < self.len {
+            &self.len - &len
+        } else {
+            UNumber::zero()
+        };
+        PadLeftIter {
+            source: self.source.iter(),
+            pad_remain,
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -74,17 +80,17 @@ impl<I: ItemType> Stream<I> for PadLeft<I> {
     }
 }
 
-struct PadLeftIter<'node, I: ItemType> {
-    source: Box<dyn SIterator<I> + 'node>,
+struct PadLeftIter<I: ItemType> {
+    node: Rc<PadLeft<I>>,
+    source: Box<dyn SIterator<I>>,
     pad_remain: UNumber,
-    padding: &'node I,
 }
 
-impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
+impl<I: ItemType> PreIterator<I> for PadLeftIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         if !self.pad_remain.is_zero() {
             self.pad_remain -= 1;
-            Ok(Some(self.padding.clone()))
+            Ok(Some(self.node.padding.clone()))
         } else {
             self.source.next()
         }
@@ -106,6 +112,10 @@ impl<I: ItemType> SIterator<I> for PadLeftIter<'_, I> {
             self.source.advance(n)
         }
     }
+
+    fn origin(&self) -> &Rc<PadLeft<I>> {
+        &self.node
+    }
 }
 
 struct PadRight<I: ItemType> {
@@ -126,16 +136,15 @@ impl<I: ItemType> Describe for PadRight<I> {
 }
 
 impl<I: ItemType> Stream<I> for PadRight<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         if self.source.len() == Length::Infinite {
-            Ok(self.source.iter())
+            self.source.iter()
         } else {
-            Ok(Box::new(PadRightIter {
+            PadRightIter {
                 source: Some(self.source.iter()),
-                len: &self.len,
                 pos: UNumber::zero(),
-                padding: &self.padding
-            }))
+                node: self,
+            }.wrap()
         }
     }
 
@@ -151,14 +160,13 @@ impl<I: ItemType> Stream<I> for PadRight<I> {
     }
 }
 
-struct PadRightIter<'node, I: ItemType> {
-    source: Option<Box<dyn SIterator<I> + 'node>>,
-    len: &'node UNumber,
+struct PadRightIter<I: ItemType> {
+    node: Rc<PadRight<I>>,
+    source: Option<Box<dyn SIterator<I>>>,
     pos: UNumber,
-    padding: &'node I,
 }
 
-impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
+impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         if let Some(ref mut iter) = self.source {
             if let Some(res) = iter.next()? {
@@ -168,9 +176,9 @@ impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
                 self.source = None;
             }
         }
-        if &self.pos < self.len {
+        if &self.pos < &self.node.len {
             self.pos += 1;
-            Ok(Some(self.padding.clone()))
+            Ok(Some(self.node.padding.clone()))
         } else {
             Ok(None)
         }
@@ -179,8 +187,8 @@ impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
     fn len_remain(&self) -> Length {
         match &self.source {
             Some(iter) => iter.len_remain().map(|len|
-                std::cmp::max(len, &(self.len - &self.pos)).to_owned()),
-            None => Length::Exact(self.len - &self.pos)
+                std::cmp::max(len, &(&self.node.len - &self.pos)).to_owned()),
+            None => Length::Exact(&self.node.len - &self.pos)
         }
     }
 
@@ -193,11 +201,15 @@ impl<I: ItemType> SIterator<I> for PadRightIter<'_, I> {
                 self.source = None;
             }
         }
-        if &self.pos > self.len {
-            Ok(Some(&self.pos - self.len))
+        if &self.pos > &self.node.len {
+            Ok(Some(&self.pos - &self.node.len))
         } else {
             Ok(None)
         }
+    }
+
+    fn origin(&self) -> &Rc<PadRight<I>> {
+        &self.node
     }
 }
 

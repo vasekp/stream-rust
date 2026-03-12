@@ -19,11 +19,10 @@ struct Fold {
     env: Env
 }
 
-struct FoldIter<'node> {
-    body: &'node Node<Item>,
-    source: Box<dyn SIterator + 'node>,
+struct FoldIter {
+    node: Rc<Fold>,
+    source: Box<dyn SIterator>,
     prev: VecDeque<Item>,
-    env: &'node Env
 }
 
 impl Describe for Fold {
@@ -36,9 +35,9 @@ impl Describe for Fold {
 }
 
 impl Stream for Fold {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let args = self.body.args.iter().cloned().collect();
-        Ok(Box::new(FoldIter{body: &self.body, source: self.source.iter(), prev: args, env: &self.env}))
+        FoldIter{source: self.source.iter(), prev: args, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -46,14 +45,14 @@ impl Stream for Fold {
     }
 }
 
-impl SIterator for FoldIter<'_> {
+impl PreIterator for FoldIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
         let args = self.prev.iter()
             .map(|item| Expr::Imm(item.to_owned()))
             .collect();
-        let node = Node::new(self.body.head.clone(), Some(source.into()), args);
-        let item = node.eval(self.env)?;
+        let node = Node::new(self.node.body.head.clone(), Some(source.into()), args);
+        let item = node.eval(&self.node.env)?;
         self.prev.pop_front();
         self.prev.push_back(item.clone());
         Ok(Some(item))
@@ -61,6 +60,10 @@ impl SIterator for FoldIter<'_> {
 
     fn len_remain(&self) -> Length {
         self.source.len_remain()
+    }
+
+    fn origin(&self) -> &Rc<Fold> {
+        &self.node
     }
 }
 

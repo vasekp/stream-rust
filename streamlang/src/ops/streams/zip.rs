@@ -14,7 +14,6 @@ struct Zip {
     streams: Vec<Rc<dyn Stream>>,
 }
 
-
 impl Describe for Zip {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
@@ -24,11 +23,11 @@ impl Describe for Zip {
 }
 
 impl Stream for Zip {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let iters = self.streams.iter()
             .map(|stm| stm.iter())
             .collect();
-        Ok(Box::new(ZipIter{iters}))
+        ZipIter{iters, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -39,11 +38,12 @@ impl Stream for Zip {
     }
 }
 
-struct ZipIter<'node> {
-    iters: Vec<Box<dyn SIterator + 'node>>
+struct ZipIter {
+    node: Rc<Zip>,
+    iters: Vec<Box<dyn SIterator>>,
 }
 
-impl SIterator for ZipIter<'_> {
+impl PreIterator for ZipIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let mut vec = Vec::with_capacity(self.iters.len());
         for iter in &mut self.iters {
@@ -68,6 +68,10 @@ impl SIterator for ZipIter<'_> {
             .map(|iter| iter.len_remain())
             .reduce(Length::intersection)
             .unwrap()
+    }
+
+    fn origin(&self) -> &Rc<Zip> {
+        &self.node
     }
 }
 
