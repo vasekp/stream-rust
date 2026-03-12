@@ -1,0 +1,10 @@
+[package]
+name = "stream-cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+streamlang = { path = "../streamlang" }
+rustyline = "15.0"
+ctrlc = "3.4"
+colored = "3"

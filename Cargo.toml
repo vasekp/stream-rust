@@ -1,12 +1,15 @@
-[package]
-name = "streamlang"
-version = "0.1.0"
-edition = "2024"
+[workspace]
 
-[dependencies]
-num = "0.4.3"
-rustyline = "15.0"
-ctrlc = "3.4"
-colored = "3"
-rand = "0.9"
-ibig = "0.3.6"
+members = [
+    "streamlang",
+    "stream-wasm"
+, "stream-cli"]
+
+resolver = "2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

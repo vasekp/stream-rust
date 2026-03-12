@@ -1,0 +1,9 @@
+[package]
+name = "streamlang"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+num = "0.4.3"
+rand = { version = "0.9", default-features = false, features = ["small_rng"] }
+ibig = "0.3.6"
