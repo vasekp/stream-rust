@@ -163,6 +163,7 @@ impl Display for ParseError<'_> {
 macro_rules! check_stop {
     () => {
         if stop::should_stop() {
+            stop::reset_stop();
             Err(StreamError::interrupt())?;
         }
     };
