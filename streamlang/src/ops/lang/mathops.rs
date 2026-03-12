@@ -161,13 +161,13 @@ impl Describe for MathOp {
 }
 
 impl Stream for MathOp {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let args = self.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
-                item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
+                item => Box::new(std::iter::repeat(item.clone()))
             }).collect();
-        Ok(Box::new(MathOpIter{head: &self.head, args, env: &self.env, func: self.func}))
+        Box::new(MathOpIter{args, func: self.func, node: self})
     }
 
     fn len(&self) -> Length {
@@ -181,20 +181,19 @@ impl Stream for MathOp {
     }
 }
 
-struct MathOpIter<'node> {
-    head: &'node Head,
-    args: Vec<Box<dyn SIterator + 'node>>,
-    env: &'node Env,
+struct MathOpIter {
+    node: Rc<MathOp>,
+    args: Vec<Box<dyn SIterator>>,
     func: MathFunc
 }
 
-impl SIterator for MathOpIter<'_> {
+impl SIterator for MathOpIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let inputs = iter_try!(self.args.iter_mut()
             .map(|iter| iter.next())
             .collect::<SResult<Option<Vec<_>>>>());
-        let node = Node { head: self.head.clone(), source: None, args: inputs };
-        MathOp::eval_with(&node, self.env, self.func).map(Option::Some)
+        let node = Node { head: self.node.head.clone(), source: None, args: inputs };
+        MathOp::eval_with(&node, &self.node.env, self.func).map(Option::Some)
     }
 
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
@@ -291,15 +290,15 @@ impl Describe for StringOp {
 }
 
 impl Stream<Char> for StringOp {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         let first = self.first.iter();
         let rest = self.rest.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
                 Item::String(stm) => stm.map_iter(|ch| Ok(Item::Char(ch))),
-                item => Box::new(std::iter::repeat_with(|| Ok(item.clone())))
+                item => Box::new(std::iter::repeat(item.clone()))
             }).collect();
-        Ok(Box::new(StringOpIter{first, rest, env: &self.env, func: self.func}))
+        Box::new(StringOpIter{first, rest, func: self.func, node: self})
     }
 
     fn len(&self) -> Length {
@@ -317,24 +316,24 @@ impl Stream<Char> for StringOp {
     }
 }
 
-struct StringOpIter<'node> {
-    first: Box<dyn SIterator<Char> + 'node>,
-    rest: Vec<Box<dyn SIterator + 'node>>,
-    env: &'node Env,
+struct StringOpIter {
+    node: Rc<StringOp>,
+    first: Box<dyn SIterator<Char>>,
+    rest: Vec<Box<dyn SIterator>>,
     func: StringFunc
 }
 
-impl SIterator<Char> for StringOpIter<'_> {
+impl SIterator<Char> for StringOpIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         let ch = iter_try!(self.first.next());
-        if !self.env.alpha.contains(&ch) {
+        if !self.node.env.alpha.contains(&ch) {
             return Ok(Some(ch));
         }
 
         let inputs = iter_try!(self.rest.iter_mut()
             .map(|iter| iter.next())
             .collect::<SResult<Option<Vec<_>>>>());
-        (self.func)(&ch, &inputs, self.env).map(Option::Some)
+        (self.func)(&ch, &inputs, &self.node.env).map(Option::Some)
     }
 
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
@@ -343,7 +342,7 @@ impl SIterator<Char> for StringOpIter<'_> {
         while !remain.is_zero() {
             match self.first.next()? {
                 Some(ch) => {
-                    if self.env.alpha.contains(&ch) {
+                    if self.node.env.alpha.contains(&ch) {
                         n_chars += 1;
                     }
                 },

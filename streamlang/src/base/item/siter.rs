@@ -106,6 +106,20 @@ impl<I> SIterator<I> for std::iter::Empty<SResult<I>> {
     }
 }
 
+impl<I: ItemType + Clone> SIterator<I> for std::iter::Repeat<I> {
+    fn next(&mut self) -> SResult<Option<I>> {
+        Ok(Iterator::next(self))
+    }
+
+    fn len_remain(&self) -> Length {
+        Length::Infinite
+    }
+
+    fn advance(&mut self, _n: UNumber) -> SResult<Option<UNumber>> {
+        Ok(None)
+    }
+}
+
 impl<I: Clone> SIterator<I> for std::iter::Repeat<SResult<I>> {
     fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
@@ -136,19 +150,18 @@ where F: FnMut() -> SResult<I>
     }
 }
 
-pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> {
-    _parent: Rc<dyn Stream<I1>>,
-    source: Box<dyn SIterator<I1> + 'node>,
+pub(crate) struct SMap<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> {
+    source: Box<dyn SIterator<I1>>,
     func: F
 }
 
-impl<'node, I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SMap<'node, I1, I2, F> {
-    pub(crate) fn new(stream: &'node Rc<dyn Stream<I1>>, func: F) -> Self {
-        SMap{_parent: Rc::clone(stream), source: stream.iter(), func}
+impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SMap<I1, I2, F> {
+    pub(crate) fn new(stream: &Rc<dyn Stream<I1>>, func: F) -> Self {
+        SMap{source: stream.iter(), func}
     }
 }
 
-impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<'_, I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<I1, I2, F> {
     fn next(&mut self) -> SResult<Option<I2>> {
         self.source.next()?
             .map(&self.func)
