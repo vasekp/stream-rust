@@ -64,7 +64,7 @@ struct Part {
 
 impl Stream for Part {
     fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        Box::new(PartIter{iter: self.indices.iter(), node: self})
+        PartIter{iter: self.indices.iter(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -87,7 +87,7 @@ struct PartIter {
     iter: Box<dyn SIterator>
 }
 
-impl SIterator for PartIter {
+impl PreIterator for PartIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let part = iter_try!(self.iter.next());
         // TODO: smarter - number tracks increments, stream unfolds?
@@ -110,6 +110,10 @@ impl SIterator for PartIter {
     fn len_remain(&self) -> Length {
         self.iter.len_remain()
     }
+
+    fn origin(&self) -> &Rc<Part> {
+        &self.node
+    }
 }
 
 struct StringPart {
@@ -120,7 +124,7 @@ struct StringPart {
 
 impl Stream<Char> for StringPart {
     fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        Box::new(StringPartIter{iter: self.indices.iter(), node: self})
+        StringPartIter{iter: self.indices.iter(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -142,7 +146,7 @@ struct StringPartIter {
     iter: Box<dyn SIterator>
 }
 
-impl SIterator<Char> for StringPartIter {
+impl PreIterator<Char> for StringPartIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         match iter_try!(self.iter.next()) {
             Item::Number(index) => eval_index_impl(&self.node.source, &index).map(Option::Some),
@@ -156,6 +160,10 @@ impl SIterator<Char> for StringPartIter {
 
     fn len_remain(&self) -> Length {
         self.iter.len_remain()
+    }
+
+    fn origin(&self) -> &Rc<StringPart> {
+        &self.node
     }
 }
 

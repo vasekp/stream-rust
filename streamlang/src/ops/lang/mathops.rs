@@ -167,7 +167,7 @@ impl Stream for MathOp {
                 Item::Stream(stm) => stm.iter(),
                 item => Box::new(std::iter::repeat(item.clone()))
             }).collect();
-        Box::new(MathOpIter{args, func: self.func, node: self})
+        MathOpIter{args, func: self.func, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -187,7 +187,7 @@ struct MathOpIter {
     func: MathFunc
 }
 
-impl SIterator for MathOpIter {
+impl PreIterator for MathOpIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let inputs = iter_try!(self.args.iter_mut()
             .map(|iter| iter.next())
@@ -212,6 +212,10 @@ impl SIterator for MathOpIter {
             .map(|iter| iter.len_remain())
             .reduce(Length::intersection)
             .unwrap()
+    }
+
+    fn origin(&self) -> &Rc<MathOp> {
+        &self.node
     }
 }
 
@@ -298,7 +302,7 @@ impl Stream<Char> for StringOp {
                 Item::String(stm) => stm.map_iter(|ch| Ok(Item::Char(ch))),
                 item => Box::new(std::iter::repeat(item.clone()))
             }).collect();
-        Box::new(StringOpIter{first, rest, func: self.func, node: self})
+        StringOpIter{first, rest, func: self.func, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -323,7 +327,7 @@ struct StringOpIter {
     func: StringFunc
 }
 
-impl SIterator<Char> for StringOpIter {
+impl PreIterator<Char> for StringOpIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         let ch = iter_try!(self.first.next());
         if !self.node.env.alpha.contains(&ch) {
@@ -367,6 +371,10 @@ impl SIterator<Char> for StringOpIter {
                 _ => Length::Unknown
             })
             .fold(self.first.len_remain(), Length::intersection)
+    }
+
+    fn origin(&self) -> &Rc<StringOp> {
+        &self.node
     }
 }
 

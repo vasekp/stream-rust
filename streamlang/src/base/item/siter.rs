@@ -66,6 +66,39 @@ impl<I> Iterator for Transposed<'_, I> {
     }
 }
 
+pub(crate) trait PreIterator<I: ItemType = Item>: Sized + 'static {
+    fn next(&mut self) -> SResult<Option<I>>;
+    fn len_remain(&self) -> Length;
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>>;
+    fn origin(&self) -> &Rc<impl Stream<I> + 'static>;
+
+    fn get_blame(&self) -> Rc<dyn Stream<I>> {
+        Rc::clone(self.origin()) as Rc<dyn Stream<I>>
+    }
+
+    fn wrap(self) -> Box<dyn SIterator<I>> {
+        Box::new(WrappedIterator(self, std::marker::PhantomData))
+    }
+}
+
+pub(crate) struct WrappedIterator<I: ItemType, T: PreIterator<I>>(T, std::marker::PhantomData<I>);
+
+impl<I: ItemType, T: PreIterator<I>> SIterator<I> for WrappedIterator<I, T> {
+    fn next(&mut self) -> SResult<Option<I>> {
+        self.0.next()
+            .map_err(|err| err.wrap(&self.0.get_blame()))
+    }
+
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+        self.0.advance(n)
+            .map_err(|err| err.wrap(&self.0.get_blame()))
+    }
+
+    fn len_remain(&self) -> Length {
+        self.0.len_remain()
+    }
+}
+
 impl<I, T, U, V> SIterator<I> for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
       U: FnMut(V) -> SResult<I>

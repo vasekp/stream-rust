@@ -283,24 +283,3 @@ thread_local! {
     static EMPTY_STREAM: Rc<EmptyStream> = Rc::new(EmptyStream);
     static EMPTY_STRING: Rc<EmptyString> = Rc::new(EmptyString);
 }
-
-struct WrappedIter<'node, I: ItemType> {
-    iter: Box<dyn SIterator<I> + 'node>,
-    parent: &'node Rc<dyn Stream<I>>,
-}
-
-impl<I: ItemType> SIterator<I> for WrappedIter<'_, I> {
-    fn next(&mut self) -> SResult<Option<I>> {
-        self.iter.next()
-            .map_err(|err| err.wrap(self.parent))
-    }
-
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        self.iter.advance(n)
-            .map_err(|err| err.wrap(self.parent))
-    }
-
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
-    }
-}
