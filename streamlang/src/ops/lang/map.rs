@@ -31,11 +31,12 @@ impl Describe for Map {
 
 impl Stream for Map {
     fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        Box::new(SMap::new(&self.source, |item| {
-            self.body
-                .with_source(item.into())
-                .and_then(|node| Expr::from(node).eval(&self.env))
-        }))
+        let body = Rc::clone(&self.body);
+        let env = self.env.clone();
+        Box::new(SMap::new(&self.source, move |item| {
+            body.with_source(item.into())
+                .and_then(|node| Expr::from(node).eval(&env)) },
+            &self))
     }
 
     fn len(&self) -> Length {
@@ -61,12 +62,13 @@ impl Describe for CharMap {
 
 impl Stream<Char> for CharMap {
     fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        Box::new(SMap::new(&self.source, |ch| {
-            self.body
-                .with_source(Item::Char(ch).into())
-                .and_then(|node| Expr::from(node).eval(&self.env))
-                .and_then(Item::into_char)
-        }))
+        let body = Rc::clone(&self.body);
+        let env = self.env.clone();
+        Box::new(SMap::new(&self.source, move |ch| {
+            body.with_source(Item::Char(ch).into())
+                .and_then(|node| Expr::from(node).eval(&env))
+                .and_then(Item::into_char)},
+            &self))
     }
 
     fn len(&self) -> Length {

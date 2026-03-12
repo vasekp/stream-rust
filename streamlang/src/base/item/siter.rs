@@ -183,22 +183,21 @@ where F: FnMut() -> SResult<I>
     }
 }
 
-pub(crate) struct SMap<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> {
+pub(crate) struct Map<I1: ItemType, I2, F: Fn(I1) -> I2> {
     source: Box<dyn SIterator<I1>>,
-    func: F
+    func: F,
 }
 
-impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SMap<I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> I2> Map<I1, I2, F> {
     pub(crate) fn new(stream: &Rc<dyn Stream<I1>>, func: F) -> Self {
-        SMap{source: stream.iter(), func}
+        Map{source: stream.iter(), func}
     }
 }
 
-impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> I2> SIterator<I2> for Map<I1, I2, F> {
     fn next(&mut self) -> SResult<Option<I2>> {
-        self.source.next()?
-            .map(&self.func)
-            .transpose()
+        Ok(self.source.next()?
+            .map(&self.func))
     }
 
     fn len_remain(&self) -> Length {
@@ -207,6 +206,38 @@ impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<I1, I2, 
 
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.source.advance(n)
+    }
+}
+
+pub(crate) struct SMap<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> {
+    source: Box<dyn SIterator<I1>>,
+    func: F,
+    origin: Rc<dyn Stream<I2>>,
+}
+
+impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SMap<I1, I2, F> {
+    pub(crate) fn new<T>(stream: &Rc<dyn Stream<I1>>, func: F, origin: &Rc<T>) -> Self
+    where T: Stream<I2> + 'static {
+        SMap{source: stream.iter(), func, origin: Rc::clone(origin) as Rc<dyn Stream<I2>>}
+    }
+}
+
+impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<I1, I2, F> {
+    fn next(&mut self) -> SResult<Option<I2>> {
+        self.source.next()
+            .map_err(|e| e.wrap(&self.origin))?
+            .map(&self.func)
+            .transpose()
+            .map_err(|e| e.wrap(&self.origin))
+    }
+
+    fn len_remain(&self) -> Length {
+        self.source.len_remain()
+    }
+
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+        self.source.advance(n)
+            .map_err(|e| e.wrap(&self.origin))
     }
 }
 

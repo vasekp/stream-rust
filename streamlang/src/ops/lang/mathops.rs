@@ -299,7 +299,7 @@ impl Stream<Char> for StringOp {
         let rest = self.rest.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
-                Item::String(stm) => stm.map_iter(|ch| Ok(Item::Char(ch))),
+                Item::String(stm) => stm.map(Item::Char),
                 item => Box::new(std::iter::repeat(item.clone()))
             }).collect();
         StringOpIter{first, rest, func: self.func, node: self}.wrap()
