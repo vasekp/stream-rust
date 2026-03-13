@@ -66,6 +66,56 @@ impl<I> Iterator for Transposed<'_, I> {
     }
 }
 
+pub(crate) trait PreIterator<I: ItemType = Item>: Sized + 'static {
+    fn next(&mut self) -> SResult<Option<I>>;
+
+    fn len_remain(&self) -> Length;
+
+    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+        if let Length::Exact(len) = self.len_remain()
+            && n > len {
+                return Ok(Some(n - &len));
+            }
+        while !n.is_zero() {
+            check_stop!();
+            match self.next()? {
+                Some(_) => (),
+                None => return Ok(Some(n))
+            }
+            n -= 1;
+        }
+        Ok(None)
+    }
+
+    fn origin(&self) -> &Rc<impl Stream<I> + 'static>;
+
+    fn get_blame(&self) -> Rc<dyn Stream<I>> {
+        Rc::clone(self.origin()) as Rc<dyn Stream<I>>
+    }
+
+    fn wrap(self) -> Box<dyn SIterator<I>> {
+        Box::new(WrappedIterator(self, std::marker::PhantomData))
+    }
+}
+
+pub(crate) struct WrappedIterator<I: ItemType, T: PreIterator<I>>(T, std::marker::PhantomData<I>);
+
+impl<I: ItemType, T: PreIterator<I>> SIterator<I> for WrappedIterator<I, T> {
+    fn next(&mut self) -> SResult<Option<I>> {
+        self.0.next()
+            .map_err(|err| err.wrap(&self.0.get_blame()))
+    }
+
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+        self.0.advance(n)
+            .map_err(|err| err.wrap(&self.0.get_blame()))
+    }
+
+    fn len_remain(&self) -> Length {
+        self.0.len_remain()
+    }
+}
+
 impl<I, T, U, V> SIterator<I> for std::iter::Map<T, U>
 where T: Iterator<Item = V>,
       U: FnMut(V) -> SResult<I>
@@ -106,6 +156,20 @@ impl<I> SIterator<I> for std::iter::Empty<SResult<I>> {
     }
 }
 
+impl<I: ItemType + Clone> SIterator<I> for std::iter::Repeat<I> {
+    fn next(&mut self) -> SResult<Option<I>> {
+        Ok(Iterator::next(self))
+    }
+
+    fn len_remain(&self) -> Length {
+        Length::Infinite
+    }
+
+    fn advance(&mut self, _n: UNumber) -> SResult<Option<UNumber>> {
+        Ok(None)
+    }
+}
+
 impl<I: Clone> SIterator<I> for std::iter::Repeat<SResult<I>> {
     fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
@@ -136,23 +200,20 @@ where F: FnMut() -> SResult<I>
     }
 }
 
-pub(crate) struct SMap<'node, I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> {
-    _parent: Rc<dyn Stream<I1>>,
-    source: Box<dyn SIterator<I1> + 'node>,
-    func: F
+pub(crate) struct Map<I1: ItemType, I2, F: Fn(I1) -> I2> {
+    source: Box<dyn SIterator<I1>>,
+    func: F,
 }
 
-impl<'node, I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SMap<'node, I1, I2, F> {
-    pub(crate) fn new(stream: &'node Rc<dyn Stream<I1>>, func: F) -> Self {
-        SMap{_parent: Rc::clone(stream), source: stream.iter(), func}
+impl<I1: ItemType, I2, F: Fn(I1) -> I2> Map<I1, I2, F> {
+    pub(crate) fn new(stream: &Rc<dyn Stream<I1>>, func: F) -> Self {
+        Map{source: stream.iter(), func}
     }
 }
 
-impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<'_, I1, I2, F> {
+impl<I1: ItemType, I2, F: Fn(I1) -> I2> SIterator<I2> for Map<I1, I2, F> {
     fn next(&mut self) -> SResult<Option<I2>> {
-        self.source.next()?
-            .map(&self.func)
-            .transpose()
+        Ok(self.source.next()?.map(&self.func))
     }
 
     fn len_remain(&self) -> Length {
@@ -161,6 +222,38 @@ impl<I1: ItemType, I2, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<'_, I1, 
 
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         self.source.advance(n)
+    }
+}
+
+pub(crate) struct SMap<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> {
+    source: Box<dyn SIterator<I1>>,
+    func: F,
+    origin: Rc<dyn Stream<I2>>,
+}
+
+impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SMap<I1, I2, F> {
+    pub(crate) fn new<T>(stream: &Rc<dyn Stream<I1>>, func: F, origin: &Rc<T>) -> Self
+    where T: Stream<I2> + 'static {
+        SMap{source: stream.iter(), func, origin: Rc::clone(origin) as Rc<dyn Stream<I2>>}
+    }
+}
+
+impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<I1, I2, F> {
+    fn next(&mut self) -> SResult<Option<I2>> {
+        self.source.next()
+            .map_err(|e| e.wrap(&self.origin))?
+            .map(&self.func)
+            .transpose()
+            .map_err(|e| e.wrap(&self.origin))
+    }
+
+    fn len_remain(&self) -> Length {
+        self.source.len_remain()
+    }
+
+    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+        self.source.advance(n)
+            .map_err(|e| e.wrap(&self.origin))
     }
 }
 

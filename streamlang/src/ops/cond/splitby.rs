@@ -18,10 +18,9 @@ struct SplitBy<I: ItemType> {
     env: Env
 }
 
-struct SplitByIter<'node, I: ItemType> {
-    source: Box<dyn SIterator<I> + 'node>,
-    cond: &'node Node<Item>,
-    env: &'node Env,
+struct SplitByIter<I: ItemType> {
+    node: Rc<SplitBy<I>>,
+    source: Box<dyn SIterator<I>>,
     done: bool,
 }
 
@@ -35,8 +34,8 @@ impl<I: ItemType> Describe for SplitBy<I> {
 }
 
 impl<I: ItemType> Stream for SplitBy<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(SplitByIter{source: self.source.iter(), cond: &self.cond, env: &self.env, done: false}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        SplitByIter{source: self.source.iter(), done: false, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -44,7 +43,7 @@ impl<I: ItemType> Stream for SplitBy<I> {
     }
 }
 
-impl<I: ItemType> SIterator for SplitByIter<'_, I> {
+impl<I: ItemType> PreIterator for SplitByIter<I> {
     fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
@@ -53,9 +52,9 @@ impl<I: ItemType> SIterator for SplitByIter<'_, I> {
         for item in self.source.transposed() {
             check_stop!();
             let item = item?;
-            let cond = Node::from(self.cond)
+            let cond = Node::from(&self.node.cond)
                 .with_source(Expr::from(item.clone().into()))?
-                .eval(self.env)?
+                .eval(&self.node.env)?
                 .to_bool()?;
             if cond {
                 return Ok(Some(Item::from(cache)));
@@ -68,6 +67,10 @@ impl<I: ItemType> SIterator for SplitByIter<'_, I> {
 
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
+    }
+
+    fn origin(&self) -> &Rc<SplitBy<I>> {
+        &self.node
     }
 }
 

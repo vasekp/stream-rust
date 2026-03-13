@@ -65,14 +65,14 @@ enum RangeType {
 }
 
 impl Stream for Range {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(RangeIter{
-            parent: self,
+    fn to_iter(self: Rc<Range>) -> Box<dyn SIterator> {
+        RangeIter{
             value: match &self.from {
                 Some(from) => from.clone(),
                 None => Number::one()
-            }
-        }))
+            },
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -104,21 +104,21 @@ impl Describe for Range {
     }
 }
 
-struct RangeIter<'node> {
-    parent: &'node Range,
-    value: Number
+struct RangeIter {
+    node: Rc<Range>,
+    value: Number,
 }
 
-impl SIterator for RangeIter<'_> {
+impl PreIterator for RangeIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        if self.parent.step.as_ref().is_some_and(Number::is_zero)
-            || (self.parent.step.as_ref().is_none_or(Number::is_positive) && self.value <= self.parent.to)
-            || (self.parent.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.parent.to) {
-                let ret = match self.parent.rtype {
+        if self.node.step.as_ref().is_some_and(Number::is_zero)
+            || (self.node.step.as_ref().is_none_or(Number::is_positive) && self.value <= self.node.to)
+            || (self.node.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.node.to) {
+                let ret = match self.node.rtype {
                     RangeType::Numeric => Item::new_number(self.value.clone()),
-                    RangeType::Character(case) => Item::new_char(self.parent.env.alpha.chr(&self.value, case))
+                    RangeType::Character(case) => Item::new_char(self.node.env.alpha.chr(&self.value, case))
                 };
-                match &self.parent.step {
+                match &self.node.step {
                     Some(step) => self.value += step,
                     None => self.value += 1
                 }
@@ -129,13 +129,13 @@ impl SIterator for RangeIter<'_> {
     }
 
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        if empty_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
+        if empty_helper(Some(&self.value), &self.node.to, self.node.step.as_ref()) {
             return Ok(Some(n))
         };
-        let Some(max) = len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref())
+        let Some(max) = len_helper(Some(&self.value), &self.node.to, self.node.step.as_ref())
             else { return Ok(None); };
         if n <= max {
-            self.value += match &self.parent.step {
+            self.value += match &self.node.step {
                 Some(step) => step * Number::from(n),
                 None => Number::from(n)
             };
@@ -146,10 +146,14 @@ impl SIterator for RangeIter<'_> {
     }
 
     fn len_remain(&self) -> Length {
-        match len_helper(Some(&self.value), &self.parent.to, self.parent.step.as_ref()) {
+        match len_helper(Some(&self.value), &self.node.to, self.node.step.as_ref()) {
             Some(num) => Length::Exact(num),
             None => Length::Infinite
         }
+    }
+
+    fn origin(&self) -> &Rc<Range> {
+        &self.node
     }
 }
 

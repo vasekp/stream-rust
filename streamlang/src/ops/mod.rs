@@ -1,3 +1,5 @@
+#![allow(refining_impl_trait)]
+
 mod lang;
 mod streams;
 mod selfref;

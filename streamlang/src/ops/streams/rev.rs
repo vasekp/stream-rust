@@ -31,12 +31,12 @@ pub struct Rev<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Rev<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(Box::new(RevIter {
-            source: &self.source,
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        RevIter {
             start: self.length.clone(),
-            cached: Vec::new()
-        }))
+            cached: Vec::new(),
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -52,13 +52,13 @@ impl<I: ItemType> Describe for Rev<I> {
     }
 }
 
-struct RevIter<'node, I: ItemType> {
-    source: &'node Rc<dyn Stream<I>>,
+struct RevIter<I: ItemType> {
+    node: Rc<Rev<I>>,
     start: UNumber,
     cached: Vec<I>
 }
 
-impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
+impl<I: ItemType> PreIterator<I> for RevIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         match self.cached.pop() {
             Some(item) => Ok(Some(item)),
@@ -73,7 +73,7 @@ impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
                         (UNumber::zero(), usize::try_from(&self.start)
                             .expect("start < CACHE_LEN should fit into usize"))
                     };
-                    let mut iter = self.source.iter();
+                    let mut iter = self.node.source.iter();
                     iter.advance(new_start.clone())?;
                     self.start = new_start;
                     self.cached = iter.transposed().take(diff).collect::<SResult<_>>()?;
@@ -105,6 +105,10 @@ impl<I: ItemType> SIterator<I> for RevIter<'_, I> {
 
     fn len_remain(&self) -> Length {
         Length::Exact(&self.start + self.cached.len())
+    }
+
+    fn origin(&self) -> &Rc<Rev<I>> {
+        &self.node
     }
 }
 

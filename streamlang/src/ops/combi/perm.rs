@@ -28,16 +28,15 @@ impl Describe for PermStream {
 }
 
 impl Stream for PermStream {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(PermIter {
-            source: &self.source,
-            src_len: &self.len,
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        PermIter {
             self_len: self.len.as_ref()
                 .and_then(|x| u32::try_from(x).ok())
                 .map(factorial),
             order: vec![],
-            num_read: UNumber::zero()
-        }))
+            num_read: UNumber::zero(),
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -69,15 +68,14 @@ fn build_order(mut n: UNumber) -> Vec<usize> {
     vec
 }
 
-struct PermIter<'node> {
-    source: &'node Rc<dyn Stream>,
-    src_len: &'node Option<UNumber>,
+struct PermIter {
+    node: Rc<PermStream>,
     self_len: Option<UNumber>,
     order: Vec<usize>,
     num_read: UNumber,
 }
 
-impl SIterator for PermIter<'_> {
+impl PreIterator for PermIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         if self.order.is_empty() {
             self.order = vec![0];
@@ -92,7 +90,7 @@ impl SIterator for PermIter<'_> {
                 },
                 None => {
                     let prev_len = self.order.len();
-                    if self.src_len.as_ref()
+                    if self.node.len.as_ref()
                         .and_then(|x| usize::try_from(x).ok())
                         .is_some_and(|x| x == prev_len) {
                             return Ok(None);
@@ -109,13 +107,13 @@ impl SIterator for PermIter<'_> {
         self.num_read += 1;
         Expr::from(Node {
             head: "reorder".into(),
-            source: Some(Item::from(self.source)),
+            source: Some(Item::from(&self.node.source)),
             args: order
         }).eval_default().map(Option::Some)
     }
 
     fn len_remain(&self) -> Length {
-        match (self.src_len, &self.self_len) {
+        match (&self.node.len, &self.self_len) {
             (None, _) => Length::Infinite,
             (Some(_), Some(len)) => Length::Exact(len - &self.num_read),
             (Some(_), None) => Length::UnknownFinite
@@ -130,6 +128,10 @@ impl SIterator for PermIter<'_> {
             }
         self.order = build_order(self.num_read.clone());
         Ok(None)
+    }
+
+    fn origin(&self) -> &Rc<PermStream> {
+        &self.node
     }
 }
 

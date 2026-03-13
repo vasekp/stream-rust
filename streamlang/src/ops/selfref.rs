@@ -48,18 +48,22 @@ impl Describe for SelfRef {
 }
 
 impl Stream for SelfRef {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        let (stm, hist) = self.eval_real()?;
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        let (stm, hist) = match self.eval_real() {
+            Ok((stm, hist)) => (stm, hist),
+            Err(err) => return iter_error(err, &self)
+        };
         let iter = if let Some(vec) = &self.pre {
             vec.iter()
         } else {
             Box::new(std::iter::empty())
         };
-        Ok(Box::new(SelfRefIter {
+        SelfRefIter {
             pre: iter,
-            inner: stm.into_iter(),
+            inner: stm.to_iter(),
             hist,
-        }))
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -69,13 +73,14 @@ impl Stream for SelfRef {
 
 type CacheHistory = RefCell<Vec<Item>>;
 
-struct SelfRefIter<'node> {
-    pre: Box<dyn SIterator + 'node>,
-    inner: OwnedStreamIter,
+struct SelfRefIter {
+    node: Rc<SelfRef>,
+    pre: Box<dyn SIterator>,
+    inner: Box<dyn SIterator>,
     hist: Rc<CacheHistory>,
 }
 
-impl SIterator for SelfRefIter<'_> {
+impl PreIterator for SelfRefIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let item = if let Some(item) = self.pre.next()? {
             item.clone()
@@ -89,6 +94,10 @@ impl SIterator for SelfRefIter<'_> {
     fn len_remain(&self) -> Length {
         Length::Unknown
     }
+
+    fn origin(&self) -> &Rc<SelfRef> {
+        &self.node
+    }
 }
 
 struct BackRef {
@@ -96,21 +105,16 @@ struct BackRef {
 }
 
 struct BackRefIter {
+    node: Rc<BackRef>,
     vec: Rc<CacheHistory>,
     pos: usize
 }
 
-impl Describe for BackRef {
-    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
-        "#".to_owned()
-    }
-}
-
 impl Stream for BackRef {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         match Weak::upgrade(&self.parent) {
-            Some(rc) => Ok(Box::new(BackRefIter{vec: rc, pos: 0})),
-            None => Err("back-reference detached from cache".into())
+            Some(rc) => BackRefIter{vec: rc, pos: 0, node: self}.wrap(),
+            None => iter_error("back-reference detached from cache", &self)
         }
     }
 
@@ -119,7 +123,13 @@ impl Stream for BackRef {
     }
 }
 
-impl SIterator for BackRefIter {
+impl Describe for BackRef {
+    fn describe_inner(&self, _prec: u32, _env: &Env) -> String {
+        "#".to_owned()
+    }
+}
+
+impl PreIterator for BackRefIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let opos = self.pos;
         self.pos += 1;
@@ -128,6 +138,10 @@ impl SIterator for BackRefIter {
 
     fn len_remain(&self) -> Length {
         Length::Unknown
+    }
+
+    fn origin(&self) -> &Rc<BackRef> {
+        &self.node
     }
 }
 

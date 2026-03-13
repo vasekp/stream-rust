@@ -26,19 +26,20 @@ impl Describe for Riffle {
 }
 
 impl Stream for Riffle {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let mut source_iter = self.source.iter();
         let filler_iter = match &self.filler {
             Item::Stream(stm) => stm.iter(),
-            item => Box::new(std::iter::repeat(Ok(item.clone())))
+            item => Box::new(std::iter::repeat(Ok(item.clone()))),
         };
         let source_next = source_iter.next().transpose();
-        Ok(Box::new(RiffleIter {
+        RiffleIter {
             source: source_iter,
             filler: filler_iter,
             source_next,
-            which: RiffleState::Source
-        }))
+            which: RiffleState::Source,
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -52,9 +53,10 @@ impl Stream for Riffle {
     }
 }
 
-struct RiffleIter<'node> {
-    source: Box<dyn SIterator + 'node>,
-    filler: Box<dyn SIterator + 'node>,
+struct RiffleIter {
+    node: Rc<Riffle>,
+    source: Box<dyn SIterator>,
+    filler: Box<dyn SIterator>,
     source_next: Option<SResult<Item>>,
     which: RiffleState
 }
@@ -65,7 +67,7 @@ enum RiffleState {
     Filler
 }
 
-impl SIterator for RiffleIter<'_> {
+impl PreIterator for RiffleIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         use RiffleState::*;
         match self.which {
@@ -131,6 +133,10 @@ impl SIterator for RiffleIter<'_> {
                 common.map(|x| 2u32 * x)
             }
         }
+    }
+
+    fn origin(&self) -> &Rc<Riffle> {
+        &self.node
     }
 }
 

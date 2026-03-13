@@ -26,7 +26,7 @@ fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
             let mut res = queries.into_iter()
                 .map(|q| match q {
                     Query::Found(ix) => Item::new_number(ix + 1),
-                    Query::Pending(_) => Item::new_stream(EmptyStream)
+                    Query::Pending(_) => Item::empty_stream(),
                 })
                 .collect::<Vec<_>>();
             if res.len() == 1 {
@@ -74,7 +74,7 @@ fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
             let mut res = queries.into_iter()
                 .map(|q| match q {
                     Query::Found(ix) => Item::new_number(ix + 1),
-                    Query::Pending(_) => Item::new_stream(EmptyStream)
+                    Query::Pending(_) => Item::empty_stream(),
                 })
                 .collect::<Vec<_>>();
             if res.len() == 1 {

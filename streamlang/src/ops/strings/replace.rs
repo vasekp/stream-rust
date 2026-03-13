@@ -62,8 +62,8 @@ impl Describe for StringReplace {
 }
 
 impl Stream<Char> for StringReplace {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
-        Ok(Box::new(StringReplaceIter::new(self)))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+        StringReplaceIter::new(self).wrap()
     }
 
     fn len(&self) -> Length {
@@ -75,29 +75,25 @@ impl Stream<Char> for StringReplace {
     }
 }
 
-struct StringReplaceIter<'node> {
-    source: Box<dyn SIterator<Char> + 'node>,
-    orig: &'node Vec<Vec<Char>>,
-    repl: &'node Vec<Vec<Char>>,
-    longest: usize,
+struct StringReplaceIter {
+    node: Rc<StringReplace>,
+    source: Box<dyn SIterator<Char>>,
     cache: VecDeque<Char>,
     queued: Option<(Box<dyn Iterator<Item = Char>>, bool)>,
 }
 
-impl<'node> StringReplaceIter<'node> {
-    fn new(parent: &'node StringReplace) -> Self {
+impl StringReplaceIter {
+    fn new(node: Rc<StringReplace>) -> Self {
         StringReplaceIter {
-            source: parent.source.iter(),
-            orig: &parent.orig,
-            repl: &parent.repl,
-            longest: parent.longest,
+            source: node.source.iter(),
             cache: VecDeque::new(),
             queued: None,
+            node
         }
     }
 }
 
-impl SIterator<Char> for StringReplaceIter<'_> {
+impl PreIterator<Char> for StringReplaceIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
@@ -110,13 +106,13 @@ impl SIterator<Char> for StringReplaceIter<'_> {
                     self.queued = None;
                 }
             }
-            if self.cache.len() == self.longest
+            if self.cache.len() == self.node.longest
                 && let Some(item) = self.cache.pop_front() {
                     return Ok(Some(item));
                 }
             if let Some(item) = self.source.next()? {
                 self.cache.push_back(item);
-                'a: for (patt, repl) in self.orig.iter().zip(self.repl.iter()) {
+                'a: for (patt, repl) in self.node.orig.iter().zip(self.node.repl.iter()) {
                     if patt.len() > self.cache.len() { continue; }
                     /* Match found */
                     let bkpt = self.cache.len() - patt.len();
@@ -140,6 +136,10 @@ impl SIterator<Char> for StringReplaceIter<'_> {
             Length::Infinite | Length::Unknown => Length::Unknown
         }
     }
+
+    fn origin(&self) -> &Rc<StringReplace> {
+        &self.node
+    }
 }
 
 struct StreamReplace {
@@ -160,8 +160,12 @@ impl Describe for StreamReplace {
 }
 
 impl Stream for StreamReplace {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(self.source.map_iter(|item| Ok(if item.try_eq(&self.orig)? { self.repl.clone() } else { item })))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        let orig = self.orig.clone();
+        let repl = self.repl.clone();
+        Box::new(SMap::new(&self.source,
+            move |item| if item.try_eq(&orig)? { Ok(repl.clone()) } else { Ok(item) },
+            &self))
     }
 
     fn len(&self) -> Length {

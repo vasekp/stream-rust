@@ -19,14 +19,14 @@ pub struct Seq {
 }
 
 impl Stream for Seq {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(SeqIter{
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        SeqIter{
             value: match &self.from {
                 Some(from) => from.clone(),
                 None => Number::one()
             },
-            step: &self.step
-        }))
+            node: self,
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -43,15 +43,15 @@ impl Describe for Seq {
     }
 }
 
-struct SeqIter<'node> {
+struct SeqIter {
+    node: Rc<Seq>,
     value: Number,
-    step: &'node Option<Number>
 }
 
-impl SIterator for SeqIter<'_> {
+impl PreIterator for SeqIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let ret = Item::new_number(self.value.clone());
-        match self.step {
+        match &self.node.step {
             Some(step) => self.value += step,
             None => self.value += 1
         }
@@ -63,11 +63,15 @@ impl SIterator for SeqIter<'_> {
     }
 
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        match self.step {
+        match &self.node.step {
             Some(step) => self.value += step * Number::from(n),
             None => self.value += Number::from(n)
         }
         Ok(None)
+    }
+
+    fn origin(&self) -> &Rc<Seq> {
+        &self.node
     }
 }
 

@@ -29,9 +29,9 @@ struct SplitString {
     sep: Vec<LiteralString>,
 }
 
-struct SplitStringIter<'node> {
-    source: Box<dyn SIterator<Char> + 'node>,
-    sep: &'node Vec<LiteralString>,
+struct SplitStringIter {
+    node: Rc<SplitString>,
+    source: Box<dyn SIterator<Char>>,
     done: bool,
 }
 
@@ -45,8 +45,8 @@ impl Describe for SplitString {
 }
 
 impl Stream for SplitString {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(SplitStringIter{source: self.source.iter(), sep: &self.sep, done: false}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        SplitStringIter{source: self.source.iter(), done: false, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -54,7 +54,7 @@ impl Stream for SplitString {
     }
 }
 
-impl SIterator for SplitStringIter<'_> {
+impl PreIterator for SplitStringIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
@@ -63,7 +63,7 @@ impl SIterator for SplitStringIter<'_> {
         for item in self.source.transposed() {
             check_stop!();
             cache.push(item?);
-            for sep in self.sep {
+            for sep in &self.node.sep {
                 let sep = sep.as_slice();
                 if sep.len() > cache.len() { continue; }
                 let bkpt = cache.len() - sep.len();
@@ -80,6 +80,10 @@ impl SIterator for SplitStringIter<'_> {
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
     }
+
+    fn origin(&self) -> &Rc<SplitString> {
+        &self.node
+    }
 }
 
 struct SplitStream {
@@ -88,9 +92,9 @@ struct SplitStream {
     sep: Vec<Item>,
 }
 
-struct SplitStreamIter<'node> {
-    source: Box<dyn SIterator + 'node>,
-    sep: &'node Vec<Item>,
+struct SplitStreamIter {
+    node: Rc<SplitStream>,
+    source: Box<dyn SIterator>,
     done: bool,
 }
 
@@ -104,8 +108,8 @@ impl Describe for SplitStream {
 }
 
 impl Stream for SplitStream {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(SplitStreamIter{source: self.source.iter(), sep: &self.sep, done: false}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        SplitStreamIter{source: self.source.iter(), done: false, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -113,7 +117,7 @@ impl Stream for SplitStream {
     }
 }
 
-impl SIterator for SplitStreamIter<'_> {
+impl PreIterator for SplitStreamIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         if self.done {
             return Ok(None);
@@ -122,7 +126,7 @@ impl SIterator for SplitStreamIter<'_> {
         for item in self.source.transposed() {
             check_stop!();
             let item = item?;
-            for sep in self.sep {
+            for sep in &self.node.sep {
                 if item.try_eq(sep)? {
                     return Ok(Some(Item::new_stream(List::from(cache))));
                 }
@@ -135,6 +139,10 @@ impl SIterator for SplitStreamIter<'_> {
 
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
+    }
+
+    fn origin(&self) -> &Rc<SplitStream> {
+        &self.node
     }
 }
 

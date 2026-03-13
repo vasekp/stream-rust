@@ -27,12 +27,13 @@ impl Describe for Flatten {
 }
 
 impl Stream for Flatten {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(FlattenIter {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        FlattenIter {
             outer: self.source.iter(),
             iters: vec![],
-            depth: self.depth.as_ref().and_then(|d| d.try_into().ok())
-        }))
+            depth: self.depth.as_ref().and_then(|d| d.try_into().ok()),
+            node: self
+        }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -40,13 +41,14 @@ impl Stream for Flatten {
     }
 }
 
-struct FlattenIter<'node> {
-    outer: Box<dyn SIterator + 'node>,
-    iters: Vec<OwnedStreamIter>,
+struct FlattenIter {
+    node: Rc<Flatten>,
+    outer: Box<dyn SIterator>,
+    iters: Vec<Box<dyn SIterator>>,
     depth: Option<usize>,
 }
 
-impl SIterator for FlattenIter<'_> {
+impl PreIterator for FlattenIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
@@ -59,7 +61,7 @@ impl SIterator for FlattenIter<'_> {
                     if self.depth.is_some_and(|d| self.iters.len() == d) {
                         return Ok(Some(Item::Stream(stm)));
                     } else {
-                        self.iters.push(stm.into_iter());
+                        self.iters.push(stm.to_iter());
                     }
                 },
                 Some(item) => return Ok(Some(item)),
@@ -92,7 +94,7 @@ impl SIterator for FlattenIter<'_> {
                 };
                 match res? {
                     Some(Item::Stream(stm)) => {
-                        self.iters.push(stm.into_iter());
+                        self.iters.push(stm.to_iter());
                     },
                     Some(_) => n -= 1,
                     None => {
@@ -109,6 +111,10 @@ impl SIterator for FlattenIter<'_> {
 
     fn len_remain(&self) -> Length {
         Length::Unknown
+    }
+
+    fn origin(&self) -> &Rc<Flatten> {
+        &self.node
     }
 }
 

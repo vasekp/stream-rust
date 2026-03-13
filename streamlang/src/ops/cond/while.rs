@@ -15,10 +15,9 @@ struct While {
     env: Env
 }
 
-struct WhileIter<'node> {
-    cond: &'node Node<Item>,
-    source: Box<dyn SIterator + 'node>,
-    env: &'node Env
+struct WhileIter {
+    node: Rc<While>,
+    source: Box<dyn SIterator>,
 }
 
 impl Describe for While {
@@ -31,8 +30,8 @@ impl Describe for While {
 }
 
 impl Stream for While {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(WhileIter{cond: &self.cond, source: self.source.iter(), env: &self.env}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        WhileIter{source: self.source.iter(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -40,12 +39,12 @@ impl Stream for While {
     }
 }
 
-impl SIterator for WhileIter<'_> {
+impl PreIterator for WhileIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
-        let cond = Node::from(self.cond)
+        let cond = Node::from(&self.node.cond)
             .with_source(source.clone().into())?
-            .eval(self.env)?
+            .eval(&self.node.env)?
             .to_bool()?;
         if cond {
             Ok(Some(source))
@@ -56,6 +55,10 @@ impl SIterator for WhileIter<'_> {
 
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
+    }
+
+    fn origin(&self) -> &Rc<While> {
+        &self.node
     }
 }
 

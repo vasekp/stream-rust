@@ -63,8 +63,8 @@ struct Part {
 }
 
 impl Stream for Part {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(PartIter{parent: self, iter: self.indices.iter()}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        PartIter{iter: self.indices.iter(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -82,23 +82,23 @@ impl Describe for Part {
     }
 }
 
-struct PartIter<'node> {
-    parent: &'node Part,
-    iter: Box<dyn SIterator + 'node>
+struct PartIter {
+    node: Rc<Part>,
+    iter: Box<dyn SIterator>
 }
 
-impl SIterator for PartIter<'_> {
+impl PreIterator for PartIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let part = iter_try!(self.iter.next());
         // TODO: smarter - number tracks increments, stream unfolds?
-        let mut args = self.parent.rest.clone();
+        let mut args = self.node.rest.clone();
         args.insert(0, part);
         let node = Node {
             head: LangItem::Part.into(),
-            source: Some(self.parent.source.clone().into()),
+            source: Some(self.node.source.clone().into()),
             args
         };
-        eval_enode(&node, &self.parent.env)
+        eval_enode(&node, &self.node.env)
             .map(Option::Some)
             .map_err(|err| err.wrap(&node))
     }
@@ -110,6 +110,10 @@ impl SIterator for PartIter<'_> {
     fn len_remain(&self) -> Length {
         self.iter.len_remain()
     }
+
+    fn origin(&self) -> &Rc<Part> {
+        &self.node
+    }
 }
 
 struct StringPart {
@@ -119,8 +123,8 @@ struct StringPart {
 }
 
 impl Stream<Char> for StringPart {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
-        Ok(Box::new(StringPartIter{parent: self, iter: self.indices.iter()}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+        StringPartIter{iter: self.indices.iter(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -137,15 +141,15 @@ impl Describe for StringPart {
     }
 }
 
-struct StringPartIter<'node> {
-    parent: &'node StringPart,
-    iter: Box<dyn SIterator + 'node>
+struct StringPartIter {
+    node: Rc<StringPart>,
+    iter: Box<dyn SIterator>
 }
 
-impl SIterator<Char> for StringPartIter<'_> {
+impl PreIterator<Char> for StringPartIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         match iter_try!(self.iter.next()) {
-            Item::Number(index) => eval_index_impl(&self.parent.source, &index).map(Option::Some),
+            Item::Number(index) => eval_index_impl(&self.node.source, &index).map(Option::Some),
             _ => todo!()
         }
     }
@@ -156,6 +160,10 @@ impl SIterator<Char> for StringPartIter<'_> {
 
     fn len_remain(&self) -> Length {
         self.iter.len_remain()
+    }
+
+    fn origin(&self) -> &Rc<StringPart> {
+        &self.node
     }
 }
 

@@ -40,16 +40,17 @@ impl Describe for Windows {
 }
 
 impl Stream for Windows {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let mut iter = self.source.iter();
         let mut deque = VecDeque::with_capacity(self.size - 1);
         for _ in 0..(self.size - 1) {
-            match iter.next()? {
-                Some(item) => deque.push_back(item),
-                None => return Ok(Box::new(std::iter::empty())),
+            match iter.next() {
+                Ok(Some(item)) => deque.push_back(item),
+                Ok(None) => return EmptyStream::iter(),
+                Err(err) => return iter_error(err, &self),
             }
         }
-        Ok(Box::new(WindowsIter{iter, size: self.size, deque, body: self.body.as_ref(), env: &self.env}))
+        WindowsIter{size: self.size, iter, deque, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -62,24 +63,23 @@ impl Stream for Windows {
     }
 }
 
-struct WindowsIter<'node> {
-    iter: Box<dyn SIterator + 'node>,
+struct WindowsIter {
+    node: Rc<Windows>,
+    iter: Box<dyn SIterator>,
     size: usize,
     deque: VecDeque<Item>,
-    body: Option<&'node Rc<Node>>,
-    env: &'node Env,
 }
 
-impl SIterator for WindowsIter<'_> {
+impl PreIterator for WindowsIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let next = iter_try!(self.iter.next());
         let first = self.deque.pop_front().unwrap(); // for size ≥ 2, deque has ≥ 1 element
         self.deque.push_back(next);
         let iter = std::iter::once(first)
             .chain(self.deque.iter().cloned());
-        if let Some(body) = self.body {
+        if let Some(body) = &self.node.body {
             body.with_args(iter.map(Expr::from).collect())
-                .and_then(|expr| expr.eval(self.env))
+                .and_then(|expr| expr.eval(&self.node.env))
                 .map(Option::Some)
         } else {
             Ok(Some(Item::from(iter.collect::<Vec<_>>())))
@@ -107,6 +107,10 @@ impl SIterator for WindowsIter<'_> {
 
     fn len_remain(&self) -> Length {
         self.iter.len_remain()
+    }
+
+    fn origin(&self) -> &Rc<Windows> {
+        &self.node
     }
 }
 

@@ -24,8 +24,8 @@ impl<I: ItemType> Describe for LenAM<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenAM<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(Box::new(LenAMIter { iter: self.src.iter() }))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        Box::new(LenAMIter { iter: self.src.iter() })
     }
 
     fn len(&self) -> Length {
@@ -33,11 +33,11 @@ impl<I: ItemType> Stream<I> for LenAM<I> {
     }
 }
 
-struct LenAMIter<'node, I: ItemType> {
-    iter: Box<dyn SIterator<I> + 'node>
+struct LenAMIter<I: ItemType> {
+    iter: Box<dyn SIterator<I>>
 }
 
-impl<I: ItemType> SIterator<I> for LenAMIter<'_, I> {
+impl<I: ItemType> SIterator<I> for LenAMIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
     }
@@ -75,8 +75,8 @@ impl<I: ItemType> Describe for LenUF<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUF<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(Box::new(LenUFIter { iter: self.src.iter() }))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        Box::new(LenUFIter { iter: self.src.iter() })
     }
 
     fn len(&self) -> Length {
@@ -84,11 +84,11 @@ impl<I: ItemType> Stream<I> for LenUF<I> {
     }
 }
 
-struct LenUFIter<'node, I: ItemType> {
-    iter: Box<dyn SIterator<I> + 'node>
+struct LenUFIter<I: ItemType> {
+    iter: Box<dyn SIterator<I>>
 }
 
-impl<I: ItemType> SIterator<I> for LenUFIter<'_, I> {
+impl<I: ItemType> SIterator<I> for LenUFIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
     }
@@ -126,8 +126,8 @@ impl<I: ItemType> Describe for LenUU<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUU<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(Box::new(LenUUIter { iter: self.src.iter() }))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        Box::new(LenUUIter { iter: self.src.iter() })
     }
 
     fn len(&self) -> Length {
@@ -135,11 +135,11 @@ impl<I: ItemType> Stream<I> for LenUU<I> {
     }
 }
 
-struct LenUUIter<'node, I: ItemType> {
-    iter: Box<dyn SIterator<I> + 'node>
+struct LenUUIter<I: ItemType> {
+    iter: Box<dyn SIterator<I>>
 }
 
-impl<I: ItemType> SIterator<I> for LenUUIter<'_, I> {
+impl<I: ItemType> SIterator<I> for LenUUIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         self.iter.next()
     }

@@ -26,14 +26,15 @@ struct First<I: ItemType> {
     count: UNumber
 }
 
-struct FirstIter<'node, I: ItemType> {
-    source: Box<dyn SIterator<I> + 'node>,
+struct FirstIter<I: ItemType> {
+    node: Rc<First<I>>,
+    source: Box<dyn SIterator<I>>,
     count_rem: UNumber
 }
 
 impl<I: ItemType> Stream<I> for First<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(Box::new(FirstIter { source: self.source.iter(), count_rem: self.count.clone() }))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        FirstIter{source: self.source.iter(), count_rem: self.count.clone(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -50,7 +51,7 @@ impl<I: ItemType> Describe for First<I> {
     }
 }
 
-impl<I: ItemType> SIterator<I> for FirstIter<'_, I> {
+impl<I: ItemType> PreIterator<I> for FirstIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         if !self.count_rem.is_zero() {
             self.count_rem -= 1;
@@ -73,6 +74,10 @@ impl<I: ItemType> SIterator<I> for FirstIter<'_, I> {
             self.count_rem -= &n;
             self.source.advance(n)
         }
+    }
+
+    fn origin(&self) -> &Rc<First<I>> {
+        &self.node
     }
 }
 

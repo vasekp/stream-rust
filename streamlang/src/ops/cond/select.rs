@@ -15,10 +15,9 @@ struct Select {
     env: Env
 }
 
-struct SelectIter<'node> {
-    cond: &'node Node<Item>,
-    source: Box<dyn SIterator + 'node>,
-    env: &'node Env
+struct SelectIter {
+    node: Rc<Select>,
+    source: Box<dyn SIterator>,
 }
 
 impl Describe for Select {
@@ -31,8 +30,8 @@ impl Describe for Select {
 }
 
 impl Stream for Select {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(SelectIter{cond: &self.cond, source: self.source.iter(), env: &self.env}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        SelectIter{source: self.source.iter(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -40,14 +39,14 @@ impl Stream for Select {
     }
 }
 
-impl SIterator for SelectIter<'_> {
+impl PreIterator for SelectIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
             let source = iter_try!(self.source.next());
-            let cond = Node::from(self.cond)
+            let cond = Node::from(&self.node.cond)
                 .with_source(source.clone().into())?
-                .eval(self.env)?
+                .eval(&self.node.env)?
                 .to_bool()?;
             if cond {
                 return Ok(Some(source));
@@ -57,6 +56,10 @@ impl SIterator for SelectIter<'_> {
 
     fn len_remain(&self) -> Length {
         Length::at_most(self.source.len_remain())
+    }
+
+    fn origin(&self) -> &Rc<Select> {
+        &self.node
     }
 }
 

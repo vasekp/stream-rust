@@ -56,8 +56,8 @@ impl<I: ItemType> Describe for Join<I> {
 }
 
 impl<I: ItemType> Stream<I> for Join<I> {
-    fn iter(&self) -> SResult<Box<dyn SIterator<I> + '_>> {
-        Ok(Box::new(JoinIter{elems: &self.elems, index: 0, inner: None}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        JoinIter{index: 0, inner: None, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -70,13 +70,13 @@ impl<I: ItemType> Stream<I> for Join<I> {
     }
 }
 
-struct JoinIter<'node, I: ItemType> {
-    elems: &'node Vec<Joinable<I>>,
+struct JoinIter<I: ItemType> {
+    node: Rc<Join<I>>,
     index: usize,
-    inner: Option<Box<dyn SIterator<I> + 'node>>
+    inner: Option<Box<dyn SIterator<I>>>
 }
 
-impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
+impl<I: ItemType> PreIterator<I> for JoinIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         loop {
             check_stop!();
@@ -85,7 +85,7 @@ impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
                 else { self.inner = None; }
             }
             self.index += 1;
-            match self.elems.get(self.index - 1) {
+            match self.node.elems.get(self.index - 1) {
                 Some(Joinable::Single(item)) => return Ok(Some(item.clone())),
                 Some(Joinable::Stream(stm)) => self.inner = Some(stm.iter()),
                 None => return Ok(None),
@@ -101,7 +101,7 @@ impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
                 n = m;
             }
             self.index += 1;
-            let Some(next) = self.elems.get(self.index - 1) else { return Ok(Some(n)); };
+            let Some(next) = self.node.elems.get(self.index - 1) else { return Ok(Some(n)); };
             match next {
                 Joinable::Single(_) => n -= 1,
                 Joinable::Stream(stm) => self.inner = Some(stm.iter())
@@ -111,12 +111,16 @@ impl<I: ItemType> SIterator<I> for JoinIter<'_, I> {
 
     fn len_remain(&self) -> Length {
         let len = if let Some(inner) = &self.inner { inner.len_remain() } else { Length::Exact(UNumber::zero()) };
-        self.elems[self.index..].iter()
+        self.node.elems[self.index..].iter()
             .map(|item| match item {
                 Joinable::Single(_) => Length::Exact(UNumber::one()),
                 Joinable::Stream(stm) => stm.len()
             })
             .fold(len, |acc, e| acc + e)
+    }
+
+    fn origin(&self) -> &Rc<Join<I>> {
+        &self.node
     }
 }
 

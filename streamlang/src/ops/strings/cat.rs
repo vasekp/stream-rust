@@ -12,30 +12,30 @@ fn eval_cat(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_string(Cat {
         source: stm,
         head: node.head.clone(),
-        filler: filler.map(LiteralString::from),
+        filler: filler.map(LiteralString::from).map(Rc::new),
     }))
 }
 
 struct Cat {
     source: Rc<dyn Stream>,
     head: Head,
-    filler: Option<LiteralString>,
+    filler: Option<Rc<LiteralString>>,
 }
 
 impl Describe for Cat {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
             .set_source(&self.source)
-            .push_args(&self.filler)
+            .push_args(self.filler.as_deref())
             .finish(prec)
     }
 }
 
 impl Stream<Char> for Cat {
-    fn iter(&self) -> SResult<Box<dyn SIterator<Char> + '_>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         match &self.filler {
-            None => Ok(Box::new(CatIter::new(self))),
-            Some(fill) => RiffleCatIter::new_boxed(self, fill)
+            None => CatIter::new(self).wrap(),
+            Some(fill) => RiffleCatIter::new_boxed(Rc::clone(fill), self)
         }
     }
 
@@ -44,21 +44,23 @@ impl Stream<Char> for Cat {
     }
 }
 
-struct CatIter<'node> {
-    outer: Box<dyn SIterator + 'node>,
-    inner: Option<OwnedStreamIter<Char>>,
+struct CatIter {
+    node: Rc<Cat>,
+    outer: Box<dyn SIterator>,
+    inner: Option<Box<dyn SIterator<Char>>>,
 }
 
-impl<'node> CatIter<'node> {
-    fn new(parent: &'node Cat) -> Self {
+impl CatIter {
+    fn new(node: Rc<Cat>) -> Self {
         CatIter {
-            outer: parent.source.iter(),
+            outer: node.source.iter(),
             inner: None,
+            node
         }
     }
 }
 
-impl SIterator<Char> for CatIter<'_> {
+impl PreIterator<Char> for CatIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
@@ -70,7 +72,7 @@ impl SIterator<Char> for CatIter<'_> {
             }
             match iter_try!(self.outer.next()) {
                 Item::Char(ch) => return Ok(Some(ch)),
-                Item::String(s) => self.inner = Some(s.into_iter()),
+                Item::String(s) => self.inner = Some(s.to_iter()),
                 item => return Err(StreamError::with_expr("expected string or character", &item))
             }
         }
@@ -88,7 +90,7 @@ impl SIterator<Char> for CatIter<'_> {
                 n = m;
             } else {
                 match self.outer.next()? {
-                    Some(Item::String(s)) => self.inner = Some(s.into_iter()),
+                    Some(Item::String(s)) => self.inner = Some(s.to_iter()),
                     Some(_) => n -= 1,
                     None => return Ok(Some(n))
                 }
@@ -99,42 +101,47 @@ impl SIterator<Char> for CatIter<'_> {
     fn len_remain(&self) -> Length {
         Length::Unknown
     }
+
+    fn origin(&self) -> &Rc<Cat> {
+        &self.node
+    }
 }
 
-struct RiffleCatIter<'node> {
-    _parent: &'node Cat,
-    outer: Box<dyn SIterator + 'node>,
-    inner: Box<dyn SIterator<Char> + 'node>,
-    filler: &'node LiteralString,
-    state: RiffleCatState<'node>,
+struct RiffleCatIter {
+    node: Rc<Cat>,
+    outer: Box<dyn SIterator>,
+    inner: Box<dyn SIterator<Char>>,
+    filler: Rc<LiteralString>,
+    state: RiffleCatState,
 }
 
-enum RiffleCatState<'node> {
+enum RiffleCatState {
     Source,
-    Filler { next: Box<dyn SIterator<Char> + 'node> }
+    Filler { next: Box<dyn SIterator<Char>> }
 }
 
-impl<'node> RiffleCatIter<'node> {
-    fn new_boxed(parent: &'node Cat, filler: &'node LiteralString) -> SResult<Box<dyn SIterator<Char> + 'node>> {
-        let mut outer = parent.source.iter();
-        let inner = match Self::next_cs(&mut *outer)? {
-            Some(cs) => cs,
-            None => Box::new(std::iter::empty()),
+impl RiffleCatIter {
+    fn new_boxed(filler: Rc<LiteralString>, node: Rc<Cat>) -> Box<dyn SIterator<Char>> {
+        let mut outer = node.source.iter();
+        let inner = match Self::next_cs(&mut *outer) {
+            Ok(Some(cs)) => cs,
+            Ok(None) => EmptyString::iter(),
+            Err(err) => iter_error(err, &node),
         };
-        Ok(Box::new(RiffleCatIter{_parent: parent, outer, inner, filler, state: RiffleCatState::Source}))
+        RiffleCatIter{outer, inner, filler, state: RiffleCatState::Source, node}.wrap()
     }
 
-    fn next_cs(outer: &mut (dyn SIterator + 'node)) -> SResult<Option<Box<dyn SIterator<Char> + 'node>>> {
+    fn next_cs(outer: &mut dyn SIterator) -> SResult<Option<Box<dyn SIterator<Char>>>> {
         match outer.next()? {
             Some(Item::Char(ch)) => Ok(Some(Box::new(std::iter::once(Ok(ch))))),
-            Some(Item::String(s)) => Ok(Some(Box::new(s.into_iter()))),
+            Some(Item::String(s)) => Ok(Some(s.to_iter())),
             None => Ok(None),
             Some(item) => Err(StreamError::with_expr("expected character or string", &item)),
         }
     }
 }
 
-impl SIterator<Char> for RiffleCatIter<'_> {
+impl PreIterator<Char> for RiffleCatIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
@@ -184,6 +191,10 @@ impl SIterator<Char> for RiffleCatIter<'_> {
 
     fn len_remain(&self) -> Length {
         Length::Unknown
+    }
+
+    fn origin(&self) -> &Rc<Cat> {
+        &self.node
     }
 }
 

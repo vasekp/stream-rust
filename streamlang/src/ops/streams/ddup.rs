@@ -22,8 +22,8 @@ impl Describe for DDup {
 }
 
 impl Stream for DDup {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(DDupIter{iter: self.source.iter(), seen: vec![]}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        DDupIter{iter: self.source.iter(), seen: vec![], node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -31,12 +31,13 @@ impl Stream for DDup {
     }
 }
 
-struct DDupIter<'node> {
-    iter: Box<dyn SIterator + 'node>,
+struct DDupIter {
+    node: Rc<DDup>,
+    iter: Box<dyn SIterator>,
     seen: Vec<Item>
 }
 
-impl SIterator for DDupIter<'_> {
+impl PreIterator for DDupIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         'a: loop {
             check_stop!();
@@ -53,6 +54,10 @@ impl SIterator for DDupIter<'_> {
 
     fn len_remain(&self) -> Length {
         Length::at_most(self.iter.len_remain())
+    }
+
+    fn origin(&self) -> &Rc<DDup> {
+        &self.node
     }
 }
 

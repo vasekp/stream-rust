@@ -22,8 +22,8 @@ impl Describe for Enum {
 }
 
 impl Stream for Enum {
-    fn iter(&self) -> SResult<Box<dyn SIterator + '_>> {
-        Ok(Box::new(EnumIter{iter: self.stream.iter(), index: UNumber::zero()}))
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+        EnumIter{iter: self.stream.iter(), index: UNumber::zero(), node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -31,12 +31,13 @@ impl Stream for Enum {
     }
 }
 
-struct EnumIter<'node> {
-    iter: Box<dyn SIterator + 'node>,
+struct EnumIter {
+    node: Rc<Enum>,
+    iter: Box<dyn SIterator>,
     index: UNumber
 }
 
-impl SIterator for EnumIter<'_> {
+impl PreIterator for EnumIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let item = iter_try!(self.iter.next());
         self.index += 1;
@@ -50,6 +51,10 @@ impl SIterator for EnumIter<'_> {
 
     fn len_remain(&self) -> Length {
         self.iter.len_remain()
+    }
+
+    fn origin(&self) -> &Rc<Enum> {
+        &self.node
     }
 }
 
