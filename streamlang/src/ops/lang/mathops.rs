@@ -161,7 +161,7 @@ impl Describe for MathOp {
 }
 
 impl Stream for MathOp {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let args = self.args.iter()
             .map(|item| match item {
                 Item::Stream(stm) => stm.iter(),
@@ -294,7 +294,7 @@ impl Describe for StringOp {
 }
 
 impl Stream<Char> for StringOp {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         let first = self.first.iter();
         let rest = self.rest.iter()
             .map(|item| match item {

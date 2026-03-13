@@ -45,7 +45,7 @@ impl Describe for SplitString {
 }
 
 impl Stream for SplitString {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         SplitStringIter{source: self.source.iter(), done: false, node: self}.wrap()
     }
 
@@ -108,7 +108,7 @@ impl Describe for SplitStream {
 }
 
 impl Stream for SplitStream {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         SplitStreamIter{source: self.source.iter(), done: false, node: self}.wrap()
     }
 

@@ -62,7 +62,7 @@ impl Describe for StringReplace {
 }
 
 impl Stream<Char> for StringReplace {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         StringReplaceIter::new(self).wrap()
     }
 
@@ -160,7 +160,7 @@ impl Describe for StreamReplace {
 }
 
 impl Stream for StreamReplace {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let orig = self.orig.clone();
         let repl = self.repl.clone();
         Box::new(SMap::new(&self.source,

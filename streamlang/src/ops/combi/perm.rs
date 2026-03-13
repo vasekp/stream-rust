@@ -28,7 +28,7 @@ impl Describe for PermStream {
 }
 
 impl Stream for PermStream {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         PermIter {
             self_len: self.len.as_ref()
                 .and_then(|x| u32::try_from(x).ok())

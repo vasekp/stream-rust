@@ -56,7 +56,7 @@ impl<I: ItemType> Describe for Join<I> {
 }
 
 impl<I: ItemType> Stream<I> for Join<I> {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         JoinIter{index: 0, inner: None, node: self}.wrap()
     }
 

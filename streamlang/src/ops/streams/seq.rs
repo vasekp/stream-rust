@@ -19,7 +19,7 @@ pub struct Seq {
 }
 
 impl Stream for Seq {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         SeqIter{
             value: match &self.from {
                 Some(from) => from.clone(),

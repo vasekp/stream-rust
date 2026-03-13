@@ -36,7 +36,7 @@ impl Describe for ReorderStream {
 }
 
 impl Stream for ReorderStream {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         ReorderIter {
             iter: RandomAccess::new(Rc::clone(&self.source)),
             state: ReorderState::Args { iter: 0..self.indices.len() },

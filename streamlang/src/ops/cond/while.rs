@@ -30,7 +30,7 @@ impl Describe for While {
 }
 
 impl Stream for While {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         WhileIter{source: self.source.iter(), node: self}.wrap()
     }
 

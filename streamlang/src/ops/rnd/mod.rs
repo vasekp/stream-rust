@@ -51,7 +51,7 @@ impl Describe for RndStream {
 }
 
 impl Stream for RndStream {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         RndIter::new(self).wrap()
     }
 

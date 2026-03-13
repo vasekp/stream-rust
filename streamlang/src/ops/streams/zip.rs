@@ -23,7 +23,7 @@ impl Describe for Zip {
 }
 
 impl Stream for Zip {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let iters = self.streams.iter()
             .map(|stm| stm.iter())
             .collect();

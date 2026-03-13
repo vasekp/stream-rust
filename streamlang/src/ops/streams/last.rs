@@ -80,7 +80,7 @@ struct Last<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for Last<I> {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         let mut it = self.source.iter();
         match it.advance(self.skip.to_owned()) {
             Ok(None) => it,

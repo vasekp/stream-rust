@@ -15,7 +15,7 @@ pub trait Stream<I = Item>: Describe {
     /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
     /// iterator.
     // TODO docstring
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>>;
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
@@ -27,7 +27,7 @@ pub trait Stream<I = Item>: Describe {
 
 impl<I: ItemType> dyn Stream<I> {
     pub fn iter(self: &Rc<Self>) -> Box<dyn SIterator<I>> {
-        Rc::clone(self).into_iter()
+        Rc::clone(self).to_iter()
     }
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
@@ -249,7 +249,7 @@ impl<I: ItemType> Empty<I> {
 }
 
 impl<I: ItemType> Stream<I> for Empty<I> where Empty<I>: Describe {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Self::iter()
     }
 

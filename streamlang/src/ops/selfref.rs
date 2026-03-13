@@ -48,7 +48,7 @@ impl Describe for SelfRef {
 }
 
 impl Stream for SelfRef {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let (stm, hist) = match self.eval_real() {
             Ok((stm, hist)) => (stm, hist),
             Err(err) => return iter_error(err, &self)
@@ -60,7 +60,7 @@ impl Stream for SelfRef {
         };
         SelfRefIter {
             pre: iter,
-            inner: stm.into_iter(),
+            inner: stm.to_iter(),
             hist,
             node: self,
         }.wrap()
@@ -111,7 +111,7 @@ struct BackRefIter {
 }
 
 impl Stream for BackRef {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         match Weak::upgrade(&self.parent) {
             Some(rc) => BackRefIter{vec: rc, pos: 0, node: self}.wrap(),
             None => iter_error("back-reference detached from cache", &self)

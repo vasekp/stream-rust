@@ -35,7 +35,7 @@ impl Describe for Fold {
 }
 
 impl Stream for Fold {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let args = self.body.args.iter().cloned().collect();
         FoldIter{source: self.source.iter(), prev: args, node: self}.wrap()
     }

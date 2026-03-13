@@ -63,7 +63,7 @@ struct Part {
 }
 
 impl Stream for Part {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         PartIter{iter: self.indices.iter(), node: self}.wrap()
     }
 
@@ -123,7 +123,7 @@ struct StringPart {
 }
 
 impl Stream<Char> for StringPart {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         StringPartIter{iter: self.indices.iter(), node: self}.wrap()
     }
 

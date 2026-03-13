@@ -18,7 +18,7 @@ pub struct PiStream {
 }
 
 impl Stream for PiStream {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         PiIter::new(self).wrap()
     }
 

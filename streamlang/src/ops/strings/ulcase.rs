@@ -29,7 +29,7 @@ impl Describe for ULCase {
 }
 
 impl Stream<Char> for ULCase {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         let func = self.func;
         self.source.map(move |ch| (func)(&ch))
     }

@@ -27,7 +27,7 @@ impl Describe for Flatten {
 }
 
 impl Stream for Flatten {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         FlattenIter {
             outer: self.source.iter(),
             iters: vec![],
@@ -61,7 +61,7 @@ impl PreIterator for FlattenIter {
                     if self.depth.is_some_and(|d| self.iters.len() == d) {
                         return Ok(Some(Item::Stream(stm)));
                     } else {
-                        self.iters.push(stm.into_iter());
+                        self.iters.push(stm.to_iter());
                     }
                 },
                 Some(item) => return Ok(Some(item)),
@@ -94,7 +94,7 @@ impl PreIterator for FlattenIter {
                 };
                 match res? {
                     Some(Item::Stream(stm)) => {
-                        self.iters.push(stm.into_iter());
+                        self.iters.push(stm.to_iter());
                     },
                     Some(_) => n -= 1,
                     None => {

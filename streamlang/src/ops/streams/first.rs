@@ -33,7 +33,7 @@ struct FirstIter<I: ItemType> {
 }
 
 impl<I: ItemType> Stream<I> for First<I> {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         FirstIter{source: self.source.iter(), count_rem: self.count.clone(), node: self}.wrap()
     }
 

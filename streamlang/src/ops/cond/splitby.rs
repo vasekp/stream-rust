@@ -34,7 +34,7 @@ impl<I: ItemType> Describe for SplitBy<I> {
 }
 
 impl<I: ItemType> Stream for SplitBy<I> {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         SplitByIter{source: self.source.iter(), done: false, node: self}.wrap()
     }
 

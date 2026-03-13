@@ -22,7 +22,7 @@ impl Describe for DDup {
 }
 
 impl Stream for DDup {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         DDupIter{iter: self.source.iter(), seen: vec![], node: self}.wrap()
     }
 

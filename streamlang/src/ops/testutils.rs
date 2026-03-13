@@ -24,7 +24,7 @@ impl<I: ItemType> Describe for LenAM<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenAM<I> {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Box::new(LenAMIter { iter: self.src.iter() })
     }
 
@@ -75,7 +75,7 @@ impl<I: ItemType> Describe for LenUF<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUF<I> {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Box::new(LenUFIter { iter: self.src.iter() })
     }
 
@@ -126,7 +126,7 @@ impl<I: ItemType> Describe for LenUU<I> {
 }
 
 impl<I: ItemType> Stream<I> for LenUU<I> {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Box::new(LenUUIter { iter: self.src.iter() })
     }
 

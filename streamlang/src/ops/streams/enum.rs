@@ -22,7 +22,7 @@ impl Describe for Enum {
 }
 
 impl Stream for Enum {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         EnumIter{iter: self.stream.iter(), index: UNumber::zero(), node: self}.wrap()
     }
 

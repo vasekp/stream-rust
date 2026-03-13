@@ -64,7 +64,7 @@ impl Describe for NestArgs {
 }
 
 impl Stream for NestSource {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         NestIterSource{prev: self.source.clone(), node: self}.wrap()
     }
 
@@ -74,7 +74,7 @@ impl Stream for NestSource {
 }
 
 impl Stream for NestArgs {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let args = self.body.args.iter().cloned().collect();
         NestIterArgs{prev: args, node: self}.wrap()
     }

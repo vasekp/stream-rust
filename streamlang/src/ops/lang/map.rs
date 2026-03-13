@@ -30,7 +30,7 @@ impl Describe for Map {
 }
 
 impl Stream for Map {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let body = Rc::clone(&self.body);
         let env = self.env.clone();
         Box::new(SMap::new(&self.source, move |item| {
@@ -61,7 +61,7 @@ impl Describe for CharMap {
 }
 
 impl Stream<Char> for CharMap {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         let body = Rc::clone(&self.body);
         let env = self.env.clone();
         Box::new(SMap::new(&self.source, move |ch| {

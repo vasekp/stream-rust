@@ -65,7 +65,7 @@ enum RangeType {
 }
 
 impl Stream for Range {
-    fn into_iter(self: Rc<Range>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Range>) -> Box<dyn SIterator> {
         RangeIter{
             value: match &self.from {
                 Some(from) => from.clone(),

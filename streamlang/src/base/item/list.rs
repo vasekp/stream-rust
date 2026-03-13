@@ -7,12 +7,12 @@ pub type LiteralString = List<Char>;
 
 impl<I: ItemType> List<I> where List<I>: Describe {
     pub fn iter(self: &Rc<Self>) -> Box<dyn SIterator<I>> {
-        Rc::clone(self).into_iter()
+        Rc::clone(self).to_iter()
     }
 }
 
 impl<I: ItemType> Stream<I> for List<I> where List<I>: Describe {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Box::new(ListIter::new(self))
     }
 

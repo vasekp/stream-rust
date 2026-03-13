@@ -30,7 +30,7 @@ impl Describe for Select {
 }
 
 impl Stream for Select {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator> {
+    fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         SelectIter{source: self.source.iter(), node: self}.wrap()
     }
 
