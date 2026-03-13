@@ -236,25 +236,33 @@ pub(crate) fn iter_error<I: ItemType, T: Stream<I> + 'static>(err: impl Into<Str
     Box::new(std::iter::once(Err(err.into().wrap(&(Rc::clone(blame) as Rc<dyn Stream<I>>)))))
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct EmptyStream;
+pub(crate) struct Empty<I: ItemType>(std::marker::PhantomData<I>);
+
+impl<I: ItemType> Empty<I> {
+    pub fn iter() -> Box<dyn SIterator<I>> {
+        Box::new(std::iter::empty())
+    }
+
+    fn new() -> Self {
+        Self(std::marker::PhantomData)
+    }
+}
+
+impl<I: ItemType> Stream<I> for Empty<I> where Empty<I>: Describe {
+    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
+        Self::iter()
+    }
+
+    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
+}
+
+pub(crate) type EmptyStream = Empty<Item>;
+pub(crate) type EmptyString = Empty<Char>;
 
 impl EmptyStream {
     pub(crate) fn new_rc() -> Rc<dyn Stream> {
         EMPTY_STREAM.with(Rc::clone)
     }
-
-    pub fn iter() -> Box<dyn SIterator<Item>> {
-        Box::new(std::iter::empty())
-    }
-}
-
-impl Stream<Item> for EmptyStream {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Item>> {
-        Self::iter()
-    }
-
-    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
 }
 
 impl Describe for EmptyStream {
@@ -263,25 +271,10 @@ impl Describe for EmptyStream {
     }
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct EmptyString;
-
 impl EmptyString {
     pub(crate) fn new_rc() -> Rc<dyn Stream<Char>> {
         EMPTY_STRING.with(Rc::clone)
     }
-
-    pub fn iter() -> Box<dyn SIterator<Char>> {
-        Box::new(std::iter::empty())
-    }
-}
-
-impl Stream<Char> for EmptyString {
-    fn into_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        Self::iter()
-    }
-
-    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
 }
 
 impl Describe for EmptyString {
@@ -291,6 +284,6 @@ impl Describe for EmptyString {
 }
 
 thread_local! {
-    static EMPTY_STREAM: Rc<EmptyStream> = Rc::new(EmptyStream);
-    static EMPTY_STRING: Rc<EmptyString> = Rc::new(EmptyString);
+    static EMPTY_STREAM: Rc<EmptyStream> = Rc::new(Empty::new());
+    static EMPTY_STRING: Rc<EmptyString> = Rc::new(Empty::new());
 }

@@ -176,7 +176,7 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
                 self.source = None;
             }
         }
-        if &self.pos < &self.node.len {
+        if self.pos < self.node.len {
             self.pos += 1;
             Ok(Some(self.node.padding.clone()))
         } else {
@@ -201,7 +201,7 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
                 self.source = None;
             }
         }
-        if &self.pos > &self.node.len {
+        if self.pos > self.node.len {
             Ok(Some(&self.pos - &self.node.len))
         } else {
             Ok(None)
