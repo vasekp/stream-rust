@@ -405,12 +405,12 @@ impl<'str> Parser<'str> {
         let Some(tok) = self.tk.next_tr()? else { return Ok(None); };
         use TokenClass as TC;
         let head = match tok {
-            Token(TC::Ident, name) => Head::Symbol(intern(name)),
+            Token(TC::Ident, name) => Head::Symbol(intern(&name.to_lowercase())),
             Token(TC::Special, tk @ "$") => {
                 let Some(Token(TC::Ident, name)) = self.tk.next_tr()? else {
                     return Err(ParseError::new("requires name: $name", tk));
                 };
-                Head::Symbol(intern(&format!("{tk}{name}")))
+                Head::Symbol(intern(&format!("{tk}{}", &name.to_lowercase())))
             },
             Token(TC::Open, bkt @ "{") => return Ok(Some(self.read_block_link(bkt)?)),
             Token(_, tok) => return Err(ParseError::new("cannot appear here", tok))
@@ -692,6 +692,7 @@ pub fn parse(input: &str) -> Result<Expr, ParseError<'_>> {
 fn test_parser() {
     assert_eq!(parse("1"), Ok(Expr::new_number(1)));
     assert_eq!(parse("a"), Ok(Expr::new_node("a", None, vec![])));
+    assert_eq!(parse("A"), Ok(Expr::new_node("a", None, vec![])));
     assert_eq!(parse("a(1,2)"), Ok(Expr::new_node("a", None, vec![Expr::new_number(1), Expr::new_number(2)])));
     assert_eq!(parse("1.a"), Ok(Expr::new_number(1).chain(Link::new("a", vec![]))));
     assert_eq!(parse("(1).a"), Ok(Expr::new_number(1).chain(Link::new("a", vec![]))));
@@ -801,6 +802,7 @@ fn test_parser() {
     assert!(parse("#%").is_err());
     assert_eq!(parse("$#"), Ok(Expr::Repl(Subst::Counter)));
     assert_eq!(parse("$name"), Ok(Expr::new_node("$name", None, vec![])));
+    assert_eq!(parse("$NaMe"), Ok(Expr::new_node("$name", None, vec![])));
     assert_eq!(parse("a.$b@$c(1)"), Ok(Expr::new_node("a", None, vec![])
             .chain(Link::new(LangItem::Args, vec![
                     Expr::new_node("$b", None, vec![]),
