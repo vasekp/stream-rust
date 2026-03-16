@@ -10,6 +10,7 @@ mod conv;
 mod ana;
 mod rnd;
 mod combi;
+mod math;
 
 #[cfg(test)]
 mod testutils;
@@ -25,6 +26,7 @@ pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
     ana::init(symbols);
     rnd::init(symbols);
     combi::init(symbols);
+    math::init(symbols);
 
     #[cfg(test)]
     testutils::init(symbols);

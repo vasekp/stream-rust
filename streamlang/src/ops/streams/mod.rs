@@ -18,7 +18,6 @@ mod r#enum;
 mod ddup;
 mod contains;
 mod index;
-mod pi;
 mod windows;
 mod pad;
 mod groups;
@@ -44,7 +43,6 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     ddup::init(symbols);
     contains::init(symbols);
     index::init(symbols);
-    pi::init(symbols);
     windows::init(symbols);
     pad::init(symbols);
     groups::init(symbols);
