@@ -97,3 +97,29 @@ impl<I: ItemType> SIterator<I> for ListIter<I> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_list() {
+        test_len!("[1, 2, 3]" => 3);
+        test_len!("[]" => 0);
+        test_describe!("[]" => "[]");
+        test_describe!("[1]" => "[1]");
+        test_describe!("[-1,2]" => "[-1, 2]");
+        test_advance("[1,2,3]");
+        test_advance("[]");
+    }
+
+    #[test]
+    fn test_litstr() {
+        test_len!("\"abc\"" => 3);
+        test_len!("\"\"" => 0);
+        test_describe!("\"\"" => "\"\"");
+        test_describe!("\"a\\nbc\"" => "\"a\\nbc\"");
+        test_advance("\"\"");
+        test_advance("\"abc\"");
+    }
+}

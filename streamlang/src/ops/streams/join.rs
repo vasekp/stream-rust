@@ -96,14 +96,23 @@ impl<I: ItemType> PreIterator<I> for JoinIter<I> {
     fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
         loop {
             check_stop!();
+            if n.is_zero() { return Ok(None); }
             if let Some(inner) = &mut self.inner {
-                let Some(m) = inner.advance(n)? else { return Ok(None); };
-                n = m;
+                if let Some(m) = inner.advance(n)? {
+                    n = m;
+                } else {
+                    return Ok(None);
+                };
             }
             self.index += 1;
-            let Some(next) = self.node.elems.get(self.index - 1) else { return Ok(Some(n)); };
+            let Some(next) = self.node.elems.get(self.index - 1) else {
+                return Ok(Some(n));
+            };
             match next {
-                Joinable::Single(_) => n -= 1,
+                Joinable::Single(_) => {
+                    self.inner = None;
+                    n -= 1;
+                },
                 Joinable::Stream(stm) => self.inner = Some(stm.iter())
             }
         }
@@ -174,6 +183,8 @@ mod tests {
         test_advance("range(10^10)~range(10^9)");
         test_advance("range(10^10)~range(-10^10)~range(10^9)");
         test_advance("('a'..'z').repeat(10^10)~['A'].repeat(10^10)");
+        test_advance("(1..5)~6~(8..10)");
+        test_advance("(1..4)~6~7~(8..10)");
 
         test_describe!("1~2" => "1~2");
         test_describe!("[1]~[2]" => "[1]~[2]");
