@@ -149,5 +149,6 @@ Two-argument form: evaluations of the function `func` on the above, entering as 
 > ?seq.?(3) : 10 => [[1, 2, 3], [2, 3, 4], [3, ...], ...]
 > ?seq.?(3, ?plus) => [6, 9, 12, 15, 18, ...]
 > [1, 3, 7, 5].?(2, {#2-#1}) => [2, 4, -2] ; differences
+: groups
 "#);
 }

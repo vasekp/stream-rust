@@ -21,6 +21,7 @@ mod index;
 mod pi;
 mod windows;
 mod pad;
+mod groups;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -46,4 +47,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     pi::init(symbols);
     windows::init(symbols);
     pad::init(symbols);
+    groups::init(symbols);
 }
