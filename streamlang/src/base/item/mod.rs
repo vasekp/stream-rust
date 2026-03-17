@@ -179,7 +179,7 @@ impl Item {
         }
     }
 
-    pub(crate) fn type_str(&self) -> &'static str {
+    pub fn type_str(&self) -> &'static str {
         use Item::*;
         match self {
             Number(_) => "number",
