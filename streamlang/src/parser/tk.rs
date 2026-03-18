@@ -106,8 +106,14 @@ impl<'str> Tokenizer<'str> {
         Err("unterminated string")
     }
 
+    fn subslice_offset(&self, slice: &'str str) -> usize {
+        self.input.as_bytes()
+            .element_offset(&slice.as_bytes()[0])
+            .expect("slice should be a substring of input")
+    }
+
     pub fn slice_from(&mut self, start: &'str str) -> &'str str {
-        let start_index = unsafe { start.as_ptr().offset_from(self.input.as_ptr()) } as usize;
+        let start_index = self.subslice_offset(start);
         let end_index = match self.iter.peek() {
             Some(&(pos, _)) => pos,
             None => self.input.len()
@@ -133,11 +139,11 @@ impl<'str> Tokenizer<'str> {
     }
 
     pub fn merge(&self, prev: Token<'str>, next: Token<'str>, cls: TokenClass) -> Token<'str> {
-        let prev_start = unsafe { prev.1.as_ptr().offset_from(self.input.as_ptr()) } as usize;
+        let prev_start = self.subslice_offset(&prev.1);
         let prev_end = prev_start + prev.1.len();
-        let next_start = unsafe { next.1.as_ptr().offset_from(self.input.as_ptr()) } as usize;
+        let next_start = self.subslice_offset(&next.1);
         let next_end = next_start + next.1.len();
-        assert_eq!(prev_end, next_start);
+        debug_assert!(prev_end == next_start);
         Token(cls, &self.input[prev_start..next_end])
     }
 }

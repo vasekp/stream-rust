@@ -20,10 +20,14 @@ impl<'str> ParseError<'str> {
     /// For the actual description of the error, use the `Display` trait.
     pub fn display(&self, input: &'str str) {
         if self.slice.is_empty() { return; }
-        let start = unsafe { self.slice.as_ptr().offset_from(input.as_ptr()) } as usize;
+        let start = input.as_bytes()
+            .element_offset(&self.slice.as_bytes()[0]);
         let length = self.slice.len();
-        //println!("\x1b[8m{}\x1b[0m{}", &input[0..start], &input[start..(start + length)]);
-        println!("{}\x1b[1;31m{}\x1b[0m{}", &input[0..start], &input[start..(start + length)], &input[(start+length)..]);
+        if let Some(start) = start {
+            println!("{}\x1b[1;31m{}\x1b[0m{}", &input[0..start], &input[start..(start + length)], &input[(start+length)..]);
+        } else {
+            println!("{input}");
+        }
     }
 }
 
