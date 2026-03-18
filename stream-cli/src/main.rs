@@ -233,7 +233,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             },
             Err(err) => {
-                err.display(input);
+                if let Some(range) = err.range_within(input) {
+                    println!("{}{}{}",
+                        &input[0..range.start],
+                        &input[range.start..range.end].red().bold(),
+                        &input[range.end..]);
+                }
                 println!("{}", format!("{err}").red());
             }
         }

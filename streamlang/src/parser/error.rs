@@ -14,20 +14,11 @@ impl<'str> ParseError<'str> {
         ParseError{reason: text.into(), slice}
     }
 
-    /// Shows the location of the parse error. For this purpose, the input string is reproduced in
-    /// full. The part causing the error is highlighted using ANSI color sequences.
-    ///
-    /// For the actual description of the error, use the `Display` trait.
-    pub fn display(&self, input: &'str str) {
-        if self.slice.is_empty() { return; }
+    pub fn range_within(&self, input: &'str str) -> Option<std::ops::Range<usize>> {
         let start = input.as_bytes()
-            .element_offset(&self.slice.as_bytes()[0]);
+            .element_offset(self.slice.as_bytes().get(0)?)?;
         let length = self.slice.len();
-        if let Some(start) = start {
-            println!("{}\x1b[1;31m{}\x1b[0m{}", &input[0..start], &input[start..(start + length)], &input[(start+length)..]);
-        } else {
-            println!("{input}");
-        }
+        Some(start..(start+length))
     }
 }
 
