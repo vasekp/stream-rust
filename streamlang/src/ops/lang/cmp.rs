@@ -96,6 +96,8 @@ mod tests {
         test_eval!("12>=11>=10" => "true");
         test_eval!("12>=11>=11" => "true");
         test_eval!("12>=11>=12" => "false");
+        test_eval!("+2>-1" => "true");
+        test_eval!("-2<-1" => "true");
         test_eval!("1<[1]" => err);
         test_eval!("1<'a'" => err);
         test_eval!("'a'=='a'" => "true");

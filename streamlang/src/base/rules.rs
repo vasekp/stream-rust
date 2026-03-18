@@ -1,33 +1,31 @@
-use crate::base::ParseError;
-
-pub(crate) fn op_rules(op: &str) -> std::result::Result<(u32, bool), ParseError<'_>> {
+pub(crate) fn op_rules(op: &str) -> std::result::Result<(u32, bool), &'static str> {
     match op {
         "=" => Ok((1, true)),
         "|" => Ok((2, true)),
         "&" => Ok((3, true)),
-        "!" => Ok((4, true)),
-        "==" => Ok((5, true)),
-        "<>" => Ok((5, true)),
-        ">" => Ok((5, true)),
-        "<" => Ok((5, true)),
-        ">=" => Ok((5, true)),
-        "<=" => Ok((5, true)),
-        ">>" => Ok((5, true)),
-        "<<" => Ok((5, true)),
-        ">>=" => Ok((5, true)),
-        "<<=" => Ok((5, true)),
-        "~" => Ok((6, true)),
+        "==" => Ok((4, true)),
+        "<>" => Ok((4, true)),
+        ">" => Ok((4, true)),
+        "<" => Ok((4, true)),
+        ">=" => Ok((4, true)),
+        "<=" => Ok((4, true)),
+        ">>" => Ok((4, true)),
+        "<<" => Ok((4, true)),
+        ">>=" => Ok((4, true)),
+        "<<=" => Ok((4, true)),
+        "~" => Ok((5, true)),
+        ".." => Ok((6, false)),
         "%" => Ok((7, false)),
         "+" => Ok((8, true)),
         "-" => Ok((8, false)),
+        "!" => Ok((8, false)),
         "*" => Ok((9, true)),
         "/" => Ok((9, false)),
         "^" => Ok((10, false)),
-        ".." => Ok((11, false)),
-        _ => Err(ParseError::new("undefined operator", op))
+        _ => Err("undefined operator")
     }
 }
 
-pub(crate) fn op_prec(op: &str) -> std::result::Result<u32, ParseError<'_>> {
+pub(crate) fn op_prec(op: &str) -> std::result::Result<u32, &'static str> {
     op_rules(op).map(|(prec, _multi)| prec)
 }

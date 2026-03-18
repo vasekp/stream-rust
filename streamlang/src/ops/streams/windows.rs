@@ -132,7 +132,7 @@ mod tests {
         test_eval!("(1..5).windows(4)[1]" => "[1, 2, 3, 4]");
         test_eval!("(1..5).windows(4)[2]" => "[2, 3, 4, 5]");
         test_eval!("(1..5).windows(4)[3]" => err);
-        test_advance("(1..(10^10)).windows(5)");
+        test_advance("(1..10^10).windows(5)");
         test_eval!("seq.windows(3, plus)" => "[6, 9, 12, 15, 18, ...]");
         test_eval!("(seq^2).windows(3, {#2-#1})" => "[3, 5, 7, 9, 11, ...]");
         test_describe!("seq.windows(3)" => "seq.windows(3)");
