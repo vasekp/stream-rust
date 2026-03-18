@@ -1,5 +1,5 @@
-Expr: [+|-] (Term Op)* Term
-Term: ExprPart (. ExprPart | : ExprPart | [ Args ] )*
+Expr: (Term Op)* Term
+Term: [+|-|!] ExprPart (. ExprPart | : ExprPart | [ Args ] )*
 Args: [[Expr ,]* Expr]
 ExprPart: Number | BaseNum | Bool | Char | String | List | ( Expr ) | Special | Link
 List: [ [[Expr ,]* Expr] ]
@@ -7,10 +7,10 @@ Special: # | % [Number] | $#
 Link: Ident [ ( Args ) | @ ExprPart | BlockLink ] | BlockLink
 BlockLink: { Expr } [ ( Args ) | @ ExprPart ]
 Number: (0-9)+
-BaseNum: (0-9)+ _ (0-9|a-z|A-Z)+
+BaseNum: (0-9)+ _ (0-9|a-z|A-Z)+ | 0b(0|1)+ | 0o(0-7)+ | 0x(0-9|a-f|A-F)+
 Bool: true | false
-Char: ' [char | "]* '
+Char: ' [char | "]+ '
 char: (any except ', ", \) | \ (n|r|t|\|'|")
 String: " [char | ']* "
 Ident: (_|a-z|A-Z) (0-9|a-z|A-Z|_)* | $ (0-9|a-z|A-Z|_)*
-Op: (+|-|*|/|%|^|~|<|=|>|==|<>|<<|<<=|==|>>=|>>|..|&|!||)
+Op: (+|-|*|/|%|^|~|<|=|>|==|<>|<<|<<=|==|>>=|>>|..|&||)
