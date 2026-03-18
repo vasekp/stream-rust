@@ -1,5 +1,6 @@
 use crate::base::*;
 use crate::base::tracing::Tracer;
+use crate::base::stop;
 
 use std::collections::HashMap;
 
@@ -26,6 +27,7 @@ impl Session {
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
     pub fn process(&mut self, expr: Expr) -> SResult<SessionUpdate<'_>> {
+        stop::reset_stop();
         match &expr {
             Expr::Eval(node) => match &**node {
                 Node { head: Head::Oper("="), source: None, args } => {
