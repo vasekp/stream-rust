@@ -16,7 +16,7 @@ impl<'str> ParseError<'str> {
 
     pub fn range_within(&self, input: &'str str) -> Option<std::ops::Range<usize>> {
         let start = input.as_bytes()
-            .element_offset(self.slice.as_bytes().get(0)?)?;
+            .element_offset(self.slice.as_bytes().first()?)?;
         let length = self.slice.len();
         Some(start..(start+length))
     }

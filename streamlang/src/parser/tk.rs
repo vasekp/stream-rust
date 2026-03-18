@@ -139,9 +139,9 @@ impl<'str> Tokenizer<'str> {
     }
 
     pub fn merge(&self, prev: Token<'str>, next: Token<'str>, cls: TokenClass) -> Token<'str> {
-        let prev_start = self.subslice_offset(&prev.1);
+        let prev_start = self.subslice_offset(prev.1);
         let prev_end = prev_start + prev.1.len();
-        let next_start = self.subslice_offset(&next.1);
+        let next_start = self.subslice_offset(next.1);
         let next_end = next_start + next.1.len();
         debug_assert!(prev_end == next_start);
         Token(cls, &self.input[prev_start..next_end])
