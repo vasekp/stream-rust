@@ -4,7 +4,7 @@ use stream::base::*;
 use std::cell::RefCell;
 
 use wasm_bindgen::prelude::*;
-use js_sys::{Object, Reflect};
+use js_sys::{Object, Reflect, Array};
 
 thread_local!{
     static SESS: RefCell<Session> = RefCell::new(Session::new());
@@ -30,6 +30,11 @@ pub fn process(input: String) -> Result<JsValue, JsValue> {
                 Err(err) => {
                     Reflect::set(&obj, &"type".into(), &"error".into())?;
                     Reflect::set(&obj, &"text".into(), &format!("{err}").into())?;
+                    Reflect::set(&obj, &"trace".into(), &err.backtrace()
+                        .iter().rev()
+                        .map(|expr| JsValue::from(&expr.describe()))
+                        .collect::<Array>()
+                        .into())?;
                 }
             }
             Ok(())
