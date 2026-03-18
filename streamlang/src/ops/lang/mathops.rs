@@ -397,6 +397,7 @@ mod tests {
         test_eval!("0^0" => "1");
         test_eval!("0^1" => "0");
         test_eval!("1^(-1)" => err);
+        test_eval!("-2^5" => "-32");
         test_eval!("157%10" => "7");
         test_eval!("(-157)%10" => "-7");
         test_eval!("157%(-10)" => "7");

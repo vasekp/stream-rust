@@ -132,7 +132,7 @@ mod tests {
         test_eval!("with(df={times@range(#1,1,-2)}, df(10))" => "3840");
 
         test_eval!("with(a={a}, a)" => err);
-        test_eval!("with(a=1, a={a}, a)" => "1");
+        test_eval!("with(a=-1, a={a}, a)" => "-1");
         test_eval!("with(a=1, b={a}, a=2, b)" => "1");
 
         test_eval!("with(a=1, A=a+1, a)" => "2");

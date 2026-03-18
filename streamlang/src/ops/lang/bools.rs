@@ -67,8 +67,10 @@ mod tests {
         test_eval!("1==2|1+'a'==1" => err);
 
         test_eval!("!false" => "true");
+        test_eval!("true==!false" => "true");
         test_eval!("xor()" => "false");
         test_eval!("not()" => err);
+        test_eval!("true!false" => err);
         test_eval!("xor(false)" => "false");
         test_eval!("not(false)" => "true");
         test_eval!("xor(true,false)" => "true");
