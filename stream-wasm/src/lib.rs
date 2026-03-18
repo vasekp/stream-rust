@@ -60,8 +60,24 @@ pub fn stop() {
 }
 
 #[wasm_bindgen]
-pub fn validate(input: String) -> bool {
-    !input.starts_with(':')
+pub fn validate(input: String) -> Result<JsValue, JsValue> {
+    let obj = Object::new();
+    match stream::parse(&input) {
+        Ok(_) => {
+            Reflect::set(&obj, &"valid".into(), &JsValue::TRUE)?;
+        },
+        Err(err) => {
+            Reflect::set(&obj, &"valid".into(), &JsValue::FALSE)?;
+            if let Some(range) = err.range_within(&input) {
+                Reflect::set(&obj, &"range".into(),
+                    &[range.start, range.end].into_iter()
+                        .map(JsValue::from)
+                        .collect::<Array>()
+                        .into())?;
+            }
+        }
+    }
+    Ok(obj.into())
 }
 
 #[wasm_bindgen]
