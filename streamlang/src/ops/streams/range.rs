@@ -189,6 +189,7 @@ mod tests {
         test_eval!("3..3" => "[3]");
         test_eval!("3..1" => "[]");
         test_eval!("-1..2" => "[-1, 0, 1, 2]");
+        test_eval!("-3..-1" => "[-3, -2, -1]");
         test_eval!("1..2..3" => err);
         test_eval!("'a'..'z'" => "['a', 'b', 'c', 'd', 'e', ...]");
         test_eval!("'A'..'z'" => "['A', 'B', 'C', 'D', 'E', ...]");
@@ -232,6 +233,7 @@ mod tests {
         test_describe!("alpha(\"abz\", range('a','Z'))" => "alpha(['a', 'b', 'z'], range('a', 'z'))");
         test_describe!("1..5" => "1..5");
         test_describe!("-1..5" => "(-1)..5");
+        test_describe!("-5..-1" => "(-5)..(-1)");
         test_describe!("-(1..5)" => "-(1..5)");
     }
 }

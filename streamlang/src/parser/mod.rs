@@ -140,8 +140,7 @@ impl<'str> Parser<'str> {
                 return Ok(None)
             },
             Some(Token(TC::Oper, op @ ("+" | "-" | "!"))) => {
-                let (prec, multi) = op_rules(op)
-                    .map_err(|err| ParseError::new(err, op))?;
+                let (prec, multi) = op_rules(op).unwrap();
                 stack.push(StackEntry{op, prec, multi, args: vec![]});
                 self.read_expr_part()?
                     .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?
@@ -212,6 +211,13 @@ impl<'str> Parser<'str> {
                             stack.push(StackEntry{op, prec, multi, args: vec![expr]});
                             break;
                         }
+                    }
+                    if let Ok(Some(Token(TC::Oper, pfx_op))) = self.tk.peek()
+                        && matches!(*pfx_op, "+" | "-" | "!")
+                        && let Ok((pfx_prec, pfx_multi)) = op_rules(pfx_op)
+                        && pfx_prec > prec {
+                            stack.push(StackEntry{op: pfx_op, prec: pfx_prec, multi: pfx_multi, args: vec![]});
+                            self.tk.next();
                     }
                     self.read_expr_part()?
                         .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?
@@ -536,4 +542,18 @@ fn test_prec() {
     // Different operations can't be chained
     assert!(parse("1<2<=3").is_err());
     assert!(parse("1===3").is_err());
+
+    assert_eq!(parse("a=-1"), Ok(Expr::new_op("=", vec![
+        Expr::new_node("a", None, vec![]),
+        Expr::new_op("-", vec![Expr::new_number(1)])])));
+    assert_eq!(parse("-1^2"), Ok(Expr::new_op("-", vec![
+        Expr::new_op("^", vec![Expr::new_number(1), Expr::new_number(2)])])));
+    assert_eq!(parse("-2..-1"), Ok(Expr::new_op("..", vec![
+        Expr::new_op("-", vec![Expr::new_number(2)]),
+        Expr::new_op("-", vec![Expr::new_number(1)])])));
+    assert_eq!(parse("+1>-1"), Ok(Expr::new_op(">", vec![
+        Expr::new_op("+", vec![Expr::new_number(1)]),
+        Expr::new_op("-", vec![Expr::new_number(1)])])));
+    assert_eq!(parse("true==!false"), Ok(Expr::new_op("==", vec![
+        Expr::new_bool(true), Expr::new_op("!", vec![Expr::new_bool(false)])])));
 }
