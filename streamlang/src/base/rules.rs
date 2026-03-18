@@ -1,6 +1,4 @@
-use crate::base::ParseError;
-
-pub(crate) fn op_rules(op: &str) -> std::result::Result<(u32, bool), ParseError<'_>> {
+pub(crate) fn op_rules(op: &str) -> std::result::Result<(u32, bool), &'static str> {
     match op {
         "=" => Ok((1, true)),
         "|" => Ok((2, true)),
@@ -24,10 +22,10 @@ pub(crate) fn op_rules(op: &str) -> std::result::Result<(u32, bool), ParseError<
         "/" => Ok((9, false)),
         "^" => Ok((10, false)),
         ".." => Ok((11, false)),
-        _ => Err(ParseError::new("undefined operator", op))
+        _ => Err("undefined operator")
     }
 }
 
-pub(crate) fn op_prec(op: &str) -> std::result::Result<u32, ParseError<'_>> {
+pub(crate) fn op_prec(op: &str) -> std::result::Result<u32, &'static str> {
     op_rules(op).map(|(prec, _multi)| prec)
 }
