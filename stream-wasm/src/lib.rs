@@ -42,6 +42,13 @@ pub fn process(input: String) -> Result<JsValue, JsValue> {
         Err(err) => {
             Reflect::set(&obj, &"type".into(), &"error".into())?;
             Reflect::set(&obj, &"text".into(), &format!("{err}").into())?;
+            if let Some(range) = err.range_within(&input) {
+                Reflect::set(&obj, &"range".into(),
+                    &[range.start, range.end].into_iter()
+                        .map(JsValue::from)
+                        .collect::<Array>()
+                        .into())?;
+            }
         }
     }
     Ok(obj.into())
