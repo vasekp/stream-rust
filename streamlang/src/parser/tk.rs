@@ -152,25 +152,24 @@ impl<'str> Iterator for Tokenizer<'str> {
         let (start, ch) = self.iter.next()?;
         let class = CharClass::of(ch);
         use CharClass::*;
-        let res = match class {
-            Ident | Rel => {
-                self.skip_same(&class);
-                Ok(())
+        match class {
+            Ident | Rel => self.skip_same(&class),
+            Delim => if let Err(err) = self.skip_until(ch) {
+                return Some(Err(ParseError::new(err,
+                            &self.input[start..(start + 1)])));
             },
-            Delim => self.skip_until(ch),
-            Other => {
-                if ch == '.' && matches!(self.iter.peek(), Some(&(_, '.'))) {
+            Other if ch == '.' =>
+                if matches!(self.iter.peek(), Some(&(_, '.'))) {
                     self.iter.next();
-                }
-                Ok(())
-            }
+                },
+            Other => (),
             Space => {
                 self.skip_same(&class);
                 return self.next();
             },
             Comment => {
                 self.iter = "".char_indices().peekable();
-                return None
+                return None;
             }
         };
         let end = match self.iter.peek() {
@@ -178,9 +177,7 @@ impl<'str> Iterator for Tokenizer<'str> {
             None => self.input.len()
         };
         let slice = &self.input[start..end];
-        Some(res
-            .map_err(|reason| ParseError::new(reason, slice))
-            .and_then(|_| Token::new(slice)))
+        Some(Token::new(slice))
     }
 }
 

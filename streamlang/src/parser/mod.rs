@@ -36,7 +36,7 @@ impl<'str> Parser<'str> {
             Some(&Token(TC::Chain, tok @ "@")) => {
                 self.tk.next();
                 let arg = self.read_expr_part()?
-                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
+                    .ok_or(ParseError::new("incomplete expression", tok))?;
                 Link::new(LangItem::Args, vec![Expr::new_node(head, None, vec![]), arg])
             },
             Some(&Token(TC::Open, bkt @ "{")) => {
@@ -59,7 +59,7 @@ impl<'str> Parser<'str> {
             Some(&Token(TC::Chain, tok @ "@")) => {
                 self.tk.next();
                 let arg = self.read_expr_part()?
-                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
+                    .ok_or(ParseError::new("incomplete expression", tok))?;
                 Link::new(LangItem::Args, vec![Expr::new_node(head, None, vec![]), arg])
             },
             _ => Link::new(head, vec![])
@@ -143,7 +143,7 @@ impl<'str> Parser<'str> {
                 let (prec, multi) = op_rules(op).unwrap();
                 stack.push(StackEntry{op, prec, multi, args: vec![]});
                 self.read_expr_part()?
-                    .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(op)))?
+                    .ok_or(ParseError::new("incomplete expression", op))?
             },
             Some(tok) => {
                 self.tk.unread(tok);
@@ -161,12 +161,12 @@ impl<'str> Parser<'str> {
             cur = match (cur, tok) {
                 (src, Token(TC::Chain, tok @ ".")) => {
                     let node = self.read_link()?
-                        .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
+                        .ok_or(ParseError::new("incomplete expression", tok))?;
                     src.chain(node)
                 },
                 (src, Token(TC::Chain, tok @ ":")) => {
                     let node = self.read_link()?
-                        .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(tok)))?;
+                        .ok_or(ParseError::new("incomplete expression", tok))?;
                     src.chain(Link::new(LangItem::Map, vec![node.into()]))
                 },
                 (src, Token(TC::Open, bkt @ "[")) => {
@@ -212,7 +212,7 @@ impl<'str> Parser<'str> {
                             break;
                         }
                     }
-                    if let Ok(Some(Token(TC::Oper, pfx_op))) = self.tk.peek()
+                    if let Some(Token(TC::Oper, pfx_op)) = self.tk.peek()?
                         && matches!(*pfx_op, "+" | "-" | "!")
                         && let Ok((pfx_prec, pfx_multi)) = op_rules(pfx_op)
                         && pfx_prec > prec {
@@ -236,7 +236,7 @@ impl<'str> Parser<'str> {
         let expr = self.read_expr()?
             .ok_or(ParseError::new("empty expression", self.tk.slice_from(open)))?;
         let next = self.tk.next_tr()?
-            .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(open)))?;
+            .ok_or(ParseError::new("missing closing bracket", open))?;
         let Token(TokenClass::Close, close) = next else {
             return Err(ParseError::new("cannot appear here", next.1));
         };
@@ -252,7 +252,7 @@ impl<'str> Parser<'str> {
         let close = loop {
             let expr = self.read_expr()?;
             let next = self.tk.next_tr()?
-                .ok_or(ParseError::new("incomplete expression", self.tk.slice_from(open)))?;
+                .ok_or(ParseError::new("missing closing bracket", open))?;
             match (expr, next) {
                 (Some(expr), Token(TC::Comma, ",")) => ret.push(expr),
                 (None, Token(TC::Comma, tok)) => return Err(ParseError::new("empty expression", tok)),
