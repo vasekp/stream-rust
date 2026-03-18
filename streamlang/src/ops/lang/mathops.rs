@@ -407,11 +407,11 @@ mod tests {
         test_eval!("'x'+'Y'+'z'" => "'w'");
         test_eval!("1+'a'" => err);
 
-        test_eval!("1..5+3+[0,10,20]" => "[4, 15, 26]");
-        test_eval!("1..3+3+seq" => "[5, 7, 9]");
-        test_eval!("'A'..'e'+3+[0,10,20]" => "['D', 'O', 'Z']");
-        test_eval!("(1..5+3+[]).len" => "0");
-        test_eval!("(1..5+3+seq).len" => "5");
+        test_eval!("(1..5)+3+[0,10,20]" => "[4, 15, 26]");
+        test_eval!("(1..3)+3+seq" => "[5, 7, 9]");
+        test_eval!("('A'..'e')+3+[0,10,20]" => "['D', 'O', 'Z']");
+        test_eval!("((1..5)+3+[]).len" => "0");
+        test_eval!("((1..5)+3+seq).len" => "5");
         test_eval!(r#"['a','b','c']+"def""# => "[<!>");
         test_eval!("seq+true" => "[<!>");
         test_eval!("true+false" => err);
@@ -445,8 +445,8 @@ mod tests {
         test_eval!(r#""Hello world!"+seq"# => r#""Igopt cvzun!""#);
         test_eval!(r#""ab".repeat+seq"# => r#""bddffhhjjllnnpprrttv..."#);
         test_eval!(r#""a b".repeat+seq"# => r#""b dd ff hh jj ll nn ..."#);
-        test_eval!("'u'.repeat+'a'..'c'" => "\"vwx\"");
-        test_eval!("' '.repeat+'a'..'c'" => "\"                    ...");
+        test_eval!("'u'.repeat+('a'..'c')" => "\"vwx\"");
+        test_eval!("' '.repeat+('a'..'c')" => "\"                    ...");
         test_eval!(r#"+"ahoj""# => err);
         test_eval!(r#"-"bebe""# => err);
         test_eval!(r#""ahoj"*2"# => err);
@@ -468,25 +468,25 @@ mod tests {
         test_describe!("alpha(\"abc\", 'a'+seq)" => "alpha(['a', 'b', 'c'], 'a'+seq)");
 
         test_len!("\"abc\"+seq" => 3);
-        test_len!("\"a b c!\"+1..3+1" => 6);
+        test_len!("\"a b c!\"+(1..3)+1" => 6);
         test_len!("\"\"+seq" => 0);
-        test_len!("'x'.repeat+'a'..'c'" => 3);
+        test_len!("'x'.repeat+('a'..'c')" => 3);
         test_advance(r#""abcdefghijk"+seq+"abcdefghijklmn""#);
         test_advance(r#""ab".repeat(10)+seq"#);
         test_advance(r#""a b".repeat(10)+seq"#);
         test_advance(r#""a b".repeat(10)+range('a','e')"#);
-        test_advance("'u'.repeat+'a'..'c'");
-        test_advance("' '.repeat+'a'..'c'");
+        test_advance("'u'.repeat+('a'..'c')");
+        test_advance("' '.repeat+('a'..'c')");
         test_eval!("(('a'.repeat+\"bc\")~\"xyz\")[2]" => "'d'");
         test_eval!("(('a'.repeat+\"bc\")~\"xyz\")[3]" => "'x'");
         test_eval!("(('a'.repeat+\"bc\")~\"xyz\")[4]" => "'y'");
-        test_len!("' '.repeat+'a'..'c'" => Length::Unknown);
+        test_len!("' '.repeat+('a'..'c')" => Length::Unknown);
         test_len!("' '.repeat+1" => Length::Infinite);
-        test_len!("\"a b c\"+'a'..'c'" => Length::AtMost(5usize.into()));
+        test_len!("\"a b c\"+('a'..'c')" => Length::AtMost(5usize.into()));
         test_len!("\"a b c\"+'a'" => Length::Exact(5usize.into()));
 
         test_describe!("\"AbC\"+3+[0,10,20]" => "\"AbC\"+3+[0, 10, 20]");
-        test_describe!("\"a b c!\"+1..3+1" => "\"a b c!\"+1..3+1");
+        test_describe!("\"a b c!\"+(1..3)+1" => "\"a b c!\"+(1..3)+1");
         test_eval!("alpha(\"bac\", \"abc\"+1)" => "\"cab\"");
         test_describe!("alpha(\"bac\", \"abc\"+1)" => "alpha(['b', 'a', 'c'], \"abc\"+1)");
         test_describe!("alpha(\"bac\", alpha(alpha.rev, \"abc\"+1))" => "alpha(['c', 'a', 'b'], \"abc\"+1)");

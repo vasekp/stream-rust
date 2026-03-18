@@ -15,13 +15,13 @@ pub(crate) fn op_rules(op: &str) -> std::result::Result<(u32, bool), &'static st
         ">>=" => Ok((5, true)),
         "<<=" => Ok((5, true)),
         "~" => Ok((6, true)),
-        "%" => Ok((7, false)),
-        "+" => Ok((8, true)),
-        "-" => Ok((8, false)),
-        "*" => Ok((9, true)),
-        "/" => Ok((9, false)),
-        "^" => Ok((10, false)),
-        ".." => Ok((11, false)),
+        ".." => Ok((7, false)),
+        "%" => Ok((8, false)),
+        "+" => Ok((9, true)),
+        "-" => Ok((9, false)),
+        "*" => Ok((10, true)),
+        "/" => Ok((10, false)),
+        "^" => Ok((11, false)),
         _ => Err("undefined operator")
     }
 }

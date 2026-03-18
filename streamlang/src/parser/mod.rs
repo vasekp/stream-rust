@@ -519,8 +519,9 @@ fn test_prec() {
         Expr::new_op("-", vec![Expr::new_number(1)]),
         Expr::new_number(2)])));
     // -(1..1) (error)
-    assert_eq!(parse("-1..1"), Ok(Expr::new_op("-",
-        vec![Expr::new_op("..", vec![Expr::new_number(1), Expr::new_number(1)])])));
+    assert_eq!(parse("-1..2^3"), Ok(Expr::new_op("..", vec![
+            Expr::new_op("-", vec![Expr::new_number(1)]),
+            Expr::new_op("^", vec![Expr::new_number(2), Expr::new_number(3)])])));
     assert!(parse("--1").is_err());
     assert!(parse("*1*2").is_err());
     // relations and parentheses
