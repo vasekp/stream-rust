@@ -53,7 +53,7 @@ impl<I: ItemType> PreIterator for SplitByIter<I> {
             check_stop!();
             let item = item?;
             let cond = Node::from(&self.node.cond)
-                .with_source(Expr::from(item.clone().into()))?
+                .with_source(item.to_item().into())?
                 .eval(&self.node.env)?
                 .to_bool()?;
             if cond {

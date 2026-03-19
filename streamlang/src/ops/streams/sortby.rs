@@ -12,8 +12,7 @@ fn eval_sortby(node: &Node, env: &Env) -> SResult<Item> {
     let mut vals_keys = stm.listout()?
         .into_iter()
         .map(|item| -> SResult<(Item, Item)> {
-            func.clone()
-                .with_source(item.clone().into())?
+            func.with_source(Expr::from(&item))?
                 .eval(env)
                 .map(|res| (item, res))
         })

@@ -45,7 +45,7 @@ impl PreIterator for SelectIter {
             check_stop!();
             let source = iter_try!(self.source.next());
             let cond = Node::from(&self.node.cond)
-                .with_source(source.clone().into())?
+                .with_source(Expr::from(&source))?
                 .eval(&self.node.env)?
                 .to_bool()?;
             if cond {

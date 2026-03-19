@@ -5,6 +5,8 @@ pub trait ItemType: Clone + Describe + Into<Item> + 'static {
     fn from_rc(stm: Rc<dyn Stream<Self>>) -> Item;
     fn listout(stm: &Rc<dyn Stream<Self>>) -> SResult<Vec<Self>>;
     fn try_eq(&self, other: &Self) -> SResult<bool>;
+
+    fn to_item(&self) -> Item { self.clone().into() }
 }
 
 impl ItemType for Item {

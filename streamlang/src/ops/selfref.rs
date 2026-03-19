@@ -29,7 +29,7 @@ struct SelfRef {
 impl SelfRef {
     fn eval_real(&self) -> SResult<(Rc<dyn Stream>, Rc<CacheHistory>)> {
         let hist = Rc::new(RefCell::new(Vec::new()));
-        let stm = self.body.clone()
+        let stm = self.body
             .with_source(Expr::new_stream(BackRef {
                 parent: Rc::downgrade(&hist)
             }))?
