@@ -72,6 +72,37 @@ fn lcm(a: &Number, b: &Number) -> Number {
     }
 }
 
+fn eval_chinese(node: &Node, env: &Env) -> SResult<Item> {
+    let node = node.eval_all(env)?;
+    node.check_no_source()?;
+    let args = node.args.iter()
+        .map(Item::to_num)
+        .collect::<SResult<Vec<_>>>()?;
+    if args.len() < 2 {
+        return Err(StreamError::usage(&node.head));
+    }
+    for i in 0..args.len() {
+        if args[i].is_zero() {
+            return Err("can't be zero".into());
+        }
+        for j in 0..i {
+            if gcd(&args[i], &args[j]) != 1.into() {
+                return Err("arguments are not mutually coprime".into());
+            }
+        }
+    }
+    let lcm = args.iter().fold(Number::one(), |a, e| a * e);
+    let ret = args.iter()
+        .map(|arg| {
+            let others = &lcm / arg;
+            let (_, (_, q)) = egcd(arg, &others);
+            Item::Number((q * others).rem_euclid(&lcm))
+        })
+        .collect::<Vec<_>>();
+    Ok(Item::from(ret))
+}
+
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -114,6 +145,15 @@ mod tests {
         test_eval!("lcm(20,16,8)" => "80");
     }
 
+    #[test]
+    fn test_chinese() {
+        use super::*;
+        test_eval!("crt(2,3,5)" => "[15, 10, 6]");
+        test_eval!("crt(100,9,7)" => "[1701, 2800, 1800]");
+        test_eval!("crt(5,6)" => "[6, 25]");
+        test_eval!("crt(2,4)" => err);
+        test_eval!("crt(0,1)" => err);
+    }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
@@ -124,6 +164,7 @@ Greatest common divisor of all inputs.
 > ?(50, 20, 15) => 5
 : egcd
 : lcm
+: crt
 "#);
     symbols.insert("egcd", eval_egcd, r#"
 Extended greatest common divisor.
@@ -131,6 +172,7 @@ Extended greatest common divisor.
 = ?(number, number)
 > ?(100, 85) => [5, 6, -7] ; 6*100 - 7*85 == 1
 : gcd
+: crt
 "#);
     symbols.insert("lcm", eval_lcm, r#"
 Least common multiple of all inputs.
@@ -138,5 +180,16 @@ Least common multiple of all inputs.
 > ?(100, 85) => 1700
 > ?(50, 20, 15) => 300
 : gcd
+"#);
+    symbols.insert("crt", eval_chinese, r#"
+Finds the base multipliers for Chinese Remainder Theorem,
+i.e., numbers `[mult1, ..., multN]` within 0 and the product of all `number`s whose remainders are `[1, 0, 0, ...`, `[0, 1, 0, ...` etc.
+= ?(number, number, ...)
+> ?(3, 7, 10) => [70, 120, 21]
+> 70 % [3, 7, 10] => [1, 0, 0] ; check
+> 1 * 70 + 2 * 120 + 3 * 21 => 373 ; use this to find `x` for any given tuple of reminders
+> 373 % [3, 7, 10] => [1, 2, 3]
+: gcd
+: egcd
 "#);
 }
