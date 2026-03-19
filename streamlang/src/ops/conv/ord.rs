@@ -16,6 +16,26 @@ fn eval_chr(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_char(ch))
 }
 
+fn eval_uniord(node: &Node, env: &Env) -> SResult<Item> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let ch = node.source_checked()?.as_char()?;
+    match ch {
+        Char::Single(c) => Ok(Item::new_number(*c as u32)),
+        Char::Multi(_) => Err("not in Unicode".into())
+    }
+}
+
+fn eval_unichr(node: &Node, env: &Env) -> SResult<Item> {
+    let node = node.eval_all(env)?;
+    node.check_no_args()?;
+    let ix = node.source_checked()?.as_num()?.try_cast()?;
+    match char::from_u32(ix) {
+        Some(ch) => Ok(Item::new_char(ch)),
+        None => Err("invalid Unicode codepoint".into())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -43,9 +63,10 @@ Converts `char` to its order in the current alphabet.
 = char.?
 > 'z'.? => 26
 > ?alpha("αβγ", 'Γ'.?) => 3
-> "Hello".chars:? => [8, 5, 12, 12, 15]
+> "Hello".?chars:? => [8, 5, 12, 12, 15]
 : alpha
 : chr
+: uniord
 "#);
     symbols.insert("chr", eval_chr, r#"
 Converts `number` to character in alphabet (lowercase).
@@ -57,5 +78,24 @@ Converts `number` to character in alphabet (lowercase).
 > ?alpha("αβγ", 2.?) => 'β'
 : alpha
 : ord
+: unichr
+"#);
+    symbols.insert("uniord", eval_uniord, r#"
+Converts `char` to its Unicode code.
+= char.?
+> 'z'.? => 122
+> 'α'.? => 945
+> "Hello".?chars:? => [72, 101, 108, 108, 111]
+: unichr
+: ord
+"#);
+    symbols.insert("unichr", eval_unichr, r#"
+Converts `number` to a character at its Unicode codepoint.
+= number.?
+> 0x2192.unichr => '→'
+> (0x1F311..0x1F318):unichr : 10 => ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
+> 0xD900.unichr => !invalid Unicode ; A surrogate codepoint
+: uniord
+: chr
 "#);
 }
