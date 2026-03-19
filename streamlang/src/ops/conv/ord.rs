@@ -2,18 +2,35 @@ use crate::base::*;
 
 fn eval_ord(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
-    node.check_no_args()?;
     let ch = node.source_checked()?.as_char()?;
-    let ix = env.alpha.ord(ch)?;
+    let ix = match &node.args[..] {
+        [] => env.alpha.ord(ch)?,
+        [Item::Stream(stm)] => to_alpha(stm)?.ord(ch)?,
+        [Item::String(stm)] => Alphabet::try_from(stm.listout()?)?.ord(ch)?,
+        _ => return Err(StreamError::usage(&node.head)),
+    };
     Ok(Item::new_number(ix))
 }
 
 fn eval_chr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
-    node.check_no_args()?;
     let ix = node.source_checked()?.as_num()?;
-    let ch = env.alpha.chr(ix, CharCase::Indeterminate);
+    let ch = match &node.args[..] {
+        [] => env.alpha.chr(ix, CharCase::Indeterminate),
+        [Item::Stream(stm)] => to_alpha(stm)?.chr(ix, CharCase::Indeterminate),
+        [Item::String(stm)] => Alphabet::try_from(stm.listout()?)?
+            .chr(ix, CharCase::Indeterminate),
+        _ => return Err(StreamError::usage(&node.head)),
+    };
     Ok(Item::new_char(ch))
+}
+
+fn to_alpha(stm: &Rc<dyn Stream>) -> SResult<Alphabet> {
+    stm.listout()?
+        .into_iter()
+        .map(Item::into_char)
+        .collect::<SResult<Vec<_>>>()?
+        .try_into()
 }
 
 fn eval_uniord(node: &Node, env: &Env) -> SResult<Item> {
@@ -59,23 +76,29 @@ mod tests {
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("ord", eval_ord, r#"
-Converts `char` to its order in the current alphabet.
+Converts `char` to its order in the current alphabet, or one provided in the argument
+(in the same form as for `?alpha`).
 = char.?
+= char.?(string or stream)
 > 'z'.? => 26
 > ?alpha("αβγ", 'Γ'.?) => 3
 > "Hello".?chars:? => [8, 5, 12, 12, 15]
+> "typewriter".?chars:?("qwertyuiop") : 10 => [5, 6, 10, 3, 2, 4, 8, 5, 3, 4]
 : alpha
 : chr
 : uniord
 "#);
     symbols.insert("chr", eval_chr, r#"
-Converts `number` to character in alphabet (lowercase).
+Converts `number` to character in the current alphabet (lowercase).
+If a custom alphabet is provided in the argument (in same form as for `?alpha`), it is used instead.
 * This function wraps automatically.
 = number.?
+= number.?(string or stream)
 > 26.? => 'z'
 > [8, 5, 12, 12, 15]:?.?string => "hello"
 > ?range(25, 28):? => ['y', 'z', 'a', 'b'] ; wraps automatically
 > ?alpha("αβγ", 2.?) => 'β'
+> [3, 2, 1]:chr("qwerty") => ['e', 'w', 'q']
 : alpha
 : ord
 : unichr
