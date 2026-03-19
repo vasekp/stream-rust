@@ -4,6 +4,7 @@ mod ifelse;
 mod class;
 mod r#while;
 mod splitby;
+mod all;
 
 pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
     select::init(symbols);
@@ -12,4 +13,5 @@ pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
     class::init(symbols);
     r#while::init(symbols);
     splitby::init(symbols);
+    all::init(symbols);
 }
