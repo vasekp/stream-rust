@@ -10,6 +10,26 @@ fn eval_max(node: &Node, env: &Env) -> SResult<Item> {
     eval_fn(&node, std::cmp::max).map(Item::Number)
 }
 
+fn eval_minby(node: &Node, env: &Env) -> SResult<Item> {
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let func = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
+        body
+    } else {
+        return Err(StreamError::usage(&node.head));
+    };
+    eval_mapped(&stm, &func, PartialOrd::lt, env)
+}
+
+fn eval_maxby(node: &Node, env: &Env) -> SResult<Item> {
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let func = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
+        body
+    } else {
+        return Err(StreamError::usage(&node.head));
+    };
+    eval_mapped(&stm, &func, PartialOrd::gt, env)
+}
+
 fn eval_fn(node: &Node<Item>, func: fn(Number, Number) -> Number) -> SResult<Number> {
     if let Some(Item::Stream(stm)) = &node.source && node.args.is_empty() {
         let mut iter = stm.iter();
@@ -34,13 +54,38 @@ fn eval_fn(node: &Node<Item>, func: fn(Number, Number) -> Number) -> SResult<Num
     }
 }
 
+fn eval_mapped(stm: &Rc<dyn Stream>, func: &Rc<Node>,
+    cmp: fn(&Number, &Number) -> bool, env: &Env) -> SResult<Item> {
+    let mut iter = stm.iter();
+    let Some(mut val) = iter.next()? else {
+        return Err("stream is empty".into());
+    };
+    let mut key = func.with_source(Expr::from(&val))?.eval(env)?.to_num()?;
+    for res in iter.transposed() {
+        check_stop!();
+        let item = res?;
+        let x = func.with_source(Expr::from(&item))?.eval(env)?.to_num()?;
+        if cmp(&x, &key) {
+            key = x;
+            val = item;
+        }
+    }
+    Ok(val)
+}
 
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_gcd() {
+    fn test_minmax() {
+        use super::*;
+        test_eval!("[5, 1, 7, 3].min" => "1");
+        test_eval!("[5, 1, 7, 3].max" => "7");
+        test_eval!("[5, 1, 7, 'a'].max" => err);
+        test_eval!("(3..5):{1..#}.minby(len)" => "[1, 2, 3]");
+        test_eval!("(3..5):{1..#}.maxby(len)" => "[1, 2, 3, 4, 5]");
+        test_eval!("\"hello\".chars.minby(ord)" => "'e'");
+        test_eval!("\"hello\".chars.maxby(ord)" => "'o'");
     }
-
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
@@ -49,16 +94,39 @@ Minimum of an input stream of numbers, or of given arguments.
 = stream.?
 = ?(number, number, ...)
 > ?(5, 10, 3) => 3
-? (3..6).? => 3
+> (3..6).? => 3
 : max
+: minby
+: sort
 "#);
     symbols.insert("max", eval_max, r#"
 Maximum of an input stream of numbers, or of given arguments.
 = stream.?
 = ?(number, number, ...)
 > ?(5, 10, 3) => 10
-? (3..6).? => 6
+> (3..6).? => 6
 : min
+: maxby
+: sort
 "#);
-
+    symbols.insert("minby", eval_minby, r#"
+Finds and returns the element `x` of the input `stream` for which `x.func` is smallest.
+= stream.?(func)
+> [[5, 7], [2, 5], [3, 3]].?(?first) => [2, 5]
+> "hello".?chars.?(?ord) => 'e'
+> [5, 7, 8, 1, 2, 3].?enum.?(first) => [1, 4] ; minimum along with its index
+: min
+: maxby
+: sortby
+"#);
+    symbols.insert("maxby", eval_maxby, r#"
+Finds and returns the element `x` of the input `stream` for which `x.func` is largest.
+= stream.?(func)
+> [[5, 7], [2, 5], [3, 3]].?(?first) => [5, 7]
+> "hello".?chars.?(?ord) => 'o'
+> [5, 7, 8, 1, 2, 3].?enum.?(first) => [8, 3] ; maximum along with its index
+: max
+: minby
+: sortby
+"#);
 }
