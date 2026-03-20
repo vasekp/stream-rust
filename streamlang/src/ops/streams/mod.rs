@@ -23,6 +23,7 @@ mod pad;
 mod groups;
 mod indices;
 mod partition;
+mod transpose;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -50,4 +51,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     groups::init(symbols);
     indices::init(symbols);
     partition::init(symbols);
+    transpose::init(symbols);
 }

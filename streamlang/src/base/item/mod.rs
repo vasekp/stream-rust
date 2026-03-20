@@ -131,6 +131,13 @@ impl Item {
         }
     }
 
+    pub fn into_stream(self) -> SResult<Rc<dyn Stream>> {
+        match self {
+            Item::Stream(stm) => Ok(stm),
+            _ => Err(StreamError::with_expr("expected stream", &self))
+        }
+    }
+
     pub fn is_string(&self) -> bool {
         matches!(self, Item::String(_))
     }
