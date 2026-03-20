@@ -99,6 +99,13 @@ impl Item {
         }
     }
 
+    pub fn to_char(&self) -> SResult<Char> {
+        match self {
+            Item::Char(x) => Ok(*x),
+            _ => Err(StreamError::with_expr("expected character", self))
+        }
+    }
+
     pub fn into_char(self) -> SResult<Char> {
         match self {
             Item::Char(x) => Ok(x),

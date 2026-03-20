@@ -21,6 +21,7 @@ mod index;
 mod windows;
 mod pad;
 mod groups;
+mod indices;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -46,4 +47,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     windows::init(symbols);
     pad::init(symbols);
     groups::init(symbols);
+    indices::init(symbols);
 }

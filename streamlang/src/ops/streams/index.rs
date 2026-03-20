@@ -133,5 +133,6 @@ If multiple arguments are provided, evaluates to a stream of the results.
 > "abcde".?("cd") => 3
 > "abcde".?("def") => []
 : contains
+: indices
 "#);
 }
