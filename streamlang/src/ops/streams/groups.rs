@@ -71,13 +71,13 @@ impl PreIterator for GroupsIter {
     fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
         let mul = &n * UNumber::from(self.size);
         match self.iter.advance(mul.clone())? {
-            Some(rem) => Ok(Some(n - (mul - rem) / UNumber::from(self.size))),
+            Some(rem) => Ok(Some(n - (mul - rem) / self.size)),
             None => Ok(None)
         }
     }
 
     fn len_remain(&self) -> Length {
-        self.iter.len_remain().map(|len| len / UNumber::from(self.size))
+        self.iter.len_remain().map(|len| len / self.size)
     }
 
     fn origin(&self) -> &Rc<Groups> {
@@ -90,6 +90,7 @@ mod tests {
     #[test]
     fn test_groups() {
         use super::*;
+        test_eval!("(1..7).groups(3)" : 10 => "[[1, 2, 3], [4, 5, 6]]");
         test_eval!("seq.groups(3)" : 10 => "[[1, 2, 3], [4, 5, 6], [7, ...], ...]");
         test_eval!("seq.groups(2)" : 10 => "[[1, 2], [3, 4], [5, 6], [...], ...]");
         test_eval!("seq.groups(1)" : 10 => "[[1], [2], [3], [4], [5], ...]");
@@ -117,6 +118,7 @@ Two-argument form: evaluations of the function `func` on the above, entering as 
 = stream.?(size, {func})
 > ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]
 > ?seq.?(3, ?plus) => [6, 15, 24, 33, 42, ...]
+> (1..5).?(2) : 10 => [[1, 2], [3, 4]] ; an incomplete trailing group is discarded
 : windows
 "#);
 }
