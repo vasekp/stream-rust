@@ -6,6 +6,7 @@ mod r#while;
 mod splitby;
 mod all;
 mod consec;
+mod isin;
 
 pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
     select::init(symbols);
@@ -16,4 +17,5 @@ pub(crate) fn init(symbols: &mut crate::symbols::Symbols) {
     splitby::init(symbols);
     all::init(symbols);
     consec::init(symbols);
+    isin::init(symbols);
 }
