@@ -26,6 +26,7 @@ mod partition;
 mod transpose;
 mod groupby;
 mod pttby;
+mod digits;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -56,4 +57,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     transpose::init(symbols);
     groupby::init(symbols);
     pttby::init(symbols);
+    digits::init(symbols);
 }
