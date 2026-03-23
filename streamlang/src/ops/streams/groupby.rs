@@ -42,5 +42,6 @@ Returns a stream of pairs `[key, [x1, x2, ...]]` in order of appearance.
 = stream.?(func)
 > ["test", "one", "two", "three"].?(?first) : 15 => [['t', ["test", "two", "three"]], ['o', ["one"]]]
 : group
+: partitionby
 "#);
 }

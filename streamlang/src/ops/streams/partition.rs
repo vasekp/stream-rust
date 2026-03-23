@@ -163,7 +163,7 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["partition", "chunks"], eval_partition, r#"
+    symbols.insert(["partition", "ptt", "chunks"], eval_partition, r#"
 A stream of non-overlapping arrays from the input `stream` up to size `size`, or substrings of `string` of up to length `size`.
 `size` may be given as a number or a stream of numbers.
 = stream.?(size)

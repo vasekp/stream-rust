@@ -104,5 +104,6 @@ The input which finishes first determines the length of the zip.
 > ?(?range(1, 3), ?range(5, 10)) : 10 => [[1, 5], [2, 6], [3, 7]]
 : riffle
 : enum
+: transpose
 "#);
 }
