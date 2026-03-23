@@ -47,6 +47,12 @@ impl<I: ItemType> From<Vec<I>> for List<I> {
     }
 }
 
+impl<I: ItemType, const N: usize> From<[I; N]> for List<I> {
+    fn from(array: [I; N]) -> Self {
+        List(array.into())
+    }
+}
+
 impl From<&str> for List<Char> {
     fn from(s: &str) -> Self {
         List(s.chars().map(Char::from).collect())

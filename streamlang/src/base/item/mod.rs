@@ -334,6 +334,12 @@ impl<I: ItemType> From<Vec<I>> for Item {
     }
 }
 
+impl<I: ItemType, const N: usize> From<[I; N]> for Item {
+    fn from(arr: [I; N]) -> Item {
+        I::from_vec(arr.into())
+    }
+}
+
 impl<I: ItemType> From<Rc<dyn Stream<I>>> for Item {
     fn from(rc: Rc<dyn Stream<I>>) -> Item {
         I::from_rc(rc)

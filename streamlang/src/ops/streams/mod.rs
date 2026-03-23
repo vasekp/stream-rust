@@ -24,6 +24,7 @@ mod groups;
 mod indices;
 mod partition;
 mod transpose;
+mod groupby;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -52,4 +53,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     indices::init(symbols);
     partition::init(symbols);
     transpose::init(symbols);
+    groupby::init(symbols);
 }
