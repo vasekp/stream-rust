@@ -121,6 +121,7 @@ Each element is a pair `[value, [keys...]]` with `value` the shared value of `fu
 = string.?(func)
 > ["test", "one", "two", "three"].?(?first) : 15 => [['t', ["test"]], ['o', ["one"]], ['t', ["two", "three"]]]
 > "hello world".?(isalpha) : 10 => [[true, "hello"], [false, " "], [true, "world"]]
+: consec
 : partition
 : groupby
 : select
