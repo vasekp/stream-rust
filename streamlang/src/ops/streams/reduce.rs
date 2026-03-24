@@ -25,6 +25,10 @@ mod tests {
         use super::*;
         test_eval!("(1..5).reduce(plus)" => "15");
         test_eval!("(1..5).reduce(times)" => "120");
+        test_eval!("['a', 1].reduce(plus)" => "'b'");
+        test_eval!("[1, [2, 3]].reduce(plus)" => "[3, 4]");
+        test_eval!("[1].reduce(plus)" => "1");
+        test_eval!("[].reduce(plus)" => err);
     }
 }
 

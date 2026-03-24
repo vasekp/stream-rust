@@ -4,6 +4,7 @@ mod minmax;
 mod primes;
 mod factor;
 mod divisors;
+mod total;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     pi::init(symbols);
@@ -12,4 +13,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     primes::init(symbols);
     factor::init(symbols);
     divisors::init(symbols);
+    total::init(symbols);
 }

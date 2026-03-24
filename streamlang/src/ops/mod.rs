@@ -81,4 +81,7 @@ fn misc_tests() {
     test_eval!("pi.while{#>0}:chr.cat" => "\"cadaeibfecehigicbchd...");
     // π zeroes
     test_eval!("pi.enum.select{#[1]==0}:last" => "[33, 51, 55, 66, 72, ...]");
+
+    // Perfect numbers
+    test_eval!("seq.filter{#.divisors.total == 2*#}[1..3]" => "[6, 28, 496]");
 }
