@@ -95,6 +95,9 @@ mod tests {
             for ex in &docs.examples {
                 res = res.and(test_example(ex, sym));
                 res = res.and(check_refs(ex.input, sym));
+                if let Some(comment) = ex.comment {
+                    res = res.and(check_refs(comment, sym));
+                }
             }
             for see in &docs.see {
                 res = res.and(check_ref(see, sym));
