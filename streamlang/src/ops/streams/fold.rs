@@ -96,5 +96,6 @@ For `m > 1`, the arguments of `func` are the `m` prior results (in order). The o
 > ?seq.?{#*#1}(1) => [1, 2, 6, 24, 120, ...] ; factorials
 > ?seq.?{#1~#}([]) : 9 => [[1], [1, 2], [1, 2, 3], ...] ; appending to a list
 : nest
+: reduce
 "#);
 }
