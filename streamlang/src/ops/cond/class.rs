@@ -107,7 +107,7 @@ fn eval_isdigit(node: &Node, env: &Env) -> SResult<Item> {
         Char::Single(ch) => ch.is_digit(base),
         _ => false,
     };
-    return Ok(Item::Bool(ok));
+    Ok(Item::Bool(ok))
 }
 
 #[cfg(test)]

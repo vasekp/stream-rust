@@ -63,7 +63,7 @@ impl<I: ItemType> PreIterator for IndicesIter<I> {
             check_stop!();
             self.index += 1;
             for query in &self.node.queries {
-                if item.try_eq(&query)? {
+                if item.try_eq(query)? {
                     return Ok(Some(Item::new_number(&self.index)));
                 }
             }

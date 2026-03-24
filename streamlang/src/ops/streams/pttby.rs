@@ -88,7 +88,7 @@ impl<I: ItemType> PreIterator for PartitionByIter<I> {
             }
         }
         self.done = true;
-        return Ok(Some(Item::from([key, Item::from(vals)])));
+        Ok(Some(Item::from([key, Item::from(vals)])))
     }
 
     fn len_remain(&self) -> Length {

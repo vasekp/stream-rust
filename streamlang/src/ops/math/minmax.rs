@@ -17,7 +17,7 @@ fn eval_minby(node: &Node, env: &Env) -> SResult<Item> {
     } else {
         return Err(StreamError::usage(&node.head));
     };
-    eval_mapped(&stm, &func, PartialOrd::lt, env)
+    eval_mapped(&stm, func, PartialOrd::lt, env)
 }
 
 fn eval_maxby(node: &Node, env: &Env) -> SResult<Item> {
@@ -27,7 +27,7 @@ fn eval_maxby(node: &Node, env: &Env) -> SResult<Item> {
     } else {
         return Err(StreamError::usage(&node.head));
     };
-    eval_mapped(&stm, &func, PartialOrd::gt, env)
+    eval_mapped(&stm, func, PartialOrd::gt, env)
 }
 
 fn eval_fn(node: &Node<Item>, func: fn(Number, Number) -> Number) -> SResult<Number> {
