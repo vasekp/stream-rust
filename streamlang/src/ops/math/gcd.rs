@@ -14,13 +14,8 @@ fn eval_gcd(node: &Node, env: &Env) -> SResult<Item> {
 }
 
 fn gcd(a: &Number, b: &Number) -> Number {
-    let mut a = a.abs();
-    let mut b = b.abs();
-    if a < b { std::mem::swap(&mut a, &mut b); }
-    while !b.is_zero() {
-        (b, a) = (a % &b, b);
-    }
-    a
+    if a.is_zero() && b.is_zero() { Number::zero() }
+    else { a.gcd(b) }
 }
 
 fn eval_egcd(node: &Node, env: &Env) -> SResult<Item> {
