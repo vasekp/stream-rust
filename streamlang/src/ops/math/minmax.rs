@@ -114,6 +114,7 @@ Finds and returns the element `x` of the input `stream` for which `x.func` is sm
 = stream.?(func)
 > [[5, 7], [2, 5], [3, 3]].?(?first) => [2, 5]
 > "hello".?chars.?(?ord) => 'e'
+> [-2, 3, -5].?(?abs) => -2
 > [5, 7, 8, 1, 2, 3].?enum.?(first) => [1, 4] ; minimum along with its index
 : min
 : maxby
@@ -124,6 +125,7 @@ Finds and returns the element `x` of the input `stream` for which `x.func` is la
 = stream.?(func)
 > [[5, 7], [2, 5], [3, 3]].?(?first) => [5, 7]
 > "hello".?chars.?(?ord) => 'o'
+> [-2, 3, -5].?(?abs) => -5
 > [5, 7, 8, 1, 2, 3].?enum.?(first) => [8, 3] ; maximum along with its index
 : max
 : minby
