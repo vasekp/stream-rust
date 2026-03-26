@@ -38,6 +38,7 @@ impl Stream<Char> for ULCase {
         self.source.len()
     }
 }
+
 #[cfg(test)]
 mod tests {
     #[test]

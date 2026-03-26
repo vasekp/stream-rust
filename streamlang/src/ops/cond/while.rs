@@ -5,13 +5,18 @@ fn eval_while(node: &Node, env: &Env) -> SResult<Item> {
     let [Expr::Eval(cond)] = &node.args[..] else {
         return Err(StreamError::usage(&node.head));
     };
-    Ok(Item::new_stream(While{head: node.head.clone(), cond: cond.eval_all(env)?, source: stm, env: env.clone()}))
+    Ok(Item::new_stream(While{
+        cond: Rc::clone(cond),
+        source: stm,
+        head: node.head.clone(),
+        env: env.clone(),
+    }))
 }
 
 struct While {
     head: Head,
     source: Rc<dyn Stream>,
-    cond: Node<Item>,
+    cond: Rc<Node>,
     env: Env
 }
 
@@ -24,7 +29,7 @@ impl Describe for While {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.cond)
+            .push_arg(&*self.cond)
             .finish(prec)
     }
 }
@@ -42,7 +47,7 @@ impl Stream for While {
 impl PreIterator for WhileIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
-        let cond = Node::from(&self.node.cond)
+        let cond = self.node.cond
             .with_source(Expr::from(&source))?
             .eval(&self.node.env)?
             .to_bool()?;

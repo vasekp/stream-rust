@@ -5,8 +5,18 @@ fn eval_splitby(node: &Node, env: &Env) -> SResult<Item> {
         return Err(StreamError::usage(&node.head));
     };
     match node.source_checked()?.eval(env)? {
-        Item::Stream(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
-        Item::String(stm) => Ok(Item::new_stream(SplitBy{head: node.head.clone(), source: stm, cond: cond.eval_all(env)?, env: env.clone()})),
+        Item::Stream(stm) => Ok(Item::new_stream(SplitBy{
+            cond: Rc::clone(cond),
+            source: stm,
+            head: node.head.clone(),
+            env: env.clone(),
+        })),
+        Item::String(stm) => Ok(Item::new_stream(SplitBy{
+            cond: Rc::clone(cond),
+            source: stm,
+            head: node.head.clone(),
+            env: env.clone(),
+        })),
         _ => Err(StreamError::usage(&node.head))
     }
 }
@@ -14,7 +24,7 @@ fn eval_splitby(node: &Node, env: &Env) -> SResult<Item> {
 struct SplitBy<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    cond: Node<Item>,
+    cond: Rc<Node>,
     env: Env
 }
 
@@ -28,7 +38,7 @@ impl<I: ItemType> Describe for SplitBy<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.cond)
+            .push_arg(&*self.cond)
             .finish(prec)
     }
 }
@@ -52,7 +62,7 @@ impl<I: ItemType> PreIterator for SplitByIter<I> {
         for item in self.source.transposed() {
             check_stop!();
             let item = item?;
-            let cond = Node::from(&self.node.cond)
+            let cond = self.node.cond
                 .with_source(item.to_item().into())?
                 .eval(&self.node.env)?
                 .to_bool()?;
