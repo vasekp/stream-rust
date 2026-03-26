@@ -12,21 +12,13 @@ fn eval_max(node: &Node, env: &Env) -> SResult<Item> {
 
 fn eval_minby(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let func = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
-        body
-    } else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let func = node.only_arg_checked()?.as_func()?;
     eval_mapped(&stm, func, PartialOrd::lt, env)
 }
 
 fn eval_maxby(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let func = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
-        body
-    } else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let func = node.only_arg_checked()?.as_func()?;
     eval_mapped(&stm, func, PartialOrd::gt, env)
 }
 

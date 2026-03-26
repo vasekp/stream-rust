@@ -2,11 +2,7 @@ use crate::base::*;
 
 fn eval_reduce(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let func = if let [Expr::Eval(body)] = &node.args[..] && body.args.is_empty() {
-        body
-    } else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let func = node.only_arg_checked()?.as_func()?;
     let mut iter = stm.iter();
     let Some(mut val) = iter.next()? else {
         return Err("stream is empty".into());

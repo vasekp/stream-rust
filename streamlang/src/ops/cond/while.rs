@@ -2,9 +2,7 @@ use crate::base::*;
 
 fn eval_while(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let cond = node.only_arg_checked()?.as_func()?;
     Ok(Item::new_stream(While{
         cond: Rc::clone(cond),
         source: stm,

@@ -16,9 +16,7 @@ fn eval_mod(node: &Node, env: &Env) -> SResult<Item> {
 
 fn eval_modinv(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
-    let [Item::Number(m)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let m = node.only_arg_checked()?.as_num()?;
     let num = node.source_checked()?.as_num()?;
     let ring = ModuloRing::new(&m.try_cast_within(UNumber::one()..)?);
     if let Some(inv) = ring.from(num).inverse() {

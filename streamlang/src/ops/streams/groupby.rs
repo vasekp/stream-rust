@@ -2,11 +2,7 @@ use crate::base::*;
 
 fn eval_groupby(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let func = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
-        body
-    } else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let func = node.only_arg_checked()?.as_func()?;
     let mut map: Vec<(Item, Vec<Item>)> = Vec::new();
     'a: for res in stm.iter().transposed() {
         check_stop!();

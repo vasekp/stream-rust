@@ -2,9 +2,7 @@ use crate::base::*;
 
 fn eval_countif(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let cond = node.only_arg_checked()?.as_func()?;
     let mut count = 0;
     for item in stm.iter().transposed() {
         check_stop!();
@@ -30,7 +28,7 @@ mod tests {
         test_eval!("range(5).countif([].len)" => err);
         test_eval!("[].countif{1}" => "0");
         test_eval!("[].countif(1)" => err);
-        test_eval!("[].countif([].len)" => "0");
+        test_eval!("[].countif([].len)" => err);
     }
 }
 

@@ -3,9 +3,7 @@ use crate::base::*;
 use std::cell::RefCell;
 
 fn eval_self(node: &Node, env: &Env) -> SResult<Item> {
-    let [Expr::Eval(body)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let body = node.only_arg_checked()?.as_func()?;
     let pre = match &node.source {
         None => None,
         Some(source) => Some(source.eval(env)?.to_stream()?),

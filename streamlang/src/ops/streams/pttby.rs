@@ -1,11 +1,7 @@
 use crate::base::*;
 
 fn eval_partitionby(node: &Node, env: &Env) -> SResult<Item> {
-    let func = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
-        body
-    } else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let func = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
         Item::Stream(stm) => Ok(Item::new_stream(PartitionBy{
             head: node.head.clone(),

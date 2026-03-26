@@ -2,9 +2,7 @@ use crate::base::*;
 
 fn eval_select(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let cond = node.only_arg_checked()?.as_func()?;
     Ok(Item::new_stream(Select{
         cond: Rc::clone(cond),
         head: node.head.clone(),
@@ -76,8 +74,7 @@ mod tests {
         test_eval!("range(5).select{false}" => "[]");
         test_eval!("range(5).select{#}" => "[<!>");
         test_eval!("seq.select{#>#1}(5)" => "[6, 7, 8, 9, 10, ...]");
-        test_eval!("range(5).select([].len)" => "[<!>");
-        test_eval!("[].select([].len)" => "[]");
+        test_eval!("range(5).select([].len)" => err);
         test_eval!("[].select{1}" => "[]");
         test_eval!("[].select(1)" => err);
         test_len!("range(5).select{true}" => 5);

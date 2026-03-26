@@ -3,9 +3,7 @@ use crate::base::*;
 fn eval_isin(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let item = node.source_checked()?;
-    let [Item::Stream(stm)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let stm = node.only_arg_checked()?.as_stream()?;
     for elm in stm.iter().transposed() {
         check_stop!();
         if item.try_eq(&elm?)? {

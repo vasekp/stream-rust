@@ -1,9 +1,7 @@
 use crate::base::*;
 
 fn eval_splitby(node: &Node, env: &Env) -> SResult<Item> {
-    let [Expr::Eval(cond)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let cond = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
         Item::Stream(stm) => Ok(Item::new_stream(SplitBy{
             cond: Rc::clone(cond),

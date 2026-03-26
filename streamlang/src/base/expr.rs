@@ -42,6 +42,20 @@ impl Expr {
         Expr::Eval(Rc::new(Node{head: Head::Oper(intern(op)), source: None, args}))
     }
 
+    pub fn as_node(&self) -> SResult<&Rc<Node>> {
+        match self {
+            Self::Eval(node) => Ok(node),
+            _ => Err("expected expression".into())
+        }
+    }
+
+    pub fn as_func(&self) -> SResult<&Rc<Node>> {
+        match self {
+            Self::Eval(node) if node.source.is_none() => Ok(node),
+            _ => Err("expected function (expression with empty source)".into())
+        }
+    }
+
     /// Makes the output of this expression an input to a [`Link`].
     pub fn chain(self, next: Link) -> Expr {
         Expr::Eval(Rc::new(Node{

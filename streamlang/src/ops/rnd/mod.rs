@@ -5,9 +5,7 @@ use rand::{Rng, SeedableRng, rngs::SmallRng};
 fn eval_rnd(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
-    let [Item::Number(seed)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let seed = node.only_arg_checked()?.as_num()?;
     let len = stm.try_count()?;
     if len.is_zero() {
         return Err("stream is empty".into());

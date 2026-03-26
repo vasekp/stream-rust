@@ -3,12 +3,10 @@ use std::collections::VecDeque;
 
 fn eval_fold(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let func = if let [Expr::Eval(body)] = &node.args[..]
-        && body.source.is_none() && !body.args.is_empty() {
-            body
-        } else {
-            return Err(StreamError::usage(&node.head));
-        };
+    let func = node.only_arg_checked()?.as_func()?;
+    if func.args.is_empty() {
+        return Err(StreamError::usage(&node.head));
+    };
     Ok(Item::new_stream(Fold{head: node.head.clone(), body: func.eval_all(env)?, source: stm, env: env.clone()}))
 }
 
@@ -49,7 +47,7 @@ impl PreIterator for FoldIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
         let args = self.prev.iter()
-            .map(|item| Expr::Imm(item.to_owned()))
+            .map(Expr::from)
             .collect();
         let node = Node::new(self.node.body.head.clone(), Some(source.into()), args);
         let item = node.eval(&self.node.env)?;
