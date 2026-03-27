@@ -132,12 +132,7 @@ impl RiffleCatIter {
     }
 
     fn next_cs(outer: &mut dyn SIterator) -> SResult<Option<Box<dyn SIterator<Char>>>> {
-        match outer.next()? {
-            Some(Item::Char(ch)) => Ok(Some(Box::new(std::iter::once(Ok(ch))))),
-            Some(Item::String(s)) => Ok(Some(s.to_iter())),
-            None => Ok(None),
-            Some(item) => Err(StreamError::with_expr("expected character or string", &item)),
-        }
+        Some(iter_try!(outer.next()).to_char_iter()).transpose()
     }
 }
 

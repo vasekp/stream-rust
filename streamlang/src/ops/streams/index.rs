@@ -37,11 +37,7 @@ fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
         },
         Some(Item::String(stm)) => {
             let mut queries = node.args.iter()
-                .map(|item| match item {
-                    Item::Char(ch) => Ok(Query::Pending(vec![*ch])),
-                    Item::String(s) => s.listout_check_nonempty().map(Query::Pending),
-                    item => Err(StreamError::with_expr("expected character or nonempty string", item))
-                })
+                .map(|item| Ok(Query::Pending(item.to_char_vec_nonempty()?)))
                 .collect::<SResult<Vec<_>>>()?;
             let longest = queries.iter()
                 .map(|q| match q { Query::Pending(vec) => vec.len(), _ => unreachable!() })

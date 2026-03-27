@@ -6,11 +6,7 @@ fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
     match node.source {
         Some(Item::String(_)) => {
             let sep = node.args.iter()
-                .map(|item| match item {
-                    Item::Char(ch) => Ok(vec![ch.to_owned()]),
-                    Item::String(s) => s.listout_check_nonempty(),
-                    _ => Err(StreamError::with_expr("expected character or nonempty string", item))
-                })
+                .map(Item::to_char_vec_nonempty)
                 .map(|res| res.map(LiteralString::from))
                 .collect::<SResult<Vec<_>>>()?;
             let Some(Item::String(stm)) = node.source else { unreachable!() };

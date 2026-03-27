@@ -156,6 +156,31 @@ impl Item {
         }
     }
 
+    pub(crate) fn to_char_vec(&self) -> SResult<Vec<Char>> {
+        match self {
+            Item::Char(ch) => Ok(vec![*ch]),
+            Item::String(s) => s.listout(),
+            _ => Err(StreamError::with_expr("expected character or string", self)),
+        }
+    }
+
+    pub(crate) fn to_char_vec_nonempty(&self) -> SResult<Vec<Char>> {
+        let vec = self.to_char_vec()?;
+        if vec.is_empty() {
+            Err(StreamError::with_expr("expected character or nonempty string", self))
+        } else {
+            Ok(vec)
+        }
+    }
+
+    pub(crate) fn to_char_iter(&self) -> SResult<Box<dyn SIterator<Char>>> {
+        match self {
+            Item::Char(ch) => Ok(Box::new(std::iter::once(Ok(*ch)))),
+            Item::String(s) => Ok(s.iter()),
+            _ => Err(StreamError::with_expr("expected character or string", self)),
+        }
+    }
+
     pub fn format(&self, max_items: Option<usize>, max_len: Option<usize>) -> (String, usize, Option<StreamError>) {
         struct Stateful<'item> {
             item: &'item Item,

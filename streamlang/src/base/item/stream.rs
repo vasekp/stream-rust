@@ -56,12 +56,6 @@ impl<I: ItemType> dyn Stream<I> {
         I::listout(self)
     }
 
-    pub(crate) fn listout_check_nonempty(self: &Rc<Self>) -> SResult<Vec<I>> {
-        let vec = I::listout(self)?;
-        if !vec.is_empty() { Ok(vec) }
-        else { Err(StreamError::with_expr("can't be empty", self)) }
-    }
-
     pub(crate) fn try_count(self: &Rc<Self>) -> SResult<UNumber> {
         match self.len() {
             Length::Exact(len) => Ok(len),

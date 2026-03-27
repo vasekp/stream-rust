@@ -5,12 +5,10 @@ use std::collections::VecDeque;
 fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     match (node.source_checked()?, &node.args[..]) {
-        (Item::String(stm), [x, y]) => {
-            let (orig, repl) = match (x, y) {
-                (Item::Char(c1), Item::Char(c2)) => (vec![vec![*c1]], vec![vec![*c2]]), // TODO unify
-                (Item::Char(c1), Item::String(s2)) => (vec![vec![*c1]], vec![s2.listout()?]),
-                (Item::String(s1), Item::Char(c2)) => (vec![s1.listout()?], vec![vec![*c2]]),
-                (Item::String(s1), Item::String(s2)) => (vec![s1.listout()?], vec![s2.listout()?]),
+        (Item::String(stm), [orig, repl]) => {
+            let (orig, repl) = match (orig, repl) {
+                (Item::Char(_) | Item::String(_), Item::Char(_) | Item::String(_))
+                    => (vec![orig.to_char_vec()?], vec![repl.to_char_vec()?]),
                 (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
                 _ => return Err(StreamError::usage(&node.head))
             };
@@ -33,11 +31,8 @@ fn read_stream(stm: &Rc<dyn Stream>) -> SResult<Vec<Vec<Char>>> {
     stm.iter().transposed()
         .map(|item| {
             check_stop!();
-            match item? {
-                Item::Char(ch) => Ok(vec![ch]),
-                Item::String(s) => s.listout(),
-                item => Err(StreamError::with_expr("expected character or string", &item))
-            }})
+            item?.to_char_vec()
+        })
         .collect()
 }
 
