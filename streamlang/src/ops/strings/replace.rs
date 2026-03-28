@@ -9,7 +9,8 @@ fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
             let (orig, repl) = match (orig, repl) {
                 (Item::Char(_) | Item::String(_), Item::Char(_) | Item::String(_))
                     => (vec![orig.to_char_vec()?], vec![repl.to_char_vec()?]),
-                (Item::Stream(s1), Item::Stream(s2)) => (read_stream(s1)?, read_stream(s2)?),
+                (Item::Stream(s1), Item::Stream(s2))
+                    => (s1.listout_with(|item| item.to_char_vec())?, s2.listout_with(|item| item.to_char_vec())?),
                 _ => return Err(StreamError::usage(&node.head))
             };
             if orig.len() != repl.len() {
@@ -25,15 +26,6 @@ fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
             Ok(Item::new_stream(StreamReplace { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
         _ => Err(StreamError::usage(&node.head))
     }
-}
-
-fn read_stream(stm: &Rc<dyn Stream>) -> SResult<Vec<Vec<Char>>> {
-    stm.iter().transposed()
-        .map(|item| {
-            check_stop!();
-            item?.to_char_vec()
-        })
-        .collect()
 }
 
 struct StringReplace {

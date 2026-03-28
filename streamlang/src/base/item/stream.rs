@@ -72,6 +72,26 @@ impl<I: ItemType> dyn Stream<I> {
         Ok(vec)
     }
 
+    pub(crate) fn listout_with<T>(self: &Rc<Self>, func: impl Fn(I) -> SResult<T>) -> SResult<Vec<T>> {
+        let mut vec = Vec::new();
+        match &self.len() {
+            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
+                if let Ok(len) = len.try_into() {
+                    vec.reserve(len);
+                } else if matches!(lobj, Length::Exact(_)) {
+                    return Err(StreamError::with_expr(format!("{} is too long", I::type_name()), self));
+                }
+            },
+            Length::Infinite => return Err(StreamError::with_expr(format!("{} is infinite", I::type_name()), self)),
+            _ => ()
+        };
+        for item in self.iter().transposed() {
+            check_stop!();
+            vec.push(item.and_then(&func)?);
+        }
+        Ok(vec)
+    }
+
     pub(crate) fn try_count(self: &Rc<Self>) -> SResult<UNumber> {
         match self.len() {
             Length::Exact(len) => Ok(len),

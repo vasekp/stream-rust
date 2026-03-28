@@ -30,10 +30,7 @@ fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
         [Item::Number(radix)] => radix.try_cast_within(2u32..)?,
         _ => return Err(StreamError::usage(&node.head))
     };
-    let vec = stm.iter().transposed().map(|item| {
-            check_stop!();
-            item?.into_num()?.try_cast_within(0..radix)
-        }).collect::<SResult<Vec<u32>>>()?;
+    let vec = stm.listout_with(|item| item.into_num()?.try_cast_within(0..radix))?;
     if vec.is_empty() {
         return Err("stream is empty".into());
     }
