@@ -3,6 +3,7 @@ mod split;
 mod cat;
 mod ulcase;
 mod replace;
+mod sewith;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     chars::init(symbols);
@@ -10,4 +11,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     cat::init(symbols);
     ulcase::init(symbols);
     replace::init(symbols);
+    sewith::init(symbols);
 }
