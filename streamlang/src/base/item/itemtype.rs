@@ -1,10 +1,11 @@
 use crate::base::*;
 
 pub trait ItemType: Clone + Describe + Into<Item> + 'static {
+    fn type_name() -> &'static str;
     fn from_vec(vec: Vec<Self>) -> Item;
     fn from_rc(stm: Rc<dyn Stream<Self>>) -> Item;
     fn try_eq(&self, other: &Self) -> SResult<bool>;
-    fn type_name() -> &'static str;
+    fn empty() -> Item;
 
     fn to_item(&self) -> Item { self.clone().into() }
 }
@@ -23,6 +24,10 @@ impl ItemType for Item {
     fn try_eq(&self, other: &Item) -> SResult<bool> {
         self.try_eq(other)
     }
+
+    fn empty() -> Item {
+        Item::empty_stream()
+    }
 }
 
 impl ItemType for Char {
@@ -38,5 +43,9 @@ impl ItemType for Char {
 
     fn try_eq(&self, other: &Char) -> SResult<bool> {
         Ok(self == other)
+    }
+
+    fn empty() -> Item {
+        Item::empty_string()
     }
 }

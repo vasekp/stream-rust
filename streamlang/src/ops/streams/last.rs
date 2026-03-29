@@ -43,7 +43,7 @@ fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
 
 fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumber) -> SResult<Item> {
     if count.is_zero() {
-        return Ok(I::from_vec(vec![]));
+        return Ok(I::empty());
     }
     match stm.len() {
         Length::Exact(len) if len < count => Ok(stm.into()),
