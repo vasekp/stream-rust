@@ -7,6 +7,7 @@ mod divisors;
 mod total;
 mod abs;
 mod modular;
+mod clamp;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     pi::init(symbols);
@@ -18,4 +19,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     total::init(symbols);
     abs::init(symbols);
     modular::init(symbols);
+    clamp::init(symbols);
 }
