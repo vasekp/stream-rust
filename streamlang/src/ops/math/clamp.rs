@@ -72,6 +72,7 @@ Restricts number `x` to within `min` and `max` (inclusive).
 > (1..5):?(2, 4) => [2, 2, 3, 4, 4]
 : floor
 : ceiling
+: iswithin
 : min
 : max
 "#);

@@ -13,17 +13,42 @@ fn eval_isin(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::Bool(false))
 }
 
+fn eval_iswithin(node: &Node, env: &Env) -> SResult<Item> {
+    let node = node.eval_all(env)?;
+    match (node.source_checked()?, &node.args[..]) {
+        (Item::Number(x), [Item::Number(min), Item::Number(max)])
+            => Ok(Item::Bool(x >= min && x <= max)),
+        (Item::Char(x), [Item::Char(min), Item::Char(max)]) => {
+            let ox = env.alpha.ord(x)?;
+            let omin = env.alpha.ord(min)?;
+            let omax = env.alpha.ord(max)?;
+            Ok(Item::Bool(ox >= omin && ox <= omax))
+        },
+        _ => Err(StreamError::usage(&node.head)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_isin() {
-        use super::*;
         test_eval!("(1..5):isin([1, 5, 7])" => "[true, false, false, false, true]");
         test_eval!("(1..5):isin([])" => "[false, false, false, false, false]");
         test_eval!("(1..5):isin([1, 1, 1])" => "[true, false, false, false, false]");
         test_eval!("(1..5).isin([1, 5, 7])" => "false");
         test_eval!("'a'.isin(\"abc\")" => err);
         test_eval!("\"one\".isin([\"one\", \"two\", \"three\"])" => "true");
+    }
+
+    #[test]
+    fn test_iswithin() {
+        // in addition to doc-tests
+        test_eval!("'h'.iswithin('a', 'm')" => "true");
+        test_eval!("'h'.iswithin('m', 'a')" => "false");
+        test_eval!("'m'.iswithin('m', 'a')" => "false");
+        test_eval!("'a'.iswithin('m', 'a')" => "false");
     }
 }
 
@@ -36,5 +61,16 @@ Evaluates to `true` if `item` appears in `stream`, `false` otherwise.
 : contains
 : isalpha
 : isdigit
+: iswithin
+"#);
+    symbols.insert("iswithin", eval_iswithin, r#"
+Evaluates to `true` if `x` lies in a range given by `min` and `max`.
+All three values may (simultaneously) be numbers or characters.
+= x.?(min, max)
+> (1..5):?(2, 4) => [false, true, true, true, false]
+> 'e'.?('a', 'h') => true
+> '5'.?('0', '9') => !not in alphabet ; character ranges only work in a given alphabet
+: isin
+: clamp
 "#);
 }
