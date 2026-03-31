@@ -28,7 +28,7 @@ fn eval_join(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
-enum Joinable<I: ItemType> {
+pub(super) enum Joinable<I: ItemType> {
     Single(I),
     Stream(Rc<dyn Stream<I>>)
 }
@@ -77,12 +77,12 @@ impl<I: ItemType> Stream<I> for Join<I> {
     }
 }
 
-struct JoinIter<I: ItemType> {
-    node: Rc<Join<I>>,
-    iters: Vec<Box<dyn SIterator<I>>>,
+pub(super) struct JoinIter<I: ItemType, S: Stream<I> + 'static> {
+    pub node: Rc<S>,
+    pub iters: Vec<Box<dyn SIterator<I>>>,
 }
 
-impl<I: ItemType> PreIterator<I> for JoinIter<I> {
+impl<I: ItemType, S: Stream<I> + 'static> PreIterator<I> for JoinIter<I, S> {
     fn next(&mut self) -> SResult<Option<I>> {
         loop {
             let Some(iter) = self.iters.first_mut() else {
@@ -118,7 +118,7 @@ impl<I: ItemType> PreIterator<I> for JoinIter<I> {
             .fold(Length::empty(), |acc, e| acc + e)
     }
 
-    fn origin(&self) -> &Rc<Join<I>> {
+    fn origin(&self) -> &Rc<S> {
         &self.node
     }
 }
