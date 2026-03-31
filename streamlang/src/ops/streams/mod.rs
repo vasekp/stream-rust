@@ -29,6 +29,7 @@ mod pttby;
 mod digits;
 mod reduce;
 mod droplast;
+mod alternate;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -62,4 +63,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     digits::init(symbols);
     reduce::init(symbols);
     droplast::init(symbols);
+    alternate::init(symbols);
 }

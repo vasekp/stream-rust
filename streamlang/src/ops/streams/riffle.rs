@@ -188,6 +188,7 @@ If `filler` is also a stream, interleaves the two streams, until one of them end
 > ?seq.?(0) => [1, 0, 2, 0, 3, ...]
 > ?range(1, 2).?(0) => [1, 0, 2]
 > ?seq.?(['a', 'b']) => [1, 'a', 2, 'b', 3]
+: alternate
 : zip
 : cat
 "#);
