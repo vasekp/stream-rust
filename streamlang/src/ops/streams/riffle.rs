@@ -41,11 +41,10 @@ impl Stream for Riffle {
     }
 
     fn len(&self) -> Length {
-        use Length::*;
         let len1 = self.source.len();
         let len2 = match &self.filler {
             Item::Stream(stm) => stm.len(),
-            _ => Infinite
+            _ => Length::Infinite
         };
         Length::intersection(len1.map(|u| 2u32 * u - 1u32), len2.map(|v| 2u32 * v + 1u32))
     }
