@@ -57,7 +57,14 @@ impl<I: ItemType> Describe for Join<I> {
 
 impl<I: ItemType> Stream<I> for Join<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
-        JoinIter{index: 0, inner: None, node: self}.wrap()
+        let mut iters = Vec::with_capacity(self.elems.len());
+        for elem in &self.elems {
+            match elem {
+                Joinable::Stream(stm) => iters.push(stm.iter()),
+                Joinable::Single(item) => iters.push(Box::new(std::iter::once(Ok(item.clone())))),
+            }
+        }
+        JoinIter{iters, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -72,23 +79,19 @@ impl<I: ItemType> Stream<I> for Join<I> {
 
 struct JoinIter<I: ItemType> {
     node: Rc<Join<I>>,
-    index: usize,
-    inner: Option<Box<dyn SIterator<I>>>
+    iters: Vec<Box<dyn SIterator<I>>>,
 }
 
 impl<I: ItemType> PreIterator<I> for JoinIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         loop {
-            check_stop!();
-            if let Some(inner) = &mut self.inner {
-                if let Some(res) = inner.next()? { return Ok(Some(res)); }
-                else { self.inner = None; }
-            }
-            self.index += 1;
-            match self.node.elems.get(self.index - 1) {
-                Some(Joinable::Single(item)) => return Ok(Some(item.clone())),
-                Some(Joinable::Stream(stm)) => self.inner = Some(stm.iter()),
-                None => return Ok(None),
+            let Some(iter) = self.iters.first_mut() else {
+                return Ok(None);
+            };
+            if let Some(next) = iter.next()? {
+                return Ok(Some(next));
+            } else {
+                self.iters.remove(0);
             }
         }
     }
@@ -97,35 +100,22 @@ impl<I: ItemType> PreIterator<I> for JoinIter<I> {
         loop {
             check_stop!();
             if n.is_zero() { return Ok(None); }
-            if let Some(inner) = &mut self.inner {
-                if let Some(m) = inner.advance(n)? {
-                    n = m;
-                } else {
-                    return Ok(None);
-                };
-            }
-            self.index += 1;
-            let Some(next) = self.node.elems.get(self.index - 1) else {
+            let Some(iter) = self.iters.first_mut() else {
                 return Ok(Some(n));
             };
-            match next {
-                Joinable::Single(_) => {
-                    self.inner = None;
-                    n -= 1;
-                },
-                Joinable::Stream(stm) => self.inner = Some(stm.iter())
-            }
+            if let Some(m) = iter.advance(n)? {
+                self.iters.remove(0);
+                n = m;
+            } else {
+                return Ok(None);
+            };
         }
     }
 
     fn len_remain(&self) -> Length {
-        let len = if let Some(inner) = &self.inner { inner.len_remain() } else { Length::Exact(UNumber::zero()) };
-        self.node.elems[self.index..].iter()
-            .map(|item| match item {
-                Joinable::Single(_) => Length::Exact(UNumber::one()),
-                Joinable::Stream(stm) => stm.len()
-            })
-            .fold(len, |acc, e| acc + e)
+        self.iters.iter()
+            .map(|iter| iter.len_remain())
+            .fold(Length::empty(), |acc, e| acc + e)
     }
 
     fn origin(&self) -> &Rc<Join<I>> {
