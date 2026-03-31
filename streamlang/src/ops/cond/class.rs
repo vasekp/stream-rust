@@ -23,9 +23,22 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
             _ => Err(StreamError::with_expr("expected stream or string", item))
         },
         "isalpha" => Ok(env.alpha.contains(item.as_char()?)),
-        "isascii" => Ok(match item.as_char()? {
-            Char::Single(ch) => ch.is_ascii(),
-            _ => false
+        "isascii" => Ok(match item {
+            Item::Char(Char::Single(ch)) => ch.is_ascii(),
+            Item::Char(_) => false,
+            Item::String(stm) => {
+                let mut ret = true;
+                for ch in stm.iter().transposed() {
+                    check_stop!();
+                    if let Char::Single(ch) = ch? && ch.is_ascii() { }
+                    else {
+                        ret = false;
+                        break;
+                    }
+                }
+                ret
+            },
+            _ => return Err(StreamError::with_expr("expected character or string", item))
         }),
         "iswhite" => Ok(match item.as_char()? {
             Char::Single(ch) => ch.is_whitespace(),
@@ -126,7 +139,8 @@ mod tests {
         test_eval!("[\"\",[],\"a\",[0],0]:isempty" => "[true, true, false, false, <!>");
         test_eval!("['a','A','á',\"a\"]:isalpha" => "[true, true, false, <!>");
         test_eval!("alpha(['Á'],['a','A','á','Á',\"a\"]:isalpha)" => "[false, false, true, true, <!>");
-        test_eval!("['a','á','ch',\"a\"]:isascii" => "[true, false, false, <!>");
+        test_eval!("['a','á','ch',\"a\", 1]:isascii" => "[true, false, false, true, <!>");
+        test_eval!("[\"\", \"1\", \" \", \"ý\"]:isascii" => "[true, true, true, false]");
         test_eval!("['0','00','A',\"0\"]:isdigit" => "[true, false, false, <!>");
         test_eval!("['0','1','3','A']:isdigit(5)" => "[true, true, true, false]");
         test_eval!("['0','1','3','A']:isdigit(2)" => "[true, true, false, false]");
@@ -259,12 +273,14 @@ Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` othe
 : alpha
 "#);
     symbols.insert("isascii", eval_class, r#"
-Evaluates to `true` if `char` is ASCII, `false` otherwise.
+For characters: evaluates to `true` if `char` is ASCII, `false` otherwise.
+For strings: evaluates to `true` if all characters are ASCII, `false` otherwise.
 = char.?
+= string.?
 > 'a'.? => true
 > '#'.? => true
 > 'á'.? => false
-> "a".? => !not a character
+> "a".? => true
 : ischar
 : isalpha
 : isdigit
