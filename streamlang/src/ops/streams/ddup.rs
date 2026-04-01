@@ -70,16 +70,18 @@ mod tests {
         test_eval!("(seq/5).ddup" => "[0, 1, 2, 3, 4, ...]");
         test_eval!("(1..3):{1..#}.flatten.ddup" => "[1, 2, 3]");
         test_eval!("(1..3).repeat(5).ddup" => "[1, 2, 3]");
-        test_len!("[]" => 0);
+        test_len!("[].ddup" => 0);
         test_describe!("seq.ddup" => "seq.ddup");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("ddup", eval_ddup, r#"
+    symbols.insert(["ddup", "uniq"], eval_ddup, r#"
 Keeps only the first appearance of any repeated item in `stream`.
 = stream.?
 > [1, 2, 1, 2, 3].? => [1, 2, 3]
 > "abracadabra".?chars.?.?string => "abrcd"
+: drep
+: counts
 "#);
 }

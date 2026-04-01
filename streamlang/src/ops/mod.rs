@@ -84,4 +84,6 @@ fn misc_tests() {
 
     // Perfect numbers
     test_eval!("seq.filter{#.divisors.total == 2*#}[1..3]" => "[6, 28, 496]");
+    // "Look and say" sequence
+    test_eval!("[1].nest{#.reps:rev.flatten}" : 25 => "[[1, 1], [2, 1], [1, 2, 1, 1], [1, 1, 1, 2, 2, 1], [3, 1, 2, 2, 1, 1], ...]");
 }

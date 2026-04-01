@@ -130,5 +130,7 @@ In the latter form and with string input, `?` can also count substrings, includi
 > "abracadabra".? : 20 => [['a', 5], ['b', 2], ['r', 2], ['c', 1], ['d', 1]]
 > "abracadabra".?('a', "ab", "da") => [5, 2, 1]
 > "abracadabra".?@?alpha => [5, 2, 1, 1, 0, ...]
+: ddup
+: reps
 "#);
 }

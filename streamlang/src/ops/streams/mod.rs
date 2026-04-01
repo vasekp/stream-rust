@@ -31,6 +31,8 @@ mod reduce;
 mod droplast;
 mod prepend;
 mod alternate;
+mod drep;
+mod reps;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -66,4 +68,6 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     droplast::init(symbols);
     prepend::init(symbols);
     alternate::init(symbols);
+    drep::init(symbols);
+    reps::init(symbols);
 }
