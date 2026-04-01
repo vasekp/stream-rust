@@ -30,9 +30,9 @@ mod digits;
 mod reduce;
 mod droplast;
 mod prepend;
-mod alternate;
 mod drep;
 mod reps;
+mod weave;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -67,7 +67,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     reduce::init(symbols);
     droplast::init(symbols);
     prepend::init(symbols);
-    alternate::init(symbols);
     drep::init(symbols);
     reps::init(symbols);
+    weave::init(symbols);
 }
