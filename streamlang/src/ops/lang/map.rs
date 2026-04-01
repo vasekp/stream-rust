@@ -15,7 +15,7 @@ fn eval_map(node: &Node, env: &Env) -> SResult<Item> {
             body: Rc::clone(body),
             env: env.clone(),
         })),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err("expected string or stream".into())
     }
 }
 
