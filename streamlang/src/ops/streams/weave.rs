@@ -55,17 +55,18 @@ impl PreIterator for WeaveIter {
         Ok(Some(res))
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let common = self.iters.iter()
             .map(|it| it.len_remain())
             .reduce(Length::intersection).unwrap();
         let num = self.iters.len();
-        let skip = match Length::intersection(common, Length::Exact(&n / num)) {
+        let skip = match Length::intersection(common, Length::Exact(n / num)) {
             Length::Exact(len) => len,
             _ => UNumber::zero()
         };
+        let mut n = n.clone();
         for iter in self.iters.iter_mut() {
-            iter.advance(skip.clone())?;
+            iter.advance(&skip)?;
             n -= &skip;
         }
         while !n.is_zero() {

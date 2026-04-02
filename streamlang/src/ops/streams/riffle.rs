@@ -83,27 +83,27 @@ impl PreIterator for RiffleIter {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let common = Length::intersection(self.source.len_remain(), self.filler.len_remain());
-        let skip = match Length::intersection(common, Length::Exact(&n / 2u32)) {
+        let skip = match Length::intersection(common, Length::Exact(n / 2u32)) {
             Length::Exact(len) => len,
             _ => UNumber::zero()
         };
         let mut remain = if !skip.is_zero() {
-            self.filler.advance(skip.clone())?;
+            self.filler.advance(&skip)?;
             let n_new = n - 2u32 * &skip;
             match self.which {
                 RiffleState::Source => {
-                    self.source.advance(skip - 1u32)?;
+                    self.source.advance(&(skip - 1u32))?;
                     self.source_next = self.source.next().transpose();
                 },
                 RiffleState::Filler => {
-                    self.source.advance(skip)?;
+                    self.source.advance(&skip)?;
                 }
             };
             n_new
         } else {
-            n
+            n.clone()
         };
         while !remain.is_zero() {
             if self.next()?.is_none() {

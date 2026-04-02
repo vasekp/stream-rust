@@ -62,8 +62,8 @@ impl PreIterator for ReplaceIter {
         Ok(Some(item))
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        self.index += &n;
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        self.index += n;
         self.iter.advance(n)
     }
 

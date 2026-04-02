@@ -38,7 +38,7 @@ impl Stream for Stride {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let mut iter = self.stream.iter();
         if let Some(n) = &self.offset {
-            match iter.advance(n.clone()) {
+            match iter.advance(&n) {
                 Ok(None) => (),
                 Ok(Some(_)) => return Box::new(std::iter::empty()),
                 Err(err) => return iter_error(err, &self),
@@ -66,7 +66,7 @@ struct StrideIter {
 impl PreIterator for StrideIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         if !self.first {
-            if self.iter.advance(&self.node.stride - 1)?.is_some() {
+            if self.iter.advance(&(&self.node.stride - 1))?.is_some() {
                 return Ok(None);
             }
         } else {
@@ -75,8 +75,9 @@ impl PreIterator for StrideIter {
         self.iter.next()
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if n.is_zero() { return Ok(None); }
+        let mut n = n.clone();
         if self.first {
             if self.iter.next()?.is_none() {
                 return Ok(Some(n));
@@ -85,7 +86,7 @@ impl PreIterator for StrideIter {
                 n -= 1;
             }
         }
-        match self.iter.advance(&n * &self.node.stride)? {
+        match self.iter.advance(&(n * &self.node.stride))? {
             Some(remain) =>
                 Ok(Some((remain + &self.node.stride - 1) / &self.node.stride)),
             None => Ok(None)

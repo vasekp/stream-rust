@@ -96,14 +96,15 @@ impl<I: ItemType, S: Stream<I> + 'static> PreIterator<I> for JoinIter<I, S> {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let mut n = n.clone();
         loop {
             check_stop!();
             if n.is_zero() { return Ok(None); }
             let Some(iter) = self.iters.first_mut() else {
                 return Ok(Some(n));
             };
-            if let Some(m) = iter.advance(n)? {
+            if let Some(m) = iter.advance(&n)? {
                 self.iters.remove(0);
                 n = m;
             } else {

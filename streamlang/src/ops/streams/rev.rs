@@ -74,7 +74,7 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
                             .expect("start < CACHE_LEN should fit into usize"))
                     };
                     let mut iter = self.node.source.iter();
-                    iter.advance(new_start.clone())?;
+                    iter.advance(&new_start)?;
                     self.start = new_start;
                     self.cached = iter.transposed().take(diff).collect::<SResult<_>>()?;
                     Ok(self.cached.pop())
@@ -83,22 +83,19 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let len = self.cached.len();
-        match usize::try_from(&n) {
-            Ok(n) if n <= len => {
-                self.cached.truncate(len - n);
+        if let Ok(n) = usize::try_from(n) && n <= len {
+            self.cached.truncate(len - n);
+            Ok(None)
+        } else {
+            self.cached.clear();
+            let rem = UNumber::from(n - len);
+            if rem > self.start {
+                Ok(Some(rem - &self.start))
+            } else {
+                self.start -= rem;
                 Ok(None)
-            },
-            _ => {
-                self.cached.clear();
-                let rem = UNumber::from(n - len);
-                if rem > self.start {
-                    Ok(Some(rem - &self.start))
-                } else {
-                    self.start -= rem;
-                    Ok(None)
-                }
             }
         }
     }

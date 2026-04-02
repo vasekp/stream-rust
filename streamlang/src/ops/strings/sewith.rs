@@ -27,7 +27,7 @@ fn eval_endswith(node: &Node, env: &Env) -> SResult<Item> {
         Length::Exact(len) | Length::AtMost(len) if len < UNumber::from(pfx_len)
             => Ok(Item::Bool(false)),
         Length::Exact(len) => {
-            iter.advance(len - pfx_len)?;
+            iter.advance(&(len - pfx_len))?;
             for (c1, c2) in iter.transposed().zip(postfix.iter()) {
                 if c1? != *c2 {
                     return Ok(Item::Bool(false));

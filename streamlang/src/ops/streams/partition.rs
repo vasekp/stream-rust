@@ -85,9 +85,9 @@ impl<I: ItemType> PreIterator for HomPartitionIter<I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        let mul = &n * UNumber::from(self.size);
-        match self.iter.advance(mul.clone())? {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let mul = n * UNumber::from(self.size);
+        match self.iter.advance(&mul)? {
             Some(rem) => Ok(Some(rem / self.size)),
             None => Ok(None)
         }

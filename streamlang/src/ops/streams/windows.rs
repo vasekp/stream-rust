@@ -86,12 +86,12 @@ impl PreIterator for WindowsIter {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        match (&n).try_into() {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        match n.try_into() {
             Ok(num) if num < self.size => { self.deque.drain(0..num); },
             _ => {
                 self.deque.clear();
-                if let Some(rem) = self.iter.advance(n - (self.size - 1))? {
+                if let Some(rem) = self.iter.advance(&(n - (self.size - 1)))? {
                     return Ok(Some(rem + (self.size - 1)));
                 }
             }

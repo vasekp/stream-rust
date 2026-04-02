@@ -100,16 +100,12 @@ impl<I: ItemType> PreIterator<I> for PadLeftIter<I> {
         self.source.len_remain() + &self.pad_remain
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
-        if n < self.pad_remain {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        if n < &self.pad_remain {
             self.pad_remain -= n;
             Ok(None)
         } else {
-            if !self.pad_remain.is_zero() {
-                n -= &self.pad_remain;
-                self.pad_remain = UNumber::zero();
-            }
-            self.source.advance(n)
+            self.source.advance(&(n - std::mem::take(&mut self.pad_remain)))
         }
     }
 
@@ -192,8 +188,8 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        self.pos += &n;
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        self.pos += n;
         if let Some(ref mut iter) = self.source {
             if iter.advance(n)?.is_none() {
                 return Ok(None);

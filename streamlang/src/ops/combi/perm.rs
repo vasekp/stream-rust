@@ -120,7 +120,7 @@ impl PreIterator for PermIter {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.num_read += n;
         if let Some(len) = &self.self_len
             && &self.num_read >= len {

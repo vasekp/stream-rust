@@ -91,8 +91,8 @@ impl<I: ItemType> SIterator<I> for ListIter<I> {
         Length::from(self.len_remain_impl())
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        match usize::try_from(&n) {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        match usize::try_from(n) {
             Ok(n) if n <= self.len_remain_impl() => {
                 self.index += n;
                 Ok(None)

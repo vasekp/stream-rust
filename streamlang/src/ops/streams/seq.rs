@@ -62,7 +62,7 @@ impl PreIterator for SeqIter {
         Length::Infinite
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         match &self.node.step {
             Some(step) => self.value += step * Number::from(n),
             None => self.value += Number::from(n)

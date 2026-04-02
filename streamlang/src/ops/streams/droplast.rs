@@ -91,13 +91,11 @@ impl<I: ItemType> PreIterator<I> for KnownLenIter<I> {
         Length::Exact(self.count_rem.to_owned())
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
-        if n > self.count_rem {
-            n -= &self.count_rem;
-            self.count_rem = UNumber::zero();
-            Ok(Some(n))
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        if n > &self.count_rem {
+            Ok(Some(n - std::mem::take(&mut self.count_rem)))
         } else {
-            self.count_rem -= &n;
+            self.count_rem -= n;
             debug_assert!(matches!(self.source.advance(n), Ok(None)));
             Ok(None)
         }
@@ -174,17 +172,17 @@ impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
         Length::at_most(self.source.len_remain())
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
-        match usize::try_from(&n) {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let n = match usize::try_from(n) {
             Ok(n0) if n0 < self.node.count => {
                 self.queue.drain(0..n0);
-                n = 0u32.into();
+                0u32.into()
             },
             _ => {
                 self.queue.clear();
-                n -= self.node.count;
+                n - self.node.count
             }
-        }
+        };
         for _ in self.queue.len() .. self.node.count {
             match self.source.next()? {
                 Some(item) => self.queue.push_back(item),

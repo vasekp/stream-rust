@@ -23,7 +23,8 @@ struct Skip<I: ItemType> {
 impl<I: ItemType> Stream<I> for Skip<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         let mut iter = self.source.iter();
-        match iter.advance(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
+        let one = UNumber::one();
+        match iter.advance(self.count.as_ref().unwrap_or(&one)) {
             Ok(None) => iter,
             Ok(Some(_)) => Box::new(std::iter::empty()),
             Err(err) => iter_error(err, &self),

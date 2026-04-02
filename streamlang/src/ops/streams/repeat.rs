@@ -70,8 +70,8 @@ impl<I: ItemType> PreIterator<I> for RepeatItemIter<I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        if n > self.count_rem {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        if n > &self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
             self.count_rem -= n;
@@ -150,7 +150,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let Some(n) = self.iter.advance(n)? else { return Ok(None); };
 
         // If advance returned Some, iter is depleted. Restart.
@@ -164,7 +164,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
 
         // This point is special: we know that iter() is now newly initiated, so we can use it to
         // determine the length regardless of whether it's statically known.
-        let (full_length, mut n) = match self.iter.advance(n.clone())? {
+        let (full_length, mut n) = match self.iter.advance(&n)? {
             None => return Ok(None),
             Some(remain) => (n - &remain, remain)
         };
@@ -191,7 +191,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
         }
         self.iter = self.node.stream.iter();
         debug_assert!(n < full_length);
-        self.iter.advance(n)
+        self.iter.advance(&n)
     }
 
     fn len_remain(&self) -> Length {

@@ -196,10 +196,10 @@ impl PreIterator for MathOpIter {
         MathOp::eval_with(&node, &self.node.env, self.func).map(Option::Some)
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut remain = UNumber::zero();
         for iter in &mut self.args {
-            if let Some(r) = iter.advance(n.clone())? {
+            if let Some(r) = iter.advance(n)? {
                 remain = std::cmp::max(remain, r);
             }
         }
@@ -340,9 +340,9 @@ impl PreIterator<Char> for StringOpIter {
         (self.func)(&ch, &inputs, &self.node.env).map(Option::Some)
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut n_chars: usize = 0;
-        let mut remain = n;
+        let mut remain = n.clone();
         while !remain.is_zero() {
             match self.first.next()? {
                 Some(ch) => {
@@ -355,7 +355,7 @@ impl PreIterator<Char> for StringOpIter {
             remain -= 1;
         }
         for iter in self.rest.iter_mut() {
-            if let Some(r) = iter.advance(n_chars.into())? {
+            if let Some(r) = iter.advance(&n_chars.into())? {
                 remain = std::cmp::max(remain, r);
             }
         }

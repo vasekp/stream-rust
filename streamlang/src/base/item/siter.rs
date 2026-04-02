@@ -33,11 +33,12 @@ pub trait SIterator<I = Item> {
     /// The default implementation calls `next()` an appropriate number of times, and thus is
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
     /// value given by [`SIterator::len_remain()`].
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if let Length::Exact(len) = self.len_remain()
-            && n > len {
-                return Ok(Some(n - &len));
+            && n > &len {
+                return Ok(Some(n - len));
             }
+        let mut n = n.clone();
         while !n.is_zero() {
             check_stop!();
             match self.next()? {
@@ -71,11 +72,12 @@ pub(crate) trait PreIterator<I: ItemType = Item>: Sized + 'static {
 
     fn len_remain(&self) -> Length;
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if let Length::Exact(len) = self.len_remain()
-            && n > len {
-                return Ok(Some(n - &len));
+            && n > &len {
+                return Ok(Some(n - len));
             }
+        let mut n = n.clone();
         while !n.is_zero() {
             check_stop!();
             match self.next()? {
@@ -106,7 +108,7 @@ impl<I: ItemType, T: PreIterator<I>> SIterator<I> for WrappedIterator<I, T> {
             .map_err(|err| err.wrap(&self.0.get_blame()))
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.0.advance(n)
             .map_err(|err| err.wrap(&self.0.get_blame()))
     }
@@ -165,7 +167,7 @@ impl<I: ItemType + Clone> SIterator<I> for std::iter::Repeat<I> {
         Length::Infinite
     }
 
-    fn advance(&mut self, _n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, _n: &UNumber) -> SResult<Option<UNumber>> {
         Ok(None)
     }
 }
@@ -179,7 +181,7 @@ impl<I: Clone> SIterator<I> for std::iter::Repeat<SResult<I>> {
         Length::Infinite
     }
 
-    fn advance(&mut self, _n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, _n: &UNumber) -> SResult<Option<UNumber>> {
         Ok(None)
     }
 }
@@ -195,7 +197,7 @@ where F: FnMut() -> SResult<I>
         Length::Infinite
     }
 
-    fn advance(&mut self, _n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, _n: &UNumber) -> SResult<Option<UNumber>> {
         Ok(None)
     }
 }
@@ -220,7 +222,7 @@ impl<I1: ItemType, I2, F: Fn(I1) -> I2> SIterator<I2> for Map<I1, I2, F> {
         self.source.len_remain()
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.source.advance(n)
     }
 }
@@ -251,7 +253,7 @@ impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMa
         self.source.len_remain()
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.source.advance(n)
             .map_err(|e| e.wrap(&self.origin))
     }
@@ -278,10 +280,10 @@ mod tests {
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = std::iter::empty::<SResult<Item>>();
-        assert_eq!(iter.advance(UNumber::zero()), Ok(None));
+        assert_eq!(iter.advance(&UNumber::zero()), Ok(None));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = std::iter::empty::<SResult<Item>>();
-        assert_eq!(iter.advance(UNumber::one()), Ok(Some(UNumber::one())));
+        assert_eq!(iter.advance(&UNumber::one()), Ok(Some(UNumber::one())));
 
         let some_item = || Item::Number(Default::default());
 
@@ -291,17 +293,17 @@ mod tests {
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = std::iter::once(Ok(some_item()));
-        assert_eq!(iter.advance(UNumber::one()), Ok(None));
+        assert_eq!(iter.advance(&UNumber::one()), Ok(None));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = std::iter::once(Ok(some_item()));
-        assert_eq!(iter.advance(2u32.into()), Ok(Some(UNumber::one())));
+        assert_eq!(iter.advance(&2u32.into()), Ok(Some(UNumber::one())));
 
         let mut iter = std::iter::repeat(Ok(some_item()));
         assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Infinite);
-        assert_eq!(iter.advance(100u32.into()), Ok(None));
+        assert_eq!(iter.advance(&100u32.into()), Ok(None));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Infinite);
 
@@ -309,7 +311,7 @@ mod tests {
         assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Infinite);
-        assert_eq!(iter.advance(100u32.into()), Ok(None));
+        assert_eq!(iter.advance(&100u32.into()), Ok(None));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Infinite);
 
@@ -321,16 +323,16 @@ mod tests {
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
-        assert_eq!(iter.advance(UNumber::one()), Ok(None));
+        assert_eq!(iter.advance(&UNumber::one()), Ok(None));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
-        assert_eq!(iter.advance(2u32.into()), Ok(None));
+        assert_eq!(iter.advance(&2u32.into()), Ok(None));
         assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
-        assert_eq!(iter.advance(3u32.into()), Ok(Some(UNumber::one())));
+        assert_eq!(iter.advance(&3u32.into()), Ok(Some(UNumber::one())));
     }
 }

@@ -42,7 +42,7 @@ impl<I: ItemType> SIterator<I> for LenAMIter<I> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 
@@ -93,7 +93,7 @@ impl<I: ItemType> SIterator<I> for LenUFIter<I> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 
@@ -144,7 +144,7 @@ impl<I: ItemType> SIterator<I> for LenUUIter<I> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 

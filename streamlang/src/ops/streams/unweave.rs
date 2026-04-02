@@ -62,7 +62,7 @@ impl PreIterator for UnweaveIter {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.index += n;
         if self.index >= self.node.count {
             Ok(Some(&self.index - &self.node.count))

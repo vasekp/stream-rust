@@ -64,10 +64,10 @@ impl PreIterator for TransposeIter {
         Ok(vec.map(Item::from))
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut ret = None;
         for iter in &mut self.iters {
-            if let Some(this_rem) = iter.advance(n.clone())? {
+            if let Some(this_rem) = iter.advance(n)? {
                 if let Some(rem) = ret {
                     ret = Some(std::cmp::max(rem, this_rem));
                 } else {

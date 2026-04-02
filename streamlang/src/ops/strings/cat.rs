@@ -78,14 +78,15 @@ impl PreIterator<Char> for CatIter {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let mut n = n.clone();
         loop {
             check_stop!();
             if n.is_zero() {
                 return Ok(None);
             }
             if let Some(iter) = &mut self.inner {
-                let Some(m) = iter.advance(n)? else { return Ok(None); };
+                let Some(m) = iter.advance(&n)? else { return Ok(None); };
                 self.inner = None;
                 n = m;
             } else {
@@ -157,10 +158,11 @@ impl PreIterator<Char> for RiffleCatIter {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let mut n = n.clone();
         loop {
             check_stop!();
-            n = match self.inner.advance(n) {
+            n = match self.inner.advance(&n) {
                 Ok(Some(n)) => n,
                 ret => return ret
             };

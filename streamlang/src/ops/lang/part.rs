@@ -45,7 +45,7 @@ fn eval_index_impl<I: ItemType>(source: &Rc<dyn Stream<I>>, index: &Number) -> S
         _ => ()
     }
     let mut iter = source.iter();
-    if iter.advance(index - 1u32)?.is_some() {
+    if iter.advance(&(index - 1u32))?.is_some() {
         return Err("index past end of stream".into());
     }
     match iter.next()? {
@@ -103,7 +103,7 @@ impl PreIterator for PartIter {
             .map_err(|err| err.wrap(&node))
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 
@@ -154,7 +154,7 @@ impl PreIterator<Char> for StringPartIter {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
 

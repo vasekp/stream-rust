@@ -89,7 +89,7 @@ impl PreIterator for RndIter {
         };
         let rem = rnd % &self.node.len;
         let mut iter = self.node.source.iter();
-        iter.advance(rem)?;
+        iter.advance(&rem)?;
         self.pos += 1;
         iter.next()
     }
@@ -98,7 +98,7 @@ impl PreIterator for RndIter {
         Length::Infinite
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.pos += n;
         Ok(None)
     }

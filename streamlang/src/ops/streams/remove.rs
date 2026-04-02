@@ -63,24 +63,24 @@ impl PreIterator for RemoveIter {
         self.iter.next()
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
-        if self.index > self.node.index || &self.index + &n <= self.node.index {
-            self.index += &n;
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        if self.index > self.node.index || &self.index + n <= self.node.index {
+            self.index += n;
             self.iter.advance(n)
         } else {
             let diff = &self.node.index - &self.index;
-            n -= &diff;
-            if let Some(remain) = self.iter.advance(diff)? {
-                return Ok(Some(remain + n));
+            let after = n - &diff;
+            if let Some(remain) = self.iter.advance(&diff)? {
+                return Ok(Some(remain + after));
             }
-            if n.is_zero() {
+            if after.is_zero() {
                 return Ok(None);
             }
             if self.iter.next()?.is_none() {
-                return Ok(Some(n));
+                return Ok(Some(after));
             }
-            self.index = &self.node.index + &n;
-            self.iter.advance(n)
+            self.index = &self.node.index + &after;
+            self.iter.advance(&after)
         }
     }
 

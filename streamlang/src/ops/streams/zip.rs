@@ -52,10 +52,10 @@ impl PreIterator for ZipIter {
         Ok(Some(vec.into()))
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut remain = UNumber::zero();
         for iter in &mut self.iters {
-            if let Some(r) = iter.advance(n.clone())? {
+            if let Some(r) = iter.advance(n)? {
                 remain = std::cmp::max(remain, r);
             }
         }
