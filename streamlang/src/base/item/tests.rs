@@ -28,7 +28,6 @@ pub(crate) use test_eval;
 pub(crate) use test_describe;
 pub(crate) use test_len;
 
-#[cfg(test)]
 #[track_caller]
 pub(crate) fn test_len_exact(input: &str, len: usize) {
     match &eval!(input) {
@@ -38,7 +37,6 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
     }
 }
 
-#[cfg(test)]
 #[track_caller]
 fn test_len_exact_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>, len: usize) -> SResult<()> {
     assert_eq!(stm.iter().transposed().map(Result::unwrap).count(), len);
@@ -48,7 +46,6 @@ fn test_len_exact_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>, len: usize) -> SRes
     Ok(())
 }
 
-#[cfg(test)]
 #[track_caller]
 pub(crate) fn test_advance(input: &str) {
     match &eval!(input) {
@@ -60,7 +57,6 @@ pub(crate) fn test_advance(input: &str) {
 
 const TEST: u32 = 5;
 
-#[cfg(test)]
 #[track_caller]
 fn test_advance_impl<I: ItemType + PartialEq + Debug>(stm: &Rc<dyn Stream<I>>) -> SResult<()> {
     assert_eq!(stm.iter().len_remain(), stm.len(), "len_remain on fresh iterator == len");
@@ -191,7 +187,6 @@ fn test_advance_impl<I: ItemType + PartialEq + Debug>(stm: &Rc<dyn Stream<I>>) -
     Ok(())
 }
 
-#[cfg(test)]
 #[track_caller]
 fn test_advance_exact_impl<I: ItemType + PartialEq + Debug>(stm: &Rc<dyn Stream<I>>, len: UNumber, test_len_remain: bool) -> SResult<()> {
     if len.is_zero() {
