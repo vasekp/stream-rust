@@ -129,6 +129,9 @@ mod tests {
         test_len!("(1..5).stride(2, 4)" => 1);
         test_len!("(1..5).stride(2, 5)" => 0);
         test_len!("(1..5).stride(2, 6)" => 0);
+        test_len!("(1..10^6).stride(10^5, 6)" => 10);
+        test_len!("(1..10^6).stride(10^5, 10^5-1)" => 10);
+        test_len!("(1..10^6).stride(10^5, 10^5)" => 9);
         test_advance("(1..10).stride(6)");
         test_advance("seq.stride(10^6, 10^4)");
         test_advance("(1..10^10).stride(10^6)");

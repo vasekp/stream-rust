@@ -173,5 +173,6 @@ A stream of non-overlapping arrays from the input `stream` up to size `size`, or
 > "Hello world".?(3) => ["Hel", "lo ", "wor", "ld"]
 > ?seq.?([1, 2].?repeat) : 10 => [[1], [2, 3], [4], [5, 6], ...]
 : groups
+: unweave
 "#);
 }

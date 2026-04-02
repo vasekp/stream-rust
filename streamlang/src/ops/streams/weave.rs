@@ -127,5 +127,6 @@ Interleaves the values of given streams until one of them finishes.
 : zip
 : riffle
 : cat
+: unweave
 "#);
 }
