@@ -99,5 +99,6 @@ If the stream has less than `index` items, it is unchanged.
 : subst
 : append
 : prepend
+: remove
 "#);
 }
