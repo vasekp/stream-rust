@@ -38,6 +38,8 @@ pub(crate) fn test_len_exact(input: &str, len: usize) {
     }
 }
 
+#[cfg(test)]
+#[track_caller]
 fn test_len_exact_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>, len: usize) -> SResult<()> {
     assert_eq!(stm.iter().transposed().map(Result::unwrap).count(), len);
     assert!(Length::possibly_eq(&stm.len(), &Length::Exact(len.into())));

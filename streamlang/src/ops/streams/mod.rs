@@ -33,6 +33,7 @@ mod prepend;
 mod drep;
 mod reps;
 mod weave;
+mod stride;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -70,4 +71,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     drep::init(symbols);
     reps::init(symbols);
     weave::init(symbols);
+    stride::init(symbols);
 }
