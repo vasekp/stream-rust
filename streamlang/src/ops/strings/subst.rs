@@ -2,7 +2,7 @@ use crate::base::*;
 
 use std::collections::VecDeque;
 
-fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
+fn eval_subst(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     match (node.source_checked()?, &node.args[..]) {
         (Item::String(stm), [orig, repl]) => {
@@ -20,15 +20,15 @@ fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
                 return Err("the sought string can't be empty".into());
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
-            Ok(Item::new_string(StringReplace { head: node.head.clone(), source: Rc::clone(stm), orig, repl, longest }))
+            Ok(Item::new_string(StringSubst { head: node.head.clone(), source: Rc::clone(stm), orig, repl, longest }))
         },
         (Item::Stream(stm), [orig, repl]) =>
-            Ok(Item::new_stream(StreamReplace { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
+            Ok(Item::new_stream(StreamSubst { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
         _ => Err(StreamError::usage(&node.head))
     }
 }
 
-struct StringReplace {
+struct StringSubst {
     head: Head,
     source: Rc<dyn Stream<Char>>,
     orig: Vec<Vec<Char>>,
@@ -36,7 +36,7 @@ struct StringReplace {
     longest: usize,
 }
 
-impl Describe for StringReplace {
+impl Describe for StringSubst {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         let orig = Item::from(self.orig.iter().cloned().map(Item::from).collect::<Vec<_>>());
         let repl = Item::from(self.repl.iter().cloned().map(Item::from).collect::<Vec<_>>());
@@ -48,9 +48,9 @@ impl Describe for StringReplace {
     }
 }
 
-impl Stream<Char> for StringReplace {
+impl Stream<Char> for StringSubst {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        StringReplaceIter::new(self).wrap()
+        StringSubstIter::new(self).wrap()
     }
 
     fn len(&self) -> Length {
@@ -62,16 +62,16 @@ impl Stream<Char> for StringReplace {
     }
 }
 
-struct StringReplaceIter {
-    node: Rc<StringReplace>,
+struct StringSubstIter {
+    node: Rc<StringSubst>,
     source: Box<dyn SIterator<Char>>,
     cache: VecDeque<Char>,
     queued: Option<(Box<dyn Iterator<Item = Char>>, bool)>,
 }
 
-impl StringReplaceIter {
-    fn new(node: Rc<StringReplace>) -> Self {
-        StringReplaceIter {
+impl StringSubstIter {
+    fn new(node: Rc<StringSubst>) -> Self {
+        StringSubstIter {
             source: node.source.iter(),
             cache: VecDeque::new(),
             queued: None,
@@ -80,7 +80,7 @@ impl StringReplaceIter {
     }
 }
 
-impl PreIterator<Char> for StringReplaceIter {
+impl PreIterator<Char> for StringSubstIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         loop {
             check_stop!();
@@ -124,19 +124,19 @@ impl PreIterator<Char> for StringReplaceIter {
         }
     }
 
-    fn origin(&self) -> &Rc<StringReplace> {
+    fn origin(&self) -> &Rc<StringSubst> {
         &self.node
     }
 }
 
-struct StreamReplace {
+struct StreamSubst {
     head: Head,
     source: Rc<dyn Stream>,
     orig: Item,
     repl: Item,
 }
 
-impl Describe for StreamReplace {
+impl Describe for StreamSubst {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
             .set_source(&self.source)
@@ -146,7 +146,7 @@ impl Describe for StreamReplace {
     }
 }
 
-impl Stream for StreamReplace {
+impl Stream for StreamSubst {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let orig = self.orig.clone();
         let repl = self.repl.clone();
@@ -163,25 +163,25 @@ impl Stream for StreamReplace {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_replace() {
+    fn test_subst() {
         use super::*;
-        test_eval!("\"abc\".replace('a', \"a\")" => "\"abc\"");
-        test_eval!("\"abc\".replace(['a', 'b'], [\"a\", '1'])" => "\"a1c\"");
-        test_eval!("\"abc\".replace(\"\", \"\")" => err);
-        test_eval!("\"abc\".replace(['a', 'b'], [\"a\"])" => err);
-        test_eval!("\"abcde\".replace('b', \"bb\")" => "\"abbcde\"");
-        test_eval!("\"abcde\".replace(['b', 'e'], ['q', \"\"])" => "\"aqcd\"");
-        test_eval!("seq.replace(3,[])" => "[1, 2, [], 4, 5, ...]");
-        test_eval!("\"abc\".replace()" => err);
-        test_eval!("'a'.repeat.replace('b','B')" => "\"aaaaaaaaaaaaaaaaaaaa...");
-        test_describe!("\"abc\".replace('a', \"a\")" => "\"abc\".replace([\"a\"], [\"a\"])");
-        test_describe!("\"abc\".replace(['a', 'b'], [\"a\", '1'])" => "\"abc\".replace([\"a\", \"b\"], [\"a\", \"1\"])");
+        test_eval!("\"abc\".subst('a', \"a\")" => "\"abc\"");
+        test_eval!("\"abc\".subst(['a', 'b'], [\"a\", '1'])" => "\"a1c\"");
+        test_eval!("\"abc\".subst(\"\", \"\")" => err);
+        test_eval!("\"abc\".subst(['a', 'b'], [\"a\"])" => err);
+        test_eval!("\"abcde\".subst('b', \"bb\")" => "\"abbcde\"");
+        test_eval!("\"abcde\".subst(['b', 'e'], ['q', \"\"])" => "\"aqcd\"");
+        test_eval!("seq.subst(3,[])" => "[1, 2, [], 4, 5, ...]");
+        test_eval!("\"abc\".subst()" => err);
+        test_eval!("'a'.repeat.subst('b','B')" => "\"aaaaaaaaaaaaaaaaaaaa...");
+        test_describe!("\"abc\".subst('a', \"a\")" => "\"abc\".subst([\"a\"], [\"a\"])");
+        test_describe!("\"abc\".subst(['a', 'b'], [\"a\", '1'])" => "\"abc\".subst([\"a\", \"b\"], [\"a\", \"1\"])");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("replace", eval_replace, r#"
-Replaces occurrences of `patt` by `repl`, or occurrences of `pattM` by `replM`.
+    symbols.insert(["subst", "subs"], eval_subst, r#"
+Substs occurrences of `patt` by `repl`, or occurrences of `pattM` by `replM`.
 For strings, each `patt` and each `repl` may be a character or a substring.
 For streams, the latter variant is not available, as `[patt1, ...]` is treated as a valid `patt` itself.
 = string.?(patt, repl)
@@ -192,5 +192,6 @@ For streams, the latter variant is not available, as `[patt1, ...]` is treated a
 > "two  spaces".?([" ", "  "], ['1', '2']) => "two11spaces" ; " " is encountered before "  "
 : ucase
 : lcase
+: replace
 "#);
 }

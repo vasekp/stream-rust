@@ -168,6 +168,7 @@ This is equivalent to `join` or `cat`, but better suited for chaining.
 : append
 : join
 : cat
+: replace
 "#);
     symbols.insert("append", eval_append, r#"
 Appends `item`s (in order of the arguments) to `stream` or `string`.
@@ -180,5 +181,6 @@ This is equivalent to `join` or `cat`, but better suited for chaining.
 : prepend
 : join
 : cat
+: replace
 "#);
 }

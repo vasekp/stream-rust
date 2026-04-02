@@ -35,6 +35,7 @@ mod reps;
 mod weave;
 mod stride;
 mod unweave;
+mod replace;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -74,4 +75,5 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     weave::init(symbols);
     stride::init(symbols);
     unweave::init(symbols);
+    replace::init(symbols);
 }

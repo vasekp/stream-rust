@@ -60,7 +60,7 @@ Converts `char` or `string` to uppercase.
 > "Hello".? => "HELLO"
 > 'γ'.? => 'Γ'
 : lcase
-: replace
+: subst
 "#);
     symbols.insert("lcase", eval_ulcase, r#"
 Converts `char` or `string` to lowercase.
@@ -69,6 +69,6 @@ Converts `char` or `string` to lowercase.
 > "Hello".? => "hello"
 > 'Σ'.? => 'σ'
 : ucase
-: replace
+: subst
 "#);
 }
