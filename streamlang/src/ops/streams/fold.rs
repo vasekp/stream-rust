@@ -1,41 +1,41 @@
 use crate::base::*;
-use std::collections::VecDeque;
 
 fn eval_fold(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = node.only_arg_checked()?.as_func()?;
-    if func.args.is_empty() {
-        return Err(StreamError::usage(&node.head));
-    };
-    Ok(Item::new_stream(Fold{head: node.head.clone(), body: func.eval_all(env)?, source: stm, env: env.clone()}))
+    Ok(Item::new_stream(Fold{
+        head: node.head.clone(),
+        source: stm,
+        func: Rc::clone(func),
+        env: env.clone(),
+    }))
 }
 
 struct Fold {
     head: Head,
-    body: Node<Item>,
     source: Rc<dyn Stream>,
-    env: Env
+    func: Rc<Node>,
+    env: Env,
 }
 
 struct FoldIter {
     node: Rc<Fold>,
     source: Box<dyn SIterator>,
-    prev: VecDeque<Item>,
+    prev: Option<Item>,
 }
 
 impl Describe for Fold {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_arg(&self.body)
+            .push_arg(&*self.func)
             .finish(prec)
     }
 }
 
 impl Stream for Fold {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        let args = self.body.args.iter().cloned().collect();
-        FoldIter{source: self.source.iter(), prev: args, node: self}.wrap()
+        FoldIter{source: self.source.iter(), prev: None, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -45,14 +45,13 @@ impl Stream for Fold {
 
 impl PreIterator for FoldIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let source = iter_try!(self.source.next());
-        let args = self.prev.iter()
-            .map(Expr::from)
-            .collect();
-        let node = Node::new(self.node.body.head.clone(), Some(source.into()), args);
-        let item = node.eval(&self.node.env)?;
-        self.prev.pop_front();
-        self.prev.push_back(item.clone());
+        let next = iter_try!(self.source.next());
+        let item = match &self.prev {
+            Some(prev) => self.node.func.with_args(vec![prev.into(), next.into()])?
+                .eval(&self.node.env)?,
+            None => next,
+        };
+        self.prev = Some(item.clone());
         Ok(Some(item))
     }
 
@@ -70,29 +69,23 @@ mod tests {
     #[test]
     fn test_fold() {
         use super::*;
-        test_eval!("seq.fold{#*#1}(1)" => "[1, 2, 6, 24, 120, ...]");
-        test_eval!("(1..20).fold{#*#1}(1).last" => "2432902008176640000");
-        test_eval!("seq.fold{#+#1}(0)" => "[1, 3, 6, 10, 15, ...]");
-        test_eval!("seq.fold{#+#1+#2}(0,1)" => "[2, 5, 10, 19, 34, ...]");
-        test_eval!("seq.fold{#}" => err);
-        test_eval!("seq.fold{#+#1+#2}(0)" => "[<!>");
-        test_eval!("3.fold{#+#1}(0)" => err);
-        test_eval!("3.fold{#+#1}(0)" => err);
-        test_eval!("\"abc\".chars.fold{#+#1}('a')" => "['b', 'd', 'g']");
-        test_eval!("\"abc\".fold{#+#1}('a')" => err);
-        test_describe!("seq.fold{#+#1+#2}(0,1)" => "seq.fold({#+#1+#2}(0, 1))");
-        test_eval!("seq.fold{#1~#}([])" => "[[1], [1, 2], ...]");
+        test_eval!("seq.fold(plus)" => "[1, 3, 6, 10, 15, ...]");
+        test_eval!("seq.fold(times)" => "[1, 2, 6, 24, 120, ...]");
+        test_eval!("\"abc\".chars.fold(plus)" => "['a', 'c', 'f']");
+        test_eval!("seq.fold{#1~#2}" : 8 => "[1, [1, 2], [1, 2, 3], ...]");
+        test_eval!("[].fold{#1~#2}" => "[]");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("fold", eval_fold, r#"
-A stream `s` where `s[n]` is the result of `in[n].func(s[n-1])`. The argument `arg1` is used instead of the nonexistent `s[n-1]` for the first item.
-For `m > 1`, the arguments of `func` are the `m` prior results (in order). The original `arg1, ..., argM` are shifted left with each evaluation, the leftmost one dropped.
-= in.?{func}(arg1, ..., argM)
-> ?seq.?{#+#1}(0) => [1, 3, 6, 10, 15, ...] ; partial sums
-> ?seq.?{#*#1}(1) => [1, 2, 6, 24, 120, ...] ; factorials
-> ?seq.?{#1~#}([]) : 9 => [[1], [1, 2], [1, 2, 3], ...] ; appending to a list
+A stream `s` where `s[n]` is the result of `func(s[n-1], stream[n])`.
+The first element is returned unchanged.
+= stream.?{func}
+= stream.?(func)
+> ?seq.?(plus) => [1, 3, 6, 10, 15, ...] ; partial sums
+> ?seq.?(times) => [1, 2, 6, 24, 120, ...] ; factorials
+> [1, 2, 1, 3, 2].?(?max) => [1, 2, 2, 3, 3] ; partial maxima
 : nest
 : reduce
 "#);

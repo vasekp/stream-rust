@@ -38,7 +38,7 @@ fn misc_tests() {
     use crate::base::*;
 
     // Double factorial
-    test_eval!("seq:{range(#,1,-2).fold{#*#1}(1).last}" : 10 => "[1, 2, 3, 8, 15, 48, 105, 384, 945, 3840, ...]");
+    test_eval!("seq:{range(#,1,-2).reduce(times)}" : 10 => "[1, 2, 3, 8, 15, 48, 105, 384, 945, 3840, ...]");
     // Fibonacci
     test_eval!("nest{#1+#2}(1,1)" => "[2, 3, 5, 8, 13, ...]");
     test_eval!("nest({#1~#2}(1, 1)):len" => "[2, 3, 5, 8, 13, ...]");
