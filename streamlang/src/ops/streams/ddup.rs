@@ -81,6 +81,7 @@ Keeps only the first appearance of any repeated item in `stream`.
 = stream.?
 > [1, 2, 1, 2, 3].? => [1, 2, 3]
 > "abracadabra".?chars.?.?string => "abrcd"
+: ddupby
 : drep
 : counts
 "#);

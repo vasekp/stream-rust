@@ -78,6 +78,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Keeps only the first of every chain of repeated items.
 = stream.?
 > [1, 1, 2, 2, 1].? => [1, 2, 1]
+: drepby
 : ddup
 : reps
 "#);

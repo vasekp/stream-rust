@@ -37,6 +37,8 @@ mod stride;
 mod unweave;
 mod replace;
 mod remove;
+mod ddupby;
+mod drepby;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -78,4 +80,6 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     unweave::init(symbols);
     replace::init(symbols);
     remove::init(symbols);
+    ddupby::init(symbols);
+    drepby::init(symbols);
 }
