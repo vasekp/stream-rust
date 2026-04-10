@@ -96,6 +96,7 @@ If `min_width` is given, the stream is zero-padded if shorter.
 > 123456789.?(1000) => [123, 456, 789]
 : dignum
 : numstr
+: digstr
 "#);
     symbols.insert("dignum", eval_dignum, r#"
 Converts a stream of digits into a number.
@@ -106,5 +107,6 @@ If `base` is omitted, it defaults to 10 (decadic).
 > [1, 0, 0, 0].?(2) => 8
 : numdig
 : strnum
+: digstr
 "#);
 }

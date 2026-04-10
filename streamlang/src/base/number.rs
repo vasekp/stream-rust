@@ -62,6 +62,7 @@ impl_is_signed!(
     Number => true, UNumber => false,
 );
 
+impl TryCast<u8> for Number { }
 impl TryCast<u32> for Number { }
 impl TryCast<usize> for Number { }
 impl TryCast<i32> for Number { }

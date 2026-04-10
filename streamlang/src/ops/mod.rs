@@ -77,7 +77,7 @@ fn misc_tests() {
     test_eval!("seq:{with(a=#,range(1,#):{[a,#]})}.flatten(1)" : 18 => "[[1, 1], [2, 1], [2, 2], [3, 1], [3, 2], [3, 3], ...]");
 
     // π string
-    test_eval!("digits[pi+1].string" => "\"31415926535897932384...");
+    test_eval!("pi.digstr" => "\"31415926535897932384...");
     // π using letters
     test_eval!("pi.while{#>0}:chr.cat" => "\"cadaeibfecehigicbchd...");
     // π zeroes

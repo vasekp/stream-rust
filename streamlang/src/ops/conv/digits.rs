@@ -1,7 +1,7 @@
 use crate::base::*;
 use std::marker::PhantomData;
 
-pub(crate) struct Digits<T: TryFrom<UNumber>> {
+pub(super) struct Digits<T: TryFrom<UNumber>> {
     powers: Vec<UNumber>,
     queue: Vec<(usize, UNumber)>,
     _phantom: PhantomData<T>,
@@ -44,5 +44,22 @@ impl<T: TryFrom<UNumber>> Iterator for Digits<T> {
             }
         }
         None
+    }
+}
+
+pub(super) fn dig_to_char(dig: u8) -> SResult<char> {
+    match dig {
+        0..=9 => Ok((b'0' + dig) as char),
+        10..=35 => Ok((b'A' + (dig - 10)) as char),
+        _ => Err("digit larger than 35".into()),
+    }
+}
+
+pub(super) fn char_to_dig(ch: char) -> SResult<u8> {
+    match u8::try_from(ch) {
+        Ok(ch @ b'0'..=b'9') => Ok(ch - b'0'),
+        Ok(ch @ b'a'..=b'z') => Ok(ch - b'a' + 10),
+        Ok(ch @ b'A'..=b'Z') => Ok(ch - b'A' + 10),
+        _ => Err("invalid digit".into()),
     }
 }
