@@ -182,7 +182,7 @@ i.e., numbers `[mult1, ..., multN]` within 0 and the product of all `number`s wh
 = ?(number, number, ...)
 > ?(3, 7, 10) => [70, 120, 21]
 > 70 % [3, 7, 10] => [1, 0, 0] ; check
-> 1 * 70 + 2 * 120 + 3 * 21 => 373 ; use this to find `x` for any given tuple of reminders
+> [1, 2, 3].dot([70, 120, 21]) => 373 ; use this to find `x` for any given tuple of reminders
 > 373 % [3, 7, 10] => [1, 2, 3]
 : gcd
 : egcd

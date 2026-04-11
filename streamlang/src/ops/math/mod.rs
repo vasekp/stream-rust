@@ -9,6 +9,8 @@ mod abs;
 mod modular;
 mod clamp;
 mod sqrt;
+mod greedy;
+mod dot;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     pi::init(symbols);
@@ -22,4 +24,6 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     modular::init(symbols);
     clamp::init(symbols);
     sqrt::init(symbols);
+    greedy::init(symbols);
+    dot::init(symbols);
 }

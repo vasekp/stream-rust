@@ -87,4 +87,8 @@ fn misc_tests() {
     test_eval!("seq.filter{#.divisors.total == 2*#}[1..3]" => "[6, 28, 496]");
     // "Look and say" sequence
     test_eval!("[1].nest{#.reps:rev.flatten}" : 25 => "[[1, 1], [2, 1], [1, 2, 1, 1], [1, 1, 1, 2, 2, 1], [3, 1, 2, 2, 1, 1], ...]");
+
+    // Fibonacci decomposition
+    test_eval!("100.{with(x=#,#.greedy(nest(0+1).while{#<x}.rev))}" : 20 => "[1, 0, 0, 0, 0, 1, 0, 1, 0, 0]");
+    test_eval!("[1, 0, 0, 0, 0, 1, 0, 1, 0, 0].rev.zip(nest(0+1)):{times@#}.total" => "100");
 }

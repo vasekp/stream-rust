@@ -32,6 +32,8 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Sums all numbers forming `stream`.
 = stream.?
 > (1..5).? => 15
+> [[1, 2], [3, 4]].? => !expected number ; only usable for streams of numbers
+> [[1, 2], [3, 4]].{?plus@#} => [4, 6] ; use a more verbose construction for lists of lists etc.
 : reduce
 "#);
 }
