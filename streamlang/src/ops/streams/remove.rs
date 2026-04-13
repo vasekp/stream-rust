@@ -84,17 +84,6 @@ impl PreIterator for RemoveIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        let slen = self.iter.len_remain();
-        if let Length::Exact(len) = &slen
-            && self.index <= self.node.index
-            && &self.index + len > self.node.index {
-                Length::Exact(len - 1)
-        } else {
-            slen
-        }
-    }
-
     fn origin(&self) -> &Rc<Remove> {
         &self.node
     }

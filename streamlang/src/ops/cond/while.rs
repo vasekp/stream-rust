@@ -56,10 +56,6 @@ impl PreIterator for WhileIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
-    }
-
     fn origin(&self) -> &Rc<While> {
         &self.node
     }

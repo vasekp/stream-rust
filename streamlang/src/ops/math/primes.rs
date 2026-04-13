@@ -82,10 +82,6 @@ impl SIterator for PrimesIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         Ok(Iterator::next(self).map(Item::new_number))
     }
-
-    fn len_remain(&self) -> Length {
-        Length::Infinite
-    }
 }
 
 fn eval_isprime(node: &Node, env: &Env) -> SResult<Item> {

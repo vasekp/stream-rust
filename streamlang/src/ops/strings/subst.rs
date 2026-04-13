@@ -116,14 +116,6 @@ impl PreIterator<Char> for StringSubstIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        match self.source.len_remain() {
-            Length::Exact(_) | Length::AtMost(_) | Length::UnknownFinite => 
-                Length::UnknownFinite,
-            Length::Infinite | Length::Unknown => Length::Unknown
-        }
-    }
-
     fn origin(&self) -> &Rc<StringSubst> {
         &self.node
     }

@@ -90,10 +90,6 @@ impl PreIterator for SelfRefIter {
         Ok(Some(item))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Unknown
-    }
-
     fn origin(&self) -> &Rc<SelfRef> {
         &self.node
     }
@@ -136,10 +132,6 @@ impl PreIterator for BackRefIter {
             Some(item) => Ok(Some(item.clone())),
             None => Err("read ahead of write".into()),
         }
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Unknown
     }
 
     fn origin(&self) -> &Rc<BackRef> {

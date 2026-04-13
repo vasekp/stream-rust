@@ -106,10 +106,6 @@ impl PreIterator for DivisorsIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::UnknownFinite
-    }
-
     fn origin(&self) -> &Rc<Divisors> {
         &self.node
     }

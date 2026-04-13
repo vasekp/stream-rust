@@ -66,10 +66,6 @@ impl PreIterator for FactorIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::UnknownFinite
-    }
-
     fn origin(&self) -> &Rc<Factor> {
         &self.node
     }

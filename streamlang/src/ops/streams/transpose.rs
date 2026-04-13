@@ -78,13 +78,6 @@ impl PreIterator for TransposeIter {
         Ok(ret)
     }
 
-    fn len_remain(&self) -> Length {
-        self.iters.iter()
-            .map(|s| s.len_remain())
-            .reduce(Length::intersection)
-            .unwrap_or(Length::empty())
-    }
-
     fn origin(&self) -> &Rc<Transpose> {
         &self.node
     }

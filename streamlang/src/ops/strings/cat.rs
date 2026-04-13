@@ -99,10 +99,6 @@ impl PreIterator<Char> for CatIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Unknown
-    }
-
     fn origin(&self) -> &Rc<Cat> {
         &self.node
     }
@@ -184,10 +180,6 @@ impl PreIterator<Char> for RiffleCatIter {
                 }
             }
         }
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Unknown
     }
 
     fn origin(&self) -> &Rc<Cat> {

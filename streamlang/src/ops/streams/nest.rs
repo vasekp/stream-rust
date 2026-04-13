@@ -90,10 +90,6 @@ impl PreIterator for NestIterSource {
         Ok(Some(item))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Infinite
-    }
-
     fn origin(&self) -> &Rc<NestSource> {
         &self.node
     }
@@ -109,10 +105,6 @@ impl PreIterator for NestIterArgs {
         self.prev.pop_front();
         self.prev.push_back(item.clone());
         Ok(Some(item))
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Infinite
     }
 
     fn origin(&self) -> &Rc<NestArgs> {

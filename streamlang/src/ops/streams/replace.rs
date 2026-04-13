@@ -67,10 +67,6 @@ impl PreIterator for ReplaceIter {
         self.iter.advance(n)
     }
 
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
-    }
-
     fn origin(&self) -> &Rc<Replace> {
         &self.node
     }

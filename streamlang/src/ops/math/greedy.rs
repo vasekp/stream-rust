@@ -49,10 +49,6 @@ impl PreIterator for GreedyIter {
         Ok(Some(Item::new_number(quot)))
     }
 
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut n = n.clone();
         while !self.x.is_zero() && !n.is_zero() {

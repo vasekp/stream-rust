@@ -100,10 +100,6 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Exact(&self.start + self.cached.len())
-    }
-
     fn origin(&self) -> &Rc<Rev<I>> {
         &self.node
     }

@@ -110,11 +110,6 @@ impl PreIterator for ReorderIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        self.node.source.len()
-            .map(|len| if len >= &self.pos { len - &self.pos } else { UNumber::zero() })
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut n = n.clone();
         loop {

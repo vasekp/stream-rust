@@ -207,13 +207,6 @@ impl PreIterator for MathOpIter {
         else { Ok(Some(remain)) }
     }
 
-    fn len_remain(&self) -> Length {
-        self.args.iter()
-            .map(|iter| iter.len_remain())
-            .reduce(Length::intersection)
-            .unwrap()
-    }
-
     fn origin(&self) -> &Rc<MathOp> {
         &self.node
     }
@@ -361,16 +354,6 @@ impl PreIterator<Char> for StringOpIter {
         }
         if remain.is_zero() { Ok(None) }
         else { Ok(Some(remain)) }
-    }
-
-    fn len_remain(&self) -> Length {
-        self.rest.iter()
-            .map(|iter| iter.len_remain())
-            .map(|len| match len {
-                Length::Infinite => Length::Infinite,
-                _ => Length::Unknown
-            })
-            .fold(self.first.len_remain(), Length::intersection)
     }
 
     fn origin(&self) -> &Rc<StringOp> {

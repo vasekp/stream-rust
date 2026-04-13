@@ -87,10 +87,6 @@ impl<I: ItemType> PreIterator for PartitionByIter<I> {
         Ok(Some(Item::from([key, Item::from(vals)])))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.iter.len_remain())
-    }
-
     fn origin(&self) -> &Rc<PartitionBy<I>> {
         &self.node
     }

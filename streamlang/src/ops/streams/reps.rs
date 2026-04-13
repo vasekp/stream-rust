@@ -66,10 +66,6 @@ impl PreIterator for RepsIter {
         Ok(Some(Item::new_stream(List::from([curr_item, Item::new_number(count)]))))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.iter.len_remain())
-    }
-
     fn origin(&self) -> &Rc<Reps> {
         &self.node
     }

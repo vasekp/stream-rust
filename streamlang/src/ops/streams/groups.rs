@@ -76,10 +76,6 @@ impl PreIterator for GroupsIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain().map(|len| len / self.size)
-    }
-
     fn origin(&self) -> &Rc<Groups> {
         &self.node
     }

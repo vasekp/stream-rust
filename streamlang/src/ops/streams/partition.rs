@@ -93,10 +93,6 @@ impl<I: ItemType> PreIterator for HomPartitionIter<I> {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain().map(|len| (len + self.size - 1) / self.size)
-    }
-
     fn origin(&self) -> &Rc<Partition<I>> {
         &self.node
     }
@@ -125,10 +121,6 @@ impl<I: ItemType> PreIterator for HetPartitionIter<I> {
         } else {
             Ok(Some(Item::from(vec)))
         }
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Unknown
     }
 
     fn origin(&self) -> &Rc<Partition<I>> {

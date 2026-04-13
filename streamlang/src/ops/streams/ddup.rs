@@ -52,10 +52,6 @@ impl PreIterator for DDupIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.iter.len_remain())
-    }
-
     fn origin(&self) -> &Rc<DDup> {
         &self.node
     }

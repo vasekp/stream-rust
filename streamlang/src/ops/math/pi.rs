@@ -76,10 +76,6 @@ impl PreIterator for PiIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Infinite
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         match n.try_into() {
             Ok(n) => {

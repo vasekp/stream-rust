@@ -1,5 +1,7 @@
 use crate::base::*;
 
+use std::collections::VecDeque;
+
 fn eval_weave(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
@@ -28,7 +30,7 @@ impl Stream for Weave {
         let iters = self.streams.iter()
             .map(|stm| stm.iter())
             .collect();
-        WeaveIter{iters, index: 0, node: self}.wrap()
+        WeaveIter{iters, node: self}.wrap()
     }
 
     fn len(&self) -> Length {
@@ -41,48 +43,37 @@ impl Stream for Weave {
 
 struct WeaveIter {
     node: Rc<Weave>,
-    iters: Vec<Box<dyn SIterator>>,
-    index: usize,
+    iters: VecDeque<Box<dyn SIterator>>,
 }
 
 impl PreIterator for WeaveIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let res = iter_try!(self.iters[self.index].next());
-        self.index += 1;
-        if self.index >= self.iters.len() {
-            self.index = 0;
-        }
+        let res = iter_try!(self.iters.front_mut()
+            .unwrap() // nonempty checked at eval
+            .next());
+        self.iters.rotate_left(1);
         Ok(Some(res))
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        let common = self.iters.iter()
-            .map(|it| it.len_remain())
-            .reduce(Length::intersection).unwrap();
+        let (quot, mut rem) = n.div_rem(&self.iters.len());
+        let mut q = UNumber::zero();
         let num = self.iters.len();
-        let skip = match Length::intersection(common, Length::Exact(n / num)) {
-            Length::Exact(len) => len,
-            _ => UNumber::zero()
-        };
-        let mut n = n.clone();
-        for iter in self.iters.iter_mut() {
-            iter.advance(&skip)?;
-            n -= &skip;
-        }
-        while !n.is_zero() {
-            if self.next()?.is_none() {
-                return Ok(Some(n));
+        for (ix, iter) in self.iters.iter_mut().enumerate() {
+            if let Some(rem) = iter.advance(&quot)? {
+                q = std::cmp::max(q, rem * num - ix);
             }
-            n -= 1;
+        }
+        if !q.is_zero() {
+            return Ok(Some(q + rem));
+        }
+        while rem != 0 {
+            if self.next()?.is_none() {
+                return Ok(Some(rem.into()));
+            }
+            rem -= 1;
         }
         Ok(None)
-    }
-
-    fn len_remain(&self) -> Length {
-        let num = self.iters.len();
-        self.iters.iter().enumerate()
-            .map(|(ix, stm)| stm.len_remain().map(|len| len * num + ((ix + num - self.index) % num)))
-            .reduce(Length::intersection).unwrap()
     }
 
     fn origin(&self) -> &Rc<Weave> {

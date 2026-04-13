@@ -55,10 +55,6 @@ impl PreIterator for FoldIter {
         Ok(Some(item))
     }
 
-    fn len_remain(&self) -> Length {
-        self.source.len_remain()
-    }
-
     fn origin(&self) -> &Rc<Fold> {
         &self.node
     }

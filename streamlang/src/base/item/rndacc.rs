@@ -22,10 +22,6 @@ impl<I: ItemType> SIterator<I> for RandomAccess<I> {
         self.iter.next()
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Unknown
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.consumed += n;
         self.iter.advance(n)

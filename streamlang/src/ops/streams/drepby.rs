@@ -60,10 +60,6 @@ impl PreIterator for DRepByIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.iter.len_remain())
-    }
-
     fn origin(&self) -> &Rc<DRepBy> {
         &self.node
     }

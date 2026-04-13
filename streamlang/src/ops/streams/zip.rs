@@ -63,13 +63,6 @@ impl PreIterator for ZipIter {
         else { Ok(Some(remain)) }
     }
 
-    fn len_remain(&self) -> Length {
-        self.iters.iter()
-            .map(|iter| iter.len_remain())
-            .reduce(Length::intersection)
-            .unwrap()
-    }
-
     fn origin(&self) -> &Rc<Zip> {
         &self.node
     }

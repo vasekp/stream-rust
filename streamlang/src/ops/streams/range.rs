@@ -145,13 +145,6 @@ impl PreIterator for RangeIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        match len_helper(Some(&self.value), &self.node.to, self.node.step.as_ref()) {
-            Some(num) => Length::Exact(num),
-            None => Length::Infinite
-        }
-    }
-
     fn origin(&self) -> &Rc<Range> {
         &self.node
     }

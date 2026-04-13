@@ -107,10 +107,6 @@ impl PreIterator for PartIter {
         self.iter.advance(n)
     }
 
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
-    }
-
     fn origin(&self) -> &Rc<Part> {
         &self.node
     }
@@ -156,10 +152,6 @@ impl PreIterator<Char> for StringPartIter {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
-    }
-
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
     }
 
     fn origin(&self) -> &Rc<StringPart> {

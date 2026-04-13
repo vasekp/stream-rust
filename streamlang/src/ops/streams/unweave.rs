@@ -71,10 +71,6 @@ impl PreIterator for UnweaveIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Exact(&self.node.count - &self.index)
-    }
-
     fn origin(&self) -> &Rc<Unweave> {
         &self.node
     }

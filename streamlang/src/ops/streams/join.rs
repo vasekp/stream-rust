@@ -113,12 +113,6 @@ impl<I: ItemType, S: Stream<I> + 'static> PreIterator<I> for JoinIter<I, S> {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        self.iters.iter()
-            .map(|iter| iter.len_remain())
-            .fold(Length::empty(), |acc, e| acc + e)
-    }
-
     fn origin(&self) -> &Rc<S> {
         &self.node
     }

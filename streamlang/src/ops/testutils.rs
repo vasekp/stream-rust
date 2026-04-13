@@ -45,10 +45,6 @@ impl<I: ItemType> SIterator<I> for LenAMIter<I> {
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
-
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.iter.len_remain())
-    }
 }
 
 fn eval_len_uf(node: &Node, env: &Env) -> SResult<Item> {
@@ -96,10 +92,6 @@ impl<I: ItemType> SIterator<I> for LenUFIter<I> {
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
     }
-
-    fn len_remain(&self) -> Length {
-        Length::UnknownFinite
-    }
 }
 
 fn eval_len_uu(node: &Node, env: &Env) -> SResult<Item> {
@@ -146,10 +138,6 @@ impl<I: ItemType> SIterator<I> for LenUUIter<I> {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.iter.advance(n)
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Unknown
     }
 }
 

@@ -74,10 +74,6 @@ impl<I: ItemType> ListIter<I> {
     fn new(node: Rc<List<I>>) -> Self {
         Self{node, index: 0}
     }
-
-    fn len_remain_impl(&self) -> usize {
-        self.node.0.len() - self.index
-    }
 }
 
 impl<I: ItemType> SIterator<I> for ListIter<I> {
@@ -87,18 +83,15 @@ impl<I: ItemType> SIterator<I> for ListIter<I> {
         Ok(val.cloned())
     }
 
-    fn len_remain(&self) -> Length {
-        Length::from(self.len_remain_impl())
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let remain = self.node.0.len() - self.index;
         match usize::try_from(n) {
-            Ok(n) if n <= self.len_remain_impl() => {
+            Ok(n) if n <= remain => {
                 self.index += n;
                 Ok(None)
             },
             _ => {
-                Ok(Some(n - self.len_remain_impl()))
+                Ok(Some(n - remain))
             }
         }
     }

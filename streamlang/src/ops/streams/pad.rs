@@ -96,10 +96,6 @@ impl<I: ItemType> PreIterator<I> for PadLeftIter<I> {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        self.source.len_remain() + &self.pad_remain
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if n < &self.pad_remain {
             self.pad_remain -= n;
@@ -177,14 +173,6 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
             Ok(Some(self.node.padding.clone()))
         } else {
             Ok(None)
-        }
-    }
-
-    fn len_remain(&self) -> Length {
-        match &self.source {
-            Some(iter) => iter.len_remain().map(|len|
-                std::cmp::max(len, &(&self.node.len - &self.pos)).to_owned()),
-            None => Length::Exact(&self.node.len - &self.pos)
         }
     }
 

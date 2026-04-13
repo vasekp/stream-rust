@@ -11,13 +11,6 @@ use crate::base::*;
 pub trait SIterator<I = Item> {
     fn next(&mut self) -> SResult<Option<I>>;
 
-    /// Returns the number of items remaining in the iterator, if it can be deduced from its
-    /// current state. The return value must be consistent with the actual behaviour of the stream.
-    ///
-    /// The default implementation relies on [`Iterator::size_hint()`] to return one of 
-    /// [`Length::Exact`], [`Length::AtMost`], or [`Length::Unknown`].
-    fn len_remain(&self) -> Length; // TODO docstring
-
     /// Inspired by (at the moment, experimental) `Iterator::advance_by()`, advances the iterator
     /// by `n` elements.
     ///
@@ -34,10 +27,6 @@ pub trait SIterator<I = Item> {
     /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
     /// value given by [`SIterator::len_remain()`].
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        if let Length::Exact(len) = self.len_remain()
-            && n > &len {
-                return Ok(Some(n - len));
-            }
         let mut n = n.clone();
         while !n.is_zero() {
             check_stop!();
@@ -70,13 +59,7 @@ impl<I> Iterator for Transposed<'_, I> {
 pub(crate) trait PreIterator<I: ItemType = Item>: Sized + 'static {
     fn next(&mut self) -> SResult<Option<I>>;
 
-    fn len_remain(&self) -> Length;
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        if let Length::Exact(len) = self.len_remain()
-            && n > &len {
-                return Ok(Some(n - len));
-            }
         let mut n = n.clone();
         while !n.is_zero() {
             check_stop!();
@@ -112,10 +95,6 @@ impl<I: ItemType, T: PreIterator<I>> SIterator<I> for WrappedIterator<I, T> {
         self.0.advance(n)
             .map_err(|err| err.wrap(&self.0.get_blame()))
     }
-
-    fn len_remain(&self) -> Length {
-        self.0.len_remain()
-    }
 }
 
 impl<I, T, U, V> SIterator<I> for std::iter::Map<T, U>
@@ -125,26 +104,11 @@ where T: Iterator<Item = V>,
     fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
     }
-
-    fn len_remain(&self) -> Length {
-        match self.size_hint() {
-            (lo, Some(hi)) if lo == hi => Length::Exact(lo.into()),
-            (_, Some(hi)) => Length::AtMost(hi.into()),
-            _ => Length::Unknown
-        }
-    }
 }
 
 impl<I> SIterator<I> for std::iter::Once<SResult<I>> {
     fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
-    }
-
-    fn len_remain(&self) -> Length {
-        match self.size_hint() {
-            (lo, Some(hi)) if lo == hi => Length::Exact(lo.into()),
-            _ => unreachable!("std::iter::once size_hint")
-        }
     }
 }
 
@@ -152,19 +116,11 @@ impl<I> SIterator<I> for std::iter::Empty<SResult<I>> {
     fn next(&mut self) -> SResult<Option<I>> {
         Ok(None)
     }
-
-    fn len_remain(&self) -> Length {
-        Length::Exact(UNumber::zero())
-    }
 }
 
 impl<I: ItemType + Clone> SIterator<I> for std::iter::Repeat<I> {
     fn next(&mut self) -> SResult<Option<I>> {
         Ok(Iterator::next(self))
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Infinite
     }
 
     fn advance(&mut self, _n: &UNumber) -> SResult<Option<UNumber>> {
@@ -177,10 +133,6 @@ impl<I: Clone> SIterator<I> for std::iter::Repeat<SResult<I>> {
         Iterator::next(self).transpose()
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Infinite
-    }
-
     fn advance(&mut self, _n: &UNumber) -> SResult<Option<UNumber>> {
         Ok(None)
     }
@@ -191,10 +143,6 @@ where F: FnMut() -> SResult<I>
 {
     fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Infinite
     }
 
     fn advance(&mut self, _n: &UNumber) -> SResult<Option<UNumber>> {
@@ -216,10 +164,6 @@ impl<I1: ItemType, I2, F: Fn(I1) -> I2> Map<I1, I2, F> {
 impl<I1: ItemType, I2, F: Fn(I1) -> I2> SIterator<I2> for Map<I1, I2, F> {
     fn next(&mut self) -> SResult<Option<I2>> {
         Ok(self.source.next()?.map(&self.func))
-    }
-
-    fn len_remain(&self) -> Length {
-        self.source.len_remain()
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
@@ -249,10 +193,6 @@ impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMa
             .map_err(|e| e.wrap(&self.origin))
     }
 
-    fn len_remain(&self) -> Length {
-        self.source.len_remain()
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.source.advance(n)
             .map_err(|e| e.wrap(&self.origin))
@@ -277,7 +217,6 @@ mod tests {
     #[test]
     fn test_simple_iters() {
         let mut iter = std::iter::empty::<SResult<Item>>();
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = std::iter::empty::<SResult<Item>>();
         assert_eq!(iter.advance(&UNumber::zero()), Ok(None));
@@ -288,49 +227,34 @@ mod tests {
         let some_item = || Item::Number(Default::default());
 
         let mut iter = std::iter::once(Ok(some_item()));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = std::iter::once(Ok(some_item()));
         assert_eq!(iter.advance(&UNumber::one()), Ok(None));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = std::iter::once(Ok(some_item()));
         assert_eq!(iter.advance(&2u32.into()), Ok(Some(UNumber::one())));
 
         let mut iter = std::iter::repeat(Ok(some_item()));
-        assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(iter.advance(&100u32.into()), Ok(None));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Infinite);
 
         let mut iter = std::iter::repeat_with(|| Ok(some_item()));
-        assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Infinite);
         assert_eq!(iter.advance(&100u32.into()), Ok(None));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Infinite);
 
         let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
-        assert_eq!(iter.len_remain(), Length::Exact(2u32.into()));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
         assert_eq!(iter.advance(&UNumber::one()), Ok(None));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::one()));
         assert_eq!(SIterator::next(&mut iter), Ok(Some(some_item())));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
         assert_eq!(iter.advance(&2u32.into()), Ok(None));
-        assert_eq!(iter.len_remain(), Length::Exact(UNumber::zero()));
         assert_eq!(SIterator::next(&mut iter), Ok(None));
         let mut iter = [some_item(), some_item()].into_iter().map(Result::Ok);
         assert_eq!(iter.advance(&3u32.into()), Ok(Some(UNumber::one())));

@@ -61,10 +61,6 @@ impl<I: ItemType> PreIterator<I> for FirstIter<I> {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::intersection(self.source.len_remain(), Length::Exact(self.count_rem.to_owned()))
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if n > &self.count_rem {
             Ok(Some(n - std::mem::take(&mut self.count_rem)))

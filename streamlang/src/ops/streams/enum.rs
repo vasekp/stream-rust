@@ -49,10 +49,6 @@ impl PreIterator for EnumIter {
         self.iter.advance(n)
     }
 
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
-    }
-
     fn origin(&self) -> &Rc<Enum> {
         &self.node
     }

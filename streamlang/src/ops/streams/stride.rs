@@ -38,7 +38,7 @@ impl Stream for Stride {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let mut iter = self.stream.iter();
         if let Some(n) = &self.offset {
-            match iter.advance(&n) {
+            match iter.advance(n) {
                 Ok(None) => (),
                 Ok(Some(_)) => return Box::new(std::iter::empty()),
                 Err(err) => return iter_error(err, &self),
@@ -90,15 +90,6 @@ impl PreIterator for StrideIter {
             Some(remain) =>
                 Ok(Some((remain + &self.node.stride - 1) / &self.node.stride)),
             None => Ok(None)
-        }
-    }
-
-    fn len_remain(&self) -> Length {
-        if self.first {
-            self.iter.len_remain()
-                .map(|len| (len + &self.node.stride - 1) / &self.node.stride)
-        } else {
-            self.iter.len_remain().map(|len| len / &self.node.stride)
         }
     }
 

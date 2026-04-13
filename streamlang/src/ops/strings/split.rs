@@ -73,10 +73,6 @@ impl PreIterator for SplitStringIter {
         Ok(Some(Item::new_string(LiteralString::from(cache))))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
-    }
-
     fn origin(&self) -> &Rc<SplitString> {
         &self.node
     }
@@ -131,10 +127,6 @@ impl PreIterator for SplitStreamIter {
         }
         self.done = true;
         Ok(Some(Item::new_stream(List::from(cache))))
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
     }
 
     fn origin(&self) -> &Rc<SplitStream> {

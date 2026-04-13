@@ -94,10 +94,6 @@ impl PreIterator for RndIter {
         iter.next()
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Infinite
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.pos += n;
         Ok(None)

@@ -71,10 +71,6 @@ impl<I: ItemType> PreIterator for IndicesIter<I> {
         Ok(None)
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.iter.len_remain())
-    }
-
     fn origin(&self) -> &Rc<Indices<I>> {
         &self.node
     }

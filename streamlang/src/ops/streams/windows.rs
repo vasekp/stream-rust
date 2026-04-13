@@ -105,10 +105,6 @@ impl PreIterator for WindowsIter {
         Ok(None)
     }
 
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
-    }
-
     fn origin(&self) -> &Rc<Windows> {
         &self.node
     }

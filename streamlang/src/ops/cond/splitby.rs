@@ -73,10 +73,6 @@ impl<I: ItemType> PreIterator for SplitByIter<I> {
         Ok(Some(Item::from(cache)))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
-    }
-
     fn origin(&self) -> &Rc<SplitBy<I>> {
         &self.node
     }

@@ -20,8 +20,6 @@ pub trait Stream<I = Item>: Describe {
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
     /// consistent with the actual behaviour of the stream.
-    ///
-    /// The default implementation forwards to [`SIterator::len_remain()`].
     fn len(&self) -> Length;
 }
 
@@ -41,14 +39,7 @@ impl<I: ItemType> dyn Stream<I> {
         Ok(match self.len() {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
             Length::Exact(_) | Length::Infinite => false,
-            _ => {
-                let mut iter = self.iter();
-                match iter.len_remain() {
-                    Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
-                    Length::Exact(_) | Length::Infinite => false,
-                    _ => iter.next()?.is_none()
-                }
-            }
+            _ => self.iter().next()?.is_none(),
         })
     }
 

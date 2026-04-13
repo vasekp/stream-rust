@@ -87,10 +87,6 @@ impl<I: ItemType> PreIterator<I> for KnownLenIter<I> {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Exact(self.count_rem.to_owned())
-    }
-
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if n > &self.count_rem {
             Ok(Some(n - std::mem::take(&mut self.count_rem)))
@@ -166,10 +162,6 @@ impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
             .expect("queue should be full by precondition");
         self.queue.push_back(iter_try!(self.source.next()));
         Ok(Some(next))
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {

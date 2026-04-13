@@ -110,10 +110,6 @@ impl PreIterator for FlattenIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Unknown
-    }
-
     fn origin(&self) -> &Rc<Flatten> {
         &self.node
     }

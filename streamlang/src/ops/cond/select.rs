@@ -56,10 +56,6 @@ impl PreIterator for SelectIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
-    }
-
     fn origin(&self) -> &Rc<Select> {
         &self.node
     }
