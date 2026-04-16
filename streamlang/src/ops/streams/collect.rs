@@ -1,6 +1,6 @@
 use crate::base::*;
 
-fn eval_groupby(node: &Node, env: &Env) -> SResult<Item> {
+fn eval_collect(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = node.only_arg_checked()?.as_func()?;
     let mut map: Vec<(Item, Vec<Item>)> = Vec::new();
@@ -25,19 +25,20 @@ fn eval_groupby(node: &Node, env: &Env) -> SResult<Item> {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_groupby() {
+    fn test_collect() {
         use super::*;
-        test_eval!("(1..7).groupby{#%3}" : 20 => "[[1, [1, 4, 7]], [2, [2, 5]], [0, [3, 6]]]");
+        test_eval!("(1..7).collect{#%3}" : 20 => "[[1, [1, 4, 7]], [2, [2, 5]], [0, [3, 6]]]");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("groupby", eval_groupby, r#"
+    symbols.insert("collect", eval_collect, r#"
 Groups the elements `x` of `stream` agreeing in the value of `x.func`.
 Returns a stream of pairs `[key, [x1, x2, ...]]` in order of appearance.
 = stream.?(func)
-> ["test", "one", "two", "three"].?(?first) : 15 => [['t', ["test", "two", "three"]], ['o', ["one"]]]
+> ["one", "two", "three"].?(?last) : 15 => [['e', ["one", "three"]], ['o', ["two"]]]
 : group
-: partitionby
+: runs
+: drep
 "#);
 }

@@ -92,6 +92,5 @@ Evaluates `cond` on every item of `stream` and returns only thise items for whic
 : while
 : if
 : consec
-: partitionby
 "#);
 }

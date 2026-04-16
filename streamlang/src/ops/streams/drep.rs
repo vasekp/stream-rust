@@ -1,15 +1,19 @@
 use crate::base::*;
 
 fn eval_drep(node: &Node, env: &Env) -> SResult<Item> {
-    let node = node.eval_all(env)?;
-    node.check_no_args()?;
-    let stm = node.source_checked()?.to_stream()?;
-    Ok(Item::new_stream(DRep{head: node.head.clone(), source: stm}))
+    let stm = node.source_checked()?.eval(env)?.to_stream()?;
+    let func = match &node.args[..] {
+        [] => None,
+        [expr] => Some((Rc::clone(expr.as_func()?), env.clone())),
+        _ => return Err(StreamError::usage(&node.head)),
+    };
+    Ok(Item::new_stream(DRep{head: node.head.clone(), source: stm, func}))
 }
 
 struct DRep {
     head: Head,
     source: Rc<dyn Stream>,
+    func: Option<(Rc<Node>, Env)>,
 }
 
 
@@ -17,6 +21,7 @@ impl Describe for DRep {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new(&self.head, env)
             .set_source(&self.source)
+            .push_args(self.func.as_ref().map(|(func, _)| &**func))
             .finish(prec)
     }
 }
@@ -42,10 +47,14 @@ impl PreIterator for DRepIter {
         loop {
             check_stop!();
             let item = iter_try!(self.iter.next());
-            if let Some(last) = &self.last && last.try_eq(&item)? {
+            let key = match &self.node.func {
+                None => item.clone(),
+                Some((func, env)) => func.with_source(Expr::from(&item))?.eval(env)?,
+            };
+            if let Some(last) = &self.last && last.try_eq(&key)? {
                 continue;
             }
-            self.last = Some(item.clone());
+            self.last = Some(key);
             return Ok(Some(item));
         }
     }
@@ -66,16 +75,26 @@ mod tests {
         test_eval!("(1..3).repeat(5).drep" => "[1, 2, 3, 1, 2, ...]");
         test_len!("[].drep" => 0);
         test_describe!("seq.drep" => "seq.drep");
+
+        test_eval!("seq.drep{#/5}" => "[1, 5, 10, 15, 20, ...]");
+        test_eval!("[1, 2, 4, 6, 9].drep{#%3}" => "[1, 2, 4, 6]");
+        test_eval!("[1, 2, 5, 6, 9].drep{#%3}" => "[1, 2, 6]");
+        test_len!("[].drep{#+'a'}" => 0);
+        test_describe!("seq.drep{#}" => "seq.drep({#})");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("drep", eval_drep, r#"
 Keeps only the first of every chain of repeated items.
+If `func` is provided, compares `item.func` instead of `item` itself.
 = stream.?
+= stream.?(func)
 > [1, 1, 2, 2, 1].? => [1, 2, 1]
-: drepby
+> ['a', 'A', 'B', 'b', 'a'].?(?lcase) => ['a', 'B', 'a'] ; the two 'a's represent separate groups
 : ddup
 : reps
+: collect
+: consec
 "#);
 }

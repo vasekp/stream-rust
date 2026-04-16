@@ -101,8 +101,8 @@ A stream of chunks of consecutive items `x` from `stream` for which `x.func == t
 = string.?(func)
 > (20..30).?{!#.?isprime} : 15 => [[20, 21, 22], [24, 25, 26, 27, 28], [30]]
 > "hello world".?(isalpha) => ["hello", "world"]
-: partitionby
-: groupby
+: collect
+: runs
 : select
 "#);
 }
