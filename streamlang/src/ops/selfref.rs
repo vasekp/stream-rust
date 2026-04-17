@@ -3,9 +3,7 @@ use crate::base::*;
 use std::cell::RefCell;
 
 fn eval_self(node: &Node, env: &Env) -> SResult<Item> {
-    let [Expr::Eval(body)] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let body = node.only_arg_checked()?.as_func()?;
     let pre = match &node.source {
         None => None,
         Some(source) => Some(source.eval(env)?.to_stream()?),
@@ -29,7 +27,7 @@ struct SelfRef {
 impl SelfRef {
     fn eval_real(&self) -> SResult<(Rc<dyn Stream>, Rc<CacheHistory>)> {
         let hist = Rc::new(RefCell::new(Vec::new()));
-        let stm = self.body.clone()
+        let stm = self.body
             .with_source(Expr::new_stream(BackRef {
                 parent: Rc::downgrade(&hist)
             }))?
@@ -42,6 +40,7 @@ impl SelfRef {
 impl Describe for SelfRef {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         DescribeBuilder::new_with_env(&self.head, env, &self.env)
+            .set_source_opt(&self.pre)
             .push_arg(&*self.body)
             .finish(prec)
     }
@@ -91,10 +90,6 @@ impl PreIterator for SelfRefIter {
         Ok(Some(item))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Unknown
-    }
-
     fn origin(&self) -> &Rc<SelfRef> {
         &self.node
     }
@@ -133,11 +128,10 @@ impl PreIterator for BackRefIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let opos = self.pos;
         self.pos += 1;
-        Ok(self.vec.borrow().get(opos).cloned())
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Unknown
+        match self.vec.borrow().get(opos) {
+            Some(item) => Ok(Some(item.clone())),
+            None => Err("read ahead of write".into()),
+        }
     }
 
     fn origin(&self) -> &Rc<BackRef> {
@@ -151,26 +145,21 @@ mod tests {
 
     #[test]
     fn test_selfref() {
-        test_eval!("self{#}" => "[]");
-        test_eval!("self{#+1}" => "[]");
-        test_eval!("self{#.repeat}" => "[]");
+        test_eval!("self{#}" => "[<!>");
+        test_eval!("self{#+1}" => "[<!>");
+        test_eval!("self{#.repeat}" => "[<!>");
         test_eval!("self{1~(#+1)}" => "[1, 2, 3, 4, 5, ...]");
         test_eval!("[1].self{#+1}" => "[1, 2, 3, 4, 5, ...]");
         test_eval!("self{0~(1-#)}" => "[0, 1, 0, 1, 0, ...]");
-        test_eval!("self{1~[#+1]}" => "[1, [2, [3, ...]]]");
-        test_eval!("[1].self{[#+1]}" => "[1, [2, [3, ...]]]");
-        test_eval!("self{[#]}" => "[[[[[[...]]]]]]");
+        test_eval!("self{1~[#+1]}" => "[1, [2, [3, ...], ...]]");
+        test_eval!("[1].self{[#+1]}" => "[1, [2, [3, ...], ...]]");
+        test_eval!("self{[#]}" => "[[[[[[...], ...], ...], ...], ...]]");
         test_eval!("self{[#]~1}[2]" => "1");
         test_eval!("self{seq+(5~#)}" => "[6, 8, 11, 15, 20, ...]");
         test_eval!("self{\"pokus\".chars+(\"ab\".chars~#)}.string" => "\"qqblu\"");
         test_eval!("self{#[1]}" => "[<!>");
         test_eval!("self{#.len}" => "[<!>");
         test_eval!("1.{#~self{0~#}}" => "[1, 0, 0, 0, 0, ...]");
-        test_len!("self{#}" => 0);
-        test_len!("self{#~#}" => 0);
-        test_len!("self{#:{#}}" => 0);
-        test_len!("self{#.riffle(#)}" => 0);
-        test_len!("self{#.repeat}" => 0);
         test_len!("self{\"pokus\".chars+(\"ab\".chars~#)}" => 5);
         test_advance("self{1~(#+1)}");
         test_describe!("self{#}" => "self({#})");
@@ -185,8 +174,7 @@ A stream evaluating `func` on its own output, which is put in place of `#`.
 If `stream` is present, uses its items first to populate the history.
 = ?{func}
 = stream.?{func}
-> self{[#]} => [[[[[[...]]]]]]
-> [1].self{[#+1]} => [1, [2, [3, ...]]]
+> [1].self{alternate(#,1-#)} : 7 => [1, 1, 0, 1, 0, 0, 1, ...] ; Thue-Morse sequence
 : nest
 "#);
 }

@@ -110,12 +110,8 @@ impl PreIterator for ReorderIter {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        self.node.source.len()
-            .map(|len| if len >= &self.pos { len - &self.pos } else { UNumber::zero() })
-    }
-
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let mut n = n.clone();
         loop {
             check_stop!();
             if n.is_zero() {
@@ -138,7 +134,7 @@ impl PreIterator for ReorderIter {
                         .filter(|ix| (&*index..&new_index).contains(ix))
                         .count();
                     self.pos += &n - skipped;
-                    match self.iter.advance(n) {
+                    match self.iter.advance(&n) {
                         Ok(None) => {
                             *index = new_index;
                             n = skipped.into()
@@ -152,7 +148,7 @@ impl PreIterator for ReorderIter {
                 },
                 ReorderState::Rest => {
                     self.pos += &n;
-                    return self.iter.advance(n)
+                    return self.iter.advance(&n)
                 }
             }
         }

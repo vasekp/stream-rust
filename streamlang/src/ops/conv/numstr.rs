@@ -1,5 +1,5 @@
 use crate::base::*;
-use super::digits::Digits;
+use super::digits::*;
 
 fn eval_numstr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
@@ -15,12 +15,8 @@ fn eval_numstr(node: &Node, env: &Env) -> SResult<Item> {
     } else {
         let sign = num.signum().is_negative();
         let s = Digits::new(num.unsigned_abs(), radix as u8)
-            .map(|dig| (match dig {
-                0..=9 => b'0' + dig,
-                10..=35 => b'A' + (dig - 10),
-                _ => unreachable!()
-            }) as char)
-            .collect::<String>();
+            .map(dig_to_char)
+            .collect::<SResult<String>>()?;
         match (sign, minw) {
             (false, None) => Ok(Item::new_string(LiteralString::from(s.as_str()))),
             (true, None) => Ok(Item::new_string(LiteralString::from(format!("-{s}").as_str()))),

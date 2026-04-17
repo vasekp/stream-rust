@@ -20,7 +20,10 @@ impl Symbols {
         let rec = Arc::new((ctor, None));
         for sym in names.as_slice() {
             let sym = interner::intern(&sym.to_lowercase());
-            self.0.insert(sym, Arc::clone(&rec));
+            let prev = self.0.insert(sym, Arc::clone(&rec));
+            if prev.is_some() {
+                panic!("Duplicate definition of {sym}");
+            }
         }
     }
 
@@ -32,7 +35,10 @@ impl Symbols {
         let rec = Arc::new((ctor, Some(docs)));
         for sym in names.as_slice() {
             let sym = interner::intern(&sym.to_lowercase());
-            self.0.insert(sym, Arc::clone(&rec));
+            let prev = self.0.insert(sym, Arc::clone(&rec));
+            if prev.is_some() {
+                panic!("Duplicate definition of {sym}");
+            }
         }
     }
 
@@ -95,6 +101,9 @@ mod tests {
             for ex in &docs.examples {
                 res = res.and(test_example(ex, sym));
                 res = res.and(check_refs(ex.input, sym));
+                if let Some(comment) = ex.comment {
+                    res = res.and(check_refs(comment, sym));
+                }
             }
             for see in &docs.see {
                 res = res.and(check_ref(see, sym));

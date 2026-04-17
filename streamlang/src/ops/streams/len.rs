@@ -4,27 +4,11 @@ fn eval_len(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let len = match node.source_checked()? {
-        Item::Stream(stm) => len_impl(stm)?,
-        Item::String(stm) => len_impl(stm)?,
+        Item::Stream(stm) => stm.try_count()?,
+        Item::String(stm) => stm.try_count()?,
         _ => return Err(StreamError::usage(&node.head))
     };
     Ok(Item::new_number(len))
-}
-
-fn len_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<UNumber> {
-    match stm.len() {
-        Length::Exact(len) => Ok(len),
-        Length::AtMost(_) | Length::UnknownFinite | Length::Unknown => {
-            let mut len = 0usize;
-            for res in stm.iter().transposed() {
-                check_stop!();
-                let _ = res?;
-                len += 1;
-            }
-            Ok(len.into())
-        },
-        Length::Infinite => Err("stream is infinite".into())
-    }
 }
 
 #[cfg(test)]
@@ -35,6 +19,9 @@ mod tests {
 
         test_eval!("[].len" => "0");
         test_eval!("range(10).len" => "10");
+        test_eval!("range(10).$lenAM.len" => "10");
+        test_eval!("range(10).$lenUF.len" => "10");
+        test_eval!("range(10).$lenUU.len" => "10");
         test_eval!("range(10).flatten.len" => "10");
         test_eval!("\"abc\".len" => "3");
         test_eval!("1.len" => err);

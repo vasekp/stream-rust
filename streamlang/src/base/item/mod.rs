@@ -99,6 +99,13 @@ impl Item {
         }
     }
 
+    pub fn to_char(&self) -> SResult<Char> {
+        match self {
+            Item::Char(x) => Ok(*x),
+            _ => Err(StreamError::with_expr("expected character", self))
+        }
+    }
+
     pub fn into_char(self) -> SResult<Char> {
         match self {
             Item::Char(x) => Ok(x),
@@ -124,6 +131,13 @@ impl Item {
         }
     }
 
+    pub fn into_stream(self) -> SResult<Rc<dyn Stream>> {
+        match self {
+            Item::Stream(stm) => Ok(stm),
+            _ => Err(StreamError::with_expr("expected stream", &self))
+        }
+    }
+
     pub fn is_string(&self) -> bool {
         matches!(self, Item::String(_))
     }
@@ -139,6 +153,31 @@ impl Item {
         match self {
             Item::String(stm) => Ok(Rc::clone(stm)),
             _ => Err(StreamError::with_expr("expected string", self))
+        }
+    }
+
+    pub(crate) fn to_char_vec(&self) -> SResult<Vec<Char>> {
+        match self {
+            Item::Char(ch) => Ok(vec![*ch]),
+            Item::String(s) => s.listout(),
+            _ => Err(StreamError::with_expr("expected character or string", self)),
+        }
+    }
+
+    pub(crate) fn to_char_vec_nonempty(&self) -> SResult<Vec<Char>> {
+        let vec = self.to_char_vec()?;
+        if vec.is_empty() {
+            Err(StreamError::with_expr("expected character or nonempty string", self))
+        } else {
+            Ok(vec)
+        }
+    }
+
+    pub(crate) fn to_char_iter(&self) -> SResult<Box<dyn SIterator<Char>>> {
+        match self {
+            Item::Char(ch) => Ok(Box::new(std::iter::once(Ok(*ch)))),
+            Item::String(s) => Ok(s.iter()),
+            _ => Err(StreamError::with_expr("expected character or string", self)),
         }
     }
 
@@ -317,6 +356,12 @@ impl From<Char> for Item {
 impl<I: ItemType> From<Vec<I>> for Item {
     fn from(vec: Vec<I>) -> Item {
         I::from_vec(vec)
+    }
+}
+
+impl<I: ItemType, const N: usize> From<[I; N]> for Item {
+    fn from(arr: [I; N]) -> Item {
+        I::from_vec(arr.into())
     }
 }
 

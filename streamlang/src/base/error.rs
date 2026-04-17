@@ -131,7 +131,13 @@ macro_rules! check_stop {
     () => {
         if stop::should_stop() {
             stop::reset_stop();
-            Err(StreamError::interrupt())?;
+            return Err(StreamError::interrupt());
+        }
+    };
+    (iter : $node: expr) => {
+        if stop::should_stop() {
+            stop::reset_stop();
+            return iter_error(StreamError::interrupt(), &$node);
         }
     };
 }

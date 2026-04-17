@@ -78,14 +78,15 @@ impl PreIterator<Char> for CatIter {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let mut n = n.clone();
         loop {
             check_stop!();
             if n.is_zero() {
                 return Ok(None);
             }
             if let Some(iter) = &mut self.inner {
-                let Some(m) = iter.advance(n)? else { return Ok(None); };
+                let Some(m) = iter.advance(&n)? else { return Ok(None); };
                 self.inner = None;
                 n = m;
             } else {
@@ -96,10 +97,6 @@ impl PreIterator<Char> for CatIter {
                 }
             }
         }
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Unknown
     }
 
     fn origin(&self) -> &Rc<Cat> {
@@ -132,12 +129,7 @@ impl RiffleCatIter {
     }
 
     fn next_cs(outer: &mut dyn SIterator) -> SResult<Option<Box<dyn SIterator<Char>>>> {
-        match outer.next()? {
-            Some(Item::Char(ch)) => Ok(Some(Box::new(std::iter::once(Ok(ch))))),
-            Some(Item::String(s)) => Ok(Some(s.to_iter())),
-            None => Ok(None),
-            Some(item) => Err(StreamError::with_expr("expected character or string", &item)),
-        }
+        Some(iter_try!(outer.next()).to_char_iter()).transpose()
     }
 }
 
@@ -162,10 +154,11 @@ impl PreIterator<Char> for RiffleCatIter {
         }
     }
 
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        let mut n = n.clone();
         loop {
             check_stop!();
-            n = match self.inner.advance(n) {
+            n = match self.inner.advance(&n) {
                 Ok(Some(n)) => n,
                 ret => return ret
             };
@@ -187,10 +180,6 @@ impl PreIterator<Char> for RiffleCatIter {
                 }
             }
         }
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Unknown
     }
 
     fn origin(&self) -> &Rc<Cat> {

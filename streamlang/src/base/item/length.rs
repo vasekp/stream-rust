@@ -16,6 +16,10 @@ pub enum Length {
 }
 
 impl Length {
+    pub fn empty() -> Length {
+        Length::Exact(0u32.into())
+    }
+
     pub fn at_most(value: Length) -> Length {
         use Length::*;
         match value {

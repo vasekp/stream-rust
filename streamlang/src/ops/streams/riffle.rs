@@ -4,9 +4,7 @@ fn eval_riffle(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
     if stm.is_empty()? { return Ok(Item::empty_stream()); }
-    let [filler] = &node.args[..] else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let filler = node.only_arg_checked()?;
     Ok(Item::new_stream(Riffle{head: node.head.clone(), source: stm, filler: filler.clone()}))
 }
 
@@ -32,23 +30,26 @@ impl Stream for Riffle {
             Item::Stream(stm) => stm.iter(),
             item => Box::new(std::iter::repeat(Ok(item.clone()))),
         };
-        let source_next = source_iter.next().transpose();
+        let item = match source_iter.next() {
+            Ok(Some(item)) => item,
+            Ok(None) => return Box::new(std::iter::empty()),
+            Err(err) => return iter_error(err, &self),
+        };
         RiffleIter {
             source: source_iter,
             filler: filler_iter,
-            source_next,
-            which: RiffleState::Source,
+            which: RiffleState::Source{next: item},
             node: self,
         }.wrap()
     }
 
     fn len(&self) -> Length {
-        use Length::*;
         let len1 = self.source.len();
         let len2 = match &self.filler {
             Item::Stream(stm) => stm.len(),
-            _ => Infinite
+            _ => Length::Infinite
         };
+        // len1 == 0 handled in eval()
         Length::intersection(len1.map(|u| 2u32 * u - 1u32), len2.map(|v| 2u32 * v + 1u32))
     }
 }
@@ -57,80 +58,53 @@ struct RiffleIter {
     node: Rc<Riffle>,
     source: Box<dyn SIterator>,
     filler: Box<dyn SIterator>,
-    source_next: Option<SResult<Item>>,
     which: RiffleState
 }
 
-#[derive(PartialEq)]
 enum RiffleState {
-    Source,
+    Source{next: Item},
     Filler
 }
 
 impl PreIterator for RiffleIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         use RiffleState::*;
-        match self.which {
-            Source => {
-                self.which = Filler;
-                match self.source_next.take() {
-                    Some(res) => Ok(Some(res?)),
-                    None => Ok(None)
-                }
+        match std::mem::replace(&mut self.which, RiffleState::Filler) {
+            Source{next} => {
+                //self.which = Filler; happens in mem::replace
+                Ok(Some(next))
             },
             Filler => {
-                self.source_next = self.source.next().transpose();
-                self.which = Source;
-                if self.source_next.is_none() { Ok(None) } else { self.filler.next() }
+                self.which = Source{next: iter_try!(self.source.next())};
+                self.filler.next()
             }
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        let common = Length::intersection(self.source.len_remain(), self.filler.len_remain());
-        let skip = match Length::intersection(common, Length::Exact(&n / 2u32)) {
-            Length::Exact(len) => len,
-            _ => UNumber::zero()
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        if n.is_zero() {
+            return Ok(None);
+        }
+        let mut n = n.clone();
+        if matches!(&self.which, RiffleState::Source{..}) {
+            self.next()?; // can't fail
+            n -= 1;
+        }
+        debug_assert!(matches!(&self.which, RiffleState::Filler));
+        let (half, odd) = n.div_rem(2u32);
+        let rem = match (self.source.advance(&half)?, self.filler.advance(&half)?) {
+            (None, None) => None,
+            (None, Some(r2)) => Some(r2),
+            (Some(r1), None) => Some(r1),
+            (Some(r1), Some(r2)) => Some(std::cmp::max(r1, r2)),
         };
-        let mut remain = if !skip.is_zero() {
-            self.filler.advance(skip.clone())?;
-            let n_new = n - 2u32 * &skip;
-            match self.which {
-                RiffleState::Source => {
-                    self.source.advance(skip - 1u32)?;
-                    self.source_next = self.source.next().transpose();
-                },
-                RiffleState::Filler => {
-                    self.source.advance(skip)?;
-                }
-            };
-            n_new
+        if let Some(rem) = rem {
+            Ok(Some(2 * rem + odd))
         } else {
-            n
-        };
-        while !remain.is_zero() {
-            if self.next()?.is_none() {
-                return Ok(Some(remain));
-            }
-            remain -= 1;
-        }
-        Ok(None)
-    }
-
-    fn len_remain(&self) -> Length {
-        let len1 = self.source.len_remain();
-        let len2 = self.filler.len_remain();
-        let common = Length::intersection(len1, len2);
-        match self.which {
-            RiffleState::Source => {
-                if self.source_next.is_none() {
-                    Length::Exact(UNumber::zero())
-                } else {
-                    common.map(|x| 2u32 * x + 1u32)
-                }
-            },
-            RiffleState::Filler => {
-                common.map(|x| 2u32 * x)
+            if odd == 1 && self.next()?.is_none() {
+                Ok(Some(1u32.into()))
+            } else {
+                Ok(None)
             }
         }
     }
@@ -190,6 +164,7 @@ If `filler` is also a stream, interleaves the two streams, until one of them end
 > ?seq.?(0) => [1, 0, 2, 0, 3, ...]
 > ?range(1, 2).?(0) => [1, 0, 2]
 > ?seq.?(['a', 'b']) => [1, 'a', 2, 'b', 3]
+: alternate
 : zip
 : cat
 "#);

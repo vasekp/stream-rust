@@ -17,7 +17,7 @@ fn eval_first(node: &Node, env: &Env) -> SResult<Item> {
 }
 
 fn first_item_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
-    stm.iter().next()?.ok_or("stream is empty".into())
+    stm.iter().next()?.ok_or(format!("{} is empty", I::type_name()).into())
 }
 
 struct First<I: ItemType> {
@@ -61,17 +61,11 @@ impl<I: ItemType> PreIterator<I> for FirstIter<I> {
         }
     }
 
-    fn len_remain(&self) -> Length {
-        Length::intersection(self.source.len_remain(), Length::Exact(self.count_rem.to_owned()))
-    }
-
-    fn advance(&mut self, mut n: UNumber) -> SResult<Option<UNumber>> {
-        if n > self.count_rem {
-            n -= &self.count_rem;
-            self.count_rem = UNumber::zero();
-            Ok(Some(n))
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        if n > &self.count_rem {
+            Ok(Some(n - std::mem::take(&mut self.count_rem)))
         } else {
-            self.count_rem -= &n;
+            self.count_rem -= n;
             self.source.advance(n)
         }
     }

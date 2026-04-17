@@ -112,15 +112,7 @@ impl PreIterator for PermIter {
         }).eval_default().map(Option::Some)
     }
 
-    fn len_remain(&self) -> Length {
-        match (&self.node.len, &self.self_len) {
-            (None, _) => Length::Infinite,
-            (Some(_), Some(len)) => Length::Exact(len - &self.num_read),
-            (Some(_), None) => Length::UnknownFinite
-        }
-    }
-
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.num_read += n;
         if let Some(len) = &self.self_len
             && &self.num_read >= len {

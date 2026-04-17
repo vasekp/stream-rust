@@ -70,17 +70,13 @@ impl<I: ItemType> PreIterator<I> for RepeatItemIter<I> {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        if n > self.count_rem {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        if n > &self.count_rem {
             Ok(Some(n - &self.count_rem))
         } else {
             self.count_rem -= n;
             Ok(None)
         }
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Exact(self.count_rem.to_owned())
     }
 
     fn origin(&self) -> &Rc<RepeatItem<I>> {
@@ -98,7 +94,6 @@ impl<I: ItemType> Stream<I> for RepeatStream<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         RepeatStreamIter {
             iter: self.stream.iter(),
-            len: self.stream.len(),
             resets_rem: self.count.as_ref()
                 .map(|count| count - 1u32),
             node: self,
@@ -112,8 +107,8 @@ impl<I: ItemType> Stream<I> for RepeatStream<I> {
             (_, None) | (Infinite, _) => Infinite,
             (Exact(len), Some(count)) => Exact(len * count),
             (AtMost(len), Some(count)) => AtMost(len * count),
-            (UnknownFinite, _) => UnknownFinite,
-            (Unknown, _) => Unknown
+            (UnknownFinite, Some(_)) => UnknownFinite,
+            (Unknown, Some(_)) => Unknown
         }
     }
 }
@@ -130,7 +125,6 @@ impl<I: ItemType> Describe for RepeatStream<I> {
 struct RepeatStreamIter<I: ItemType> {
     node: Rc<RepeatStream<I>>,
     iter: Box<dyn SIterator<I>>,
-    len: Length,
     resets_rem: Option<UNumber>
 }
 
@@ -150,7 +144,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
         self.iter.next()
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let Some(n) = self.iter.advance(n)? else { return Ok(None); };
 
         // If advance returned Some, iter is depleted. Restart.
@@ -164,7 +158,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
 
         // This point is special: we know that iter() is now newly initiated, so we can use it to
         // determine the length regardless of whether it's statically known.
-        let (full_length, mut n) = match self.iter.advance(n.clone())? {
+        let (full_length, mut n) = match self.iter.advance(&n)? {
             None => return Ok(None),
             Some(remain) => (n - &remain, remain)
         };
@@ -191,18 +185,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
         }
         self.iter = self.node.stream.iter();
         debug_assert!(n < full_length);
-        self.iter.advance(n)
-    }
-
-    fn len_remain(&self) -> Length {
-        match &self.resets_rem {
-            None => Length::Infinite,
-            Some(count) => match &self.len {
-                Length::Infinite => Length::Infinite,
-                Length::Exact(len) => self.iter.len_remain() + count * len,
-                _ => Length::Unknown
-            }
-        }
+        self.iter.advance(&n)
     }
 
     fn origin(&self) -> &Rc<RepeatStream<I>> {

@@ -10,11 +10,7 @@ fn eval_counts(node: &Node, env: &Env) -> SResult<Item> {
         Some(Item::Stream(stm)) => counts_free_impl(stm),
         Some(Item::String(stm)) if !node.args.is_empty() => {
             let args = node.args.iter()
-                .map(|item| match item {
-                    Item::Char(ch) => Ok(vec![*ch]),
-                    Item::String(s) => Ok(s.listout_check_nonempty()?),
-                    _ => Err(StreamError::with_expr("expected character or nonempty string", item))
-                })
+                .map(Item::to_char_vec_nonempty)
                 .collect::<SResult<Vec<_>>>()?;
             string_counts_listed_impl(stm, &args)
         },
@@ -134,5 +130,7 @@ In the latter form and with string input, `?` can also count substrings, includi
 > "abracadabra".? : 20 => [['a', 5], ['b', 2], ['r', 2], ['c', 1], ['d', 1]]
 > "abracadabra".?('a', "ab", "da") => [5, 2, 1]
 > "abracadabra".?@?alpha => [5, 2, 1, 1, 0, ...]
+: ddup
+: reps
 "#);
 }

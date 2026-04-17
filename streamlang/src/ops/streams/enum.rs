@@ -44,13 +44,9 @@ impl PreIterator for EnumIter {
         Ok(Some(vec![item, Item::new_number(self.index.clone())].into()))
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
-        self.index += &n;
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
+        self.index += n;
         self.iter.advance(n)
-    }
-
-    fn len_remain(&self) -> Length {
-        self.iter.len_remain()
     }
 
     fn origin(&self) -> &Rc<Enum> {

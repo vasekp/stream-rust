@@ -52,22 +52,15 @@ impl PreIterator for ZipIter {
         Ok(Some(vec.into()))
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut remain = UNumber::zero();
         for iter in &mut self.iters {
-            if let Some(r) = iter.advance(n.clone())? {
+            if let Some(r) = iter.advance(n)? {
                 remain = std::cmp::max(remain, r);
             }
         }
         if remain.is_zero() { Ok(None) }
         else { Ok(Some(remain)) }
-    }
-
-    fn len_remain(&self) -> Length {
-        self.iters.iter()
-            .map(|iter| iter.len_remain())
-            .reduce(Length::intersection)
-            .unwrap()
     }
 
     fn origin(&self) -> &Rc<Zip> {
@@ -104,5 +97,6 @@ The input which finishes first determines the length of the zip.
 > ?(?range(1, 3), ?range(5, 10)) : 10 => [[1, 5], [2, 6], [3, 7]]
 : riffle
 : enum
+: transpose
 "#);
 }

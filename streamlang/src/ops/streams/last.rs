@@ -22,7 +22,7 @@ fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
     match stm.len() {
         Length::Exact(len) if !len.is_zero() => {
             let mut it = stm.iter();
-            it.advance(len - 1u32)?;
+            it.advance(&(len - 1u32))?;
             it.next().transpose().expect("1 item should remain after skip(len - 1)")
         },
         Length::Infinite => Err("stream is infinite".into()),
@@ -43,7 +43,7 @@ fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
 
 fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumber) -> SResult<Item> {
     if count.is_zero() {
-        return Ok(I::from_vec(vec![]));
+        return Ok(I::empty());
     }
     match stm.len() {
         Length::Exact(len) if len < count => Ok(stm.into()),
@@ -82,7 +82,7 @@ struct Last<I: ItemType> {
 impl<I: ItemType> Stream<I> for Last<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         let mut it = self.source.iter();
-        match it.advance(self.skip.to_owned()) {
+        match it.advance(&self.skip) {
             Ok(None) => it,
             Ok(Some(_)) => Box::new(std::iter::empty()),
             Err(err) => iter_error(err, &self),

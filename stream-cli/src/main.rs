@@ -175,7 +175,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     for example in &docs.examples {
                         print!("> {}", format_cli(example.input, sym).white());
                         if let Some(comment) = example.comment {
-                            println!("{}", format!(" ; {comment}").white().dimmed().italic());
+                            println!("{}", format!(" ; {}", format_cli(comment, sym)).white().dimmed().italic());
                         } else {
                             println!();
                         }

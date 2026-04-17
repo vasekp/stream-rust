@@ -1,16 +1,12 @@
 use crate::base::*;
 
-fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
+fn eval_spliton(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_args_nonempty()?;
     match node.source {
         Some(Item::String(_)) => {
             let sep = node.args.iter()
-                .map(|item| match item {
-                    Item::Char(ch) => Ok(vec![ch.to_owned()]),
-                    Item::String(s) => s.listout_check_nonempty(),
-                    _ => Err(StreamError::with_expr("expected character or nonempty string", item))
-                })
+                .map(Item::to_char_vec_nonempty)
                 .map(|res| res.map(LiteralString::from))
                 .collect::<SResult<Vec<_>>>()?;
             let Some(Item::String(stm)) = node.source else { unreachable!() };
@@ -77,10 +73,6 @@ impl PreIterator for SplitStringIter {
         Ok(Some(Item::new_string(LiteralString::from(cache))))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
-    }
-
     fn origin(&self) -> &Rc<SplitString> {
         &self.node
     }
@@ -137,10 +129,6 @@ impl PreIterator for SplitStreamIter {
         Ok(Some(Item::new_stream(List::from(cache))))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::at_most(self.source.len_remain())
-    }
-
     fn origin(&self) -> &Rc<SplitStream> {
         &self.node
     }
@@ -149,35 +137,35 @@ impl PreIterator for SplitStreamIter {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_split() {
+    fn test_spliton() {
         use super::*;
-        test_eval!("\"Hello, world!\".split(\", \")" => "[\"Hello\", \"world!\"]");
-        test_eval!("\"Hello, world!\".split(',', ' ')" => "[\"Hello\", \"\", \"world!\"]");
-        test_eval!("\"abbacca\".split('b', \"bb\", \"cc\")" => "[\"a\", \"\", \"a\", \"a\"]");
-        test_eval!("\"\".split(' ')" => "[\"\"]");
-        test_eval!("\"abc\".split(\"\")" => err);
-        test_eval!("\"abc\".split()" => err);
-        test_eval!("\"abcacbadc\".split(\"ab\", \"ac\")" => "[\"\", \"c\", \"badc\"]");
-        test_describe!("\"Hello, world!\".split(',', ' ')" => "\"Hello, world!\".split(\",\", \" \")");
-        test_eval!("\"abcacbadc\".split('a'.repeat)" => err);
-        test_eval!("\"abcacbadc\".split('a'.repeat(10^20))" => err);
-        test_eval!("range(10).split(3)" => "[[1, 2], [4, ...]]");
-        test_eval!("range('a', 'e').split('c')" => "[['a', 'b'], ['d', ...]]");
-        test_eval!("range('a', 'e').split(\"c\")" => "[['a', 'b', 'c', 'd', ...]]");
+        test_eval!("\"Hello, world!\".spliton(\", \")" => "[\"Hello\", \"world!\"]");
+        test_eval!("\"Hello, world!\".spliton(',', ' ')" => "[\"Hello\", \"\", \"world!\"]");
+        test_eval!("\"abbacca\".spliton('b', \"bb\", \"cc\")" => "[\"a\", \"\", \"a\", \"a\"]");
+        test_eval!("\"\".spliton(' ')" => "[\"\"]");
+        test_eval!("\"abc\".spliton(\"\")" => err);
+        test_eval!("\"abc\".spliton()" => err);
+        test_eval!("\"abcacbadc\".spliton(\"ab\", \"ac\")" => "[\"\", \"c\", \"badc\"]");
+        test_describe!("\"Hello, world!\".spliton(',', ' ')" => "\"Hello, world!\".spliton(\",\", \" \")");
+        test_eval!("\"abcacbadc\".spliton('a'.repeat)" => err);
+        test_eval!("\"abcacbadc\".spliton('a'.repeat(10^20))" => err);
+        test_eval!("range(10).spliton(3)" => "[[1, 2], [4, ...]]");
+        test_eval!("range('a', 'e').spliton('c')" => "[['a', 'b'], ['d', ...]]");
+        test_eval!("range('a', 'e').spliton(\"c\")" => "[['a', 'b', 'c', 'd', ...]]");
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("split", eval_split, r#"
+    symbols.insert("spliton", eval_spliton, r#"
 Splits `string` on occurrences of any of the `delimiter`s, which can each be a character or a substring.
 For streams: the `delimiter`s are any items, which are compared for exact match.
-= string.split(delimiter...)
-= stream.split(delimiter...)
+= string.?(delimiter...)
+= stream.?(delimiter...)
 > "Hello, world".?(", ") => ["Hello", "world"]
 > "Hello, world".?(' ', ',') => ["Hello", "", "world"] ; there's an empty string between ',' and ' '
 > "two  spaces".?(" ", "  ") => ["two", "", "spaces"] ; " " is encountered before "  "
 > ?range(10).?(3) : 6 => [[1, 2], [4, 5, ...]]
 > ?range(10).?([3, 4]) : 6 => [[1, 2, 3, 4, 5, ...]] ; the *item* [3, 4] never appears
-: splitby
+: split
 "#);
 }

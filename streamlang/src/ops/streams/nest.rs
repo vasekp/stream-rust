@@ -25,11 +25,7 @@ struct NestIterArgs {
 }
 
 fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
-    let body = if let [Expr::Eval(body)] = &node.args[..] && body.source.is_none() {
-        body
-    } else {
-        return Err(StreamError::usage(&node.head));
-    };
+    let body = node.only_arg_checked()?.as_func()?;
     if body.args.is_empty() && let Some(source) = &node.source {
         Ok(Item::new_stream(NestSource{
             head: node.head.clone(),
@@ -94,10 +90,6 @@ impl PreIterator for NestIterSource {
         Ok(Some(item))
     }
 
-    fn len_remain(&self) -> Length {
-        Length::Infinite
-    }
-
     fn origin(&self) -> &Rc<NestSource> {
         &self.node
     }
@@ -113,10 +105,6 @@ impl PreIterator for NestIterArgs {
         self.prev.pop_front();
         self.prev.push_back(item.clone());
         Ok(Some(item))
-    }
-
-    fn len_remain(&self) -> Length {
-        Length::Infinite
     }
 
     fn origin(&self) -> &Rc<NestArgs> {

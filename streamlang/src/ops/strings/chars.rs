@@ -93,7 +93,7 @@ Splits `string` into a stream of characters.
 > "Hello".?:ord => [8, 5, 12, 12, 15]
 : string
 "#);
-    symbols.insert("string", eval_str, r#"
+    symbols.insert(["string", "str"], eval_str, r#"
 Turns a stream of characters into a string.
 * Functionally equivalent to `?cat` but optimized for this purpose.
 = stream.?

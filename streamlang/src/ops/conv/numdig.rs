@@ -30,10 +30,7 @@ fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
         [Item::Number(radix)] => radix.try_cast_within(2u32..)?,
         _ => return Err(StreamError::usage(&node.head))
     };
-    let vec = stm.iter().transposed().map(|item| {
-            check_stop!();
-            item?.into_num()?.try_cast_within(0..radix)
-        }).collect::<SResult<Vec<u32>>>()?;
+    let vec = stm.listout_with(|item| item.into_num()?.try_cast_within(0..radix))?;
     if vec.is_empty() {
         return Err("stream is empty".into());
     }
@@ -99,6 +96,7 @@ If `min_width` is given, the stream is zero-padded if shorter.
 > 123456789.?(1000) => [123, 456, 789]
 : dignum
 : numstr
+: digstr
 "#);
     symbols.insert("dignum", eval_dignum, r#"
 Converts a stream of digits into a number.
@@ -109,5 +107,6 @@ If `base` is omitted, it defaults to 10 (decadic).
 > [1, 0, 0, 0].?(2) => 8
 : numdig
 : strnum
+: digstr
 "#);
 }

@@ -128,27 +128,20 @@ impl PreIterator for RangeIter {
         }
     }
 
-    fn advance(&mut self, n: UNumber) -> SResult<Option<UNumber>> {
+    fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if empty_helper(Some(&self.value), &self.node.to, self.node.step.as_ref()) {
-            return Ok(Some(n))
+            return Ok(Some(n.clone()))
         };
         let Some(max) = len_helper(Some(&self.value), &self.node.to, self.node.step.as_ref())
             else { return Ok(None); };
-        if n <= max {
+        if n <= &max {
             self.value += match &self.node.step {
                 Some(step) => step * Number::from(n),
                 None => Number::from(n)
             };
             Ok(None)
         } else {
-            Ok(Some(n - &max))
-        }
-    }
-
-    fn len_remain(&self) -> Length {
-        match len_helper(Some(&self.value), &self.node.to, self.node.step.as_ref()) {
-            Some(num) => Length::Exact(num),
-            None => Length::Infinite
+            Ok(Some(n - max))
         }
     }
 

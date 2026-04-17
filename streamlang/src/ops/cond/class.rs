@@ -23,13 +23,22 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
             _ => Err(StreamError::with_expr("expected stream or string", item))
         },
         "isalpha" => Ok(env.alpha.contains(item.as_char()?)),
-        "isascii" => Ok(match item.as_char()? {
-            Char::Single(ch) => ch.is_ascii(),
-            _ => false
-        }),
-        "isdigit" => Ok(match item.as_char()? {
-            Char::Single(ch) => ch.is_ascii_digit(),
-            _ => false
+        "isascii" => Ok(match item {
+            Item::Char(Char::Single(ch)) => ch.is_ascii(),
+            Item::Char(_) => false,
+            Item::String(stm) => {
+                let mut ret = true;
+                for ch in stm.iter().transposed() {
+                    check_stop!();
+                    if let Char::Single(ch) = ch? && ch.is_ascii() { }
+                    else {
+                        ret = false;
+                        break;
+                    }
+                }
+                ret
+            },
+            _ => return Err(StreamError::with_expr("expected character or string", item))
         }),
         "iswhite" => Ok(match item.as_char()? {
             Char::Single(ch) => ch.is_whitespace(),
@@ -100,6 +109,20 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
     }
 }
 
+fn eval_isdigit(node: &Node, env: &Env) -> SResult<Item> {
+    let node = node.eval_all(env)?;
+    let base = match &node.args[..] {
+        [] => 10,
+        [Item::Number(num)] => num.try_cast_within(2..=36)?,
+        _ => return Err(StreamError::usage(&node.head)),
+    };
+    let ok = match node.source_checked()?.to_char()? {
+        Char::Single(ch) => ch.is_digit(base),
+        _ => false,
+    };
+    Ok(Item::Bool(ok))
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -116,8 +139,13 @@ mod tests {
         test_eval!("[\"\",[],\"a\",[0],0]:isempty" => "[true, true, false, false, <!>");
         test_eval!("['a','A','á',\"a\"]:isalpha" => "[true, true, false, <!>");
         test_eval!("alpha(['Á'],['a','A','á','Á',\"a\"]:isalpha)" => "[false, false, true, true, <!>");
-        test_eval!("['a','á','ch',\"a\"]:isascii" => "[true, false, false, <!>");
-        test_eval!("['0','00',\"0\"]:isdigit" => "[true, false, <!>");
+        test_eval!("['a','á','ch',\"a\", 1]:isascii" => "[true, false, false, true, <!>");
+        test_eval!("[\"\", \"1\", \" \", \"ý\"]:isascii" => "[true, true, true, false]");
+        test_eval!("['0','00','A',\"0\"]:isdigit" => "[true, false, false, <!>");
+        test_eval!("['0','1','3','A']:isdigit(5)" => "[true, true, true, false]");
+        test_eval!("['0','1','3','A']:isdigit(2)" => "[true, true, false, false]");
+        test_eval!("['0','3','A','b']:isdigit(11)" => "[true, true, true, false]");
+        test_eval!("['0','3','A','b','z']:isdigit(35)" => "[true, true, true, true, false]");
         test_eval!("[' ','.','\r','\n']:iswhite" => "[true, false, true, true]");
         test_eval!("['á','Á','ch','Ch','CH']:isupper" => "[false, true, false, false, true]");
         test_eval!("['á','Á','ch','Ch','CH']:islower" => "[true, false, true, false, false]");
@@ -245,12 +273,14 @@ Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` othe
 : alpha
 "#);
     symbols.insert("isascii", eval_class, r#"
-Evaluates to `true` if `char` is ASCII, `false` otherwise.
+For characters: evaluates to `true` if `char` is ASCII, `false` otherwise.
+For strings: evaluates to `true` if all characters are ASCII, `false` otherwise.
 = char.?
+= string.?
 > 'a'.? => true
 > '#'.? => true
 > 'á'.? => false
-> "a".? => !not a character
+> "a".? => true
 : ischar
 : isalpha
 : isdigit
@@ -259,11 +289,14 @@ Evaluates to `true` if `char` is ASCII, `false` otherwise.
 : islower
 : isnumeric
 "#);
-    symbols.insert("isdigit", eval_class, r#"
-Evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
+    symbols.insert("isdigit", eval_isdigit, r#"
+Evaluates to `true` if `char` is a valid digit in base `base`, `false` otherwise.
+If `base` is omitted, it defaults to 10 (digits `0` through `9`).
 = char.?
 > 'a'.? => false
+> 'a'.?(15) => true
 > '5'.? => true
+> '5'.?(2) => false
 > "5".? => !not a character
 : ischar
 : isalpha
@@ -272,6 +305,7 @@ Evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
 : isupper
 : islower
 : isnumeric
+: digits
 "#);
     symbols.insert("iswhite", eval_class, r#"
 Evaluates to `true` if `char` is a whitespace character, `false` otherwise.

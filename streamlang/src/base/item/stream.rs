@@ -20,8 +20,6 @@ pub trait Stream<I = Item>: Describe {
     /// Returns the length of this stream, in as much information as available *without* consuming
     /// the entire stream. See [`Length`] for the possible return values. The return value must be 
     /// consistent with the actual behaviour of the stream.
-    ///
-    /// The default implementation forwards to [`SIterator::len_remain()`].
     fn len(&self) -> Length;
 }
 
@@ -41,25 +39,48 @@ impl<I: ItemType> dyn Stream<I> {
         Ok(match self.len() {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
             Length::Exact(_) | Length::Infinite => false,
-            _ => {
-                let mut iter = self.iter();
-                match iter.len_remain() {
-                    Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,
-                    Length::Exact(_) | Length::Infinite => false,
-                    _ => iter.next()?.is_none()
-                }
-            }
+            _ => self.iter().next()?.is_none(),
         })
     }
 
     pub(crate) fn listout(self: &Rc<Self>) -> SResult<Vec<I>> {
-        I::listout(self)
+        let mut vec = Vec::new();
+        match &self.len() {
+            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
+                if let Ok(len) = len.try_into() {
+                    vec.reserve(len);
+                } else if matches!(lobj, Length::Exact(_)) {
+                    return Err(StreamError::with_expr(format!("{} is too long", I::type_name()), self));
+                }
+            },
+            Length::Infinite => return Err(StreamError::with_expr(format!("{} is infinite", I::type_name()), self)),
+            _ => ()
+        };
+        for item in self.iter().transposed() {
+            check_stop!();
+            vec.push(item?);
+        }
+        Ok(vec)
     }
 
-    pub(crate) fn listout_check_nonempty(self: &Rc<Self>) -> SResult<Vec<I>> {
-        let vec = I::listout(self)?;
-        if !vec.is_empty() { Ok(vec) }
-        else { Err(StreamError::with_expr("can't be empty", self)) }
+    pub(crate) fn listout_with<T>(self: &Rc<Self>, func: impl Fn(I) -> SResult<T>) -> SResult<Vec<T>> {
+        let mut vec = Vec::new();
+        match &self.len() {
+            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
+                if let Ok(len) = len.try_into() {
+                    vec.reserve(len);
+                } else if matches!(lobj, Length::Exact(_)) {
+                    return Err(StreamError::with_expr(format!("{} is too long", I::type_name()), self));
+                }
+            },
+            Length::Infinite => return Err(StreamError::with_expr(format!("{} is infinite", I::type_name()), self)),
+            _ => ()
+        };
+        for item in self.iter().transposed() {
+            check_stop!();
+            vec.push(item.and_then(&func)?);
+        }
+        Ok(vec)
     }
 
     pub(crate) fn try_count(self: &Rc<Self>) -> SResult<UNumber> {
@@ -84,26 +105,6 @@ impl<I: ItemType> dyn Stream<I> {
 }
 
 impl dyn Stream<Item> {
-    pub(crate) fn listout_impl(self: &Rc<Self>) -> SResult<Vec<Item>> {
-        let mut vec = Vec::new();
-        match &self.len() {
-            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
-                if let Ok(len) = len.try_into() {
-                    vec.reserve(len);
-                } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::with_expr("stream is too long", self));
-                }
-            },
-            Length::Infinite => return Err(StreamError::with_expr("stream is infinite", self)),
-            _ => ()
-        };
-        for item in self.iter().transposed() {
-            check_stop!();
-            vec.push(item?);
-        }
-        Ok(vec)
-    }
-
     pub(crate) fn writeout(self: &Rc<Self>, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {
@@ -167,26 +168,6 @@ impl dyn Stream<Item> {
 }
 
 impl dyn Stream<Char> {
-    pub(crate) fn listout_impl(self: &Rc<Self>) -> SResult<Vec<Char>> {
-        let mut vec = Vec::new();
-        match &self.len() {
-            lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
-                if let Ok(len) = len.try_into() {
-                    vec.reserve(len);
-                } else if matches!(lobj, Length::Exact(_)) {
-                    return Err(StreamError::with_expr("string is too long", self));
-                }
-            },
-            Length::Infinite => return Err(StreamError::with_expr("string is infinite", self)),
-            _ => ()
-        };
-        for ch in self.iter().transposed() {
-            check_stop!();
-            vec.push(ch?);
-        }
-        Ok(vec)
-    }
-
     pub(crate) fn writeout(self: &Rc<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
         -> std::fmt::Result
     {

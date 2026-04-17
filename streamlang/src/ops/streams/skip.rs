@@ -23,7 +23,8 @@ struct Skip<I: ItemType> {
 impl<I: ItemType> Stream<I> for Skip<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         let mut iter = self.source.iter();
-        match iter.advance(self.count.as_ref().cloned().unwrap_or_else(UNumber::one)) {
+        let one = UNumber::one();
+        match iter.advance(self.count.as_ref().unwrap_or(&one)) {
             Ok(None) => iter,
             Ok(Some(_)) => Box::new(std::iter::empty()),
             Err(err) => iter_error(err, &self),
@@ -82,16 +83,19 @@ mod tests {
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("skip", eval_skip, r#"
+    symbols.insert(["skip", "dropfirst"], eval_skip, r#"
 Skips first `count` items of `stream` ot first `count` characters of `string`.
 If `count` is omitted, it defaults to one.
 If `count` is longer than `stream`, returns an empty stream (string).
+= stream.?
 = stream.?(count)
+= string.?
 = string.?(count)
 = (stream|string).?
 > ?range(5).? => [2, 3, 4, 5]
 > ?seq.?(10) => [11, 12, 13, 14, 15, ...]
 > "Hello".?(2) => "llo"
 > "Hello".?(5) => ""
+: droplast
 "#);
 }

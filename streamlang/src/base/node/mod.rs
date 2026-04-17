@@ -146,6 +146,13 @@ impl<I: Clone> Node<I> {
     pub(crate) fn first_arg_checked(&self) -> SResult<&I> {
         self.args.first().ok_or(StreamError::usage(&self.head))
     }
+
+    pub(crate) fn only_arg_checked(&self) -> SResult<&I> {
+        match &self.args[..] {
+            [arg] => Ok(arg),
+            _ => Err(StreamError::usage(&self.head)),
+        }
+    }
 }
 
 impl<I: Describe> Describe for Node<I> {
