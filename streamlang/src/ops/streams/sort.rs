@@ -34,22 +34,18 @@ fn sort_impl(vals: &mut [impl SortItem], alpha: &Rc<Alphabet>) -> SResult<()> {
     match &mut vals[..] {
         [] | [_] => (),
         [x, y] => if x.key().lex_cmp(y.key(), alpha)? == Ordering::Greater { std::mem::swap(x, y) },
-        _ => {
-            let mid = vals.len() / 2;
-            vals.swap(0, mid); // TODO unneeded
-            let (pivot, rest) = vals.split_first_mut().unwrap(); // checked: len > 2
+        [pivot, rest @ ..] => {
             let pivot = pivot.key();
-            let mut div_ix = 0;
+            let mut div = 0;
             for ix in 0..rest.len() {
                 if rest[ix].key().lex_cmp(pivot, alpha)? == Ordering::Less {
-                    rest.swap(ix, div_ix);
-                    div_ix += 1;
+                    rest.swap(ix, div);
+                    div += 1;
                 }
             }
-            vals.swap(0, div_ix);
-            let (s1, s2) = vals.split_at_mut(div_ix + 1); // div+1 > 0 ⇒ both strictly shorter
-            sort_impl(s1, alpha)?;
-            sort_impl(s2, alpha)?;
+            vals.swap(0, div);
+            sort_impl(&mut vals[..div], alpha)?;
+            sort_impl(&mut vals[(div+1)..], alpha)?;
         }
     }
     Ok(())
@@ -77,6 +73,10 @@ mod tests {
 
         test_eval!("[5,2,9,3,5].sort{-#}" => "[9, 5, 5, 3, 2]");
         test_eval!("[\"one\", \"two\", \"three\"].sort(rev)" => "[\"three\", \"one\", \"two\"]");
+
+        test_eval!("[1,2,3].perm:sort.all{#==[1,2,3]}" => "true");
+        test_eval!("[1,2,3,4].perm:sort.all{#==[1,2,3,4]}" => "true");
+        test_eval!("[1,2,3,4,5].perm:sort.all{#==[1,2,3,4,5]}" => "true");
     }
 }
 
