@@ -12,11 +12,8 @@ fn eval_dot(node: &Node, env: &Env) -> SResult<Item> {
     let mut total = Number::zero();
     loop {
         check_stop!();
-        match (it1.next()?, it2.next()?) {
-            (Some(x), Some(y)) => total += x.as_num()? * y.as_num()?,
-            (None, None) => break,
-            _ => return Err("streams of inequal lengths".into()),
-        }
+        let (Some(x), Some(y)) = (it1.next()?, it2.next()?) else { break; };
+        total += x.as_num()? * y.as_num()?;
     }
     Ok(Item::new_number(total))
 }
@@ -28,7 +25,8 @@ mod tests {
         use super::*;
         test_eval!("[1,2,3].dot([4,5,6])" => "32");
         test_eval!("[].dot([])" => "0");
-        test_eval!("[1].dot([4,5,6])" => err);
+        test_eval!("[1,2].dot([4,5,6])" => "14");
+        test_eval!("[4,5].dot(seq)" => "14");
     }
 }
 
@@ -40,7 +38,6 @@ Evaluates the dot product of two streams of numbers.
 > [10, 1].?([4, 5]) => 45
 > [1, 2].?([[4, 5], [6, 7]]) => !expected number ; only usable for streams of numbers
 > [1, 2].?zip([[4, 5], [6, 7]]):{?times@#}.{?plus@#} => [16, 19] ; use a more verbose construction for lists of lists etc.
-> [1, 10, 100].?(?seq) => !streams of inequal lengths
-> [1, 10, 100].?zip(?seq):{?times@#}.?total => 321 ; ditto
+> [1, 10, 100].?(?seq) => 321 ; operates only on overlap for streams of unequal lengths
 "#);
 }

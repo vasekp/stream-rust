@@ -90,5 +90,5 @@ fn misc_tests() {
 
     // Fibonacci decomposition
     test_eval!("100.{with(x=#,#.greedy(nest(0+1).while{#<x}.rev))}" : 20 => "[1, 0, 0, 0, 0, 1, 0, 1, 0, 0]");
-    test_eval!("[1, 0, 0, 0, 0, 1, 0, 1, 0, 0].rev.zip(nest(0+1)):{times@#}.total" => "100");
+    test_eval!("[1, 0, 0, 0, 0, 1, 0, 1, 0, 0].rev.dot(nest(0+1))" => "100");
 }
