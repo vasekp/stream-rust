@@ -188,5 +188,6 @@ Replaces every chain of repeated items in `stream` by a pair `[item, count]`.
 : counts
 : consec
 : collect
+: unroll
 "#);
 }
