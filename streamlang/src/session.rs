@@ -33,8 +33,8 @@ impl Session {
                     let rhs = self.apply_context(rhs.clone())?;
                     let rhs = if let Expr::Eval(node) = &rhs
                         && node.source.is_none() && node.args.is_empty()
-                        && let Head::Block(block) = &node.head {
-                            Rhs::Function(block.clone())
+                        && let Head::Block{body} = &node.head {
+                            Rhs::Function(body.clone())
                     } else {
                         Rhs::Value(rhs.eval(&self.env)?)
                     };

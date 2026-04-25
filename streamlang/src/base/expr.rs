@@ -103,9 +103,9 @@ impl Expr {
         if let Cow::Owned(expr) = func(self)? {
             Ok(Cow::Owned(expr))
         } else if let Expr::Eval(node) = self {
-            let new_head = if let Head::Block(expr) = &node.head
-                && let Cow::Owned(expr) = expr.replace(func)? {
-                    Cow::Owned(Head::Block(expr))
+            let new_head = if let Head::Block{body} = &node.head
+                && let Cow::Owned(body) = body.replace(func)? {
+                    Cow::Owned(Head::Block{body})
             } else {
                 Cow::Borrowed(&node.head)
             };

@@ -29,9 +29,9 @@ fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
         ).collect::<SResult<Vec<_>>>()?;
         let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
         let rhs = Rc::new(if let Expr::Eval(node) = &*body
-            && let Head::Block(block) = &node.head
+            && let Head::Block{body} = &node.head
             && node.source.is_none() && node.args.is_empty() {
-                Rhs::Function(block.clone())
+                Rhs::Function(body.clone())
             } else {
                 Rhs::Value(body.eval(env)?)
             });

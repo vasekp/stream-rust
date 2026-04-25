@@ -66,11 +66,11 @@ impl<'a> DescribeBuilder<'a> {
     fn to_string(&self, outer_prec: u32) -> String {
         let mut ret = String::new();
         match self.head {
-            Head::Symbol(_) | Head::Block(_) => {
+            Head::Symbol(_) | Head::Block{..} => {
                 if let Some(src) = &self.source { ret += &format!("{src}."); }
                 match self.head {
                     Head::Symbol(sym) => ret += sym,
-                    Head::Block(blk) => ret += &format!("{{{}}}", blk.describe_inner(0, self.env)),
+                    Head::Block{body} => ret += &format!("{{{}}}", body.describe_inner(0, self.env)),
                     _ => unreachable!()
                 };
                 if !self.args.is_empty() {

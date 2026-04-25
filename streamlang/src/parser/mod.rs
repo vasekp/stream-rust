@@ -50,7 +50,7 @@ impl<'str> Parser<'str> {
 
     fn read_block_link(&mut self, open: &'str str) -> Result<Link, ParseError<'str>> {
         use TokenClass as TC;
-        let head = Head::Block(self.read_arg(open)?);
+        let head = Head::Block{body: self.read_arg(open)?};
         Ok(match self.tk.peek()? {
             Some(&Token(TC::Open, bkt @ "(")) => {
                 self.tk.next();
