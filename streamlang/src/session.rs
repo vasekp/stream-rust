@@ -33,7 +33,7 @@ impl Session {
                     let rhs = self.apply_context(rhs.clone())?;
                     let rhs = if let Expr::Eval(node) = &rhs
                         && node.source.is_none() && node.args.is_empty()
-                        && let Head::Block{body} = &node.head {
+                        && let Head::Block{body, ..} = &node.head {
                             Rhs::Function(body.clone())
                     } else {
                         Rhs::Value(rhs.eval(&self.env)?)
@@ -137,9 +137,9 @@ impl Session {
                                         Ok(Cow::Owned(Expr::Imm(item.clone())))
                                     }
                                 },
-                                Some(Rhs::Function(block)) => {
+                                Some(Rhs::Function(body)) => {
                                     Ok(Cow::Owned(Expr::new_node(
-                                        Expr::new_node("global", None, vec![block.clone()]),
+                                        Head::Block{body: body.clone(), reset_env: true},
                                         source.clone(),
                                         args.clone()
                                     )))

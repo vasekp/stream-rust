@@ -70,7 +70,10 @@ impl<'a> DescribeBuilder<'a> {
                 if let Some(src) = &self.source { ret += &format!("{src}."); }
                 match self.head {
                     Head::Symbol(sym) => ret += sym,
-                    Head::Block{body} => ret += &format!("{{{}}}", body.describe_inner(0, self.env)),
+                    Head::Block{body, reset_env} =>
+                        ret += &format!("{}{{{}}}",
+                            if *reset_env { "$" } else { "" },
+                            body.describe_inner(0, self.env)),
                     _ => unreachable!()
                 };
                 if !self.args.is_empty() {

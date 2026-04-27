@@ -29,7 +29,7 @@ fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
         ).collect::<SResult<Vec<_>>>()?;
         let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
         let rhs = Rc::new(if let Expr::Eval(node) = &*body
-            && let Head::Block{body} = &node.head
+            && let Head::Block{body, ..} = &node.head
             && node.source.is_none() && node.args.is_empty() {
                 Rhs::Function(body.clone())
             } else {
@@ -95,9 +95,9 @@ fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                         Ok(Cow::Owned(item.clone().into()))
                     }
                 },
-                Some(Rhs::Function(block)) => {
+                Some(Rhs::Function(body)) => {
                     let mut new_node = (**node).clone();
-                    new_node.head = Expr::new_node("global", None, vec![block.clone()]).into();
+                    new_node.head = Head::Block{body: body.clone(), reset_env: true};
                     Ok(Cow::Owned(new_node.into()))
                 },
                 None => Ok(Cow::Borrowed(expr)),
