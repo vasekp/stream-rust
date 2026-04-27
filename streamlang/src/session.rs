@@ -2,6 +2,7 @@ use crate::base::*;
 use crate::base::tracing::Tracer;
 
 use std::collections::HashMap;
+use std::borrow::Cow;
 
 /// A `Session` holds information necessary for evaluating symbolic expressions. This includes a
 /// register of defined symbols.
@@ -30,8 +31,8 @@ impl Session {
             Expr::Eval(node) => match &**node {
                 Node { head: Head::Oper("="), source: None, args } => {
                     let Some((rhs, lhs)) = args.split_last() else { unreachable!() };
-                    let rhs = self.apply_context(rhs.clone())?;
-                    let rhs = if let Expr::Eval(node) = &rhs
+                    let rhs = self.apply_context(rhs)?;
+                    let rhs = if let Expr::Eval(node) = &*rhs
                         && node.source.is_none() && node.args.is_empty()
                         && let Head::Block{body, ..} = &node.head {
                             Rhs::Function(body.clone())
@@ -92,14 +93,14 @@ impl Session {
                     Ok(SessionUpdate::Globals(updated))
                 },
                 _ => {
-                    let item = self.apply_context(expr)?.eval(&self.env)?;
+                    let item = self.apply_context(&expr)?.eval(&self.env)?;
                     self.hist.push(item);
                     self.counter += 1;
                     Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
                 }
             },
             _ => {
-                let item = self.apply_context(expr)?.eval(&self.env)?;
+                let item = self.apply_context(&expr)?.eval(&self.env)?;
                 self.hist.push(item);
                 self.counter += 1;
                 Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
@@ -107,53 +108,59 @@ impl Session {
         }
     }
 
-    fn apply_context(&self, expr: Expr) -> SResult<Expr> {
-        use std::borrow::Cow;
-        let res = expr.replace(&|sub_expr| {
-            match sub_expr {
-                Expr::Repl(Subst::History(index)) => match index {
-                    Some(ix @ 1..) => Ok(Cow::Owned(
-                        self.hist.get(ix - 1)
-                            .cloned()
-                            .map(Expr::from)
-                            .ok_or(StreamError::with_expr("history item does not exist", sub_expr))?)),
-                    Some(0) => Err(StreamError::with_expr("invalid history index", sub_expr)),
-                    None => Ok(Cow::Owned(
-                        self.hist.last()
-                            .cloned()
-                            .map(Expr::from)
-                            .ok_or(StreamError::with_expr("history is empty", sub_expr))?)),
-                },
-                Expr::Repl(Subst::Counter) =>
-                    Ok(Cow::Owned(Expr::new_number(self.counter))),
-                Expr::Eval(node) => {
-                    match &**node {
-                        Node { head: Head::Symbol(sym), source, args } if sym.starts_with('$') => {
-                            match self.vars.get(sym) {
-                                Some(Rhs::Value(item)) => {
-                                    if source.is_some() || !args.is_empty() {
-                                        Err(StreamError::with_expr("no source or arguments allowed", sub_expr))
-                                    } else {
-                                        Ok(Cow::Owned(Expr::Imm(item.clone())))
-                                    }
-                                },
-                                Some(Rhs::Function(body)) => {
-                                    Ok(Cow::Owned(Expr::new_node(
-                                        Head::Block{body: body.clone(), reset_env: true},
-                                        source.clone(),
-                                        args.clone()
-                                    )))
-                                },
-                                None => Err(StreamError::with_expr("variable not defined", sub_expr))
+    fn apply_context<'a>(&self, expr: &'a Expr) -> SResult<Cow<'a, Expr>> {
+        match expr {
+            Expr::Repl(Subst::History(index)) => match index {
+                Some(ix @ 1..) => Ok(Cow::Owned(
+                    self.hist.get(ix - 1)
+                        .cloned()
+                        .map(Expr::from)
+                        .ok_or(StreamError::with_expr("history item does not exist", expr))?)),
+                Some(0) => Err(StreamError::with_expr("invalid history index", expr)),
+                None => Ok(Cow::Owned(
+                    self.hist.last()
+                        .cloned()
+                        .map(Expr::from)
+                        .ok_or(StreamError::with_expr("history is empty", expr))?)),
+            },
+            Expr::Repl(Subst::Counter) =>
+                Ok(Cow::Owned(Expr::new_number(self.counter))),
+            Expr::Eval(node) => {
+                let mut nnode = Cow::Borrowed(&**node);
+                if let Head::Symbol(sym) = &node.head && sym.starts_with('$') {
+                    match self.vars.get(sym) {
+                        Some(Rhs::Value(item)) => {
+                            return if node.source.is_none() && node.args.is_empty() {
+                                Ok(Cow::Owned(Expr::Imm(item.clone())))
+                            } else {
+                                Err(StreamError::with_expr("no source or arguments allowed", expr))
                             }
                         },
-                        _ => Ok(Cow::Borrowed(sub_expr))
+                        Some(Rhs::Function(body)) => {
+                            nnode.to_mut().head = Head::Block{body: body.clone(), reset_env: true};
+                        },
+                        None => return Err(StreamError::with_expr("variable not defined", expr))
                     }
-                },
-                sub_expr => Ok(Cow::Borrowed(sub_expr))
-            }
-        });
-        Ok(res?.into_owned())
+                } else if let Head::Block{body, reset_env} = &node.head
+                    && let Cow::Owned(new_body) = self.apply_context(body)? {
+                        nnode.to_mut().head = Head::Block{body: new_body, reset_env: *reset_env};
+                }
+                if let Some(source) = &node.source
+                    && let Cow::Owned(new_source) = self.apply_context(source)? {
+                        nnode.to_mut().source = Some(new_source);
+                }
+                for (ix, arg) in node.args.iter().enumerate() {
+                    if let Cow::Owned(new_arg) = self.apply_context(arg)? {
+                        nnode.to_mut().args[ix] = new_arg;
+                    }
+                }
+                match nnode {
+                    Cow::Borrowed(_) => Ok(Cow::Borrowed(expr)),
+                    Cow::Owned(node) => Ok(Cow::Owned(node.into())),
+                }
+            },
+            _ => Ok(Cow::Borrowed(expr))
+        }
     }
 
     pub fn history(&self) -> &Vec<Item> {
