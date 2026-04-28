@@ -154,6 +154,15 @@ mod tests {
         test_eval!("with(a=1, A=a+1, a)" => "2");
         test_eval!("with(a=1, a=A+1, A)" => "2");
 
+        test_eval!("with(len={1}, range(3).len)" => "1");
+        test_eval!("with(len={1}, ${range(3).len})" => "3");
+        test_eval!("with(a=1, a.${#+#1}(a))" => "2");
+        test_eval!("with(a={#+#1}, 1.a(2))" => "3");
+        test_eval!("with(a=${#+#1}, 1.a(2))" => "3");
+        test_eval!("with(a={#+#1}, 1.${a}(2))" => err);
+        test_eval!("with(a=1, ${a})" => err);
+        test_eval!("with(a=1, ${with(a=#1+1, a)}(a))" => "2");
+
         test_describe!("1.nest{with(a={#+1},#.a)}[3]" => "4");
         test_describe!("[1].nest{with(a={#+1},#:a)}[2]" => "[1]:${#+1}:${#+1}");
     }

@@ -41,6 +41,8 @@ mod tests {
         test_len!("alpha" => 26);
         test_eval!("alpha(['Á', 'ch'], alpha)" => "['Á', 'ch']");
         test_eval!("alpha(\"cba\", \"abc\".nest{#+1})" => "[\"cab\", \"bca\", \"abc\", \"cab\", \"bca\", ...]");
+        test_eval!("alpha(\"cba\", ['a', 'c', 'b'].sort)" => "['c', 'b', 'a']");
+        test_eval!("alpha(\"cba\", ${['a', 'c', 'b'].sort})" => "['a', 'b', 'c']");
 
         test_describe!("alpha(\"cba\", \"abc\".nest{#+1}[3])" => "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");
         test_describe!("alpha(\"cba\", \"abc\".nest{#+1})[3]" => "alpha(['c', 'b', 'a'], ((\"abc\"+1)+1)+1)");

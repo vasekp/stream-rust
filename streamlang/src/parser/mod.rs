@@ -20,12 +20,18 @@ impl<'str> Parser<'str> {
         let head = match tok {
             Token(TC::Ident, name) => Head::Symbol(intern(&name.to_lowercase())),
             Token(TC::Special, tk @ "$") => {
-                let Some(Token(TC::Ident, name)) = self.tk.next_tr()? else {
-                    return Err(ParseError::new("requires name: $name", tk));
-                };
-                Head::Symbol(intern(&format!("{tk}{}", &name.to_lowercase())))
+                match self.tk.next_tr()? {
+                    Some(Token(TC::Ident | TC::Number, name)) =>
+                        Head::Symbol(intern(&format!("{tk}{}", &name.to_lowercase()))),
+                    Some(Token(TC::Open, bkt @ "{")) =>
+                        return Ok(Some(self.read_block_link(bkt, true)?)),
+                    Some(Token(_, tok)) =>
+                        return Err(ParseError::new("cannot appear here", tok)),
+                    None =>
+                        return Err(ParseError::new("cannot appear alone", tok.1)),
+                }
             },
-            Token(TC::Open, bkt @ "{") => return Ok(Some(self.read_block_link(bkt)?)),
+            Token(TC::Open, bkt @ "{") => return Ok(Some(self.read_block_link(bkt, false)?)),
             Token(_, tok) => return Err(ParseError::new("cannot appear here", tok))
         };
         Ok(Some(match self.tk.peek()? {
@@ -41,16 +47,16 @@ impl<'str> Parser<'str> {
             },
             Some(&Token(TC::Open, bkt @ "{")) => {
                 self.tk.next();
-                let arg = self.read_block_link(bkt)?;
+                let arg = self.read_block_link(bkt, false)?;
                 Link::new(head, vec![arg.into()])
             },
             _ => Link::new(head, vec![])
         }))
     }
 
-    fn read_block_link(&mut self, open: &'str str) -> Result<Link, ParseError<'str>> {
+    fn read_block_link(&mut self, open: &'str str, reset_env: bool) -> Result<Link, ParseError<'str>> {
         use TokenClass as TC;
-        let head = Head::Block{body: self.read_arg(open)?, reset_env: false};
+        let head = Head::Block{body: self.read_arg(open)?, reset_env};
         Ok(match self.tk.peek()? {
             Some(&Token(TC::Open, bkt @ "(")) => {
                 self.tk.next();
@@ -83,7 +89,7 @@ impl<'str> Parser<'str> {
                 Ok(self.read_link()?.unwrap().into()) // cannot be None after unread()
             },
             Token(TC::Open, bkt @ "{") => {
-                Ok(self.read_block_link(bkt)?.into())
+                Ok(self.read_block_link(bkt, false)?.into())
             },
             Token(TC::Open, bkt @ "(") => Ok(self.read_arg(bkt)?),
             Token(TC::Special, "$") => {
@@ -93,7 +99,9 @@ impl<'str> Parser<'str> {
                         Ok(self.read_link()?.unwrap().into()) // cannot be None after unread()
                     },
                     Some(Token(TC::Special, "#")) => Ok(Expr::Repl(Subst::Counter)),
-                    _ => Err(ParseError::new("must be followed by identifier, number or #", tok.1))
+                    Some(Token(TC::Open, bkt @ "{")) => Ok(self.read_block_link(bkt, true)?.into()),
+                    Some(Token(_, tok)) => Err(ParseError::new("cannot appear here", tok)),
+                    None => Err(ParseError::new("cannot appear alone", tok.1)),
                 }
             },
             Token(TC::Special, chr) => {
@@ -429,6 +437,7 @@ fn test_parser() {
                     Expr::new_node("$b", None, vec![]),
                     Expr::new_node("$c", None, vec![Expr::new_number(1)])]))));
     assert!(parse("$").is_err());
+    assert!(parse("1.$").is_err());
     assert_eq!(parse("$1"), Ok(Expr::new_node("$1", None, vec![])));
     assert_eq!(parse("$1x"), Ok(Expr::new_node("$1x", None, vec![])));
     assert!(parse("$$").is_err());
@@ -440,6 +449,11 @@ fn test_parser() {
     assert!(parse("1.#").is_err());
     assert_eq!(parse("1.{#}(2)"), Ok(Expr::new_number(1)
         .chain(Link::new(Expr::Repl(Subst::Input(None)), vec![Expr::new_number(2)]))));
+
+    assert_eq!(parse("1.${2}(3)"), Ok(Expr::new_number(1)
+        .chain(Link::new(Head::Block{body: Expr::new_number(2), reset_env: true}, vec![
+            Expr::new_number(3)]))));
+    assert!(parse("${}").is_err());
 
     assert_eq!(parse("a.b@c@d[1]"), Ok(Expr::new_node("a", None, vec![])
         .chain(Link::new(LangItem::Args, vec![
