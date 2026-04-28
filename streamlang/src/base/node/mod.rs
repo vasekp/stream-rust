@@ -47,12 +47,13 @@ impl Node<Expr> {
                     let ctor = Symbols::find_ctor(lang.symbol()).expect("all LangItem symbols should exist");
                     ctor(self, env)
                 },
-                Head::Block(blk) => {
+                Head::Block{body, reset_env} => {
+                    let env = if *reset_env { &Env::default() } else { env };
                     let source = self.source.as_ref().map(|expr| expr.eval(env)).transpose()?;
                     let args = self.args.iter()
                         .map(|expr| expr.eval(env))
                         .collect::<SResult<_>>()?;
-                    blk.apply(&source, &args)?.eval(env)
+                    body.apply(&source, &args)?.eval(env)
                 },
             }
         })();

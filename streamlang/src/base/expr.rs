@@ -97,43 +97,6 @@ impl Expr {
             Expr::Repl(_) => Err(StreamError::with_expr("out of context", self))
         }.map_err(|expr| expr.wrap(self))
     }
-
-    pub fn replace(&self, func: &impl Fn(&Expr) -> SResult<std::borrow::Cow<'_, Expr>>) -> SResult<std::borrow::Cow<'_, Expr>> {
-        use std::borrow::Cow;
-        if let Cow::Owned(expr) = func(self)? {
-            Ok(Cow::Owned(expr))
-        } else if let Expr::Eval(node) = self {
-            let new_head = if let Head::Block(expr) = &node.head
-                && let Cow::Owned(expr) = expr.replace(func)? {
-                    Cow::Owned(Head::Block(expr))
-            } else {
-                Cow::Borrowed(&node.head)
-            };
-            let new_source = if let Some(source) = &node.source
-                && let Cow::Owned(expr) = source.replace(func)? {
-                Cow::Owned(Some(expr))
-            } else {
-                Cow::Borrowed(&node.source)
-            };
-            let new_args = node.args.iter()
-                .map(|expr| expr.replace(func))
-                .collect::<SResult<Vec<_>>>()?;
-            let res = if matches!(new_head, Cow::Owned(_))
-                || matches!(new_source, Cow::Owned(_))
-                || new_args.iter().any(|cow| matches!(cow, Cow::Owned(_))) {
-                    Cow::Owned(Expr::Eval(Rc::new(Node {
-                        head: new_head.into_owned(),
-                        source: new_source.into_owned(),
-                        args: new_args.into_iter().map(Cow::into_owned).collect(),
-                    })))
-            } else {
-                Cow::Borrowed(self)
-            };
-            Ok(res)
-        } else {
-            Ok(Cow::Borrowed(self))
-        }
-    }
 }
 
 impl From<Item> for Expr {
