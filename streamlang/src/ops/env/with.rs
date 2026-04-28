@@ -91,7 +91,7 @@ fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
         }
     }
     if let Head::Block{body, reset_env: false} = &node.head
-        && let Cow::Owned(new_body) = replace_inner(body, &replace)? {
+        && let Cow::Owned(new_body) = replace_inner(body, replace)? {
             new_node.to_mut().head = Head::Block{body: new_body, reset_env: false};
     }
     if let Head::Symbol(sym) = node.head {
@@ -113,7 +113,7 @@ fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
             new_node.to_mut().source = Some(new_source);
     }
     for (ix, arg) in node.args.iter().enumerate() {
-        if let Cow::Owned(new_arg) = replace_inner(arg, &replace)? {
+        if let Cow::Owned(new_arg) = replace_inner(arg, replace)? {
             new_node.to_mut().args[ix] = new_arg;
         }
     }
