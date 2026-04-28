@@ -155,7 +155,7 @@ mod tests {
         test_eval!("with(a=1, a=A+1, A)" => "2");
 
         test_describe!("1.nest{with(a={#+1},#.a)}[3]" => "4");
-        test_describe!("[1].nest{with(a={#+1},#:a)}[2]" => "[1]:{global(#+1)}:{global(#+1)}");
+        test_describe!("[1].nest{with(a={#+1},#:a)}[2]" => "[1]:${#+1}:${#+1}");
     }
 }
 
