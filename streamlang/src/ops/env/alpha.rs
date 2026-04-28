@@ -67,6 +67,5 @@ The new alphabet can be given as a list of characters, or a string.
 : ord
 : chr
 : with
-: global
 "#);
 }

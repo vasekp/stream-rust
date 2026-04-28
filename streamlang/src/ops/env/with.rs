@@ -170,6 +170,5 @@ Both values and functions can be assigned: expressions enclosed in `{}` can refe
 > ?(a = [3, 4, 5], b = a + 1, b - a) => [1, 1, 1]
 > ?(seq=[1, 2, 3], seq) => [1, 2, 3] ; can redefine existing keywords
 : alpha
-: global
 "#);
 }
