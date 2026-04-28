@@ -1,6 +1,7 @@
 use crate::base::*;
 
 use std::collections::HashMap;
+use std::borrow::Cow;
 
 fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
@@ -27,11 +28,11 @@ fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
                 Err(StreamError::with_expr("expected variable name", expr))
             }
         ).collect::<SResult<Vec<_>>>()?;
-        let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
+        let body = replace_inner(body, &replace)?;
         let rhs = Rc::new(if let Expr::Eval(node) = &*body
-            && let Head::Block(block) = &node.head
+            && let Head::Block{body, ..} = &node.head
             && node.source.is_none() && node.args.is_empty() {
-                Rhs::Function(block.clone())
+                Rhs::Function(body.clone())
             } else {
                 Rhs::Value(body.eval(env)?)
             });
@@ -39,71 +40,86 @@ fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
             replace.insert(name, Rc::clone(&rhs));
         }
     };
-    let body = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))?;
-    body.eval(env)
+    replace_inner(body, &replace)?.eval(env)
 }
 
-fn with_replacer<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
+fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
     -> SResult<std::borrow::Cow<'a, Expr>>
 {
-    use std::borrow::Cow;
     let Expr::Eval(node) = expr else {
         return Ok(Cow::Borrowed(expr));
     };
-    match &**node {
-        Node { head: Head::Symbol("global"), .. } =>
-            Ok(Cow::Owned(expr.clone())),
-        Node { head: Head::Symbol("with"), source: None, .. } => {
-            let mut node = (**node).clone();
-            let Some((body, assigns)) = node.args.split_last_mut() else {
+    let mut new_node = Cow::Borrowed(&**node);
+    if &node.head == "with" {
+        let Some((body, assigns)) = node.args.split_last() else {
+            return Err(StreamError::usage(&node.head));
+        };
+        let mut replace = replace.clone();
+        for (ix, assign) in assigns.iter().enumerate() {
+            let Expr::Eval(assign) = assign else {
                 return Err(StreamError::usage(&node.head));
             };
-            let mut replace = replace.clone();
-            for assign in assigns {
-                let Expr::Eval(assign_node) = assign else {
-                    return Err(StreamError::usage(&node.head));
-                };
-                let mut new_assign = (**assign_node).clone();
-                let (body, names) = if &new_assign.head == "="
-                    && new_assign.source.is_none() {
-                        new_assign.args.split_last_mut()
-                } else {
-                    return Err(StreamError::usage(&node.head));
-                }.expect("= should have at least 2 arguments by construction");
-                if let Cow::Owned(new_body) = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? { *body = new_body }
-                for expr in names {
-                    if let Expr::Eval(node) = expr
-                        && let Head::Symbol(sym) = node.head
-                        && node.source.is_none() && node.args.is_empty() {
-                            replace.remove(sym);
-                    } else {
-                        return Err(StreamError::with_expr("expected variable name", expr))
-                    }
-                }
-                *assign = new_assign.into();
-            };
-            if let Cow::Owned(new_body) = body.replace(&|sub_expr| with_replacer(sub_expr, &replace))? { *body = new_body }
-            eprintln!("{}", node.describe());
-            Ok(Cow::Owned(node.into()))
-        },
-        Node { head: Head::Symbol(sym), source, args } => {
-            match replace.get(sym).map(|rc| (**rc).clone()) {
-                Some(Rhs::Value(item)) => {
-                    if source.is_some() || !args.is_empty() {
-                        Err(StreamError::with_expr("no source or arguments allowed", node))
-                    } else {
-                        Ok(Cow::Owned(item.clone().into()))
-                    }
-                },
-                Some(Rhs::Function(block)) => {
-                    let mut new_node = (**node).clone();
-                    new_node.head = Expr::new_node("global", None, vec![block.clone()]).into();
-                    Ok(Cow::Owned(new_node.into()))
-                },
-                None => Ok(Cow::Borrowed(expr)),
+            let mut new_assign = Cow::Borrowed(&**assign);
+            let (body, names) = if &assign.head == "="
+                && assign.source.is_none() {
+                    assign.args.split_last()
+            } else {
+                return Err(StreamError::usage(&node.head));
+            }.expect("= should have at least 2 arguments by construction");
+            if let Cow::Owned(new_body) = replace_inner(body, &replace)? {
+                new_assign.to_mut().args[assign.args.len() - 1] = new_body;
             }
-        },
-        _ => Ok(Cow::Borrowed(expr)),
+            for expr in names {
+                if let Expr::Eval(node) = expr
+                    && let Head::Symbol(sym) = node.head
+                    && node.source.is_none() && node.args.is_empty() {
+                        replace.remove(sym);
+                } else {
+                    return Err(StreamError::with_expr("expected variable name", expr))
+                }
+            }
+            if let Cow::Owned(new_assign) = new_assign {
+                new_node.to_mut().args[ix] = new_assign.into();
+            }
+        };
+        if let Cow::Owned(new_body) = replace_inner(body, &replace)? {
+            new_node.to_mut().args[node.args.len() - 1] = new_body;
+        }
+        return match new_node {
+            Cow::Borrowed(_) => Ok(Cow::Borrowed(expr)),
+            Cow::Owned(new_node) => Ok(Cow::Owned(new_node.into())),
+        }
+    }
+    if let Head::Block{body, reset_env: false} = &node.head
+        && let Cow::Owned(new_body) = replace_inner(body, replace)? {
+            new_node.to_mut().head = Head::Block{body: new_body, reset_env: false};
+    }
+    if let Head::Symbol(sym) = node.head {
+        match replace.get(sym).map(|rc| (**rc).clone()) {
+            Some(Rhs::Value(item)) => {
+                return if node.source.is_none() && node.args.is_empty() {
+                    Ok(Cow::Owned(item.into()))
+                } else {
+                    Err(StreamError::with_expr("no source or arguments allowed", node))
+                }
+            },
+            Some(Rhs::Function(body)) =>
+                new_node.to_mut().head = Head::Block{body: body.clone(), reset_env: true},
+            None => ()
+        }
+    }
+    if let Some(source) = &node.source
+        && let Cow::Owned(new_source) = replace_inner(source, replace)? {
+            new_node.to_mut().source = Some(new_source);
+    }
+    for (ix, arg) in node.args.iter().enumerate() {
+        if let Cow::Owned(new_arg) = replace_inner(arg, replace)? {
+            new_node.to_mut().args[ix] = new_arg;
+        }
+    }
+    match new_node {
+        Cow::Borrowed(_) => Ok(Cow::Borrowed(expr)),
+        Cow::Owned(node) => Ok(Cow::Owned(node.into())),
     }
 }
 
@@ -138,8 +154,17 @@ mod tests {
         test_eval!("with(a=1, A=a+1, a)" => "2");
         test_eval!("with(a=1, a=A+1, A)" => "2");
 
+        test_eval!("with(len={1}, range(3).len)" => "1");
+        test_eval!("with(len={1}, ${range(3).len})" => "3");
+        test_eval!("with(a=1, a.${#+#1}(a))" => "2");
+        test_eval!("with(a={#+#1}, 1.a(2))" => "3");
+        test_eval!("with(a=${#+#1}, 1.a(2))" => "3");
+        test_eval!("with(a={#+#1}, 1.${a}(2))" => err);
+        test_eval!("with(a=1, ${a})" => err);
+        test_eval!("with(a=1, ${with(a=#1+1, a)}(a))" => "2");
+
         test_describe!("1.nest{with(a={#+1},#.a)}[3]" => "4");
-        test_describe!("[1].nest{with(a={#+1},#:a)}[2]" => "[1]:{global(#+1)}:{global(#+1)}");
+        test_describe!("[1].nest{with(a={#+1},#:a)}[2]" => "[1]:${#+1}:${#+1}");
     }
 }
 
@@ -154,6 +179,5 @@ Both values and functions can be assigned: expressions enclosed in `{}` can refe
 > ?(a = [3, 4, 5], b = a + 1, b - a) => [1, 1, 1]
 > ?(seq=[1, 2, 3], seq) => [1, 2, 3] ; can redefine existing keywords
 : alpha
-: global
 "#);
 }

@@ -37,6 +37,8 @@ mod replace;
 mod remove;
 mod split;
 mod spliton;
+mod unroll;
+mod rising;
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
@@ -78,4 +80,6 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     remove::init(symbols);
     split::init(symbols);
     spliton::init(symbols);
+    unroll::init(symbols);
+    rising::init(symbols);
 }

@@ -52,7 +52,7 @@ fn misc_tests() {
     // Collatz
     test_eval!("9.nest{if(#.isodd, 3*#+1, #/2)}.while{#<>1}" : 50 => "[28, 14, 7, 22, 11, 34, 17, 52, 26, 13, 40, 20, 10, 5, 16, 8, 4, 2]");
     test_eval!("seq:{#.nest{if(#.isodd, 3*#+1, #/2)}.pos(1)}" : 10 => "[3, 1, 7, 2, 5, 8, 16, 3, 19, 6, ...]"); // A006577
-    test_eval!("seq:{#.nest{if(#.isodd, 3*#+1, #/2)}.pos(1)}.enum.fold{##.max(first)}.drep:last" : 10 => "[1, 3, 6, 7, 9, 18, 25, 27, 54, 73, ...]"); // A006877
+    test_eval!("seq:{#.nest{if(#.isodd, 3*#+1, #/2)}.pos(1)}.enum.rising(first):last" : 10 => "[1, 3, 6, 7, 9, 18, 25, 27, 54, 73, ...]"); // A006877
 
     // Hamming weights
     test_eval!("[1].self{alternate(#,#+1)}" : 32 => "[1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5, 1, ...]");
@@ -90,5 +90,5 @@ fn misc_tests() {
 
     // Fibonacci decomposition
     test_eval!("100.{with(x=#,#.greedy(nest(0+1).while{#<x}.rev))}" : 20 => "[1, 0, 0, 0, 0, 1, 0, 1, 0, 0]");
-    test_eval!("[1, 0, 0, 0, 0, 1, 0, 1, 0, 0].rev.zip(nest(0+1)):{times@#}.total" => "100");
+    test_eval!("[1, 0, 0, 0, 0, 1, 0, 1, 0, 0].rev.dot(nest(0+1))" => "100");
 }
