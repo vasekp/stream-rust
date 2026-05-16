@@ -51,7 +51,12 @@ impl<I: ItemType> Stream for Partition<I> {
             Size::Fixed(size) => HomPartitionIter{iter, size: *size, node: self}.wrap(),
             Size::Stream(stm) => {
                 let size_iter = stm.iter();
-                HetPartitionIter{iter, size_iter, node: self}.wrap()
+                HetPartitionIter{
+                    iter,
+                    size_iter,
+                    consumed: Some(UNumber::zero()),
+                    node: self
+                }.wrap()
             }
         }
     }
@@ -102,18 +107,34 @@ struct HetPartitionIter<I: ItemType> {
     node: Rc<Partition<I>>,
     iter: Box<dyn SIterator<I>>,
     size_iter: Box<dyn SIterator>,
+    consumed: Option<UNumber>,
 }
 
 impl<I: ItemType> PreIterator for HetPartitionIter<I> {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let size: usize = iter_try!(self.size_iter.next())
-            .to_num()?.try_cast()?;
+        let Some(consumed) = self.consumed.as_mut() else {
+            return Ok(None);
+        };
+        let size = iter_try!(self.size_iter.next());
+        if let Item::Stream(stm) = &size && stm.is_empty()? {
+            let expr = Expr::from(Item::from(&self.node.source))
+                .chain(Link::new("skip",
+                    vec![Item::new_number(&*consumed).into()]
+                ));
+            self.consumed = None;
+            return Ok(Some(expr.eval_default()?));
+        }
+        let size: usize = size.to_num()?.try_cast()?;
+        *consumed += size;
         if size.is_zero() {
-            return Ok(Some(Item::from(Vec::<I>::new())));
+            return Ok(Some(I::empty()));
         }
         let mut vec = Vec::with_capacity(size);
         for _ in 0..size {
-            let Some(next) = self.iter.next()? else { break; };
+            let Some(next) = self.iter.next()? else {
+                self.consumed = None;
+                break;
+            };
             vec.push(next);
         }
         if vec.is_empty() {
@@ -148,21 +169,40 @@ mod tests {
         test_eval!("(1..5).partition(4)[1]" => "[1, 2, 3, 4]");
         test_eval!("(1..5).partition(4)[2]" => "[5]");
         test_eval!("(1..5).partition(4)[3]" => err);
+        test_eval!("(1..5).partition([2,[]])" : 10 => "[[1, 2], [3, 4, 5]]");
+        test_eval!("(1..5).partition([2,2,[]])" : 10 => "[[1, 2], [3, 4], [5]]");
+        test_eval!("(1..5).partition([2,2,2,[]])" : 10 => "[[1, 2], [3, 4], [5]]");
+        test_eval!("(1..5).partition([2,2,1,[]])" : 10 => "[[1, 2], [3, 4], [5], []]");
+        test_eval!("(1..5).partition([2,2,[],[]])" : 10 => "[[1, 2], [3, 4], [5]]");
+        test_eval!("(1..5).partition([2,2,[],0])" : 10 => "[[1, 2], [3, 4], [5]]");
+        test_eval!("seq.partition([2,[]])" : 10 => "[[1, 2], [3, 4, 5, 6, 7, 8, ...]]");
+        test_eval!("seq.partition([2,[],[]])" : 10 => "[[1, 2], [3, 4, 5, 6, 7, 8, ...]]");
+        test_eval!("seq.partition([2,[],true])" : 10 => "[[1, 2], [3, 4, 5, 6, 7, 8, ...]]");
+        test_eval!("seq.partition([2,[],[]])[3]" => err);
+        test_eval!("seq.partition([2,-1])" => "[[1, 2], <!>");
+        test_eval!("seq.partition([2,[1]])" => "[[1, 2], <!>");
         test_eval!("\"abcdefgh\".partition(3)" => "[\"abc\", \"def\", \"gh\"]");
         test_advance("(1..(10^5)).partition(3)");
         test_advance("(1..(10^5)).partition(5)");
+        test_len!("(1..5).partition([2,2,2,[]])" => 3);
+        test_len!("(1..5).partition([2,2,1,[]])" => 4);
+        test_len!("(1..5).partition([2,2,[],[]])" => 3);
     }
 }
 
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["partition", "ptt", "chunks"], eval_partition, r#"
-A stream of non-overlapping arrays from the input `stream` up to size `size`, or substrings of `string` of up to length `size`.
-`size` may be given as a number or a stream of numbers.
-= stream.?(size)
-= string.?(size)
+A stream of non-overlapping arrays from the input `stream` up to a given size, or substrings of `string` of up to such length.
+The size may be given as a number or a stream of numbers. The special element of `[]` means "the rest of input".
+= stream.?(number)
+= stream.?(stream)
+= string.?(number)
+= string.?(stream)
 > ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]
 > (1..5).?(2) : 10 => [[1, 2], [3, 4], [5]] ; last group may be incomplete
+> (1..5).?([1, 1, []]) : 10 => [[1], [2], [3, 4, 5]]
 > "Hello world".?(3) => ["Hel", "lo ", "wor", "ld"]
+> "Hello world".?([3, []]) => ["Hel", "lo world"]
 > ?seq.?([1, 2].?repeat) : 10 => [[1], [2, 3], [4], [5, 6], ...]
 : groups
 : unweave

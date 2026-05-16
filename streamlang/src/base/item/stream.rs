@@ -224,7 +224,7 @@ impl<I: ItemType> Empty<I> {
         Box::new(std::iter::empty())
     }
 
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self(std::marker::PhantomData)
     }
 }
