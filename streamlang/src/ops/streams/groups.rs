@@ -117,6 +117,5 @@ Two-argument form: evaluations of the function `func` on the above, entering as 
 > (1..5).?(2) : 10 => [[1, 2], [3, 4]] ; an incomplete trailing group is discarded, see ?chunks
 : windows
 : partition
-: chunks
 "#);
 }

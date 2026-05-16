@@ -122,5 +122,7 @@ If `count` is not given, only gives the first item or the first character (no st
 > "abc".? => 'a'
 > "abc".?(2) => "ab"
 : last
+: skip
+: partition
 "#);
 }

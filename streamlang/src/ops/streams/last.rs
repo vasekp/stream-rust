@@ -159,5 +159,7 @@ If `count` is not given, only gives the last item or the last character (no stre
 > "abc".? => 'c'
 > "abc".?(2) => "bc"
 : first
+: skip
+: droplast
 "#);
 }

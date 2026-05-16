@@ -241,6 +241,8 @@ If `count` is longer than `stream`, returns an empty stream (string).
 > ?seq.?(10) => !stream is infinite
 > "Hello".?(2) => "Hel"
 > "Hello".?(5) => ""
+: last
+: first
 : skip
 "#);
 }
