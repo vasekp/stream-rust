@@ -42,6 +42,8 @@ fn misc_tests() {
     // Fibonacci
     test_eval!("nest{#1+#2}(1,1)" => "[2, 3, 5, 8, 13, ...]");
     test_eval!("nest({#1~#2}(1, 1)):len" => "[2, 3, 5, 8, 13, ...]");
+    // infinite Fibonacci word
+    test_eval!("\"01\"~[\"1\", \"0\"].nest{[#[2], #[2]~#[1]]}:first.cat" => "\"01001010010010100101...");
     // Von Neumann numerals
     test_eval!("[].nest{#~[#]}[4]" : 15 => "[[], [[]], [[], [[]]], [[], [[]], [[], [[]]]]]");
     // Binomial coefficients
