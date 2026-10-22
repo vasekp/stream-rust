@@ -9,6 +9,7 @@ mod node;
 mod env;
 mod error;
 mod alphabet;
+mod limits;
 pub mod tracing;
 pub mod stop;
 
@@ -19,5 +20,6 @@ pub use expr::*;
 pub use item::*;
 pub use node::*;
 pub use env::*;
+pub(crate) use limits::*;
 pub use alphabet::*;
 pub use error::*;

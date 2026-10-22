@@ -78,8 +78,9 @@ struct HomPartitionIter<I: ItemType> {
 
 impl<I: ItemType> PreIterator for HomPartitionIter<I> {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let mut vec = Vec::with_capacity(self.size);
+        let mut vec = Vec::with_capacity(std::cmp::min(self.size, RESERVE_CAP));
         for _ in 0..self.size {
+            check_stop!();
             let Some(next) = self.iter.next()? else { break; };
             vec.push(next);
         }
@@ -129,8 +130,9 @@ impl<I: ItemType> PreIterator for HetPartitionIter<I> {
         if size.is_zero() {
             return Ok(Some(I::empty()));
         }
-        let mut vec = Vec::with_capacity(size);
+        let mut vec = Vec::with_capacity(std::cmp::min(size, RESERVE_CAP));
         for _ in 0..size {
+            check_stop!();
             let Some(next) = self.iter.next()? else {
                 self.consumed = None;
                 break;

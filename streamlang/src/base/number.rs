@@ -11,8 +11,6 @@ pub type UNumber = ibig::UBig;
 
 pub use ibig::ops::{DivRem, DivRemEuclid, RemEuclid, UnsignedAbs};
 
-pub(crate) const CACHE_LEN: usize = 100;
-
 pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<'a> TryFrom<&'a Self> {
     fn try_cast(&self) -> SResult<T> {
         if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {

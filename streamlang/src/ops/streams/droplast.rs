@@ -143,7 +143,7 @@ struct DropLastIter<I: ItemType> {
 impl<I: ItemType> DropLastIter<I> {
     fn from(node: Rc<DropLast<I>>) -> Box<dyn SIterator<I>> {
         let mut iter = node.source.iter();
-        let mut queue = VecDeque::with_capacity(node.count);
+        let mut queue = VecDeque::with_capacity(std::cmp::min(node.count, RESERVE_CAP));
         for _ in 0..node.count {
             check_stop!(iter: node);
             match iter.next() {

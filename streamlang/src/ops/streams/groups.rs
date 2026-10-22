@@ -55,8 +55,9 @@ struct GroupsIter {
 
 impl PreIterator for GroupsIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let mut vec = Vec::with_capacity(self.size);
+        let mut vec = Vec::with_capacity(std::cmp::min(self.size, RESERVE_CAP));
         for _ in 0..self.size {
+            check_stop!();
             vec.push(iter_try!(self.iter.next()));
         }
         if let Some(body) = &self.node.body {
