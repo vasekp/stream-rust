@@ -96,7 +96,7 @@ fn eval_isprime(node: &Node, env: &Env) -> SResult<Item> {
     }
     for prime in PrimesIter::new() {
         check_stop!();
-        if x == prime {
+        if &prime * &prime > x {
             return Ok(Item::Bool(true));
         } else if (&x % prime).is_zero() {
             return Ok(Item::Bool(false));
@@ -120,7 +120,13 @@ mod tests {
         use super::*;
         test_eval!("0.isprime" => err);
         test_eval!("1.isprime" => "false");
-        test_eval!("seq.select(isprime)" => "[2, 3, 5, 7, 11, ...]");
+        test_eval!("seq.select(isprime)" : 10 => "[2, 3, 5, 7, 11, 13, 17, 19, 23, 29, ...]");
+        test_eval!("range(1000).select(isprime) == primes.while{#<=1000}" => "true");
+        test_eval!("104729.isprime" => "true");
+        test_eval!("(104729^2).isprime" => "false");
+        test_eval!("1299709.isprime" => "true");
+        test_eval!("(104729*104743).isprime" => "false");
+        test_eval!("seq.filter(isprime)[10^4]" => "104729");
     }
 }
 
