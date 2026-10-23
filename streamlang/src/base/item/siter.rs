@@ -1,6 +1,6 @@
 use crate::base::*;
 
-/// The iterator trait returned by [`Stream::iter()`]. Every call to `next()` returns either:
+/// The iterator trait returned by [`Stream::iter()`](Stream#method.iter). Every call to `next()` returns either:
 /// - `Some(Ok(item))`: any [`Item`] ready for direct consumption,
 /// - `Some(Err(err))`: an error occurred at some point,
 /// - `None`: the stream ended.
@@ -24,8 +24,7 @@ pub trait SIterator<I = Item> {
     /// in such case, `next()` may be called but must return `None` for consistency.
     ///
     /// The default implementation calls `next()` an appropriate number of times, and thus is
-    /// reasonably usable only for small values of `n`, except when `n` is found to exceed the
-    /// value given by [`SIterator::len_remain()`].
+    /// reasonably usable only for small values of `n`.
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut n = n.clone();
         while !n.is_zero() {

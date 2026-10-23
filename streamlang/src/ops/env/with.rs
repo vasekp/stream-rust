@@ -104,7 +104,7 @@ fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                 }
             },
             Some(Rhs::Function(body)) =>
-                new_node.to_mut().head = Head::Block{body: body.clone(), reset_env: true},
+                new_node.to_mut().head = Head::Block{body, reset_env: true},
             None => ()
         }
     }

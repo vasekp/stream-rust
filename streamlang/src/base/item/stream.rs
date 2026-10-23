@@ -30,8 +30,7 @@ impl<I: ItemType> dyn Stream<I> {
 
     /// Checks for emptiness. The default implementation first tries to answer statically from
     /// looking at [`len()`](Stream::len). If the information is insufficient, constructs the
-    /// iterator and tries answering using [`SIterator::len_remain()`]. As a last resort, the
-    /// iterator is consumed. This usually does not need to be overridden.
+    /// iterator and tries reading from it. This usually does not need to be overridden.
     ///
     /// This function can't return an error. If the first call to `iter().next()` produces an
     /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
