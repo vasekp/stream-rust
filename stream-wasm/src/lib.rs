@@ -54,6 +54,10 @@ pub fn process(input: String) -> Result<JsValue, JsValue> {
     Ok(obj.into())
 }
 
+/// Requests the running evaluation to stop. The request stays in effect until the next
+/// `process()` or `get_iter()` call clears it, so a stop issued between two `next()` calls still
+/// interrupts the next one. The page must not issue a request while another one is outstanding,
+/// otherwise the queued request would clear a stop meant for it.
 #[wasm_bindgen]
 pub fn stop() {
     stream::base::stop::send_stop()
@@ -80,13 +84,29 @@ pub fn validate(input: String) -> Result<JsValue, JsValue> {
     Ok(obj.into())
 }
 
+/// A handle to a running iteration over a stream from the session history.
+///
+/// The handle owns Rust memory and keeps the stream (and anything it cached) alive. The page
+/// should call `.free()` on it, or hold it with `using`, once the listing is done or abandoned;
+/// otherwise it is released only when the JS garbage collector gets to the wrapper.
 #[wasm_bindgen]
-pub struct BoxedIterator(Box<dyn SIterator<Item>>);
+pub struct BoxedIterator {
+    iter: Box<dyn SIterator<Item>>,
+    done: bool,
+}
 
 #[wasm_bindgen]
 impl BoxedIterator {
+    /// Returns `{done: true}` at the end of the stream, `{done: false, value}` for an item, or
+    /// `{done: true, value}` with an error object if the iteration failed. After either `done`
+    /// response the iterator is finished and further calls return `{done: true}` again.
     pub fn next(&mut self) -> Result<JsValue, JsValue> {
-        let value = match self.0.next() {
+        if self.done {
+            let obj = Object::new();
+            Reflect::set(&obj, &"done".into(), &JsValue::TRUE)?;
+            return Ok(obj.into());
+        }
+        let value = match self.iter.next() {
             Ok(Some(item)) => {
                 let obj = Object::new();
                 Reflect::set(&obj, &"type".into(), &"item".into())?;
@@ -95,11 +115,13 @@ impl BoxedIterator {
                 obj
             },
             Ok(None) => {
+                self.done = true;
                 let obj = Object::new();
                 Reflect::set(&obj, &"done".into(), &JsValue::TRUE)?;
                 return Ok(obj.into());
             },
             Err(err) => {
+                self.done = true;
                 let obj = Object::new();
                 Reflect::set(&obj, &"type".into(), &"error".into())?;
                 Reflect::set(&obj, &"text".into(), &format!("{err}").into())?;
@@ -129,6 +151,7 @@ pub fn get_iter(index: usize) -> Result<BoxedIterator, JsValue> {
         let Item::Stream(stm) = item else {
             return Err("not a stream".into());
         };
-        Ok(BoxedIterator(stm.iter()))
+        stream::base::stop::reset_stop();
+        Ok(BoxedIterator { iter: stm.iter(), done: false })
     })
 }
