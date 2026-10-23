@@ -48,7 +48,7 @@ impl<I: ItemType> dyn Stream<I> {
         match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
                 if let Ok(len) = len.try_into() {
-                    vec.reserve(len);
+                    vec.reserve(std::cmp::min(len, RESERVE_CAP));
                 } else if matches!(lobj, Length::Exact(_)) {
                     return Err(StreamError::with_expr(format!("{} is too long", I::type_name()), self));
                 }
@@ -68,7 +68,7 @@ impl<I: ItemType> dyn Stream<I> {
         match &self.len() {
             lobj @ (Length::Exact(len) | Length::AtMost(len)) => {
                 if let Ok(len) = len.try_into() {
-                    vec.reserve(len);
+                    vec.reserve(std::cmp::min(len, RESERVE_CAP));
                 } else if matches!(lobj, Length::Exact(_)) {
                     return Err(StreamError::with_expr(format!("{} is too long", I::type_name()), self));
                 }
@@ -224,7 +224,7 @@ impl<I: ItemType> Empty<I> {
         Box::new(std::iter::empty())
     }
 
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self(std::marker::PhantomData)
     }
 }

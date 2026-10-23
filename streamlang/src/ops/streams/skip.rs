@@ -96,6 +96,9 @@ If `count` is longer than `stream`, returns an empty stream (string).
 > ?seq.?(10) => [11, 12, 13, 14, 15, ...]
 > "Hello".?(2) => "llo"
 > "Hello".?(5) => ""
+: last
+: first
 : droplast
+: partition
 "#);
 }

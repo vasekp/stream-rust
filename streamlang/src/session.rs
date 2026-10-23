@@ -27,6 +27,9 @@ impl Session {
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
+    ///
+    /// Clears any pending interrupt request (see [`stop::send_stop()`]) before evaluating, so that
+    /// a stale request from an earlier evaluation cannot affect this one.
     pub fn process(&mut self, expr: Expr) -> SResult<SessionUpdate<'_>> {
         stop::reset_stop();
         match &expr {

@@ -48,12 +48,12 @@ impl Node<Expr> {
                     ctor(self, env)
                 },
                 Head::Block{body, reset_env} => {
-                    let env = if *reset_env { &Env::default() } else { env };
-                    let source = self.source.as_ref().map(|expr| expr.eval(env)).transpose()?;
+                    let env = if *reset_env { env.base() } else { env.clone() };
+                    let source = self.source.as_ref().map(|expr| expr.eval(&env)).transpose()?;
                     let args = self.args.iter()
-                        .map(|expr| expr.eval(env))
+                        .map(|expr| expr.eval(&env))
                         .collect::<SResult<_>>()?;
-                    body.apply(&source, &args)?.eval(env)
+                    body.apply(&source, &args)?.eval(&env)
                 },
             }
         })();

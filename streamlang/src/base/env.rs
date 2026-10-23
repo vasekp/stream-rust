@@ -21,13 +21,20 @@ impl Env {
             format!("alpha({}, {})", inner.alpha.describe(), call(0))
         }
     }
+
+    pub(crate) fn base(&self) -> Self {
+        Env {
+            alpha: Default::default(),
+            tracer: Rc::clone(&self.tracer),
+        }
+    }
 }
 
 impl Default for Env {
     fn default() -> Env {
         Env {
             alpha: Default::default(),
-            tracer: Rc::new(RefCell::new(()))
+            tracer: Rc::new(RefCell::new(())),
         }
     }
 }

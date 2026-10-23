@@ -50,6 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .spawn()
                         .expect("Failed to run less.");
                     let mut stdin = cmd.stdin.take().expect("Failed to open stdin");
+                    stream::base::stop::reset_stop();
                     for (ix, item) in stm.iter().transposed().enumerate() {
                         match item {
                             Ok(item) => {

@@ -58,7 +58,7 @@ fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNu
         Length::Infinite => Err("stream is infinite".into()),
         _ => {
             let size = count.try_cast()?;
-            let mut vec = VecDeque::with_capacity(size);
+            let mut vec = VecDeque::with_capacity(std::cmp::min(size, RESERVE_CAP));
             for res in stm.iter().transposed() {
                 check_stop!();
                 let item = res?;
@@ -159,5 +159,7 @@ If `count` is not given, only gives the last item or the last character (no stre
 > "abc".? => 'c'
 > "abc".?(2) => "bc"
 : first
+: skip
+: droplast
 "#);
 }
