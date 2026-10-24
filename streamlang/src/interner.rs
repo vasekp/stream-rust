@@ -18,6 +18,7 @@ pub fn intern(s: &str) -> &'static str {
 #[test]
 fn test_internalization() {
     let s1 = intern("test");
+    #[allow(clippy::unnecessary_to_owned)]
     let s2 = intern(&"test".to_string());
     let s3 = intern("other");
     assert!(std::ptr::eq(s1, s2));

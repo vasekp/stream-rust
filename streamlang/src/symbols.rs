@@ -113,7 +113,7 @@ mod tests {
     }
 
     fn test_example(ex: &docs::Example, sym: &str) -> Result<(), DocError> {
-        let [line] = &docs::parse_line(&ex.input, sym)[..] else {
+        let [line] = &docs::parse_line(ex.input, sym)[..] else {
             panic!("malformed example in {}: {}", sym, ex.input);
         };
         let input = line.flatten();
@@ -153,7 +153,7 @@ mod tests {
     }
 
     fn check_ref(sym: &str, referrer: &str) -> Result<(), DocError> {
-        if SYMBOLS.0.get(sym).is_none() {
+        if !SYMBOLS.0.contains_key(sym) {
             println!("{referrer} references {sym} which does not exist");
             Err(DocError)
         } else {
