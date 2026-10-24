@@ -152,6 +152,23 @@ impl Stream for StreamSubst {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["subst", "subs"], eval_subst, r#"
+Substs occurrences of `patt` by `repl`, or occurrences of `pattM` by `replM`.
+For strings, each `patt` and each `repl` may be a character or a substring.
+For streams, the latter variant is not available, as `[patt1, ...]` is treated as a valid `patt` itself.
+= string.?(patt, repl)
+= string.?([patt1, patt2, ...], [repl1, repl2, ...])
+= stream.?(patt, repl)
+> "abc".?('b', ", ") => "a, c"
+> ?seq:{[#]}.?([3], 0) : 7 => [[1], [2], 0, [4], ...]
+> "two  spaces".?([" ", "  "], ['1', '2']) => "two11spaces" ; " " is encountered before "  "
+: ucase
+: lcase
+: replace
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -169,21 +186,4 @@ mod tests {
         test_describe!("\"abc\".subst('a', \"a\")" => "\"abc\".subst([\"a\"], [\"a\"])");
         test_describe!("\"abc\".subst(['a', 'b'], [\"a\", '1'])" => "\"abc\".subst([\"a\", \"b\"], [\"a\", \"1\"])");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["subst", "subs"], eval_subst, r#"
-Substs occurrences of `patt` by `repl`, or occurrences of `pattM` by `replM`.
-For strings, each `patt` and each `repl` may be a character or a substring.
-For streams, the latter variant is not available, as `[patt1, ...]` is treated as a valid `patt` itself.
-= string.?(patt, repl)
-= string.?([patt1, patt2, ...], [repl1, repl2, ...])
-= stream.?(patt, repl)
-> "abc".?('b', ", ") => "a, c"
-> ?seq:{[#]}.?([3], 0) : 7 => [[1], [2], 0, [4], ...]
-> "two  spaces".?([" ", "  "], ['1', '2']) => "two11spaces" ; " " is encountered before "  "
-: ucase
-: lcase
-: replace
-"#);
 }

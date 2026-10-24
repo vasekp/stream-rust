@@ -72,50 +72,6 @@ fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> SResult<bool
     Ok(true)
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_cmp() {
-        use super::*;
-
-        test_eval!("1==1" => "true");
-        test_eval!("1==1==1" => "true");
-        test_eval!("1==1==2" => "false");
-        test_eval!("[]==[]" => "true");
-        test_eval!("[]<>[]" => "false");
-        test_eval!("[]<>[[]]" => "true");
-        test_eval!("(1==1)==true" => "true");
-        test_eval!("(1==2)==(3==4)" => "true");
-        test_eval!("10<11<12" => "true");
-        test_eval!("10<11<11" => "false");
-        test_eval!("10<=11<=12" => "true");
-        test_eval!("10<=11<=11" => "true");
-        test_eval!("10<=11<=10" => "false");
-        test_eval!("12>11>10" => "true");
-        test_eval!("12>11>11" => "false");
-        test_eval!("12>=11>=10" => "true");
-        test_eval!("12>=11>=11" => "true");
-        test_eval!("12>=11>=12" => "false");
-        test_eval!("+2>-1" => "true");
-        test_eval!("-2<-1" => "true");
-        test_eval!("1<[1]" => err);
-        test_eval!("1<'a'" => err);
-        test_eval!("'a'=='a'" => "true");
-        test_eval!("'a'=='A'" => "false");
-        test_eval!("[]==[]" => "true");
-        test_eval!("\"\"==\"\"" => "true");
-        test_eval!("\"\"==[]" => "false");
-        test_eval!("\"abc\"==\"abc\"" => "true");
-        test_eval!("\"abc\"==['a','b','c']" => "false");
-        test_eval!("\"abc\"==\"ABC\"" => "false");
-        test_eval!("1<\"a\"" => err);
-        test_eval!("[1]<[2]" => err);
-        test_eval!("1+2==3" => "true");
-        test_eval!("[1,2,'a']:{1+#}==[2,3]" => "false");
-        test_eval!("[1,2,'a']:{1+#}==[2,3,4]" => err);
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("==", eval_cmp, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.
@@ -203,4 +159,48 @@ Evaluates to `true` if each number is greater than or equal to the next.
 : <>
 : >>=
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_cmp() {
+        use super::*;
+
+        test_eval!("1==1" => "true");
+        test_eval!("1==1==1" => "true");
+        test_eval!("1==1==2" => "false");
+        test_eval!("[]==[]" => "true");
+        test_eval!("[]<>[]" => "false");
+        test_eval!("[]<>[[]]" => "true");
+        test_eval!("(1==1)==true" => "true");
+        test_eval!("(1==2)==(3==4)" => "true");
+        test_eval!("10<11<12" => "true");
+        test_eval!("10<11<11" => "false");
+        test_eval!("10<=11<=12" => "true");
+        test_eval!("10<=11<=11" => "true");
+        test_eval!("10<=11<=10" => "false");
+        test_eval!("12>11>10" => "true");
+        test_eval!("12>11>11" => "false");
+        test_eval!("12>=11>=10" => "true");
+        test_eval!("12>=11>=11" => "true");
+        test_eval!("12>=11>=12" => "false");
+        test_eval!("+2>-1" => "true");
+        test_eval!("-2<-1" => "true");
+        test_eval!("1<[1]" => err);
+        test_eval!("1<'a'" => err);
+        test_eval!("'a'=='a'" => "true");
+        test_eval!("'a'=='A'" => "false");
+        test_eval!("[]==[]" => "true");
+        test_eval!("\"\"==\"\"" => "true");
+        test_eval!("\"\"==[]" => "false");
+        test_eval!("\"abc\"==\"abc\"" => "true");
+        test_eval!("\"abc\"==['a','b','c']" => "false");
+        test_eval!("\"abc\"==\"ABC\"" => "false");
+        test_eval!("1<\"a\"" => err);
+        test_eval!("[1]<[2]" => err);
+        test_eval!("1+2==3" => "true");
+        test_eval!("[1,2,'a']:{1+#}==[2,3]" => "false");
+        test_eval!("[1,2,'a']:{1+#}==[2,3,4]" => err);
+    }
 }

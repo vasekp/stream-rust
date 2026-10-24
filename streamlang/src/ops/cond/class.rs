@@ -123,40 +123,6 @@ fn eval_isdigit(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::Bool(ok))
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_class() {
-        use super::*;
-
-        test_eval!("[1,true,'2',\"3\",[]]:isnum" => "[true, false, false, false, false]");
-        test_eval!("[1,true,'2',\"3\",[]]:isbool" => "[false, true, false, false, false]");
-        test_eval!("[1,true,'2',\"3\",[]]:ischar" => "[false, false, true, false, false]");
-        test_eval!("[1,true,'2',\"3\",[]]:isstream" => "[false, false, false, false, true]");
-        test_eval!("[1,true,'2',\"3\",[]]:isstring" => "[false, false, false, true, false]");
-        test_eval!("[0,1,2,3,'a']:isodd" => "[false, true, false, true, <!>");
-        test_eval!("[0,1,2,3,'a']:iseven" => "[true, false, true, false, <!>");
-        test_eval!("[\"\",[],\"a\",[0],0]:isempty" => "[true, true, false, false, <!>");
-        test_eval!("['a','A','á',\"a\"]:isalpha" => "[true, true, false, <!>");
-        test_eval!("alpha(['Á'],['a','A','á','Á',\"a\"]:isalpha)" => "[false, false, true, true, <!>");
-        test_eval!("['a','á','ch',\"a\", 1]:isascii" => "[true, false, false, true, <!>");
-        test_eval!("[\"\", \"1\", \" \", \"ý\"]:isascii" => "[true, true, true, false]");
-        test_eval!("['0','00','A',\"0\"]:isdigit" => "[true, false, false, <!>");
-        test_eval!("['0','1','3','A']:isdigit(5)" => "[true, true, true, false]");
-        test_eval!("['0','1','3','A']:isdigit(2)" => "[true, true, false, false]");
-        test_eval!("['0','3','A','b']:isdigit(11)" => "[true, true, true, false]");
-        test_eval!("['0','3','A','b','z']:isdigit(35)" => "[true, true, true, true, false]");
-        test_eval!("[' ','.','\r','\n']:iswhite" => "[true, false, true, true]");
-        test_eval!("['á','Á','ch','Ch','CH']:isupper" => "[false, true, false, false, true]");
-        test_eval!("['á','Á','ch','Ch','CH']:islower" => "[true, false, true, false, false]");
-        test_eval!("[' ','  ',\"A B\",\"A b\",['Ch'].string]:isupper" => "[false, false, true, false, false]");
-        test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
-        test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
-        test_eval!("['0', '+', \"0\", \"+\", 0]:isnumeric" => "[true, false, true, false, <!>");
-        test_eval!("[\"-123\",\"+-1\",'a'.repeat,'00',[1].string]:isnumeric" => "[true, false, false, false, <!>");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("isnum", eval_class, r#"
 Evaluates to `true` if `input` is a number, `false` otherwise.
@@ -383,4 +349,38 @@ with a sign `+` or `-`.
 : islower
 : strnum
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_class() {
+        use super::*;
+
+        test_eval!("[1,true,'2',\"3\",[]]:isnum" => "[true, false, false, false, false]");
+        test_eval!("[1,true,'2',\"3\",[]]:isbool" => "[false, true, false, false, false]");
+        test_eval!("[1,true,'2',\"3\",[]]:ischar" => "[false, false, true, false, false]");
+        test_eval!("[1,true,'2',\"3\",[]]:isstream" => "[false, false, false, false, true]");
+        test_eval!("[1,true,'2',\"3\",[]]:isstring" => "[false, false, false, true, false]");
+        test_eval!("[0,1,2,3,'a']:isodd" => "[false, true, false, true, <!>");
+        test_eval!("[0,1,2,3,'a']:iseven" => "[true, false, true, false, <!>");
+        test_eval!("[\"\",[],\"a\",[0],0]:isempty" => "[true, true, false, false, <!>");
+        test_eval!("['a','A','á',\"a\"]:isalpha" => "[true, true, false, <!>");
+        test_eval!("alpha(['Á'],['a','A','á','Á',\"a\"]:isalpha)" => "[false, false, true, true, <!>");
+        test_eval!("['a','á','ch',\"a\", 1]:isascii" => "[true, false, false, true, <!>");
+        test_eval!("[\"\", \"1\", \" \", \"ý\"]:isascii" => "[true, true, true, false]");
+        test_eval!("['0','00','A',\"0\"]:isdigit" => "[true, false, false, <!>");
+        test_eval!("['0','1','3','A']:isdigit(5)" => "[true, true, true, false]");
+        test_eval!("['0','1','3','A']:isdigit(2)" => "[true, true, false, false]");
+        test_eval!("['0','3','A','b']:isdigit(11)" => "[true, true, true, false]");
+        test_eval!("['0','3','A','b','z']:isdigit(35)" => "[true, true, true, true, false]");
+        test_eval!("[' ','.','\r','\n']:iswhite" => "[true, false, true, true]");
+        test_eval!("['á','Á','ch','Ch','CH']:isupper" => "[false, true, false, false, true]");
+        test_eval!("['á','Á','ch','Ch','CH']:islower" => "[true, false, true, false, false]");
+        test_eval!("[' ','  ',\"A B\",\"A b\",['Ch'].string]:isupper" => "[false, false, true, false, false]");
+        test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
+        test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
+        test_eval!("['0', '+', \"0\", \"+\", 0]:isnumeric" => "[true, false, true, false, <!>");
+        test_eval!("[\"-123\",\"+-1\",'a'.repeat,'00',[1].string]:isnumeric" => "[true, false, false, false, <!>");
+    }
 }

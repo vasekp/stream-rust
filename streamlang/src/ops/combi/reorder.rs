@@ -159,6 +159,17 @@ impl PreIterator for ReorderIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("reorder", eval_reorder, r#"
+Applies a given permutation on the input `stream`: returning `stream[i1]`, `stream[i2]` etc., followed by all the remaining items.
+= stream.?(i1, ..., iK)
+> ('a'..'e').?(3, 2, 1) => ['c', 'b', 'a', 'd', 'e']
+> (1..5).?(3) => [3, 1, 2, 4, 5]
+> ?seq.?(10, 10) => !indices can not repeat
+: perm
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -190,15 +201,4 @@ mod tests {
         test_advance("range(10).reorder(10,9,8,7,6,5,4,3,2,1)");
         test_describe!("range(10).reorder(5,2)" => "range(10).reorder(5, 2)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("reorder", eval_reorder, r#"
-Applies a given permutation on the input `stream`: returning `stream[i1]`, `stream[i2]` etc., followed by all the remaining items.
-= stream.?(i1, ..., iK)
-> ('a'..'e').?(3, 2, 1) => ['c', 'b', 'a', 'd', 'e']
-> (1..5).?(3) => [3, 1, 2, 4, 5]
-> ?seq.?(10, 10) => !indices can not repeat
-: perm
-"#);
 }

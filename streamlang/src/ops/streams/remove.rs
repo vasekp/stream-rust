@@ -89,6 +89,18 @@ impl PreIterator for RemoveIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("remove", eval_remove, r#"
+Returns `stream` with item at position `index` removed.
+If the stream has less than `index` items, it is unchanged.
+= stream.?(index)
+> (1..5).?(3) => [1, 2, 4, 5]
+: replace
+: append
+: prepend
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -116,16 +128,4 @@ mod tests {
             test_advance(&format!("(1..5){modif}.remove(6)"));
         }
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("remove", eval_remove, r#"
-Returns `stream` with item at position `index` removed.
-If the stream has less than `index` items, it is unchanged.
-= stream.?(index)
-> (1..5).?(3) => [1, 2, 4, 5]
-: replace
-: append
-: prepend
-"#);
 }

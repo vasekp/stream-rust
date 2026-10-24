@@ -76,19 +76,6 @@ impl<I: ItemType> PreIterator for IndicesIter<I> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_indices() {
-        use super::*;
-        test_eval!("\"hello\".indices('l')" => "[3, 4]");
-        test_eval!("\"hello\".indices('l', 'l', 'e')" => "[2, 3, 4]");
-        test_eval!("[1, 2, [], 2, []].indices(2, [])" => "[2, 3, 4, 5]");
-        test_eval!("[1, 2, [], 2, []].indices([], [])" => "[3, 5]");
-        test_eval!("[1, 2, [], 2, []].indices(3)" => "[]");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["indices", "positions"], eval_indices, r#"
 Returns all indices in which an `item` appears in `stream`, or in which `char` appears in `string`.
@@ -102,4 +89,17 @@ Multiple items can be specified, in that case, an index is returned if it matche
 : index
 : contains
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_indices() {
+        use super::*;
+        test_eval!("\"hello\".indices('l')" => "[3, 4]");
+        test_eval!("\"hello\".indices('l', 'l', 'e')" => "[2, 3, 4]");
+        test_eval!("[1, 2, [], 2, []].indices(2, [])" => "[2, 3, 4, 5]");
+        test_eval!("[1, 2, [], 2, []].indices([], [])" => "[3, 5]");
+        test_eval!("[1, 2, [], 2, []].indices(3)" => "[]");
+    }
 }

@@ -139,6 +139,17 @@ impl PreIterator for BackRefIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("self", eval_self, r#"
+A stream evaluating `func` on its own output, which is put in place of `#`.
+If `stream` is present, uses its items first to populate the history.
+= ?{func}
+= stream.?{func}
+> [1].self{alternate(#,1-#)} : 7 => [1, 1, 0, 1, 0, 0, 1, ...] ; Thue-Morse sequence
+: nest
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,15 +177,4 @@ mod tests {
         test_describe!("self{[#]~1}" => "self({[#]~1})");
         test_describe!("self{[#]~1}[2]" => "1");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("self", eval_self, r#"
-A stream evaluating `func` on its own output, which is put in place of `#`.
-If `stream` is present, uses its items first to populate the history.
-= ?{func}
-= stream.?{func}
-> [1].self{alternate(#,1-#)} : 7 => [1, 1, 0, 1, 0, 0, 1, ...] ; Thue-Morse sequence
-: nest
-"#);
 }

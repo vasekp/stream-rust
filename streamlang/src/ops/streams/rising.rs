@@ -70,19 +70,6 @@ impl PreIterator for RisingIter {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_rising() {
-        use super::*;
-        test_eval!("seq.rising" => "[1, 2, 3, 4, 5, ...]");
-        test_eval!("[].rising" => "[]");
-        test_eval!("[1,2,1,2,3,1,2,3,4].rising" => "[1, 2, 3, 4]");
-        test_eval!("(2..10).rising{#%5}" => "[2, 3, 4]");
-        test_eval!("[\"ahoj\", \"auto\", \"abc\"].rising" => "[\"ahoj\", \"auto\"]");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("rising", eval_rising, r#"
 Keeps only a subsequence that's strictly increasing, starting from its first element.
@@ -95,4 +82,17 @@ Comparison is done lexicographically, same way as in `?sort`.
 > ?primes.?windows(2).?{#[2]-#[1]} : 12 => [[2, 3], [3, 5], [7, 11], [23, 29], ...]
 : sort
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_rising() {
+        use super::*;
+        test_eval!("seq.rising" => "[1, 2, 3, 4, 5, ...]");
+        test_eval!("[].rising" => "[]");
+        test_eval!("[1,2,1,2,3,1,2,3,4].rising" => "[1, 2, 3, 4]");
+        test_eval!("(2..10).rising{#%5}" => "[2, 3, 4]");
+        test_eval!("[\"ahoj\", \"auto\", \"abc\"].rising" => "[\"ahoj\", \"auto\"]");
+    }
 }

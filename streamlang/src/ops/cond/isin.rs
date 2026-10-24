@@ -28,6 +28,29 @@ fn eval_iswithin(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["isin", "in", "element"], eval_isin, r#"
+Evaluates to `true` if `item` appears in `stream`, `false` otherwise.
+= item.?(stream)
+> (1..5):?([4, 5, 6]) => [false, false, false, true, true]
+> "12 35 -1 0".?consec{#.?(?digits~'+'~'-')}:?strnum => [12, 35, -1, 0]
+: contains
+: isalpha
+: isdigit
+: iswithin
+"#);
+    symbols.insert("iswithin", eval_iswithin, r#"
+Evaluates to `true` if `x` lies in a range given by `min` and `max`.
+All three values may (simultaneously) be numbers or characters.
+= x.?(min, max)
+> (1..5):?(2, 4) => [false, true, true, true, false]
+> 'e'.?('a', 'h') => true
+> '5'.?('0', '9') => !not in alphabet ; character ranges only work in a given alphabet
+: isin
+: clamp
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -50,27 +73,4 @@ mod tests {
         test_eval!("'m'.iswithin('m', 'a')" => "false");
         test_eval!("'a'.iswithin('m', 'a')" => "false");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["isin", "in", "element"], eval_isin, r#"
-Evaluates to `true` if `item` appears in `stream`, `false` otherwise.
-= item.?(stream)
-> (1..5):?([4, 5, 6]) => [false, false, false, true, true]
-> "12 35 -1 0".?consec{#.?(?digits~'+'~'-')}:?strnum => [12, 35, -1, 0]
-: contains
-: isalpha
-: isdigit
-: iswithin
-"#);
-    symbols.insert("iswithin", eval_iswithin, r#"
-Evaluates to `true` if `x` lies in a range given by `min` and `max`.
-All three values may (simultaneously) be numbers or characters.
-= x.?(min, max)
-> (1..5):?(2, 4) => [false, true, true, true, false]
-> 'e'.?('a', 'h') => true
-> '5'.?('0', '9') => !not in alphabet ; character ranges only work in a given alphabet
-: isin
-: clamp
-"#);
 }

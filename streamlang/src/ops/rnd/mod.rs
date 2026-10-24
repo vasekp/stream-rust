@@ -104,6 +104,18 @@ impl PreIterator for RndIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("rnd", eval_rnd, r#"
+An infinite stream of uniformly random samples from the input `stream`.
+This is designed to be a reproducible pseudorandom generator. For this reason, a `seed` (number) needs to be provided. The same seed leads to the same pseudorandom stream.
+* For a different seed in each invocation, you may use `$#`, which increases by one in each successfully evaluated input.
+= stream.?(seed)
+> (1..6).?(0) : 10 => [4, 5, 1, 1, 2, 6, 3, 6, 4, 5, ...] ; always the same for seed == 0
+> ?seq.?(0) => !stream is infinite
+> [].?(0) => !stream is empty
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -119,16 +131,4 @@ mod tests {
         test_advance("range(10^10).rnd(1)");
         test_describe!("(1..6).rnd(0)" => "(1..6).rnd(0)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("rnd", eval_rnd, r#"
-An infinite stream of uniformly random samples from the input `stream`.
-This is designed to be a reproducible pseudorandom generator. For this reason, a `seed` (number) needs to be provided. The same seed leads to the same pseudorandom stream.
-* For a different seed in each invocation, you may use `$#`, which increases by one in each successfully evaluated input.
-= stream.?(seed)
-> (1..6).?(0) : 10 => [4, 5, 1, 1, 2, 6, 3, 6, 4, 5, ...] ; always the same for seed == 0
-> ?seq.?(0) => !stream is infinite
-> [].?(0) => !stream is empty
-"#);
 }

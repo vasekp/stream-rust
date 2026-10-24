@@ -90,6 +90,16 @@ impl PreIterator for UnrollIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("unroll", eval_unroll, r#"
+Takes a stream of pairs `[item, count]` and returns a stream where each `item` repeats `count`-times.
+= stream.?
+> [['A', 1], ['B', 2], ['A', 1]].?.?string => "ABBA"
+: repeat
+: reps
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -103,14 +113,4 @@ mod tests {
         test_advance("(1..1000):{[#,10^6*#]}.unroll");
         test_advance("seq:{[#,10^6*#]}.unroll");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("unroll", eval_unroll, r#"
-Takes a stream of pairs `[item, count]` and returns a stream where each `item` repeats `count`-times.
-= stream.?
-> [['A', 1], ['B', 2], ['A', 1]].?.?string => "ABBA"
-: repeat
-: reps
-"#);
 }

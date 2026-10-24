@@ -98,6 +98,18 @@ impl PreIterator for StrideIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["stride", "step"], eval_stride, r#"
+Extracts a subsequence of `stream` at indices `1`, `1 + step`, `1 + 2*step`, etc.
+If `offset` is specified, the subsequence is shifted by it.
+= stream.?(step)
+= stream.?(step, offset)
+> ?seq.?(5) => [1, 6, 11, 16, 21, ...]
+> ?seq.?(5, 2) => [3, 8, 13, 18, 23, ...]
+: part
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,16 +143,4 @@ mod tests {
         test_advance("(1..10^10).stride(10^6, 10^6 - 1)");
         test_advance("(1..10^10).stride(10^6, 10^10)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["stride", "step"], eval_stride, r#"
-Extracts a subsequence of `stream` at indices `1`, `1 + step`, `1 + 2*step`, etc.
-If `offset` is specified, the subsequence is shifted by it.
-= stream.?(step)
-= stream.?(step, offset)
-> ?seq.?(5) => [1, 6, 11, 16, 21, ...]
-> ?seq.?(5, 2) => [3, 8, 13, 18, 23, ...]
-: part
-"#);
 }

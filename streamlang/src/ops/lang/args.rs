@@ -13,6 +13,10 @@ fn eval_args(node: &Node, env: &Env) -> SResult<Item> {
     Node::from(Node { head, source, args }).eval(env)
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert_raw("[args]", eval_args);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -29,8 +33,4 @@ mod tests {
         test_eval!("range@\"ab\"" => err);
         test_describe!("range@[3,4]" => "range(3, 4)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_raw("[args]", eval_args);
 }

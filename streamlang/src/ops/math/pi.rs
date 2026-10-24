@@ -143,6 +143,16 @@ impl PiIterInner {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("pi", eval_pi, r#"
+A stream of the digits of π (pi). If `base` is omitted, it defaults to 10 (decimal).
+= ?
+= ?(base)
+> ? => [3, 1, 4, 1, 5, ...]
+> ?(16) => [3, 2, 4, 3, 15, ...]
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -162,14 +172,4 @@ mod tests {
         test_describe!("pi" => "pi");
         test_describe!("pi(3)" => "pi(3)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("pi", eval_pi, r#"
-A stream of the digits of π (pi). If `base` is omitted, it defaults to 10 (decimal).
-= ?
-= ?(base)
-> ? => [3, 1, 4, 1, 5, ...]
-> ?(16) => [3, 2, 4, 3, 15, ...]
-"#);
 }

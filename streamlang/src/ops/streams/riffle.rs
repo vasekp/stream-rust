@@ -114,6 +114,20 @@ impl PreIterator for RiffleIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("riffle", eval_riffle, r#"
+Interleaves `stream` with copies of `filler`.
+If `filler` is also a stream, interleaves the two streams, until one of them ends.
+= stream.?(filler)
+> ?seq.?(0) => [1, 0, 2, 0, 3, ...]
+> ?range(1, 2).?(0) => [1, 0, 2]
+> ?seq.?(['a', 'b']) => [1, 'a', 2, 'b', 3]
+: alternate
+: zip
+: cat
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,18 +168,4 @@ mod tests {
         test_advance("[].riffle([])");
         test_describe!("seq.riffle(['a'])" => "seq.riffle(['a'])");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("riffle", eval_riffle, r#"
-Interleaves `stream` with copies of `filler`.
-If `filler` is also a stream, interleaves the two streams, until one of them ends.
-= stream.?(filler)
-> ?seq.?(0) => [1, 0, 2, 0, 3, ...]
-> ?range(1, 2).?(0) => [1, 0, 2]
-> ?seq.?(['a', 'b']) => [1, 'a', 2, 'b', 3]
-: alternate
-: zip
-: cat
-"#);
 }

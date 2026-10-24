@@ -197,6 +197,27 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["padleft", "padl"], eval_padl, r#"
+Left-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
+If the input length is already `length` or more, returns unchanged.
+= stream.?(length, item)
+= string.?(length, char)
+> [1, 2].?(5, 0) => [0, 0, 0, 1, 2]
+> "ab".?(5, ' ') => "   ab"
+: padright
+"#);
+    symbols.insert(["padright", "padr"], eval_padr, r#"
+Right-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
+If the input length is already `length` or more, returns unchanged.
+= stream.?(length, item)
+= string.?(length, char)
+> [1, 2].?(5, 0) => [1, 2, 0, 0, 0]
+> "ab".?(5, ' ') => "ab   "
+: padright
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -233,25 +254,4 @@ mod tests {
         test_advance("range(50,100).padright(100, 0)");
         test_advance("range(100).padright(100, 0)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["padleft", "padl"], eval_padl, r#"
-Left-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
-If the input length is already `length` or more, returns unchanged.
-= stream.?(length, item)
-= string.?(length, char)
-> [1, 2].?(5, 0) => [0, 0, 0, 1, 2]
-> "ab".?(5, ' ') => "   ab"
-: padright
-"#);
-    symbols.insert(["padright", "padr"], eval_padr, r#"
-Right-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
-If the input length is already `length` or more, returns unchanged.
-= stream.?(length, item)
-= string.?(length, char)
-> [1, 2].?(5, 0) => [1, 2, 0, 0, 0]
-> "ab".?(5, ' ') => "ab   "
-: padright
-"#);
 }

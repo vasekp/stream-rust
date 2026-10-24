@@ -34,35 +34,6 @@ fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> SResult<b
     Ok(true)
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_cmp() {
-        use super::*;
-
-        test_eval!("1<<=1" => "true");
-        test_eval!("'a'<<='b'" => "true");
-        test_eval!("'a'<<='A'" => "true");
-        test_eval!("'a'<<='á'" => err);
-        test_eval!("[1]<<[1]" => "false");
-        test_eval!("[1]<<[1,1]" => "true");
-        test_eval!("[1,[2,[3]]]<<[1,[2,[4]]]" => "true");
-        test_eval!("[1,[2,[3]]]<<=[1,[2,[3]]]" => "true");
-        test_eval!("[1,[2,[3]]]<<=[1,[2,[2]]]" => "false");
-        test_eval!("\"ab\"<<=['a','b']" => err);
-        test_eval!(r#""ab"<<="abc"<<="abc"<<="abd"<<="ac""# => "true");
-        test_eval!(r#""ab"<<"abc"<<"abc"<<"abd"<<"ac""# => "false");
-        test_eval!(r#""ab"<<"abc"<<"abd"<<"ac""# => "true");
-        test_eval!("[1,2,'a']:{1+#}>>=[2,3,4]" => err);
-        test_eval!("[1,2,'a']:{1+#}>>=[2,3]" => err);
-        test_eval!("[1,2,'a']:{1+#}>>=[2,2]" => "true");
-        test_eval!("[1,2,'a']:{1+#}>>=[2,4]" => "false");
-        test_eval!("[1,2,'a']:{1+#}>>=[2]" => "true");
-        test_eval!("\"abc\"<<=\"ABC\"" => "true");
-        test_eval!("\"abc\">>=\"ABC\"" => "true");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("<<", eval_lex, r#"
 Lexical comparison: Evaluates to `true` if each `item` compares before the next.
@@ -120,4 +91,33 @@ Lexical comparison: Evaluates to `true` if each `item` compares after or equally
 : alpha
 : sort
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_cmp() {
+        use super::*;
+
+        test_eval!("1<<=1" => "true");
+        test_eval!("'a'<<='b'" => "true");
+        test_eval!("'a'<<='A'" => "true");
+        test_eval!("'a'<<='á'" => err);
+        test_eval!("[1]<<[1]" => "false");
+        test_eval!("[1]<<[1,1]" => "true");
+        test_eval!("[1,[2,[3]]]<<[1,[2,[4]]]" => "true");
+        test_eval!("[1,[2,[3]]]<<=[1,[2,[3]]]" => "true");
+        test_eval!("[1,[2,[3]]]<<=[1,[2,[2]]]" => "false");
+        test_eval!("\"ab\"<<=['a','b']" => err);
+        test_eval!(r#""ab"<<="abc"<<="abc"<<="abd"<<="ac""# => "true");
+        test_eval!(r#""ab"<<"abc"<<"abc"<<"abd"<<"ac""# => "false");
+        test_eval!(r#""ab"<<"abc"<<"abd"<<"ac""# => "true");
+        test_eval!("[1,2,'a']:{1+#}>>=[2,3,4]" => err);
+        test_eval!("[1,2,'a']:{1+#}>>=[2,3]" => err);
+        test_eval!("[1,2,'a']:{1+#}>>=[2,2]" => "true");
+        test_eval!("[1,2,'a']:{1+#}>>=[2,4]" => "false");
+        test_eval!("[1,2,'a']:{1+#}>>=[2]" => "true");
+        test_eval!("\"abc\"<<=\"ABC\"" => "true");
+        test_eval!("\"abc\">>=\"ABC\"" => "true");
+    }
 }

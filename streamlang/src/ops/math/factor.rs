@@ -71,16 +71,6 @@ impl PreIterator for FactorIter {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_factor() {
-        use super::*;
-        test_eval!("100.factor" => "[2, 2, 5, 5]");
-        test_eval!("10.factorial.factor.counts" : 12 => "[[2, 8], [3, 4], [5, 2], [7, 1]]");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("factor", eval_factor, r#"
 Prime factors of `number` in increasing order, repeated in respective orders.
@@ -89,4 +79,14 @@ Prime factors of `number` in increasing order, repeated in respective orders.
 : primes
 : isprime
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_factor() {
+        use super::*;
+        test_eval!("100.factor" => "[2, 2, 5, 5]");
+        test_eval!("10.factorial.factor.counts" : 12 => "[[2, 8], [3, 4], [5, 2], [7, 1]]");
+    }
 }

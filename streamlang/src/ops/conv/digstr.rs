@@ -72,24 +72,6 @@ impl Stream for StrDig {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_digstr() {
-        use super::*;
-        test_eval!("seq(1,3).digstr" => "\"147ADGJMPSVY<!>");
-        test_eval!("(34..36).digstr" => "\"YZ<!>");
-        test_eval!("range(1,-1,-1).digstr" => "\"10<!>");
-    }
-
-    #[test]
-    fn test_strdig() {
-        use super::*;
-        test_eval!("\"012xyZ\".strdig" : 10 => "[0, 1, 2, 33, 34, 35]");
-        test_eval!("\"1 2\".strdig" : 10 => "[1, <!>");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("digstr", eval_digstr, r#"
 Converts a stream of digits into a string.
@@ -108,4 +90,22 @@ Converts a string of digit characters into a stream of numeric digits.
 : strnum
 : numdig
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_digstr() {
+        use super::*;
+        test_eval!("seq(1,3).digstr" => "\"147ADGJMPSVY<!>");
+        test_eval!("(34..36).digstr" => "\"YZ<!>");
+        test_eval!("range(1,-1,-1).digstr" => "\"10<!>");
+    }
+
+    #[test]
+    fn test_strdig() {
+        use super::*;
+        test_eval!("\"012xyZ\".strdig" : 10 => "[0, 1, 2, 33, 34, 35]");
+        test_eval!("\"1 2\".strdig" : 10 => "[1, <!>");
+    }
 }

@@ -15,6 +15,16 @@ fn eval_countif(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_number(count))
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("countif", eval_countif, r#"
+Evaluates `cond` on every item of `stream` and returns the count it was `true`.
+= stream.?{cond}
+> [1, 2, -1, 0, 5].?{# > 0} => 3
+> ?range(10).?(?isodd) => 5
+: select
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -30,14 +40,4 @@ mod tests {
         test_eval!("[].countif(1)" => err);
         test_eval!("[].countif([].len)" => err);
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("countif", eval_countif, r#"
-Evaluates `cond` on every item of `stream` and returns the count it was `true`.
-= stream.?{cond}
-> [1, 2, -1, 0, 5].?{# > 0} => 3
-> ?range(10).?(?isodd) => 5
-: select
-"#);
 }

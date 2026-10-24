@@ -71,6 +71,20 @@ impl PreIterator for SeqIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["seq", "iota"], eval_seq, r#"
+A stream of consecutive numbers. If `from` or `step` are not given, they default to 1.
+= ?
+= ?(from)
+= ?(from, step)
+> ? => [1, 2, 3, 4, 5, ...]
+> ?(0) => [0, 1, 2, 3, 4, ...]
+> ?(0, 2) => [0, 2, 4, 6, 8, ...]
+> ?(3, -1) => [3, 2, 1, 0, -1, ...]
+: range
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,18 +105,4 @@ mod tests {
         test_describe!("seq(-1,2)" => "seq(-1, 2)");
         test_describe!("iota(-1,2)" => "iota(-1, 2)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["seq", "iota"], eval_seq, r#"
-A stream of consecutive numbers. If `from` or `step` are not given, they default to 1.
-= ?
-= ?(from)
-= ?(from, step)
-> ? => [1, 2, 3, 4, 5, ...]
-> ?(0) => [0, 1, 2, 3, 4, ...]
-> ?(0, 2) => [0, 2, 4, 6, 8, ...]
-> ?(3, -1) => [3, 2, 1, 0, -1, ...]
-: range
-"#);
 }

@@ -127,6 +127,18 @@ impl PreIterator for PermIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("perm", eval_perm, r#"
+A stream of all permutations of the input `stream`, listed in reverse lexicographical order.
+= stream.?
+> [2, 4, 6].? : 16 => [[2, 4, 6], [4, 2, 6], [2, 6, 4], [6, 2, 4], ...]
+> [1, 2, 3, 4].?.?length => 24
+> ?seq.?[100] : 10 => [4, 2, 3, 5, 1, 6, 7, 8, 9, 10, ...] ; input can be infinite
+: factorial
+: reorder
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -146,16 +158,4 @@ mod tests {
         test_advance("seq.perm:first(5)");
         test_describe!("[2,4,6].perm" => "[2, 4, 6].perm");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("perm", eval_perm, r#"
-A stream of all permutations of the input `stream`, listed in reverse lexicographical order.
-= stream.?
-> [2, 4, 6].? : 16 => [[2, 4, 6], [4, 2, 6], [2, 6, 4], [6, 2, 4], ...]
-> [1, 2, 3, 4].?.?length => 24
-> ?seq.?[100] : 10 => [4, 2, 3, 5, 1, 6, 7, 8, 9, 10, ...] ; input can be infinite
-: factorial
-: reorder
-"#);
 }

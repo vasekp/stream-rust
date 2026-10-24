@@ -64,6 +64,21 @@ impl PreIterator for DRepIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("drep", eval_drep, r#"
+Keeps only the first of every chain of repeated items.
+If `func` is provided, compares `item.func` instead of `item` itself.
+= stream.?
+= stream.?(func)
+> [1, 1, 2, 2, 1].? => [1, 2, 1]
+> ['a', 'A', 'B', 'b', 'a'].?(?lcase) => ['a', 'B', 'a'] ; the two 'a's represent separate groups
+: ddup
+: reps
+: collect
+: consec
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -82,19 +97,4 @@ mod tests {
         test_len!("[].drep{#+'a'}" => 0);
         test_describe!("seq.drep{#}" => "seq.drep({#})");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("drep", eval_drep, r#"
-Keeps only the first of every chain of repeated items.
-If `func` is provided, compares `item.func` instead of `item` itself.
-= stream.?
-= stream.?(func)
-> [1, 1, 2, 2, 1].? => [1, 2, 1]
-> ['a', 'A', 'B', 'b', 'a'].?(?lcase) => ['a', 'B', 'a'] ; the two 'a's represent separate groups
-: ddup
-: reps
-: collect
-: consec
-"#);
 }

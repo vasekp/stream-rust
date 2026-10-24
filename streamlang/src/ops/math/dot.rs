@@ -18,18 +18,6 @@ fn eval_dot(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_number(total))
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_dot() {
-        use super::*;
-        test_eval!("[1,2,3].dot([4,5,6])" => "32");
-        test_eval!("[].dot([])" => "0");
-        test_eval!("[1,2].dot([4,5,6])" => "14");
-        test_eval!("[4,5].dot(seq)" => "14");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("dot", eval_dot, r#"
 Evaluates the dot product of two streams of numbers.
@@ -40,4 +28,16 @@ Evaluates the dot product of two streams of numbers.
 > [1, 2].?zip([[4, 5], [6, 7]]):{?times@#}.{?plus@#} => [16, 19] ; use a more verbose construction for lists of lists etc.
 > [1, 10, 100].?(?seq) => 321 ; operates only on overlap for streams of unequal lengths
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_dot() {
+        use super::*;
+        test_eval!("[1,2,3].dot([4,5,6])" => "32");
+        test_eval!("[].dot([])" => "0");
+        test_eval!("[1,2].dot([4,5,6])" => "14");
+        test_eval!("[4,5].dot(seq)" => "14");
+    }
 }

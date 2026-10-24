@@ -51,6 +51,23 @@ fn eval_endswith(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("startswith", eval_startswith, r#"
+Evaluates to `true` if `string` starts with `prefix`, `false` otherwise.
+`prefix` can be a string or a character.
+= string.?(prefix)
+> ["one", "two", "three"].?select{#.?('t')} => ["two", "three"]
+: endswith
+"#);
+    symbols.insert("endswith", eval_endswith, r#"
+Evaluates to `true` if `string` ends with `postfix`, `false` otherwise.
+`postfix` can be a string or a character.
+= string.?(postfix)
+> ["one", "two", "three"].?select{#.?('e')} => ["one", "three"]
+: startswith
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -87,21 +104,4 @@ mod tests {
         test_eval!("\"ab\".repeat(10).$lenAM.endswith(\"ba\")" => "false");
         test_eval!("\"ab\".repeat(10).$lenUU.endswith(\"ba\")" => "false");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("startswith", eval_startswith, r#"
-Evaluates to `true` if `string` starts with `prefix`, `false` otherwise.
-`prefix` can be a string or a character.
-= string.?(prefix)
-> ["one", "two", "three"].?select{#.?('t')} => ["two", "three"]
-: endswith
-"#);
-    symbols.insert("endswith", eval_endswith, r#"
-Evaluates to `true` if `string` ends with `postfix`, `false` otherwise.
-`postfix` can be a string or a character.
-= string.?(postfix)
-> ["one", "two", "three"].?select{#.?('e')} => ["one", "three"]
-: startswith
-"#);
 }

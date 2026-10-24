@@ -81,6 +81,18 @@ impl PreIterator for WeaveIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["weave", "alternate"], eval_weave, r#"
+Interleaves the values of given streams until one of them finishes.
+= ?(stream, stream, ...)
+> ?(?seq, ?alpha) => [1, 'a', 2, 'b', 3, ...]
+: zip
+: riffle
+: cat
+: unweave
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,16 +121,4 @@ mod tests {
         test_advance("weave(1..10, [0])");
         test_advance("weave(1..1000, 1..100, 1..10)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["weave", "alternate"], eval_weave, r#"
-Interleaves the values of given streams until one of them finishes.
-= ?(stream, stream, ...)
-> ?(?seq, ?alpha) => [1, 'a', 2, 'b', 3, ...]
-: zip
-: riffle
-: cat
-: unweave
-"#);
 }

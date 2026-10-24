@@ -14,6 +14,17 @@ fn eval_reduce(node: &Node, env: &Env) -> SResult<Item> {
     Ok(val)
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("reduce", eval_reduce, r#"
+Merges all elements of `stream` using `func` as `func(func(x1, x2), x3)` etc.
+= stream.?{func}
+> (1..5).?(?plus) => 15 ; also see ?total
+> ?range(10,1,-2).?(?times) => 3840 ; double factorial
+: fold
+: cat
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -26,15 +37,4 @@ mod tests {
         test_eval!("[1].reduce(plus)" => "1");
         test_eval!("[].reduce(plus)" => err);
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("reduce", eval_reduce, r#"
-Merges all elements of `stream` using `func` as `func(func(x1, x2), x3)` etc.
-= stream.?{func}
-> (1..5).?(?plus) => 15 ; also see ?total
-> ?range(10,1,-2).?(?times) => 3840 ; double factorial
-: fold
-: cat
-"#);
 }

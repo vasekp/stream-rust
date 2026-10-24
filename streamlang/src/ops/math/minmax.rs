@@ -68,21 +68,6 @@ fn eval_mapped(stm: &Rc<dyn Stream>, func: &Rc<Node>,
     Ok(val)
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_minmax() {
-        use super::*;
-        test_eval!("[5, 1, 7, 3].min" => "1");
-        test_eval!("[5, 1, 7, 3].max" => "7");
-        test_eval!("[5, 1, 7, 'a'].max" => err);
-        test_eval!("(3..5):{1..#}.min(len)" => "[1, 2, 3]");
-        test_eval!("(3..5):{1..#}.max(len)" => "[1, 2, 3, 4, 5]");
-        test_eval!("\"hello\".chars.min(ord)" => "'e'");
-        test_eval!("\"hello\".chars.max(ord)" => "'o'");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("min", eval_minmax, r#"
 Minimum of an input stream of numbers, or of given arguments.
@@ -114,4 +99,19 @@ If `func` is provided, compares `x.func` instead of `x` itself.
 : min
 : sort
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_minmax() {
+        use super::*;
+        test_eval!("[5, 1, 7, 3].min" => "1");
+        test_eval!("[5, 1, 7, 3].max" => "7");
+        test_eval!("[5, 1, 7, 'a'].max" => err);
+        test_eval!("(3..5):{1..#}.min(len)" => "[1, 2, 3]");
+        test_eval!("(3..5):{1..#}.max(len)" => "[1, 2, 3, 4, 5]");
+        test_eval!("\"hello\".chars.min(ord)" => "'e'");
+        test_eval!("\"hello\".chars.max(ord)" => "'o'");
+    }
 }

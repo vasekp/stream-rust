@@ -111,6 +111,19 @@ impl PreIterator for WindowsIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("windows", eval_windows, r#"
+Single-argument form: a stream of `size`-sized arrays (overlapping) from the input `stream`.
+Two-argument form: evaluations of the function `func` on the above, entering as arguments (`#1, #2, ...`).
+= stream.?(size)
+= stream.?(size, {func})
+> ?seq.?(3) : 10 => [[1, 2, 3], [2, 3, 4], [3, ...], ...]
+> ?seq.?(3, ?plus) => [6, 9, 12, 15, 18, ...]
+> [1, 3, 7, 5].?(2, {#2-#1}) => [2, 4, -2] ; differences
+: groups
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -135,17 +148,4 @@ mod tests {
         test_describe!("seq.windows(3)" => "seq.windows(3)");
         test_describe!("alpha(\"abc\",seq.windows(2, {#1+#2}))" => "alpha(['a', 'b', 'c'], seq.windows(2, {#1+#2}))");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("windows", eval_windows, r#"
-Single-argument form: a stream of `size`-sized arrays (overlapping) from the input `stream`.
-Two-argument form: evaluations of the function `func` on the above, entering as arguments (`#1, #2, ...`).
-= stream.?(size)
-= stream.?(size, {func})
-> ?seq.?(3) : 10 => [[1, 2, 3], [2, 3, 4], [3, ...], ...]
-> ?seq.?(3, ?plus) => [6, 9, 12, 15, 18, ...]
-> [1, 3, 7, 5].?(2, {#2-#1}) => [2, 4, -2] ; differences
-: groups
-"#);
 }

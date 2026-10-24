@@ -111,6 +111,15 @@ impl PreIterator for DivisorsIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("divisors", eval_divisors, r#"
+All integer divisors of `number` in unspecified order.
+= number.?
+> 20.? : 10 => [1, 2, 4, 5, 10, 20]
+: factor
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -119,13 +128,4 @@ mod tests {
         test_eval!("100.divisors" : 10 => "[1, 2, 4, 5, 10, 20, 25, 50, 100]");
         test_eval!("10.factorial.divisors.len" => "270");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("divisors", eval_divisors, r#"
-All integer divisors of `number` in unspecified order.
-= number.?
-> 20.? : 10 => [1, 2, 4, 5, 10, 20]
-: factor
-"#);
 }

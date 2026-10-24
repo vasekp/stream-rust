@@ -34,57 +34,6 @@ fn eval_xor(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::Bool(res))
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_bools() {
-        use super::*;
-
-        test_eval!("false&false" => "false");
-        test_eval!("false&true" => "false");
-        test_eval!("true&false" => "false");
-        test_eval!("true&true" => "true");
-        test_eval!("and@[]" => "true");
-        test_eval!("and@[1==1]" => "true");
-        test_eval!("and@[1==1,1==2]" => "false");
-        // Eval error avoided by short circuit
-        test_eval!("1==1&1==2&1+'a'==1" => "false");
-        // Here it happens because evaluation reaches it
-        test_eval!("1==1&1+'a'==1" => err);
-        // Here it happens because @ evaulates all
-        test_eval!("and@[1==1,1==2,1+'a'==1]" => err);
-        // Eval to non-bool after short-circuit
-        test_eval!("and@[1==1,1==2,1]" => "false");
-
-        test_eval!("false|false" => "false");
-        test_eval!("true|false" => "true");
-        test_eval!("true|true" => "true");
-        test_eval!("false|true" => "true");
-        test_eval!("or@[]" => "false");
-        test_eval!("or@[1==1]" => "true");
-        // Short-circuit
-        test_eval!("1==2|1==1|1+'a'==1" => "true");
-        test_eval!("1==2|1+'a'==1" => err);
-
-        test_eval!("!false" => "true");
-        test_eval!("true==!false" => "true");
-        test_eval!("xor()" => "false");
-        test_eval!("not()" => err);
-        test_eval!("true!false" => err);
-        test_eval!("xor(false)" => "false");
-        test_eval!("not(false)" => "true");
-        test_eval!("xor(true,false)" => "true");
-        test_eval!("not(true,false)" => err);
-
-        test_eval!("false&true==false" => "false");
-        test_eval!("(false&true)==false" => "true");
-        test_eval!("1==2|2==2" => "true");
-        test_eval!("true&false|false&true|true&true" => "true");
-        test_eval!("!true|true" => "true");
-        test_eval!("with(a=1==2,a)" => "false");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("and", eval_and, r#"
 Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`, `false` otherwise.
@@ -160,4 +109,55 @@ For two inputs, `?(input1, input2)` is `true` if one is `true` but not both, equ
 : or
 : not
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_bools() {
+        use super::*;
+
+        test_eval!("false&false" => "false");
+        test_eval!("false&true" => "false");
+        test_eval!("true&false" => "false");
+        test_eval!("true&true" => "true");
+        test_eval!("and@[]" => "true");
+        test_eval!("and@[1==1]" => "true");
+        test_eval!("and@[1==1,1==2]" => "false");
+        // Eval error avoided by short circuit
+        test_eval!("1==1&1==2&1+'a'==1" => "false");
+        // Here it happens because evaluation reaches it
+        test_eval!("1==1&1+'a'==1" => err);
+        // Here it happens because @ evaulates all
+        test_eval!("and@[1==1,1==2,1+'a'==1]" => err);
+        // Eval to non-bool after short-circuit
+        test_eval!("and@[1==1,1==2,1]" => "false");
+
+        test_eval!("false|false" => "false");
+        test_eval!("true|false" => "true");
+        test_eval!("true|true" => "true");
+        test_eval!("false|true" => "true");
+        test_eval!("or@[]" => "false");
+        test_eval!("or@[1==1]" => "true");
+        // Short-circuit
+        test_eval!("1==2|1==1|1+'a'==1" => "true");
+        test_eval!("1==2|1+'a'==1" => err);
+
+        test_eval!("!false" => "true");
+        test_eval!("true==!false" => "true");
+        test_eval!("xor()" => "false");
+        test_eval!("not()" => err);
+        test_eval!("true!false" => err);
+        test_eval!("xor(false)" => "false");
+        test_eval!("not(false)" => "true");
+        test_eval!("xor(true,false)" => "true");
+        test_eval!("not(true,false)" => err);
+
+        test_eval!("false&true==false" => "false");
+        test_eval!("(false&true)==false" => "true");
+        test_eval!("1==2|2==2" => "true");
+        test_eval!("true&false|false&true|true&true" => "true");
+        test_eval!("!true|true" => "true");
+        test_eval!("with(a=1==2,a)" => "false");
+    }
 }

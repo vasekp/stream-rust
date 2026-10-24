@@ -60,6 +60,28 @@ impl Stream<Char> for Str {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("chars", eval_chars, r#"
+Splits `string` into a stream of characters.
+= string.?
+> "Hello".? => ['H', 'e', 'l', 'l', 'o']
+> "Hello".?:ord => [8, 5, 12, 12, 15]
+: string
+"#);
+    symbols.insert(["string", "str"], eval_str, r#"
+Turns a stream of characters into a string.
+* Functionally equivalent to `?cat` but optimized for this purpose.
+= stream.?
+> ['a', 'b', 'c'].? => "abc"
+> 1.? => !not a stream
+> ['a', 'b', 1].? => "ab<!> ; non-character in the stream only causes error when it's reached
+: chars
+: cat
+: join
+: numstr
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -83,26 +105,4 @@ mod tests {
         test_describe!("\"abc\".chars" => "\"abc\".chars");
         test_describe!("['a', 'b', 'c'].string" => "['a', 'b', 'c'].string");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("chars", eval_chars, r#"
-Splits `string` into a stream of characters.
-= string.?
-> "Hello".? => ['H', 'e', 'l', 'l', 'o']
-> "Hello".?:ord => [8, 5, 12, 12, 15]
-: string
-"#);
-    symbols.insert(["string", "str"], eval_str, r#"
-Turns a stream of characters into a string.
-* Functionally equivalent to `?cat` but optimized for this purpose.
-= stream.?
-> ['a', 'b', 'c'].? => "abc"
-> 1.? => !not a stream
-> ['a', 'b', 1].? => "ab<!> ; non-character in the stream only causes error when it's reached
-: chars
-: cat
-: join
-: numstr
-"#);
 }

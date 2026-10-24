@@ -161,6 +161,19 @@ impl<I: ItemType> PreIterator for RunsByIter<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["runs", "reps"], eval_runs, r#"
+Replaces every chain of repeated items in `stream` by a pair `[item, count]`.
+= stream.?
+> "mummy".?chars.? : 15 => [['m', 1], ['u', 1], ['m', 2], ['y', 1]]
+: drep
+: counts
+: consec
+: collect
+: unroll
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -177,17 +190,4 @@ mod tests {
         test_eval!("\"\".runs{#/3}" => "[]");
         test_eval!("[1].runs{\"\"}" => "[[\"\", [1]]]");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["runs", "reps"], eval_runs, r#"
-Replaces every chain of repeated items in `stream` by a pair `[item, count]`.
-= stream.?
-> "mummy".?chars.? : 15 => [['m', 1], ['u', 1], ['m', 2], ['y', 1]]
-: drep
-: counts
-: consec
-: collect
-: unroll
-"#);
 }

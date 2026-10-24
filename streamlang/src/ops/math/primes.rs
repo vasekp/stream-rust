@@ -105,6 +105,26 @@ fn eval_isprime(node: &Node, env: &Env) -> SResult<Item> {
     unreachable!()
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("primes", eval_primes, r#"
+An infinite stream of primes.
+= ?
+> ? => [2, 3, 5, 7, 11, ...]
+> ?[100] => 541
+: factor
+: isprime
+"#);
+    symbols.insert("isprime", eval_isprime, r#"
+Evaluates to `true` if `number` is a prime, `false` otherwise.
+= number.?
+> [23, 25, 27, 29]:? => [true, false, false, true]
+> (100..120).?filter(?) => [101, 103, 107, 109, 113]
+> 0.? => !out of range
+: primes
+: factor
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -128,24 +148,4 @@ mod tests {
         test_eval!("(104729*104743).isprime" => "false");
         test_eval!("seq.filter(isprime)[10^4]" => "104729");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("primes", eval_primes, r#"
-An infinite stream of primes.
-= ?
-> ? => [2, 3, 5, 7, 11, ...]
-> ?[100] => 541
-: factor
-: isprime
-"#);
-    symbols.insert("isprime", eval_isprime, r#"
-Evaluates to `true` if `number` is a prime, `false` otherwise.
-= number.?
-> [23, 25, 27, 29]:? => [true, false, false, true]
-> (100..120).?filter(?) => [101, 103, 107, 109, 113]
-> 0.? => !out of range
-: primes
-: factor
-"#);
 }

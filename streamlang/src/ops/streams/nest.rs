@@ -112,6 +112,20 @@ impl PreIterator for NestIterArgs {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("nest", eval_nest, r#"
+Input-form: a stream where `s[n]` is the result of `s[n-1].func` (`input.func` if first).
+Argument-form: a stream where `s[n]` is computed from `m` previous items as `func(..., s[n-1])`, 
+starting with `func(arg1, ..., argM)`.
+= input.?{func}
+= ?{func}(arg1, ..., argM)
+> 1.?{#*2} => [2, 4, 8, 16, 32, ...]
+> ?{#1+#2}(1,1) => [2, 3, 5, 8, 13, ...] ; Fibonacci sequence
+> "abc".?{#+1} => ["bcd", "cde", "def", "efg", "fgh", ...]
+: fold
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -138,18 +152,4 @@ mod tests {
         test_describe!("nest{#1+#2}(1,1)" => "nest({#1+#2}(1, 1))");
         test_describe!("[].nest{[#]}" => "[].nest({[#]})");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("nest", eval_nest, r#"
-Input-form: a stream where `s[n]` is the result of `s[n-1].func` (`input.func` if first).
-Argument-form: a stream where `s[n]` is computed from `m` previous items as `func(..., s[n-1])`, 
-starting with `func(arg1, ..., argM)`.
-= input.?{func}
-= ?{func}(arg1, ..., argM)
-> 1.?{#*2} => [2, 4, 8, 16, 32, ...]
-> ?{#1+#2}(1,1) => [2, 3, 5, 8, 13, ...] ; Fibonacci sequence
-> "abc".?{#+1} => ["bcd", "cde", "def", "efg", "fgh", ...]
-: fold
-"#);
 }

@@ -175,6 +175,25 @@ impl PreIterator for SortedIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("sort", eval_sort, r#"
+Sorts the input `stream`. Arrays of numbers, characters, strings, or streams can be sorted.
+Strings and streams are sorted in lexicographic order.
+If `func` is provided, compares `item`s using the value of `item.func`.
+For pairs of elements `a`, `b` for which `a.func == b.func`, their ordering in the result is unspecified.
+= stream.?
+= stream.?{func}
+> [5, 2, 9, 3, 5].? => [2, 3, 5, 5, 9]
+> [5, 2, 9, 3, 5].?{-#} => [9, 5, 5, 3, 2] ; reverse sort
+> ['b', 'a', 'c'].? => ['a', 'b', 'c']
+> ["one", "two", "three"].? => ["one", "three", "two"]
+> ["one", "two", "three", "four"].?(?length) => ["one", "two", "four", "three"]
+> [[1,2], [], [1]].? : 6 => [[], [1], [1, 2]]
+: <<
+: >>
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -238,23 +257,4 @@ mod tests {
         test_describe!("range(1000).rev.sort{-#}" => "range(1000).rev.sort({-#})");
         test_describe!("alpha(\"cba\", ['a','b','c'].repeat(50).sort)" => "alpha(['c', 'b', 'a'], ['a', 'b', 'c'].repeat(50).sort)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("sort", eval_sort, r#"
-Sorts the input `stream`. Arrays of numbers, characters, strings, or streams can be sorted.
-Strings and streams are sorted in lexicographic order.
-If `func` is provided, compares `item`s using the value of `item.func`.
-For pairs of elements `a`, `b` for which `a.func == b.func`, their ordering in the result is unspecified.
-= stream.?
-= stream.?{func}
-> [5, 2, 9, 3, 5].? => [2, 3, 5, 5, 9]
-> [5, 2, 9, 3, 5].?{-#} => [9, 5, 5, 3, 2] ; reverse sort
-> ['b', 'a', 'c'].? => ['a', 'b', 'c']
-> ["one", "two", "three"].? => ["one", "three", "two"]
-> ["one", "two", "three", "four"].?(?length) => ["one", "two", "four", "three"]
-> [[1,2], [], [1]].? : 6 => [[], [1], [1, 2]]
-: <<
-: >>
-"#);
 }

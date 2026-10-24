@@ -54,6 +54,16 @@ impl PreIterator for EnumIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("enum", eval_enum, r#"
+Accompanies every item in `stream` with its position in it.
+* Equivalent to `stream.?zip(?seq)`.
+= stream.?
+> ["one", "two", "three"].? : 10 => [["one", 1], ["two", 2], ["three", 3]]
+: index
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -66,14 +76,4 @@ mod tests {
         test_advance("[].enum");
         test_describe!("seq.enum" => "seq.enum");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("enum", eval_enum, r#"
-Accompanies every item in `stream` with its position in it.
-* Equivalent to `stream.?zip(?seq)`.
-= stream.?
-> ["one", "two", "three"].? : 10 => [["one", 1], ["two", 2], ["three", 3]]
-: index
-"#);
 }

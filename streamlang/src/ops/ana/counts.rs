@@ -100,22 +100,6 @@ fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<Item> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_counts() {
-        use super::*;
-        test_eval!("[1,2,3].repeat(5).count(2)" => "5");
-        test_eval!("[1,2,3].repeat(5).counts(2,2,4)" => "[5, 5, 0]");
-        test_eval!("\"This is a test string\".counts('i', \" \", \"is\", \"st\", 'st')" => "[3, 4, 2, 2, 0]");
-        test_eval!("pi.first(10).counts@range(0,9)" : 10 => "[0, 2, 1, 2, 1, 2, 1, 0, 0, 1]");
-        test_eval!("pi.first(10).counts" : 21 => "[[3, 2], [1, 2], [4, 1], [5, 2], [9, 1], [2, 1], [6, 1]]");
-        test_eval!("\"The quick brown fox jumps over the lazy dog.\".lcase.counts@alpha" : 26 => 
-        "[1, 1, 1, 1, 3, 1, 1, 2, 1, 1, 1, 1, 1, 1, 4, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1]");
-        test_eval!("\"Hello world!\".counts" : 15 => "[['H', 1], ['e', 1], ['l', 3], ['o', 2], [' ', 1], ...]");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["counts", "count", "tally", "freq"], eval_counts, r#"
 Form without arguments: counts unique items in `stream`, or unique characters in `string`, returning a stream of pairs `[item, count]` in order of first appearance.
@@ -133,4 +117,20 @@ In the latter form and with string input, `?` can also count substrings, includi
 : ddup
 : reps
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_counts() {
+        use super::*;
+        test_eval!("[1,2,3].repeat(5).count(2)" => "5");
+        test_eval!("[1,2,3].repeat(5).counts(2,2,4)" => "[5, 5, 0]");
+        test_eval!("\"This is a test string\".counts('i', \" \", \"is\", \"st\", 'st')" => "[3, 4, 2, 2, 0]");
+        test_eval!("pi.first(10).counts@range(0,9)" : 10 => "[0, 2, 1, 2, 1, 2, 1, 0, 0, 1]");
+        test_eval!("pi.first(10).counts" : 21 => "[[3, 2], [1, 2], [4, 1], [5, 2], [9, 1], [2, 1], [6, 1]]");
+        test_eval!("\"The quick brown fox jumps over the lazy dog.\".lcase.counts@alpha" : 26 => 
+        "[1, 1, 1, 1, 3, 1, 1, 2, 1, 1, 1, 1, 1, 1, 4, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1]");
+        test_eval!("\"Hello world!\".counts" : 15 => "[['H', 1], ['e', 1], ['l', 3], ['o', 2], [' ', 1], ...]");
+    }
 }

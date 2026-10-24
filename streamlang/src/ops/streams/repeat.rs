@@ -193,6 +193,22 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("repeat", eval_repeat, r#"
+The `item` repeated `count`times.
+If the `item` is a stream, concatenates the repetitions in a single stream.
+If the `item` is a character or a string, evaluates to a string.
+If `count` is omitted, repeats indefinitely.
+= item.?(count)
+= item.?
+> 1.? => [1, 1, 1, 1, 1, ...]
+> 1.?(3) => [1, 1, 1]
+> [1, 2].?(2) => [1, 2, 1, 2]
+> 'a'.?(5) => "aaaaa"
+> "ab".? => "abababababababababab...
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,20 +280,4 @@ mod tests {
         test_describe!("\"\".repeat(1)" => "\"\"");
         test_describe!("\"\".repeat(10)" => "\"\"");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("repeat", eval_repeat, r#"
-The `item` repeated `count`times.
-If the `item` is a stream, concatenates the repetitions in a single stream.
-If the `item` is a character or a string, evaluates to a string.
-If `count` is omitted, repeats indefinitely.
-= item.?(count)
-= item.?
-> 1.? => [1, 1, 1, 1, 1, ...]
-> 1.?(3) => [1, 1, 1]
-> [1, 2].?(2) => [1, 2, 1, 2]
-> 'a'.?(5) => "aaaaa"
-> "ab".? => "abababababababababab...
-"#);
 }

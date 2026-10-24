@@ -53,27 +53,6 @@ fn eval_unichr(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_ord() {
-        use super::*;
-        test_eval!("'z'.ord" => "26");
-        test_eval!("\"abc\".ord" => err);
-        test_eval!("\"abc\".chars:ord" => "[1, 2, 3]");
-        test_eval!("\"x y z\".chars.select(isalpha):ord" => "[24, 25, 26]");
-        test_eval!("alpha(\"bad\",\"abc\".chars:ord)" => "[2, 1, <!>");
-    }
-
-    #[test]
-    fn test_chr() {
-        use super::*;
-        test_eval!("((-2)..2):chr" => "['x', 'y', 'z', 'a', 'b']");
-        test_eval!("\"abc\".chars:ord:{#+13}:chr.string" => "\"nop\"");
-        test_eval!("alpha(['á', 'ch'],100.chr)" => "'ch'");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("ord", eval_ord, r#"
 Converts `char` to its order in the current alphabet, or one provided in the argument
@@ -121,4 +100,25 @@ Converts `number` to a character at its Unicode codepoint.
 : uniord
 : chr
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_ord() {
+        use super::*;
+        test_eval!("'z'.ord" => "26");
+        test_eval!("\"abc\".ord" => err);
+        test_eval!("\"abc\".chars:ord" => "[1, 2, 3]");
+        test_eval!("\"x y z\".chars.select(isalpha):ord" => "[24, 25, 26]");
+        test_eval!("alpha(\"bad\",\"abc\".chars:ord)" => "[2, 1, <!>");
+    }
+
+    #[test]
+    fn test_chr() {
+        use super::*;
+        test_eval!("((-2)..2):chr" => "['x', 'y', 'z', 'a', 'b']");
+        test_eval!("\"abc\".chars:ord:{#+13}:chr.string" => "\"nop\"");
+        test_eval!("alpha(['á', 'ch'],100.chr)" => "'ch'");
+    }
 }

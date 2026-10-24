@@ -70,21 +70,6 @@ impl PreIterator for GreedyIter {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_greedy() {
-        use super::*;
-        test_eval!("96.greedy([50,20,10,5,2,1])" : 6 => "[1, 2, 0, 1, 0, 1]");
-        test_eval!("96.greedy([50,20,1,5,2,1])" : 6 => "[1, 2, 6, 0, 0, 0]");
-        test_eval!("96.greedy([50,20,10,0,2,1])" : 6 => "[1, 2, 0, <!>");
-        test_eval!("5.greedy([3,2])" => "[1, 1]");
-        test_eval!("5.greedy([2,3])" => "[2, 0]");
-        test_eval!("5.greedy(1.repeat)" => "[5, 0, 0, 0, 0, ...]");
-        test_advance("5.greedy(1.repeat(10^10))");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("greedy", eval_greedy, r#"
 Decomposes a nonnegative `number` into multiples of items of `stream` using the greedy algorithm.
@@ -98,4 +83,19 @@ dropped
 : numdig
 : dot
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_greedy() {
+        use super::*;
+        test_eval!("96.greedy([50,20,10,5,2,1])" : 6 => "[1, 2, 0, 1, 0, 1]");
+        test_eval!("96.greedy([50,20,1,5,2,1])" : 6 => "[1, 2, 6, 0, 0, 0]");
+        test_eval!("96.greedy([50,20,10,0,2,1])" : 6 => "[1, 2, 0, <!>");
+        test_eval!("5.greedy([3,2])" => "[1, 1]");
+        test_eval!("5.greedy([2,3])" => "[2, 0]");
+        test_eval!("5.greedy(1.repeat)" => "[5, 0, 0, 0, 0, ...]");
+        test_advance("5.greedy(1.repeat(10^10))");
+    }
 }

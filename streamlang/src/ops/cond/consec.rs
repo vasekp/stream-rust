@@ -83,17 +83,6 @@ impl<I: ItemType> PreIterator for ConsecIter<I> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_consec() {
-        use super::*;
-        test_eval!("[2, 3, -2, -3, 4].consec{#>0}" : 10 => "[[2, 3], [4]]");
-        test_eval!("[2, 3, -2, -3, 4].consec{#<0}" : 10 => "[[-2, -3]]");
-        test_eval!("\"123, 45, -12\".consec(isdigit):strnum" => "[123, 45, 12]");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("consec", eval_consec, r#"
 A stream of chunks of consecutive items `x` from `stream` for which `x.func == true`.
@@ -105,4 +94,15 @@ A stream of chunks of consecutive items `x` from `stream` for which `x.func == t
 : runs
 : select
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_consec() {
+        use super::*;
+        test_eval!("[2, 3, -2, -3, 4].consec{#>0}" : 10 => "[[2, 3], [4]]");
+        test_eval!("[2, 3, -2, -3, 4].consec{#<0}" : 10 => "[[-2, -3]]");
+        test_eval!("\"123, 45, -12\".consec(isdigit):strnum" => "[123, 45, 12]");
+    }
 }

@@ -151,6 +151,25 @@ impl<I: ItemType> PreIterator for HetPartitionIter<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["partition", "ptt", "chunks"], eval_partition, r#"
+A stream of non-overlapping arrays from the input `stream` up to a given size, or substrings of `string` of up to such length.
+The size may be given as a number or a stream of numbers. The special element of `[]` means "the rest of input".
+= stream.?(number)
+= stream.?(stream)
+= string.?(number)
+= string.?(stream)
+> ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]
+> (1..5).?(2) : 10 => [[1, 2], [3, 4], [5]] ; last group may be incomplete
+> (1..5).?([1, 1, []]) : 10 => [[1], [2], [3, 4, 5]]
+> "Hello world".?(3) => ["Hel", "lo ", "wor", "ld"]
+> "Hello world".?([3, []]) => ["Hel", "lo world"]
+> ?seq.?([1, 2].?repeat) : 10 => [[1], [2, 3], [4], [5, 6], ...]
+: groups
+: unweave
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -190,23 +209,4 @@ mod tests {
         test_len!("(1..5).partition([2,2,1,[]])" => 4);
         test_len!("(1..5).partition([2,2,[],[]])" => 3);
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["partition", "ptt", "chunks"], eval_partition, r#"
-A stream of non-overlapping arrays from the input `stream` up to a given size, or substrings of `string` of up to such length.
-The size may be given as a number or a stream of numbers. The special element of `[]` means "the rest of input".
-= stream.?(number)
-= stream.?(stream)
-= string.?(number)
-= string.?(stream)
-> ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]
-> (1..5).?(2) : 10 => [[1, 2], [3, 4], [5]] ; last group may be incomplete
-> (1..5).?([1, 1, []]) : 10 => [[1], [2], [3, 4, 5]]
-> "Hello world".?(3) => ["Hel", "lo ", "wor", "ld"]
-> "Hello world".?([3, []]) => ["Hel", "lo world"]
-> ?seq.?([1, 2].?repeat) : 10 => [[1], [2, 3], [4], [5, 6], ...]
-: groups
-: unweave
-"#);
 }

@@ -68,6 +68,20 @@ impl PreIterator for ZipIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("zip", eval_zip, r#"
+A stream of arrays whose `n`-th element comes from the `n`-th input `streamN`.
+The input which finishes first determines the length of the zip.
+= ?(stream1, ..., streamM)
+= stream1.?(stream2, ..., streamM)
+> "abc".?chars.?(?seq) : 10 => [['a', 1], ['b', 2], ['c', 3]]
+> ?(?range(1, 3), ?range(5, 10)) : 10 => [[1, 5], [2, 6], [3, 7]]
+: riffle
+: enum
+: transpose
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -85,18 +99,4 @@ mod tests {
         test_advance("seq.zip([])");
         test_describe!("seq.zip(seq)" => "zip(seq, seq)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("zip", eval_zip, r#"
-A stream of arrays whose `n`-th element comes from the `n`-th input `streamN`.
-The input which finishes first determines the length of the zip.
-= ?(stream1, ..., streamM)
-= stream1.?(stream2, ..., streamM)
-> "abc".?chars.?(?seq) : 10 => [['a', 1], ['b', 2], ['c', 3]]
-> ?(?range(1, 3), ?range(5, 10)) : 10 => [[1, 5], [2, 6], [3, 7]]
-: riffle
-: enum
-: transpose
-"#);
 }

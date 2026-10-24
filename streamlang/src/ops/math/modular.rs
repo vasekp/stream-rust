@@ -45,37 +45,6 @@ fn eval_modpow(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_mod() {
-        use super::*;
-        test_eval!("(1..5):mod(3)" => "[1, 2, 0, 1, 2]");
-        test_eval!("(1..5):mod(3, 1)" => "[1, 2, 3, 1, 2]");
-        test_eval!("(-2..2):mod(3)" => "[1, 2, 0, 1, 2]");
-        test_eval!("(-2..2):mod(3, 1)" => "[1, 2, 3, 1, 2]");
-        test_eval!("5.mod(1)" => "0");
-        test_eval!("5.mod(0)" => err);
-    }
-
-    #[test]
-    fn test_modinv() {
-        use super::*;
-        test_eval!("(1..5):modinv(5)" => "[1, 3, 2, 4, <!>");
-        test_eval!("3.modinv(10)" => "7");
-        test_eval!("1.modinv(7)" => "1");
-        test_eval!("0.modinv(7)" => err);
-    }
-
-    #[test]
-    fn test_modpow() {
-        use super::*;
-        test_eval!("(0..9):{2.modpow(10,#)}" : 10 => "[1, 2, 4, 8, 6, 2, 4, 8, 6, 2]");
-        test_eval!("(-3..5):{3.modpow(10,#)}" : 10 => "[3, 9, 7, 1, 3, 9, 7, 1, 3]");
-        test_eval!("2.modpow(10,-3)" => err);
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("mod", eval_mod, r#"
 Computes the residue of `number` modulo `modulus`.
@@ -107,4 +76,35 @@ Negative powers are also accepted, if `number` has a modular inverse for `modulu
 : mod
 : ^
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_mod() {
+        use super::*;
+        test_eval!("(1..5):mod(3)" => "[1, 2, 0, 1, 2]");
+        test_eval!("(1..5):mod(3, 1)" => "[1, 2, 3, 1, 2]");
+        test_eval!("(-2..2):mod(3)" => "[1, 2, 0, 1, 2]");
+        test_eval!("(-2..2):mod(3, 1)" => "[1, 2, 3, 1, 2]");
+        test_eval!("5.mod(1)" => "0");
+        test_eval!("5.mod(0)" => err);
+    }
+
+    #[test]
+    fn test_modinv() {
+        use super::*;
+        test_eval!("(1..5):modinv(5)" => "[1, 3, 2, 4, <!>");
+        test_eval!("3.modinv(10)" => "7");
+        test_eval!("1.modinv(7)" => "1");
+        test_eval!("0.modinv(7)" => err);
+    }
+
+    #[test]
+    fn test_modpow() {
+        use super::*;
+        test_eval!("(0..9):{2.modpow(10,#)}" : 10 => "[1, 2, 4, 8, 6, 2, 4, 8, 6, 2]");
+        test_eval!("(-3..5):{3.modpow(10,#)}" : 10 => "[3, 9, 7, 1, 3, 9, 7, 1, 3]");
+        test_eval!("2.modpow(10,-3)" => err);
+    }
 }

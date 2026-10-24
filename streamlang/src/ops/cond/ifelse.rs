@@ -9,6 +9,18 @@ fn eval_if(node: &Node, env: &Env) -> SResult<Item> {
     expr.eval(env)
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("if", eval_if, r#"
+If `condition` evaluates to `true`, evaluates `a`, otherwise evaluates `b`.
+* The other result is not evaluated.
+= ?(condition, a, b)
+> ?seq:{?(#.?isodd, -#, #)} => [-1, 2, -3, 4, -5, ...]
+> ["12", "+3", "xx"]:{?(#.?isnumeric, #.?strnum, #)} => [12, 3, "xx"] ; "xx".strnum would be an error
+: select
+: while
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -21,16 +33,4 @@ mod tests {
         test_eval!("seq:{if(#<4,-#,#)}" => "[-1, -2, -3, 4, 5, ...]");
         test_eval!("[1,'a',\"a\"]:{if(#.isnum,-#,#+1)}" => "[-1, 'b', \"b\"]");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("if", eval_if, r#"
-If `condition` evaluates to `true`, evaluates `a`, otherwise evaluates `b`.
-* The other result is not evaluated.
-= ?(condition, a, b)
-> ?seq:{?(#.?isodd, -#, #)} => [-1, 2, -3, 4, -5, ...]
-> ["12", "+3", "xx"]:{?(#.?isnumeric, #.?strnum, #)} => [12, 3, "xx"] ; "xx".strnum would be an error
-: select
-: while
-"#);
 }

@@ -129,33 +129,6 @@ impl<I: ItemType> Stream<I> for Append<I> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_prepend() {
-        test_eval!("(1..3).prepend(5)" => "[5, 1, 2, 3]");
-        test_eval!("(1..3).prepend(5, 0)" => "[5, 0, 1, 2, 3]");
-        test_eval!("seq.prepend(5)" => "[5, 1, 2, 3, 4, ...]");
-        test_eval!("seq.prepend(seq)" => "[[1, 2, 3, 4, ...], ...]");
-        test_eval!("\"test\".prepend(\"This is\", ' ', \"\", \"a \")" => "\"This is a test\"");
-        test_advance("(1..10^5).prepend@(1..10)");
-        test_advance("\"abcde\".prepend(\"f\", \"\", \"\", 'g')");
-    }
-
-    #[test]
-    fn test_append() {
-        test_eval!("(1..3).append(5)" => "[1, 2, 3, 5]");
-        test_eval!("(1..3).append(5, 0)" => "[1, 2, 3, 5, 0]");
-        test_eval!("seq.append(5)" => "[1, 2, 3, 4, 5, ...]");
-        test_eval!("[5].append(seq)" => "[5, [1, 2, 3, ...]]");
-        test_eval!("\"This is\".append(' ', \"a \", \"\", \"test\")" => "\"This is a test\"");
-        test_advance("(1..10^5).append@(1..10)");
-        test_advance("\"abcde\".append(\"f\", \"\", \"\", 'g')");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("prepend", eval_prepend, r#"
 Prepends `item`s (in order of the arguments) to `stream` or `string`.
@@ -185,4 +158,31 @@ This is equivalent to `join` or `cat`, but better suited for chaining.
 : replace
 : remove
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prepend() {
+        test_eval!("(1..3).prepend(5)" => "[5, 1, 2, 3]");
+        test_eval!("(1..3).prepend(5, 0)" => "[5, 0, 1, 2, 3]");
+        test_eval!("seq.prepend(5)" => "[5, 1, 2, 3, 4, ...]");
+        test_eval!("seq.prepend(seq)" => "[[1, 2, 3, 4, ...], ...]");
+        test_eval!("\"test\".prepend(\"This is\", ' ', \"\", \"a \")" => "\"This is a test\"");
+        test_advance("(1..10^5).prepend@(1..10)");
+        test_advance("\"abcde\".prepend(\"f\", \"\", \"\", 'g')");
+    }
+
+    #[test]
+    fn test_append() {
+        test_eval!("(1..3).append(5)" => "[1, 2, 3, 5]");
+        test_eval!("(1..3).append(5, 0)" => "[1, 2, 3, 5, 0]");
+        test_eval!("seq.append(5)" => "[1, 2, 3, 4, 5, ...]");
+        test_eval!("[5].append(seq)" => "[5, [1, 2, 3, ...]]");
+        test_eval!("\"This is\".append(' ', \"a \", \"\", \"test\")" => "\"This is a test\"");
+        test_advance("(1..10^5).append@(1..10)");
+        test_advance("\"abcde\".append(\"f\", \"\", \"\", 'g')");
+    }
 }

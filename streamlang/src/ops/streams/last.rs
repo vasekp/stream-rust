@@ -103,6 +103,25 @@ impl<I: ItemType> Describe for Last<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("last", eval_last, r#"
+Up to the last `count` items of `stream`, or up to the last `count` characters of `string`.
+If `count` is not given, only gives the last item or the last character (no stream / string).
+= stream.?
+= stream.?(count)
+= string.?
+= string.?(count)
+> [1, 2, 3].? => 3
+> [1, 2, 3].?(2) => [2, 3]
+> ?seq.? => !stream is infinite
+> "abc".? => 'c'
+> "abc".?(2) => "bc"
+: first
+: skip
+: droplast
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -143,23 +162,4 @@ mod tests {
         test_describe!("(1..3).last(4)" => "1..3");
         test_describe!("(1..3).last(2)" => "(1..3).last(2)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("last", eval_last, r#"
-Up to the last `count` items of `stream`, or up to the last `count` characters of `string`.
-If `count` is not given, only gives the last item or the last character (no stream / string).
-= stream.?
-= stream.?(count)
-= string.?
-= string.?(count)
-> [1, 2, 3].? => 3
-> [1, 2, 3].?(2) => [2, 3]
-> ?seq.? => !stream is infinite
-> "abc".? => 'c'
-> "abc".?(2) => "bc"
-: first
-: skip
-: droplast
-"#);
 }

@@ -55,6 +55,33 @@ fn eval_strnum(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("numstr", eval_numstr, r#"
+Converts `number` to a string.
+If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
+If `min_width` is given, the string is zero-padded if shorter.
+= number.?
+= number.?(base)
+= number.?(base, min_width)
+> 42.? => "42"
+> (-15).?(10, 5) => "-00015" ; sign does not count towards width
+> 42.?(2) => "101010"
+> 65535.?(16) => "FFFF" ; base-11 to base-36 digits are uppercase
+: strnum
+: numdig
+"#);
+    symbols.insert("strnum", eval_strnum, r#"
+Converts `string` into a number.
+If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
+= string.?
+= string.?(base)
+> "-42".? => -42
+> "ffff".?(16) => 65535 ; both uppercase and lowercase accepted
+: numstr
+: dignum
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -90,31 +117,4 @@ mod tests {
         test_eval!("\"A\".strnum(11)" => "10");
         test_eval!("\"B\".strnum(11)" => err);
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("numstr", eval_numstr, r#"
-Converts `number` to a string.
-If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
-If `min_width` is given, the string is zero-padded if shorter.
-= number.?
-= number.?(base)
-= number.?(base, min_width)
-> 42.? => "42"
-> (-15).?(10, 5) => "-00015" ; sign does not count towards width
-> 42.?(2) => "101010"
-> 65535.?(16) => "FFFF" ; base-11 to base-36 digits are uppercase
-: strnum
-: numdig
-"#);
-    symbols.insert("strnum", eval_strnum, r#"
-Converts `string` into a number.
-If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
-= string.?
-= string.?(base)
-> "-42".? => -42
-> "ffff".?(16) => 65535 ; both uppercase and lowercase accepted
-: numstr
-: dignum
-"#);
 }

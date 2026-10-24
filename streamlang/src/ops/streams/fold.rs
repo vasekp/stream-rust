@@ -60,19 +60,6 @@ impl PreIterator for FoldIter {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_fold() {
-        use super::*;
-        test_eval!("seq.fold(plus)" => "[1, 3, 6, 10, 15, ...]");
-        test_eval!("seq.fold(times)" => "[1, 2, 6, 24, 120, ...]");
-        test_eval!("\"abc\".chars.fold(plus)" => "['a', 'c', 'f']");
-        test_eval!("seq.fold{#1~#2}" : 8 => "[1, [1, 2], [1, 2, 3], ...]");
-        test_eval!("[].fold{#1~#2}" => "[]");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("fold", eval_fold, r#"
 A stream `s` where `s[n]` is the result of `func(s[n-1], stream[n])`.
@@ -85,4 +72,17 @@ The first element is returned unchanged.
 : nest
 : reduce
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_fold() {
+        use super::*;
+        test_eval!("seq.fold(plus)" => "[1, 3, 6, 10, 15, ...]");
+        test_eval!("seq.fold(times)" => "[1, 2, 6, 24, 120, ...]");
+        test_eval!("\"abc\".chars.fold(plus)" => "['a', 'c', 'f']");
+        test_eval!("seq.fold{#1~#2}" : 8 => "[1, [1, 2], [1, 2, 3], ...]");
+        test_eval!("[].fold{#1~#2}" => "[]");
+    }
 }

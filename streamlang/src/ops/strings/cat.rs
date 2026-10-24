@@ -187,6 +187,19 @@ impl PreIterator<Char> for RiffleCatIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("cat", eval_cat, r#"
+Concatenates a stream of strings or characters into a single string.
+If a `filler` (character or string) is given, it's inserted between each pair of strings.
+= stream.?
+= stream.?(filler)
+> ["Hello", ' ', "world"].? => "Hello world"
+> ['a', 'b', 'c'].?(", ") => "a, b, c"
+: join
+: riffle
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -207,17 +220,4 @@ mod tests {
         test_advance("[\"abcde\"].repeat.cat(\", \")");
         test_advance("\"abcde\".repeat.chars.cat(' ')");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("cat", eval_cat, r#"
-Concatenates a stream of strings or characters into a single string.
-If a `filler` (character or string) is given, it's inserted between each pair of strings.
-= stream.?
-= stream.?(filler)
-> ["Hello", ' ', "world"].? => "Hello world"
-> ['a', 'b', 'c'].?(", ") => "a, b, c"
-: join
-: riffle
-"#);
 }

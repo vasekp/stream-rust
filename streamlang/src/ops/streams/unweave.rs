@@ -76,6 +76,18 @@ impl PreIterator for UnweaveIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("unweave", eval_unweave, r#"
+Separates `stream` into `count` substreams, items are distributed cyclically one by one.
+= stream.?(step)
+> (1..6).?(2) : 10 => [[1, 3, 5], [2, 4, 6]]
+: stride
+: weave
+: transpose
+: partition
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -88,16 +100,4 @@ mod tests {
         test_len!("(1..10^5).unweave(3)" => 3);
         test_advance("(1..10^10).unweave(10^6)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("unweave", eval_unweave, r#"
-Separates `stream` into `count` substreams, items are distributed cyclically one by one.
-= stream.?(step)
-> (1..6).?(2) : 10 => [[1, 3, 5], [2, 4, 6]]
-: stride
-: weave
-: transpose
-: partition
-"#);
 }

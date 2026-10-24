@@ -189,6 +189,25 @@ impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("droplast", eval_droplast, r#"
+Skips last `count` items of `stream` ot last `count` characters of `string`.
+If `count` is omitted, it defaults to one.
+If `count` is longer than `stream`, returns an empty stream (string).
+= stream.?
+= stream.?(count)
+= string.?
+= string.?(count)
+> ?range(5).? => [1, 2, 3, 4]
+> ?seq.?(10) => !stream is infinite
+> "Hello".?(2) => "Hel"
+> "Hello".?(5) => ""
+: last
+: first
+: skip
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,23 +245,4 @@ mod tests {
         test_describe!("(1..3).droplast(4)" => "[]");
         test_describe!("(1..3).droplast(2)" => "(1..3).droplast(2)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("droplast", eval_droplast, r#"
-Skips last `count` items of `stream` ot last `count` characters of `string`.
-If `count` is omitted, it defaults to one.
-If `count` is longer than `stream`, returns an empty stream (string).
-= stream.?
-= stream.?(count)
-= string.?
-= string.?(count)
-> ?range(5).? => [1, 2, 3, 4]
-> ?seq.?(10) => !stream is infinite
-> "Hello".?(2) => "Hel"
-> "Hello".?(5) => ""
-: last
-: first
-: skip
-"#);
 }

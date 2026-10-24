@@ -105,6 +105,18 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("rev", eval_rev, r#"
+The input `stream` or `string`, reversed.
+! May need to evaluate the entire contents of the input.
+= stream.?
+= string.?
+> ?range(5).? => [5, 4, 3, 2, 1]
+> "Hello".? => "olleH"
+> ?seq.? => !stream is infinite
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,16 +133,4 @@ mod tests {
         test_advance("range(10^10).rev");
         //test_describe!("\"abc\".rev" => "\"abc\".rev"); // TODO caching
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("rev", eval_rev, r#"
-The input `stream` or `string`, reversed.
-! May need to evaluate the entire contents of the input.
-= stream.?
-= string.?
-> ?range(5).? => [5, 4, 3, 2, 1]
-> "Hello".? => "olleH"
-> ?seq.? => !stream is infinite
-"#);
 }

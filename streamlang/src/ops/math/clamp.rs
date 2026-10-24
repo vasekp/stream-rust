@@ -31,22 +31,6 @@ fn eval_clamp(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_clamp() {
-        use super::*;
-        test_eval!("[5, 1, 7, 3]:floor(4)" => "[5, 4, 7, 4]");
-        test_eval!("[5, 1, 7, 3]:ceil(4)" => "[4, 1, 4, 3]");
-        test_eval!("[5, 1, 7, 3]:clamp(2, 5)" => "[5, 2, 5, 3]");
-        test_eval!("[5, 1, 7, 3]:clamp(5, 5)" => "[5, 5, 5, 5]");
-        test_eval!("3.clamp(2,5)" => "3");
-        test_eval!("2.clamp(2,5)" => "2");
-        test_eval!("5.clamp(2,5)" => "5");
-        test_eval!("3.clamp(5,2)" => err);
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("floor", eval_floor, r#"
 If number `x` is smaller than `min`, evaluates to `min`, otherwise to `x`.
@@ -76,4 +60,20 @@ Restricts number `x` to within `min` and `max` (inclusive).
 : min
 : max
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_clamp() {
+        use super::*;
+        test_eval!("[5, 1, 7, 3]:floor(4)" => "[5, 4, 7, 4]");
+        test_eval!("[5, 1, 7, 3]:ceil(4)" => "[4, 1, 4, 3]");
+        test_eval!("[5, 1, 7, 3]:clamp(2, 5)" => "[5, 2, 5, 3]");
+        test_eval!("[5, 1, 7, 3]:clamp(5, 5)" => "[5, 5, 5, 5]");
+        test_eval!("3.clamp(2,5)" => "3");
+        test_eval!("2.clamp(2,5)" => "2");
+        test_eval!("5.clamp(2,5)" => "5");
+        test_eval!("3.clamp(5,2)" => err);
+    }
 }

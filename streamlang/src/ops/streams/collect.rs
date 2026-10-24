@@ -22,15 +22,6 @@ fn eval_collect(node: &Node, env: &Env) -> SResult<Item> {
         .collect::<Vec<_>>()))
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_collect() {
-        use super::*;
-        test_eval!("(1..7).collect{#%3}" : 20 => "[[1, [1, 4, 7]], [2, [2, 5]], [0, [3, 6]]]");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("collect", eval_collect, r#"
 Groups the elements `x` of `stream` agreeing in the value of `x.func`.
@@ -41,4 +32,13 @@ Returns a stream of pairs `[key, [x1, x2, ...]]` in order of appearance.
 : runs
 : drep
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_collect() {
+        use super::*;
+        test_eval!("(1..7).collect{#%3}" : 20 => "[[1, [1, 4, 7]], [2, [2, 5]], [0, [3, 6]]]");
+    }
 }

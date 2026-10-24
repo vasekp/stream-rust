@@ -82,6 +82,20 @@ impl PreIterator for GroupsIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["groups", "group"], eval_groups, r#"
+Single-argument form: a stream of `size`-sized non-overlapping arrays from the input `stream`.
+Two-argument form: evaluations of the function `func` on the above, entering as arguments (`#1, #2, ...`).
+= stream.?(size)
+= stream.?(size, {func})
+> ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]
+> ?seq.?(3, ?plus) => [6, 15, 24, 33, 42, ...]
+> (1..5).?(2) : 10 => [[1, 2], [3, 4]] ; an incomplete trailing group is discarded, see ?chunks
+: windows
+: partition
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -105,18 +119,4 @@ mod tests {
         test_eval!("seq.groups(3, plus)" => "[6, 15, 24, 33, 42, ...]");
         test_describe!("seq.groups(3)" => "seq.groups(3)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["groups", "group"], eval_groups, r#"
-Single-argument form: a stream of `size`-sized non-overlapping arrays from the input `stream`.
-Two-argument form: evaluations of the function `func` on the above, entering as arguments (`#1, #2, ...`).
-= stream.?(size)
-= stream.?(size, {func})
-> ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]
-> ?seq.?(3, ?plus) => [6, 15, 24, 33, 42, ...]
-> (1..5).?(2) : 10 => [[1, 2], [3, 4]] ; an incomplete trailing group is discarded, see ?chunks
-: windows
-: partition
-"#);
 }

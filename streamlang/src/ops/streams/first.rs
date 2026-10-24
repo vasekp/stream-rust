@@ -75,6 +75,25 @@ impl<I: ItemType> PreIterator<I> for FirstIter<I> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["first", "take"], eval_first, r#"
+Up to the first `count` items of `stream`, or up to the first `count` characters of `string`.
+If `count` is not given, only gives the first item or the first character (no stream / string).
+= stream.?
+= stream.?(count)
+= string.?
+= string.?(count)
+> ?seq.? => 1
+> ?seq.?(2) => [1, 2]
+> [1, 2, 3].?(10) => [1, 2, 3]
+> "abc".? => 'a'
+> "abc".?(2) => "ab"
+: last
+: skip
+: partition
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,23 +125,4 @@ mod tests {
         test_describe!("(1..3).first(4)" => "(1..3).first(4)");
         test_describe!("(1..3).take(4)" => "(1..3).take(4)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["first", "take"], eval_first, r#"
-Up to the first `count` items of `stream`, or up to the first `count` characters of `string`.
-If `count` is not given, only gives the first item or the first character (no stream / string).
-= stream.?
-= stream.?(count)
-= string.?
-= string.?(count)
-> ?seq.? => 1
-> ?seq.?(2) => [1, 2]
-> [1, 2, 3].?(10) => [1, 2, 3]
-> "abc".? => 'a'
-> "abc".?(2) => "ab"
-: last
-: skip
-: partition
-"#);
 }

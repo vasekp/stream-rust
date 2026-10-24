@@ -8,6 +8,10 @@ fn eval_list(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_stream(List::from(list)))
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert_raw("[list]", eval_list);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -24,8 +28,4 @@ mod tests {
         test_describe!("[1,2,3]" => "[1, 2, 3]");
         test_describe!("[]" => "[]");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert_raw("[list]", eval_list);
 }

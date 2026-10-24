@@ -27,6 +27,25 @@ fn eval_alpha(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("alpha", eval_alpha, r#"
+Without arguments: returns the current alphabet as a stream of characters.
+With arguments: changes alphabet for the evaluation of `expr`.
+The new alphabet can be given as a list of characters, or a string.
+= ?
+= ?(stream, expr)
+= ?(string, expr)
+> ? => ['a', 'b', 'c', 'd', 'e', ...]
+> ?(['α', 'β', 'γ'], ?) => ['α', 'β', 'γ']
+> ?(['α', 'β', 'γ'], ["αβα", "γγ", "γαβ", "β"].?sort) => ["αβα", "β", "γαβ", "γγ"]
+> ["αβα", "γγ", "γαβ", "β"].?sort => !not in alphabet
+> ?("xyz", 'x' + 'x') => 'y'
+: ord
+: chr
+: with
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -51,23 +70,4 @@ mod tests {
         test_describe!("alpha(\"abcd\", alpha([], \"abc\"+1))" => "\"abc\"+1");
         test_describe!("alpha(\"abcd\", alpha(\"\", \"abc\"+1))" => "\"abc\"+1");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("alpha", eval_alpha, r#"
-Without arguments: returns the current alphabet as a stream of characters.
-With arguments: changes alphabet for the evaluation of `expr`.
-The new alphabet can be given as a list of characters, or a string.
-= ?
-= ?(stream, expr)
-= ?(string, expr)
-> ? => ['a', 'b', 'c', 'd', 'e', ...]
-> ?(['α', 'β', 'γ'], ?) => ['α', 'β', 'γ']
-> ?(['α', 'β', 'γ'], ["αβα", "γγ", "γαβ", "β"].?sort) => ["αβα", "β", "γαβ", "γγ"]
-> ["αβα", "γγ", "γαβ", "β"].?sort => !not in alphabet
-> ?("xyz", 'x' + 'x') => 'y'
-: ord
-: chr
-: with
-"#);
 }

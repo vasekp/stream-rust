@@ -57,6 +57,40 @@ fn eval_rmulti(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_number(factorial(total) / denom))
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("factorial", eval_factorial, r#"
+Factorial of `number`.
+= number.?
+= ?(number)
+> ?seq:? => [1, 2, 6, 24, 120, ...]
+: binom
+: multi
+"#);
+    symbols.insert("binom", eval_binom, r#"
+Binomial coefficient, i.e., `?factorial(n) / (?factorial(k) * ?factorial(n-k))` if `0 <= k <= n`.
+= ?(n, k)
+> [0, 1, 2, 3, 4]:{?(4, #)} => [1, 4, 6, 4, 1]
+: factorial
+: multi
+"#);
+    symbols.insert("multi", eval_multi, r#"
+Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * factorial(k2) * ...)`.
+= ?(k1, ..., kM)
+> ?(3, 3, 4) => 4200
+> ?(3, 3, 4) == ?factorial(3+3+4) / (?factorial(3)^2 * ?factorial(4)) => true
+: factorial
+: rmulti
+"#);
+    symbols.insert("rmulti", eval_rmulti, r#"
+The number of partitions of a set of type `(k1, ..., kM)`, i.e., `?multi(k1, ..., kM)` divided by the number of permutations keeping the argument tuple unchanged.
+= ?(k1, ..., kM)
+> ?(3, 3, 4) => 2100
+> ?(3, 3, 4) == ?multi(3, 3, 4) / (?factorial(2) * ?factorial(1)) => true ; 3 repeats twice, 4 once
+: multi
+: factorial
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -108,38 +142,4 @@ mod tests {
         test_eval!("rmulti(3,4,5) == multi(3,4,5)" => "true");
         test_eval!("rmulti(3,4,3,4,3) == multi(3,3,3,4,4)/2/6" => "true");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("factorial", eval_factorial, r#"
-Factorial of `number`.
-= number.?
-= ?(number)
-> ?seq:? => [1, 2, 6, 24, 120, ...]
-: binom
-: multi
-"#);
-    symbols.insert("binom", eval_binom, r#"
-Binomial coefficient, i.e., `?factorial(n) / (?factorial(k) * ?factorial(n-k))` if `0 <= k <= n`.
-= ?(n, k)
-> [0, 1, 2, 3, 4]:{?(4, #)} => [1, 4, 6, 4, 1]
-: factorial
-: multi
-"#);
-    symbols.insert("multi", eval_multi, r#"
-Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * factorial(k2) * ...)`.
-= ?(k1, ..., kM)
-> ?(3, 3, 4) => 4200
-> ?(3, 3, 4) == ?factorial(3+3+4) / (?factorial(3)^2 * ?factorial(4)) => true
-: factorial
-: rmulti
-"#);
-    symbols.insert("rmulti", eval_rmulti, r#"
-The number of partitions of a set of type `(k1, ..., kM)`, i.e., `?multi(k1, ..., kM)` divided by the number of permutations keeping the argument tuple unchanged.
-= ?(k1, ..., kM)
-> ?(3, 3, 4) => 2100
-> ?(3, 3, 4) == ?multi(3, 3, 4) / (?factorial(2) * ?factorial(1)) => true ; 3 repeats twice, 4 once
-: multi
-: factorial
-"#);
 }

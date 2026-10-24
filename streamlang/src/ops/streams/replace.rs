@@ -72,6 +72,19 @@ impl PreIterator for ReplaceIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("replace", eval_replace, r#"
+Returns `stream` with item at position `index` replaced by `item`.
+If the stream has less than `index` items, it is unchanged.
+= stream.?(index, item)
+> (1..5).?(3, "a") => [1, 2, "a", 4, 5]
+: subst
+: append
+: prepend
+: remove
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -84,17 +97,4 @@ mod tests {
         test_eval!("(1..5).replace(6, 'a')" => "[1, 2, 3, 4, 5]");
         test_eval!("(1..5).replace(0, 'a')" => err);
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("replace", eval_replace, r#"
-Returns `stream` with item at position `index` replaced by `item`.
-If the stream has less than `index` items, it is unchanged.
-= stream.?(index, item)
-> (1..5).?(3, "a") => [1, 2, "a", 4, 5]
-: subst
-: append
-: prepend
-: remove
-"#);
 }

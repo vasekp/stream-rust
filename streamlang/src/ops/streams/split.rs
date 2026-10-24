@@ -78,18 +78,6 @@ impl<I: ItemType> PreIterator for SplitIter<I> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_split() {
-        use super::*;
-        test_eval!("\"abc\ndef\".split(iswhite)" => "[\"abc\", \"def\"]");
-        test_eval!("range(10).split(iseven)" => "[[1], [3], [...], ...]");
-        test_describe!("range(10).split(iseven)" => "range(10).split(iseven)");
-        test_describe!("range(10).split{#<3}" => "range(10).split({#<3})");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("split", eval_split, r#"
 Splits `stream` to substreams by evaluating `cond` on its items. Every time the condition is `true`, the item is dropped and a new substream starts.
@@ -101,4 +89,16 @@ If the input is a string, evaluates `cond` on characters and returns a stream of
 > "three   spaces".?(?iswhite) => ["three", "", "", "spaces"] ; does not coalesce the delimiters
 : spliton
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_split() {
+        use super::*;
+        test_eval!("\"abc\ndef\".split(iswhite)" => "[\"abc\", \"def\"]");
+        test_eval!("range(10).split(iseven)" => "[[1], [3], [...], ...]");
+        test_describe!("range(10).split(iseven)" => "range(10).split(iseven)");
+        test_describe!("range(10).split{#<3}" => "range(10).split({#<3})");
+    }
 }

@@ -15,6 +15,17 @@ fn eval_total(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_number(total))
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("total", eval_total, r#"
+Sums all numbers forming `stream`.
+= stream.?
+> (1..5).? => 15
+> [[1, 2], [3, 4]].? => !expected number ; only usable for streams of numbers
+> [[1, 2], [3, 4]].{?plus@#} => [4, 6] ; use a more verbose construction for lists of lists etc.
+: reduce
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -25,15 +36,4 @@ mod tests {
         test_eval!("['a', 1].total" => err);
         test_eval!("[].total" => "0");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("total", eval_total, r#"
-Sums all numbers forming `stream`.
-= stream.?
-> (1..5).? => 15
-> [[1, 2], [3, 4]].? => !expected number ; only usable for streams of numbers
-> [[1, 2], [3, 4]].{?plus@#} => [4, 6] ; use a more verbose construction for lists of lists etc.
-: reduce
-"#);
 }

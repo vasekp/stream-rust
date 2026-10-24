@@ -39,19 +39,6 @@ impl Stream<Char> for ULCase {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_chars_string() {
-        use super::*;
-        test_eval!("['A',' ','Ch','ň','ß']:ucase" => "['A', ' ', 'CH', 'Ň', 'SS']");
-        test_eval!("['A',' ','Ch','Ň','ẞ']:lcase" => "['a', ' ', 'ch', 'ň', 'ß']");
-        test_eval!("\"Hello, world!\".lcase" => "\"hello, world!\"");
-        test_eval!("\"Hello, world!\".ucase" => "\"HELLO, WORLD!\"");
-        test_describe!("\"Hello, world!\".lcase" => "\"Hello, world!\".lcase");
-    }
-}
-
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("ucase", eval_ulcase, r#"
 Converts `char` or `string` to uppercase.
@@ -71,4 +58,17 @@ Converts `char` or `string` to lowercase.
 : ucase
 : subst
 "#);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_chars_string() {
+        use super::*;
+        test_eval!("['A',' ','Ch','ň','ß']:ucase" => "['A', ' ', 'CH', 'Ň', 'SS']");
+        test_eval!("['A',' ','Ch','Ň','ẞ']:lcase" => "['a', ' ', 'ch', 'ň', 'ß']");
+        test_eval!("\"Hello, world!\".lcase" => "\"hello, world!\"");
+        test_eval!("\"Hello, world!\".ucase" => "\"HELLO, WORLD!\"");
+        test_describe!("\"Hello, world!\".lcase" => "\"Hello, world!\".lcase");
+    }
 }

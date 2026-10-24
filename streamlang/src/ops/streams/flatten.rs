@@ -115,6 +115,17 @@ impl PreIterator for FlattenIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("flatten", eval_flatten, r#"
+Flattens `stream` up to `depth` levels. If `depth` is omitted, `stream` is flattened to all levels.
+= stream.?
+= stream.?(depth)
+> [1, [2, [3]]].? => [1, 2, 3]
+> [1, [2, [3, [4]]]].?(1) : 10 => [1, 2, [3, [4]]]
+> [1, [], [2], [], 3].? => [1, 2, 3]
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -136,15 +147,4 @@ mod tests {
         test_describe!("[1, [2, [3]]].flatten" => "[1, [2, [3]]].flatten");
         test_describe!("[1, [2, [3]]].flatten(1)" => "[1, [2, [3]]].flatten(1)");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("flatten", eval_flatten, r#"
-Flattens `stream` up to `depth` levels. If `depth` is omitted, `stream` is flattened to all levels.
-= stream.?
-= stream.?(depth)
-> [1, [2, [3]]].? => [1, 2, 3]
-> [1, [2, [3, [4]]]].?(1) : 10 => [1, 2, [3, [4]]]
-> [1, [], [2], [], 3].? => [1, 2, 3]
-"#);
 }

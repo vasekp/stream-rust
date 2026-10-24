@@ -134,6 +134,21 @@ impl PreIterator for SplitStreamIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("spliton", eval_spliton, r#"
+Splits `string` on occurrences of any of the `delimiter`s, which can each be a character or a substring.
+For streams: the `delimiter`s are any items, which are compared for exact match.
+= string.?(delimiter...)
+= stream.?(delimiter...)
+> "Hello, world".?(", ") => ["Hello", "world"]
+> "Hello, world".?(' ', ',') => ["Hello", "", "world"] ; there's an empty string between ',' and ' '
+> "two  spaces".?(" ", "  ") => ["two", "", "spaces"] ; " " is encountered before "  "
+> ?range(10).?(3) : 6 => [[1, 2], [4, 5, ...]]
+> ?range(10).?([3, 4]) : 6 => [[1, 2, 3, 4, 5, ...]] ; the *item* [3, 4] never appears
+: split
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -153,19 +168,4 @@ mod tests {
         test_eval!("range('a', 'e').spliton('c')" => "[['a', 'b'], ['d', ...]]");
         test_eval!("range('a', 'e').spliton(\"c\")" => "[['a', 'b', 'c', 'd', ...]]");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("spliton", eval_spliton, r#"
-Splits `string` on occurrences of any of the `delimiter`s, which can each be a character or a substring.
-For streams: the `delimiter`s are any items, which are compared for exact match.
-= string.?(delimiter...)
-= stream.?(delimiter...)
-> "Hello, world".?(", ") => ["Hello", "world"]
-> "Hello, world".?(' ', ',') => ["Hello", "", "world"] ; there's an empty string between ',' and ' '
-> "two  spaces".?(" ", "  ") => ["two", "", "spaces"] ; " " is encountered before "  "
-> ?range(10).?(3) : 6 => [[1, 2], [4, 5, ...]]
-> ?range(10).?([3, 4]) : 6 => [[1, 2, 3, 4, 5, ...]] ; the *item* [3, 4] never appears
-: split
-"#);
 }

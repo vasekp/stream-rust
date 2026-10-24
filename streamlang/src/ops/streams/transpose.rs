@@ -83,6 +83,16 @@ impl PreIterator for TransposeIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["transpose", "trans"], eval_transpose, r#"
+Takes a stream of streams and returns another, transposed.
+The shortest stream determines the length.
+= stream.?
+> [?seq, [4, 5], "text".?chars].? : 10 => [[1, 4, 't'], [2, 5, 'e']]
+: zip
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -102,14 +112,4 @@ mod tests {
         test_advance("[[1,2,3], seq].trans");
         test_advance("[[1,2,3].$lenUU, seq].trans");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["transpose", "trans"], eval_transpose, r#"
-Takes a stream of streams and returns another, transposed.
-The shortest stream determines the length.
-= stream.?
-> [?seq, [4, 5], "text".?chars].? : 10 => [[1, 4, 't'], [2, 5, 'e']]
-: zip
-"#);
 }

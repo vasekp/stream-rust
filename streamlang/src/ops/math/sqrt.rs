@@ -18,6 +18,14 @@ fn sqrt_impl(n: &UNumber) -> UNumber {
     x
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert("sqrt", eval_sqrt, r#"
+Square root of `number`, rounded below to nearest integer.
+= number.?
+> 10.? => 3
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -27,12 +35,4 @@ mod tests {
         test_eval!("(10^100).sqrt" => "100000000000000000000000000000000000000000000000000");
         test_eval!("(-1).sqrt" => err);
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert("sqrt", eval_sqrt, r#"
-Square root of `number`, rounded below to nearest integer.
-= number.?
-> 10.? => 3
-"#);
 }

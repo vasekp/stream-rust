@@ -65,6 +65,21 @@ impl PreIterator for DDupIter {
     }
 }
 
+pub fn init(symbols: &mut crate::symbols::Symbols) {
+    symbols.insert(["ddup", "uniq"], eval_ddup, r#"
+Keeps only the first appearance of any repeated item in `stream`.
+If `func` is provided, compares `item.func` for the uniqueness instead of `item` itself.
+= stream.?
+= stream.?(func)
+> [1, 2, 1, 2, 3].? => [1, 2, 3]
+> [1, 2, 4, 5, 6].?{#%3} => [1, 2, 6]
+> "Abracadabra".?chars.? : 6 => ['A', 'b', 'r', 'a', 'c', 'd']
+> "Abracadabra".?chars.?(?lcase) => ['A', 'b', 'r', 'c', 'd']
+: drep
+: counts
+"#);
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -83,19 +98,4 @@ mod tests {
         test_len!("[].ddup{#+'a'}" => 0);
         test_describe!("seq.ddup{#}" => "seq.ddup({#})");
     }
-}
-
-pub fn init(symbols: &mut crate::symbols::Symbols) {
-    symbols.insert(["ddup", "uniq"], eval_ddup, r#"
-Keeps only the first appearance of any repeated item in `stream`.
-If `func` is provided, compares `item.func` for the uniqueness instead of `item` itself.
-= stream.?
-= stream.?(func)
-> [1, 2, 1, 2, 3].? => [1, 2, 3]
-> [1, 2, 4, 5, 6].?{#%3} => [1, 2, 6]
-> "Abracadabra".?chars.? : 6 => ['A', 'b', 'r', 'a', 'c', 'd']
-> "Abracadabra".?chars.?(?lcase) => ['A', 'b', 'r', 'c', 'd']
-: drep
-: counts
-"#);
 }
