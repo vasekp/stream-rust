@@ -4,12 +4,12 @@ fn eval_unroll(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.as_stream()?;
-    Ok(Item::new_stream(Unroll{source: Rc::clone(stm), head: node.head.clone()}))
+    Ok(Item::new_stream(Unroll { source: Rc::clone(stm), head: node.head.clone() }))
 }
 
 struct Unroll {
     source: Rc<dyn Stream>,
-    head: Head
+    head: Head,
 }
 
 impl Describe for Unroll {
@@ -22,17 +22,13 @@ impl Describe for Unroll {
 
 impl Stream for Unroll {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        UnrollIter {
-            source: self.source.iter(),
-            cached: None,
-            node: self,
-        }.wrap()
+        UnrollIter { source: self.source.iter(), cached: None, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
         match self.source.len() {
             Length::Infinite | Length::Unknown => Length::Unknown,
-            _ => Length::UnknownFinite
+            _ => Length::UnknownFinite,
         }
     }
 }
@@ -47,7 +43,9 @@ impl PreIterator for UnrollIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         loop {
             check_stop!();
-            if let Some((item, count)) = &mut self.cached && !count.is_zero() {
+            if let Some((item, count)) = &mut self.cached
+                && !count.is_zero()
+            {
                 *count -= 1;
                 return Ok(Some(item.clone()));
             }
@@ -65,7 +63,9 @@ impl PreIterator for UnrollIter {
         let mut n = n.clone();
         loop {
             check_stop!();
-            if let Some((_, count)) = &mut self.cached && !count.is_zero() {
+            if let Some((_, count)) = &mut self.cached
+                && !count.is_zero()
+            {
                 if *count >= n {
                     *count -= n;
                     return Ok(None);
@@ -90,6 +90,7 @@ impl PreIterator for UnrollIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("unroll", eval_unroll, r#"
 Takes a stream of pairs `[item, count]` and returns a stream where each `item` repeats `count`-times.

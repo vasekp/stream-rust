@@ -7,7 +7,7 @@ fn eval_cat(node: &Node, env: &Env) -> SResult<Item> {
         [] => None,
         [Item::String(fill)] => Some(fill.listout()?),
         [Item::Char(fill)] => Some(vec![*fill]),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     Ok(Item::new_string(Cat {
         source: stm,
@@ -35,7 +35,7 @@ impl Stream<Char> for Cat {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         match &self.filler {
             None => CatIter::new(self).wrap(),
-            Some(fill) => RiffleCatIter::new_boxed(Rc::clone(fill), self)
+            Some(fill) => RiffleCatIter::new_boxed(Rc::clone(fill), self),
         }
     }
 
@@ -52,11 +52,7 @@ struct CatIter {
 
 impl CatIter {
     fn new(node: Rc<Cat>) -> Self {
-        CatIter {
-            outer: node.source.iter(),
-            inner: None,
-            node
-        }
+        CatIter { outer: node.source.iter(), inner: None, node }
     }
 }
 
@@ -67,13 +63,13 @@ impl PreIterator<Char> for CatIter {
             if let Some(iter) = &mut self.inner {
                 match iter.next()? {
                     Some(ch) => return Ok(Some(ch)),
-                    None => self.inner = None
+                    None => self.inner = None,
                 }
             }
             match iter_try!(self.outer.next()) {
                 Item::Char(ch) => return Ok(Some(ch)),
                 Item::String(s) => self.inner = Some(s.to_iter()),
-                item => return Err(StreamError::with_expr("expected string or character", &item))
+                item => return Err(StreamError::with_expr("expected string or character", &item)),
             }
         }
     }
@@ -86,14 +82,16 @@ impl PreIterator<Char> for CatIter {
                 return Ok(None);
             }
             if let Some(iter) = &mut self.inner {
-                let Some(m) = iter.advance(&n)? else { return Ok(None); };
+                let Some(m) = iter.advance(&n)? else {
+                    return Ok(None);
+                };
                 self.inner = None;
                 n = m;
             } else {
                 match self.outer.next()? {
                     Some(Item::String(s)) => self.inner = Some(s.to_iter()),
                     Some(_) => n -= 1,
-                    None => return Ok(Some(n))
+                    None => return Ok(Some(n)),
                 }
             }
         }
@@ -114,7 +112,7 @@ struct RiffleCatIter {
 
 enum RiffleCatState {
     Source,
-    Filler { next: Box<dyn SIterator<Char>> }
+    Filler { next: Box<dyn SIterator<Char>> },
 }
 
 impl RiffleCatIter {
@@ -125,7 +123,7 @@ impl RiffleCatIter {
             Ok(None) => EmptyString::iter(),
             Err(err) => iter_error(err, &node),
         };
-        RiffleCatIter{outer, inner, filler, state: RiffleCatState::Source, node}.wrap()
+        RiffleCatIter { outer, inner, filler, state: RiffleCatState::Source, node }.wrap()
     }
 
     fn next_cs(outer: &mut dyn SIterator) -> SResult<Option<Box<dyn SIterator<Char>>>> {
@@ -143,13 +141,13 @@ impl PreIterator<Char> for RiffleCatIter {
             match std::mem::replace(&mut self.state, RiffleCatState::Source) {
                 RiffleCatState::Source => {
                     let next = iter_try!(Self::next_cs(&mut *self.outer));
-                    self.state = RiffleCatState::Filler{next};
+                    self.state = RiffleCatState::Filler { next };
                     self.inner = self.filler.iter();
                 },
-                RiffleCatState::Filler{next} => {
+                RiffleCatState::Filler { next } => {
                     self.state = RiffleCatState::Source;
                     self.inner = next;
-                }
+                },
             }
         }
     }
@@ -160,7 +158,7 @@ impl PreIterator<Char> for RiffleCatIter {
             check_stop!();
             n = match self.inner.advance(&n) {
                 Ok(Some(n)) => n,
-                ret => return ret
+                ret => return ret,
             };
             if n.is_zero() {
                 return Ok(None);
@@ -171,13 +169,13 @@ impl PreIterator<Char> for RiffleCatIter {
                         None => return Ok(Some(n)),
                         Some(cs) => cs,
                     };
-                    self.state = RiffleCatState::Filler{next};
+                    self.state = RiffleCatState::Filler { next };
                     self.inner = self.filler.iter();
                 },
-                RiffleCatState::Filler{next} => {
+                RiffleCatState::Filler { next } => {
                     self.state = RiffleCatState::Source;
                     self.inner = next;
-                }
+                },
             }
         }
     }
@@ -187,6 +185,7 @@ impl PreIterator<Char> for RiffleCatIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("cat", eval_cat, r#"
 Concatenates a stream of strings or characters into a single string.

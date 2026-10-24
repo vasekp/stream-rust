@@ -24,13 +24,11 @@ pub struct Traced {
 
 impl Tracer for TextTracer {
     fn log(&mut self, ev: Event<'_>) {
-        if !self.tracing { return; }
+        if !self.tracing {
+            return;
+        }
         match ev {
-            Event::Enter(node) =>
-                self.rec.push(PreTraced {
-                    input: node.describe(),
-                    steps: Vec::new(),
-                }),
+            Event::Enter(node) => self.rec.push(PreTraced { input: node.describe(), steps: Vec::new() }),
             Event::Leave(res) => {
                 let pt = self.rec.pop().expect("unbalanced tracer calls");
                 let t = Traced {
@@ -40,9 +38,9 @@ impl Tracer for TextTracer {
                 };
                 match self.rec.last_mut() {
                     Some(tt) => tt.steps.push(t),
-                    None => Self::writeout(t)
+                    None => Self::writeout(t),
                 }
-            }
+            },
         }
     }
 }
@@ -62,7 +60,7 @@ impl TextTracer {
                     Self::writeout_level(tt, level + 1);
                 }
                 print!("{}{}", "  ".repeat(level + 1), Self::styled("=> "));
-            }
+            },
         }
         match t.output {
             Ok(out) => println!("{}", Self::styled(&out)),

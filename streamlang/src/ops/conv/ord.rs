@@ -18,8 +18,7 @@ fn eval_chr(node: &Node, env: &Env) -> SResult<Item> {
     let ch = match &node.args[..] {
         [] => env.alpha.chr(ix, CharCase::Indeterminate),
         [Item::Stream(stm)] => to_alpha(stm)?.chr(ix, CharCase::Indeterminate),
-        [Item::String(stm)] => Alphabet::try_from(stm.listout()?)?
-            .chr(ix, CharCase::Indeterminate),
+        [Item::String(stm)] => Alphabet::try_from(stm.listout()?)?.chr(ix, CharCase::Indeterminate),
         _ => return Err(StreamError::usage(&node.head)),
     };
     Ok(Item::new_char(ch))
@@ -39,7 +38,7 @@ fn eval_uniord(node: &Node, env: &Env) -> SResult<Item> {
     let ch = node.source_checked()?.as_char()?;
     match ch {
         Char::Single(c) => Ok(Item::new_number(*c as u32)),
-        Char::Multi(_) => Err("not in Unicode".into())
+        Char::Multi(_) => Err("not in Unicode".into()),
     }
 }
 
@@ -49,10 +48,11 @@ fn eval_unichr(node: &Node, env: &Env) -> SResult<Item> {
     let ix = node.source_checked()?.as_num()?.try_cast()?;
     match char::from_u32(ix) {
         Some(ch) => Ok(Item::new_char(ch)),
-        None => Err("invalid Unicode codepoint".into())
+        None => Err("invalid Unicode codepoint".into()),
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("ord", eval_ord, r#"
 Converts `char` to its order in the current alphabet, or one provided in the argument

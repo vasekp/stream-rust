@@ -30,31 +30,36 @@ impl Describe for PermStream {
 impl Stream for PermStream {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         PermIter {
-            self_len: self.len.as_ref()
-                .and_then(|x| u32::try_from(x).ok())
-                .map(factorial),
+            self_len: self.len.as_ref().and_then(|x| u32::try_from(x).ok()).map(factorial),
             order: vec![],
             num_read: UNumber::zero(),
             node: self,
-        }.wrap()
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
         match &self.len {
             Some(len) => match u32::try_from(len) {
                 Ok(x) => Length::Exact(factorial(x)),
-                _ => Length::UnknownFinite
+                _ => Length::UnknownFinite,
             },
-            None => Length::Infinite
+            None => Length::Infinite,
         }
     }
 }
 
 fn build_order(mut n: UNumber) -> Vec<usize> {
-    if n.is_zero() { return vec![]; } else { n -= 1; }
+    if n.is_zero() {
+        return vec![];
+    } else {
+        n -= 1;
+    }
     let mut vec = vec![0];
     for i in 2usize.. {
-        if n.is_zero() { break; }
+        if n.is_zero() {
+            break;
+        }
         let (div, rem) = n.div_rem(&UNumber::from(i));
         vec.push(usize::try_from(rem).unwrap()); // result of div must fit
         n = div;
@@ -83,41 +88,41 @@ impl PreIterator for PermIter {
             match self.order.windows(2).position(|s| s[0] < s[1]) {
                 Some(ix) => {
                     let y = self.order[ix + 1];
-                    let ix2 = self.order.iter().position(|x| x < &y)
-                        .unwrap(); // at least the directly preceding element is <
+                    let ix2 = self.order.iter().position(|x| x < &y).unwrap(); // at least the directly preceding element is <
                     self.order.swap(ix + 1, ix2);
                     self.order[0..=ix].sort();
                 },
                 None => {
                     let prev_len = self.order.len();
-                    if self.node.len.as_ref()
+                    if self
+                        .node
+                        .len
+                        .as_ref()
                         .and_then(|x| usize::try_from(x).ok())
-                        .is_some_and(|x| x == prev_len) {
-                            return Ok(None);
+                        .is_some_and(|x| x == prev_len)
+                    {
+                        return Ok(None);
                     }
                     self.order.push(self.order[0]);
                     self.order[0] = prev_len;
                     self.order[0..prev_len].sort();
-                }
+                },
             }
         }
-        let order = self.order.iter()
-            .map(|x| Item::new_number(x + 1))
-            .collect::<Vec<_>>();
+        let order = self.order.iter().map(|x| Item::new_number(x + 1)).collect::<Vec<_>>();
         self.num_read += 1;
-        Expr::from(Node {
-            head: "reorder".into(),
-            source: Some(Item::from(&self.node.source)),
-            args: order
-        }).eval_default().map(Option::Some)
+        Expr::from(Node { head: "reorder".into(), source: Some(Item::from(&self.node.source)), args: order })
+            .eval_default()
+            .map(Option::Some)
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.num_read += n;
         if let Some(len) = &self.self_len
-            && &self.num_read >= len {
-                return Ok(Some(&self.num_read - len));
-            }
+            && &self.num_read >= len
+        {
+            return Ok(Some(&self.num_read - len));
+        }
         self.order = build_order(self.num_read.clone());
         Ok(None)
     }
@@ -127,6 +132,7 @@ impl PreIterator for PermIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("perm", eval_perm, r#"
 A stream of all permutations of the input `stream`, listed in reverse lexicographical order.

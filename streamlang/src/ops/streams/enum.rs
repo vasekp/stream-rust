@@ -4,14 +4,13 @@ fn eval_enum(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
-    Ok(Item::new_stream(Enum{head: node.head.clone(), stream: stm}))
+    Ok(Item::new_stream(Enum { head: node.head.clone(), stream: stm }))
 }
 
 struct Enum {
     head: Head,
     stream: Rc<dyn Stream>,
 }
-
 
 impl Describe for Enum {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
@@ -23,7 +22,7 @@ impl Describe for Enum {
 
 impl Stream for Enum {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        EnumIter{iter: self.stream.iter(), index: UNumber::zero(), node: self}.wrap()
+        EnumIter { iter: self.stream.iter(), index: UNumber::zero(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -34,7 +33,7 @@ impl Stream for Enum {
 struct EnumIter {
     node: Rc<Enum>,
     iter: Box<dyn SIterator>,
-    index: UNumber
+    index: UNumber,
 }
 
 impl PreIterator for EnumIter {
@@ -54,6 +53,7 @@ impl PreIterator for EnumIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("enum", eval_enum, r#"
 Accompanies every item in `stream` with its position in it.

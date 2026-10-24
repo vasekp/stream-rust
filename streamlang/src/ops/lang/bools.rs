@@ -4,7 +4,9 @@ fn eval_and(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     for arg in &node.args {
         let val = arg.eval(env)?.to_bool()?;
-        if !val { return Ok(Item::Bool(false)); }
+        if !val {
+            return Ok(Item::Bool(false));
+        }
     }
     Ok(Item::Bool(true))
 }
@@ -13,7 +15,9 @@ fn eval_or(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     for arg in &node.args {
         let val = arg.eval(env)?.to_bool()?;
-        if val { return Ok(Item::Bool(true)); }
+        if val {
+            return Ok(Item::Bool(true));
+        }
     }
     Ok(Item::Bool(false))
 }
@@ -23,17 +27,21 @@ fn eval_not(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     match &node.args[..] {
         [Item::Bool(b)] => Ok(Item::Bool(!b)),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
 fn eval_xor(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
-    let res = node.args.iter().try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))?;
+    let res = node
+        .args
+        .iter()
+        .try_fold(false, |acc, arg| arg.to_bool().map(|v| acc ^ v))?;
     Ok(Item::Bool(res))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("and", eval_and, r#"
 Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`, `false` otherwise.

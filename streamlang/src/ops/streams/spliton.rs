@@ -5,17 +5,17 @@ fn eval_spliton(node: &Node, env: &Env) -> SResult<Item> {
     node.check_args_nonempty()?;
     match node.source {
         Some(Item::String(_)) => {
-            let sep = node.args.iter()
+            let sep = node
+                .args
+                .iter()
                 .map(Item::to_char_vec_nonempty)
                 .map(|res| res.map(LiteralString::from))
                 .collect::<SResult<Vec<_>>>()?;
             let Some(Item::String(stm)) = node.source else { unreachable!() };
-            Ok(Item::new_stream(SplitString{head: node.head, source: stm, sep}))
+            Ok(Item::new_stream(SplitString { head: node.head, source: stm, sep }))
         },
-        Some(Item::Stream(stm)) => {
-            Ok(Item::new_stream(SplitStream{head: node.head, source: stm, sep: node.args}))
-        },
-        _ => Err(StreamError::usage(&node.head))
+        Some(Item::Stream(stm)) => Ok(Item::new_stream(SplitStream { head: node.head, source: stm, sep: node.args })),
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -42,7 +42,7 @@ impl Describe for SplitString {
 
 impl Stream for SplitString {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        SplitStringIter{source: self.source.iter(), done: false, node: self}.wrap()
+        SplitStringIter { source: self.source.iter(), done: false, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -61,7 +61,9 @@ impl PreIterator for SplitStringIter {
             cache.push(item?);
             for sep in &self.node.sep {
                 let sep = sep.as_slice();
-                if sep.len() > cache.len() { continue; }
+                if sep.len() > cache.len() {
+                    continue;
+                }
                 let bkpt = cache.len() - sep.len();
                 if cache[bkpt..] == sep[..] {
                     cache.truncate(bkpt);
@@ -101,7 +103,7 @@ impl Describe for SplitStream {
 
 impl Stream for SplitStream {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        SplitStreamIter{source: self.source.iter(), done: false, node: self}.wrap()
+        SplitStreamIter { source: self.source.iter(), done: false, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -134,6 +136,7 @@ impl PreIterator for SplitStreamIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("spliton", eval_spliton, r#"
 Splits `string` on occurrences of any of the `delimiter`s, which can each be a character or a substring.

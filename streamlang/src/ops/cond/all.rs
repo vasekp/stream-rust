@@ -6,7 +6,9 @@ fn eval_all(node: &Node, env: &Env) -> SResult<Item> {
     for item in stm.iter().transposed() {
         check_stop!();
         let val = cond.with_source(item?.into())?.eval(env)?.to_bool()?;
-        if !val { return Ok(Item::Bool(false)); }
+        if !val {
+            return Ok(Item::Bool(false));
+        }
     }
     Ok(Item::Bool(true))
 }
@@ -17,11 +19,14 @@ fn eval_some(node: &Node, env: &Env) -> SResult<Item> {
     for item in stm.iter().transposed() {
         check_stop!();
         let val = cond.with_source(item?.into())?.eval(env)?.to_bool()?;
-        if val { return Ok(Item::Bool(true)); }
+        if val {
+            return Ok(Item::Bool(true));
+        }
     }
     Ok(Item::Bool(false))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["all", "each"], eval_all, r#"
 Evaluates to `true` if `x.cond` is `true` for every item `x` of `stream`, `false` otherwise.

@@ -8,11 +8,7 @@ fn eval_replace(node: &Node, env: &Env) -> SResult<Item> {
         [Item::Number(ix), item] => (ix.try_cast_within(UNumber::one()..)?, item.clone()),
         _ => return Err(StreamError::usage(&node.head)),
     };
-    Ok(Item::new_stream(Replace{
-        head: node.head.clone(),
-        source: Rc::clone(stm),
-        index, item,
-    }))
+    Ok(Item::new_stream(Replace { head: node.head.clone(), source: Rc::clone(stm), index, item }))
 }
 
 struct Replace {
@@ -34,11 +30,7 @@ impl Describe for Replace {
 
 impl Stream for Replace {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        ReplaceIter{
-            index: UNumber::one(),
-            iter: self.source.iter(),
-            node: self
-        }.wrap()
+        ReplaceIter { index: UNumber::one(), iter: self.source.iter(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -72,6 +64,7 @@ impl PreIterator for ReplaceIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("replace", eval_replace, r#"
 Returns `stream` with item at position `index` replaced by `item`.

@@ -8,17 +8,15 @@ fn eval_sort(node: &Node, env: &Env) -> SResult<Item> {
         [] => (None, source.listout()?, None),
         [expr] => {
             let func = expr.as_func()?;
-            let (keys, vals): (Vec<_>, Vec<_>) = source.listout_with(|item|
-                func.with_source(Expr::from(&item))?
-                    .eval(env)
-                    .map(|key| (key, item)))?
+            let (keys, vals): (Vec<_>, Vec<_>) = source
+                .listout_with(|item| func.with_source(Expr::from(&item))?.eval(env).map(|key| (key, item)))?
                 .into_iter()
                 .unzip();
             (Some(Rc::clone(func)), vals, Some(keys))
         },
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
-    let data = SortData{vals, keys, alpha: Rc::clone(&env.alpha)};
+    let data = SortData { vals, keys, alpha: Rc::clone(&env.alpha) };
     let mut heap = SortHeap::new(data)?;
     if heap.len() <= CACHE_LEN {
         let mut sorted = Vec::with_capacity(heap.len());
@@ -27,13 +25,7 @@ fn eval_sort(node: &Node, env: &Env) -> SResult<Item> {
         }
         Ok(Item::new_stream(List::from(sorted)))
     } else {
-        Ok(Item::new_stream(Sorted{
-            head: node.head.clone(),
-            source,
-            func,
-            env: env.clone(),
-            heap
-        }))
+        Ok(Item::new_stream(Sorted { head: node.head.clone(), source, func, env: env.clone(), heap }))
     }
 }
 
@@ -62,7 +54,7 @@ struct SortHeap {
 impl SortHeap {
     pub fn new(data: SortData) -> SResult<Self> {
         let size = data.vals.len();
-        let mut heap = Self{data: Rc::new(data), indices: (0..size).collect::<Vec<_>>()};
+        let mut heap = Self { data: Rc::new(data), indices: (0..size).collect::<Vec<_>>() };
         for pos in (0..size / 2).rev() {
             heap.sift_down(pos)?;
         }
@@ -86,7 +78,8 @@ impl SortHeap {
                 return Ok(());
             }
             let right = left + 1;
-            let child = if right < len && self.data.less(self.indices[right], self.indices[left])? { right } else { left };
+            let child =
+                if right < len && self.data.less(self.indices[right], self.indices[left])? { right } else { left };
             if !self.data.less(self.indices[child], self.indices[pos])? {
                 return Ok(());
             }
@@ -96,7 +89,9 @@ impl SortHeap {
     }
 
     fn pop_index(&mut self) -> SResult<Option<usize>> {
-        let Some(last) = self.indices.pop() else { return Ok(None); };
+        let Some(last) = self.indices.pop() else {
+            return Ok(None);
+        };
         if self.indices.is_empty() {
             return Ok(Some(last));
         }
@@ -138,7 +133,7 @@ impl Describe for Sorted {
 
 impl Stream for Sorted {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        SortedIter{heap: self.heap.clone(), node: self}.wrap()
+        SortedIter { heap: self.heap.clone(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -166,7 +161,7 @@ impl PreIterator for SortedIter {
                 let remain = n - self.heap.len();
                 self.heap.clear();
                 Ok(Some(remain))
-            }
+            },
         }
     }
 
@@ -175,6 +170,7 @@ impl PreIterator for SortedIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("sort", eval_sort, r#"
 Sorts the input `stream`. Arrays of numbers, characters, strings, or streams can be sorted.

@@ -45,6 +45,7 @@ fn eval_modpow(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("mod", eval_mod, r#"
 Computes the residue of `number` modulo `modulus`.

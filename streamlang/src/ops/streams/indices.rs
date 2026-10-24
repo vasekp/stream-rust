@@ -6,35 +6,25 @@ fn eval_indices(node: &Node, env: &Env) -> SResult<Item> {
     match &node.source {
         Some(Item::Stream(stm)) => {
             let queries = node.args.clone();
-            Ok(Item::new_stream(Indices{
-                head: node.head.clone(),
-                source: Rc::clone(stm),
-                queries
-            }))
+            Ok(Item::new_stream(Indices { head: node.head.clone(), source: Rc::clone(stm), queries }))
         },
         Some(Item::String(stm)) => {
-            let queries = node.args.iter()
-                .map(Item::to_char)
-                .collect::<SResult<Vec<_>>>()?;
-            Ok(Item::new_stream(Indices{
-                head: node.head.clone(),
-                source: Rc::clone(stm),
-                queries
-            }))
+            let queries = node.args.iter().map(Item::to_char).collect::<SResult<Vec<_>>>()?;
+            Ok(Item::new_stream(Indices { head: node.head.clone(), source: Rc::clone(stm), queries }))
         },
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
 struct Indices<I: ItemType> {
     source: Rc<dyn Stream<I>>,
     queries: Vec<I>,
-    head: Head
+    head: Head,
 }
 
 impl<I: ItemType> Stream for Indices<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        IndicesIter{iter: self.source.iter(), index: 0u32.into(), node: self}.wrap()
+        IndicesIter { iter: self.source.iter(), index: 0u32.into(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -76,6 +66,7 @@ impl<I: ItemType> PreIterator for IndicesIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["indices", "positions"], eval_indices, r#"
 Returns all indices in which an `item` appears in `stream`, or in which `char` appears in `string`.

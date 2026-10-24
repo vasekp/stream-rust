@@ -3,19 +3,19 @@ use crate::base::*;
 fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
     let cond = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
-        Item::Stream(stm) => Ok(Item::new_stream(Split{
+        Item::Stream(stm) => Ok(Item::new_stream(Split {
             cond: Rc::clone(cond),
             source: stm,
             head: node.head.clone(),
             env: env.clone(),
         })),
-        Item::String(stm) => Ok(Item::new_stream(Split{
+        Item::String(stm) => Ok(Item::new_stream(Split {
             cond: Rc::clone(cond),
             source: stm,
             head: node.head.clone(),
             env: env.clone(),
         })),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -23,7 +23,7 @@ struct Split<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
     cond: Rc<Node>,
-    env: Env
+    env: Env,
 }
 
 struct SplitIter<I: ItemType> {
@@ -43,7 +43,7 @@ impl<I: ItemType> Describe for Split<I> {
 
 impl<I: ItemType> Stream for Split<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        SplitIter{source: self.source.iter(), done: false, node: self}.wrap()
+        SplitIter { source: self.source.iter(), done: false, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -60,7 +60,9 @@ impl<I: ItemType> PreIterator for SplitIter<I> {
         for item in self.source.transposed() {
             check_stop!();
             let item = item?;
-            let cond = self.node.cond
+            let cond = self
+                .node
+                .cond
                 .with_source(item.to_item().into())?
                 .eval(&self.node.env)?
                 .to_bool()?;
@@ -78,6 +80,7 @@ impl<I: ItemType> PreIterator for SplitIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("split", eval_split, r#"
 Splits `stream` to substreams by evaluating `cond` on its items. Every time the condition is `true`, the item is dropped and a new substream starts.

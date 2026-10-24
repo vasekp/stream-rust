@@ -8,14 +8,8 @@ fn eval_self(node: &Node, env: &Env) -> SResult<Item> {
         None => None,
         Some(source) => Some(source.eval(env)?.to_stream()?),
     };
-    Ok(Item::new_stream(SelfRef{
-        pre,
-        head: node.head.clone(),
-        body: Rc::clone(body),
-        env: env.clone()
-    }))
+    Ok(Item::new_stream(SelfRef { pre, head: node.head.clone(), body: Rc::clone(body), env: env.clone() }))
 }
-
 
 struct SelfRef {
     head: Head,
@@ -27,10 +21,9 @@ struct SelfRef {
 impl SelfRef {
     fn eval_real(&self) -> SResult<(Rc<dyn Stream>, Rc<CacheHistory>)> {
         let hist = Rc::new(RefCell::new(Vec::new()));
-        let stm = self.body
-            .with_source(Expr::new_stream(BackRef {
-                parent: Rc::downgrade(&hist)
-            }))?
+        let stm = self
+            .body
+            .with_source(Expr::new_stream(BackRef { parent: Rc::downgrade(&hist) }))?
             .eval(&self.env)?
             .to_stream()?;
         Ok((stm, hist))
@@ -50,19 +43,10 @@ impl Stream for SelfRef {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let (stm, hist) = match self.eval_real() {
             Ok((stm, hist)) => (stm, hist),
-            Err(err) => return iter_error(err, &self)
+            Err(err) => return iter_error(err, &self),
         };
-        let iter = if let Some(vec) = &self.pre {
-            vec.iter()
-        } else {
-            Box::new(std::iter::empty())
-        };
-        SelfRefIter {
-            pre: iter,
-            inner: stm.to_iter(),
-            hist,
-            node: self,
-        }.wrap()
+        let iter = if let Some(vec) = &self.pre { vec.iter() } else { Box::new(std::iter::empty()) };
+        SelfRefIter { pre: iter, inner: stm.to_iter(), hist, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -81,11 +65,7 @@ struct SelfRefIter {
 
 impl PreIterator for SelfRefIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let item = if let Some(item) = self.pre.next()? {
-            item.clone()
-        } else {
-            iter_try!(self.inner.next())
-        };
+        let item = if let Some(item) = self.pre.next()? { item.clone() } else { iter_try!(self.inner.next()) };
         self.hist.borrow_mut().push(item.clone());
         Ok(Some(item))
     }
@@ -96,20 +76,20 @@ impl PreIterator for SelfRefIter {
 }
 
 struct BackRef {
-    parent: Weak<CacheHistory>
+    parent: Weak<CacheHistory>,
 }
 
 struct BackRefIter {
     node: Rc<BackRef>,
     vec: Rc<CacheHistory>,
-    pos: usize
+    pos: usize,
 }
 
 impl Stream for BackRef {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         match Weak::upgrade(&self.parent) {
-            Some(rc) => BackRefIter{vec: rc, pos: 0, node: self}.wrap(),
-            None => iter_error("back-reference detached from cache", &self)
+            Some(rc) => BackRefIter { vec: rc, pos: 0, node: self }.wrap(),
+            None => iter_error("back-reference detached from cache", &self),
         }
     }
 
@@ -139,6 +119,7 @@ impl PreIterator for BackRefIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("self", eval_self, r#"
 A stream evaluating `func` on its own output, which is put in place of `#`.

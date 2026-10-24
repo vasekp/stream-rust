@@ -12,12 +12,15 @@ fn eval_dot(node: &Node, env: &Env) -> SResult<Item> {
     let mut total = Number::zero();
     loop {
         check_stop!();
-        let (Some(x), Some(y)) = (it1.next()?, it2.next()?) else { break; };
+        let (Some(x), Some(y)) = (it1.next()?, it2.next()?) else {
+            break;
+        };
         total += x.as_num()? * y.as_num()?;
     }
     Ok(Item::new_number(total))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("dot", eval_dot, r#"
 Evaluates the dot product of two streams of numbers.

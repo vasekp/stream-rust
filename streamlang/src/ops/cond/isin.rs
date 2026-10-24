@@ -16,8 +16,7 @@ fn eval_isin(node: &Node, env: &Env) -> SResult<Item> {
 fn eval_iswithin(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     match (node.source_checked()?, &node.args[..]) {
-        (Item::Number(x), [Item::Number(min), Item::Number(max)])
-            => Ok(Item::Bool(x >= min && x <= max)),
+        (Item::Number(x), [Item::Number(min), Item::Number(max)]) => Ok(Item::Bool(x >= min && x <= max)),
         (Item::Char(x), [Item::Char(min), Item::Char(max)]) => {
             let ox = env.alpha.ord(x)?;
             let omin = env.alpha.ord(min)?;
@@ -28,6 +27,7 @@ fn eval_iswithin(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["isin", "in", "element"], eval_isin, r#"
 Evaluates to `true` if `item` appears in `stream`, `false` otherwise.

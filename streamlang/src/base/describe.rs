@@ -17,14 +17,10 @@ macro_rules! impl_describe_signed {
     ($t: ty) => {
         impl Describe for $t {
             fn describe_inner(&self, prec: u32, _env: &Env) -> String {
-                if prec > 0 && self.is_negative() {
-                    format!("({})", self)
-                } else {
-                    self.to_string()
-                }
+                if prec > 0 && self.is_negative() { format!("({})", self) } else { self.to_string() }
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_describe_unsigned {
@@ -34,7 +30,7 @@ macro_rules! impl_describe_unsigned {
                 self.to_string()
             }
         }
-    }
+    };
 }
 
 impl_describe_signed!(Number);

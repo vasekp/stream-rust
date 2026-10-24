@@ -17,11 +17,14 @@ fn eval_collect(node: &Node, env: &Env) -> SResult<Item> {
         // not found
         map.push((new_key, vec![item]));
     }
-    Ok(Item::from(map.into_iter()
-        .map(|(key, val)| Item::from([key, Item::from(val)]))
-        .collect::<Vec<_>>()))
+    Ok(Item::from(
+        map.into_iter()
+            .map(|(key, val)| Item::from([key, Item::from(val)]))
+            .collect::<Vec<_>>(),
+    ))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("collect", eval_collect, r#"
 Groups the elements `x` of `stream` agreeing in the value of `x.func`.

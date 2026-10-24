@@ -31,6 +31,7 @@ fn eval_clamp(node: &Node, env: &Env) -> SResult<Item> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("floor", eval_floor, r#"
 If number `x` is smaller than `min`, evaluates to `min`, otherwise to `x`.

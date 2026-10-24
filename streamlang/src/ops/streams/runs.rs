@@ -2,26 +2,20 @@ use crate::base::*;
 
 fn eval_runs(node: &Node, env: &Env) -> SResult<Item> {
     match (node.source_checked()?.eval(env)?, &node.args[..]) {
-        (Item::Stream(stm), []) =>
-            Ok(Item::new_stream(Runs{
-                head: node.head.clone(),
-                source: Rc::clone(&stm),
-            })),
-        (Item::Stream(stm), [expr]) =>
-            Ok(Item::new_stream(RunsBy{
-                head: node.head.clone(),
-                source: Rc::clone(&stm),
-                func: Rc::clone(expr.as_func()?),
-                env: env.clone(),
-            })),
-        (Item::String(stm), [expr]) =>
-            Ok(Item::new_stream(RunsBy{
-                head: node.head.clone(),
-                source: Rc::clone(&stm),
-                func: Rc::clone(expr.as_func()?),
-                env: env.clone(),
-            })),
-        _ => Err(StreamError::usage(&node.head))
+        (Item::Stream(stm), []) => Ok(Item::new_stream(Runs { head: node.head.clone(), source: Rc::clone(&stm) })),
+        (Item::Stream(stm), [expr]) => Ok(Item::new_stream(RunsBy {
+            head: node.head.clone(),
+            source: Rc::clone(&stm),
+            func: Rc::clone(expr.as_func()?),
+            env: env.clone(),
+        })),
+        (Item::String(stm), [expr]) => Ok(Item::new_stream(RunsBy {
+            head: node.head.clone(),
+            source: Rc::clone(&stm),
+            func: Rc::clone(expr.as_func()?),
+            env: env.clone(),
+        })),
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -40,7 +34,7 @@ impl Describe for Runs {
 
 impl Stream for Runs {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        RunsIter{iter: self.source.iter(), last: None, done: false, node: self}.wrap()
+        RunsIter { iter: self.source.iter(), last: None, done: false, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -68,15 +62,17 @@ impl PreIterator for RunsIter {
         loop {
             check_stop!();
             match self.iter.next()? {
-                Some(item) => if !item.try_eq(&curr_item)? {
-                    self.last = Some(item);
-                    break;
+                Some(item) => {
+                    if !item.try_eq(&curr_item)? {
+                        self.last = Some(item);
+                        break;
+                    }
                 },
                 None => {
                     self.last = None;
                     self.done = true;
                     break;
-                }
+                },
             }
             count += 1;
         }
@@ -107,7 +103,7 @@ impl<I: ItemType> Describe for RunsBy<I> {
 impl<I: ItemType> Stream for RunsBy<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let iter = self.source.iter();
-        RunsByIter{iter, cached: None, done: false, node: self}.wrap()
+        RunsByIter { iter, cached: None, done: false, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -133,7 +129,9 @@ impl<I: ItemType> PreIterator for RunsByIter<I> {
             key
         } else {
             let val = iter_try!(self.iter.next());
-            let key = self.node.func
+            let key = self
+                .node
+                .func
                 .with_source(val.to_item().into())?
                 .eval(&self.node.env)?;
             vals.push(val);
@@ -141,7 +139,9 @@ impl<I: ItemType> PreIterator for RunsByIter<I> {
         };
         while let Some(val) = self.iter.next()? {
             check_stop!();
-            let new_key = self.node.func
+            let new_key = self
+                .node
+                .func
                 .with_source(val.to_item().into())?
                 .eval(&self.node.env)?;
             if new_key.try_eq(&key)? {
@@ -161,6 +161,7 @@ impl<I: ItemType> PreIterator for RunsByIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["runs", "reps"], eval_runs, r#"
 Replaces every chain of repeated items in `stream` by a pair `[item, count]`.

@@ -18,7 +18,7 @@ fn find_fn(head: &Head) -> CritFunc {
         ">>" => |ord| ord == Ordering::Greater,
         "<<=" => |ord| ord != Ordering::Greater,
         ">>=" => |ord| ord != Ordering::Less,
-        op => panic!("lex-cmp: unhandled op '{op}'")
+        op => panic!("lex-cmp: unhandled op '{op}'"),
     }
 }
 
@@ -34,6 +34,7 @@ fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> SResult<b
     Ok(true)
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("<<", eval_lex, r#"
 Lexical comparison: Evaluates to `true` if each `item` compares before the next.

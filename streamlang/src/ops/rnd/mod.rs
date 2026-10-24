@@ -15,9 +15,13 @@ fn eval_rnd(node: &Node, env: &Env) -> SResult<Item> {
     Hash::hash(&b':', &mut hasher);
     let digits = len.to_be_bytes();
     let top_digit = digits[0];
-    let max_quot = if digits.len() == 1 { u8::MAX / top_digit }
-        else if top_digit == u8::MAX { 1 }
-        else { u8::MAX / (top_digit + 1) };
+    let max_quot = if digits.len() == 1 {
+        u8::MAX / top_digit
+    } else if top_digit == u8::MAX {
+        1
+    } else {
+        u8::MAX / (top_digit + 1)
+    };
     Ok(Item::new_stream(RndStream {
         source: stm,
         head: node.head.clone(),
@@ -25,7 +29,7 @@ fn eval_rnd(node: &Node, env: &Env) -> SResult<Item> {
         hasher,
         num_digits: digits.len(),
         cutoff: max_quot * &len,
-        len
+        len,
     }))
 }
 
@@ -104,6 +108,7 @@ impl PreIterator for RndIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("rnd", eval_rnd, r#"
 An infinite stream of uniformly random samples from the input `stream`.

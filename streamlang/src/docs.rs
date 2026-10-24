@@ -24,7 +24,9 @@ impl From<&'static str> for DocRecord {
     fn from(input: &'static str) -> DocRecord {
         let mut rec = DocRecord::default();
         for line in input.lines() {
-            if line.is_empty() { continue; }
+            if line.is_empty() {
+                continue;
+            }
             match &line[0..1] {
                 "=" => rec.usage.push(line[1..].trim()),
                 ">" => rec.examples.push(parse_example(line[1..].trim())),
@@ -39,23 +41,25 @@ impl From<&'static str> for DocRecord {
 }
 
 fn parse_example(line: &'static str) -> Example {
-    let (first, second) = line.split_once(" => ").expect("{line} must respect the format 'input => output'");
+    let (first, second) = line
+        .split_once(" => ")
+        .expect("{line} must respect the format 'input => output'");
     let (input, width) = match first.split_once(" : ") {
         Some((input, width)) => (input, Some(width.parse().expect("error parsing width specification in {first}"))),
-        None => (first, None)
+        None => (first, None),
     };
     let (result, comment) = match second.split_once(" ; ") {
         Some((r, c)) => (r, Some(c)),
         None => (second, None),
     };
     let output = if &result[0..1] == "!" { Err(&result[1..]) } else { Ok(result) };
-    Example{input, width, output, comment}
+    Example { input, width, output, comment }
 }
 
 #[derive(Debug, PartialEq)]
 pub enum RefStringItem<'line> {
     Base(&'line str),
-    Ref(&'line str)
+    Ref(&'line str),
 }
 
 #[derive(Debug, PartialEq)]
@@ -76,7 +80,7 @@ pub fn parse_line<'line>(line: &'line str, sym: &'line str) -> Vec<LinePart<'lin
                     part.content.push(RefStringItem::Base(&line[last_pos..pos]));
                 }
                 last_pos = pos + 1;
-                while iter.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() { }
+                while iter.next_if(|(_, c)| c.is_ascii_alphanumeric()).is_some() {}
                 let pos = iter.peek().map(|(pos, _)| *pos).unwrap_or_else(|| line.len());
                 if pos == last_pos {
                     part.content.push(RefStringItem::Base(sym));
@@ -95,7 +99,7 @@ pub fn parse_line<'line>(line: &'line str, sym: &'line str) -> Vec<LinePart<'lin
                 }
                 part.is_code = !part.is_code;
             },
-            _ => ()
+            _ => (),
         }
     }
     if last_pos < line.len() {
@@ -114,7 +118,7 @@ impl LinePart<'_> {
         let mut ret = String::new();
         for item in &self.content {
             match item {
-                RefStringItem::Base(s) | RefStringItem::Ref(s) => ret += s
+                RefStringItem::Base(s) | RefStringItem::Ref(s) => ret += s,
             }
         }
         ret
@@ -124,23 +128,39 @@ impl LinePart<'_> {
 #[cfg(test)]
 #[test]
 fn test_parse_line() {
-    assert_eq!(parse_line("abc?def", "sym"), vec![
-        LinePart { content: vec![ RefStringItem::Base("abc"), RefStringItem::Ref("def") ], is_code: false },
-    ]);
+    assert_eq!(parse_line("abc?def", "sym"), vec![LinePart {
+        content: vec![RefStringItem::Base("abc"), RefStringItem::Ref("def")],
+        is_code: false
+    },]);
     assert_eq!(parse_line("abc?def`ghi?jkl`mno", "sym"), vec![
-        LinePart { content: vec![ RefStringItem::Base("abc"), RefStringItem::Ref("def") ], is_code: false },
-        LinePart { content: vec![ RefStringItem::Base("ghi"), RefStringItem::Ref("jkl") ], is_code: true },
-        LinePart { content: vec![ RefStringItem::Base("mno") ], is_code: false },
+        LinePart {
+            content: vec![RefStringItem::Base("abc"), RefStringItem::Ref("def")],
+            is_code: false
+        },
+        LinePart {
+            content: vec![RefStringItem::Base("ghi"), RefStringItem::Ref("jkl")],
+            is_code: true
+        },
+        LinePart { content: vec![RefStringItem::Base("mno")], is_code: false },
     ]);
     assert_eq!(parse_line("?abc def`?ghi jkl`", "sym"), vec![
-        LinePart { content: vec![ RefStringItem::Ref("abc"), RefStringItem::Base(" def") ], is_code: false },
-        LinePart { content: vec![ RefStringItem::Ref("ghi"), RefStringItem::Base(" jkl") ], is_code: true },
+        LinePart {
+            content: vec![RefStringItem::Ref("abc"), RefStringItem::Base(" def")],
+            is_code: false
+        },
+        LinePart {
+            content: vec![RefStringItem::Ref("ghi"), RefStringItem::Base(" jkl")],
+            is_code: true
+        },
     ]);
     assert_eq!(parse_line("`abc``def`ghi``jkl?", "sym"), vec![
-        LinePart { content: vec![ RefStringItem::Base("abc") ], is_code: true },
-        LinePart { content: vec![ RefStringItem::Base("def") ], is_code: true },
-        LinePart { content: vec![ RefStringItem::Base("ghi") ], is_code: false },
-        LinePart { content: vec![ RefStringItem::Base("jkl"), RefStringItem::Base("sym") ], is_code: false },
+        LinePart { content: vec![RefStringItem::Base("abc")], is_code: true },
+        LinePart { content: vec![RefStringItem::Base("def")], is_code: true },
+        LinePart { content: vec![RefStringItem::Base("ghi")], is_code: false },
+        LinePart {
+            content: vec![RefStringItem::Base("jkl"), RefStringItem::Base("sym")],
+            is_code: false
+        },
     ]);
 }
 

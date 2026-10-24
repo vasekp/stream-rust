@@ -7,7 +7,7 @@ fn eval_ddup(node: &Node, env: &Env) -> SResult<Item> {
         [expr] => Some((Rc::clone(expr.as_func()?), env.clone())),
         _ => return Err(StreamError::usage(&node.head)),
     };
-    Ok(Item::new_stream(DDup{head: node.head.clone(), source: stm, func}))
+    Ok(Item::new_stream(DDup { head: node.head.clone(), source: stm, func }))
 }
 
 struct DDup {
@@ -27,7 +27,7 @@ impl Describe for DDup {
 
 impl Stream for DDup {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        DDupIter{iter: self.source.iter(), seen: vec![], node: self}.wrap()
+        DDupIter { iter: self.source.iter(), seen: vec![], node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -38,7 +38,7 @@ impl Stream for DDup {
 struct DDupIter {
     node: Rc<DDup>,
     iter: Box<dyn SIterator>,
-    seen: Vec<Item>
+    seen: Vec<Item>,
 }
 
 impl PreIterator for DDupIter {
@@ -65,6 +65,7 @@ impl PreIterator for DDupIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["ddup", "uniq"], eval_ddup, r#"
 Keeps only the first appearance of any repeated item in `stream`.

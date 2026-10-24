@@ -5,7 +5,7 @@ fn eval_greedy(node: &Node, env: &Env) -> SResult<Item> {
     let num = node.source_checked()?.as_num()?;
     let stm = node.only_arg_checked()?.as_stream()?;
     let num = num.try_unsign()?;
-    Ok(Item::new_stream(Greedy{num, stm: Rc::clone(stm), head: node.head.clone()}))
+    Ok(Item::new_stream(Greedy { num, stm: Rc::clone(stm), head: node.head.clone() }))
 }
 
 struct Greedy {
@@ -16,7 +16,7 @@ struct Greedy {
 
 impl Stream for Greedy {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        GreedyIter{x: self.num.clone(), iter: self.stm.iter(), node: self}.wrap()
+        GreedyIter { x: self.num.clone(), iter: self.stm.iter(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -58,11 +58,7 @@ impl PreIterator for GreedyIter {
             }
             n -= 1;
         }
-        if n.is_zero() {
-            Ok(None)
-        } else {
-            self.iter.advance(&n)
-        }
+        if n.is_zero() { Ok(None) } else { self.iter.advance(&n) }
     }
 
     fn origin(&self) -> &Rc<Greedy> {
@@ -70,6 +66,7 @@ impl PreIterator for GreedyIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("greedy", eval_greedy, r#"
 Decomposes a nonnegative `number` into multiples of items of `stream` using the greedy algorithm.

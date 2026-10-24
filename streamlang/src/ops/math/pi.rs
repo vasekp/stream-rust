@@ -6,9 +6,9 @@ fn eval_pi(node: &Node, env: &Env) -> SResult<Item> {
     let radix = match &node.args[..] {
         [] => None,
         [Item::Number(radix)] => Some(radix.try_cast_within(2u32..)?),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
-    Ok(Item::new_stream(PiStream{head: node.head.clone(), radix}))
+    Ok(Item::new_stream(PiStream { head: node.head.clone(), radix }))
 }
 
 #[derive(Clone)]
@@ -38,7 +38,7 @@ impl Describe for PiStream {
 struct PiIter {
     node: Rc<PiStream>,
     inner: PiIterInner,
-    cached: Vec<u32>
+    cached: Vec<u32>,
 }
 
 impl PiIter {
@@ -63,7 +63,12 @@ impl PreIterator for PiIter {
             if carry {
                 for x in self.cached.iter_mut().rev() {
                     *x += 1;
-                    if *x == self.inner.radix { *x = 0; continue; } else { break; }
+                    if *x == self.inner.radix {
+                        *x = 0;
+                        continue;
+                    } else {
+                        break;
+                    }
                 }
             }
             self.cached.push(n);
@@ -82,7 +87,7 @@ impl PreIterator for PiIter {
                 self.inner.advance(n)?;
                 Ok(None)
             },
-            _ => Err("numerical overflow".into())
+            _ => Err("numerical overflow".into()),
         }
     }
 
@@ -99,11 +104,7 @@ struct PiIterInner {
 
 impl PiIterInner {
     fn new(radix: u32) -> PiIterInner {
-        PiIterInner {
-            radix,
-            power: 2u32.into(),
-            cdigits: vec![2u32]
-        }
+        PiIterInner { radix, power: 2u32.into(), cdigits: vec![2u32] }
     }
 
     fn next(&mut self) -> SResult<(u32, bool)> {
@@ -118,7 +119,9 @@ impl PiIterInner {
             let num = if ix == 0 { UNumber::one() } else { UNumber::from(ix) };
             let den = if ix == 0 { UNumber::from(self.radix) } else { &num * 2u32 + 1u32 };
             let (quot, rem) = carry.div_rem_euclid(&den);
-            self.cdigits[ix] = rem.try_into().expect("pi (next): remainder of div_euclid should fit into u32");
+            self.cdigits[ix] = rem
+                .try_into()
+                .expect("pi (next): remainder of div_euclid should fit into u32");
             carry = quot * num;
         }
         let (div, rem) = carry.div_rem_euclid(&UNumber::from(self.radix));
@@ -135,7 +138,9 @@ impl PiIterInner {
             let num = if ix == 0 { UNumber::one() } else { UNumber::from(ix) };
             let den = if ix == 0 { UNumber::from(self.radix) } else { &num * 2u32 + 1u32 };
             let (quot, rem) = carry.div_rem_euclid(&den);
-            self.cdigits[ix] = rem.try_into().expect("pi (advance): remainder of div_euclid should fit into u32");
+            self.cdigits[ix] = rem
+                .try_into()
+                .expect("pi (advance): remainder of div_euclid should fit into u32");
             carry = quot * num;
         }
         self.power *= &mul;
@@ -143,6 +148,7 @@ impl PiIterInner {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("pi", eval_pi, r#"
 A stream of the digits of π (pi). If `base` is omitted, it defaults to 10 (decimal).

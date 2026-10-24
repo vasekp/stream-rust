@@ -8,7 +8,7 @@ fn eval_divisors(node: &Node, env: &Env) -> SResult<Item> {
         return Err(StreamError::usage(&node.head));
     };
     let x = x.try_cast_within(UNumber::one()..)?;
-    Ok(Item::new_stream(Divisors{x, head: node.head.clone()}))
+    Ok(Item::new_stream(Divisors { x, head: node.head.clone() }))
 }
 
 struct Divisors {
@@ -28,9 +28,7 @@ impl Stream for Divisors {
 
 impl Describe for Divisors {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new(&self.head, env)
-            .set_source(&self.x)
-            .finish(prec)
+        DescribeBuilder::new(&self.head, env).set_source(&self.x).finish(prec)
     }
 }
 
@@ -44,12 +42,12 @@ struct DivisorsIter {
 
 impl DivisorsIter {
     fn new(node: Rc<Divisors>) -> Self {
-        Self{
+        Self {
             x: node.x.clone(),
             iter: PrimesIter::new(),
             prime: UNumber::zero(),
             factors: Vec::new(),
-            node
+            node,
         }
     }
 }
@@ -111,6 +109,7 @@ impl PreIterator for DivisorsIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("divisors", eval_divisors, r#"
 All integer divisors of `number` in unspecified order.

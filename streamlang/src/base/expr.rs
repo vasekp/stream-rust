@@ -34,52 +34,48 @@ impl Expr {
     }
 
     pub fn new_node(head: impl Into<Head>, source: Option<Expr>, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Rc::new(Node{head: head.into(), source, args}))
+        Expr::Eval(Rc::new(Node { head: head.into(), source, args }))
     }
 
     /// Creates an operator expression. Operands are provided as `args`.
     pub fn new_op(op: &str, args: Vec<Expr>) -> Expr {
-        Expr::Eval(Rc::new(Node{head: Head::Oper(intern(op)), source: None, args}))
+        Expr::Eval(Rc::new(Node { head: Head::Oper(intern(op)), source: None, args }))
     }
 
     pub fn as_node(&self) -> SResult<&Rc<Node>> {
         match self {
             Self::Eval(node) => Ok(node),
-            _ => Err("expected expression".into())
+            _ => Err("expected expression".into()),
         }
     }
 
     pub fn as_func(&self) -> SResult<&Rc<Node>> {
         match self {
             Self::Eval(node) if node.source.is_none() => Ok(node),
-            _ => Err("expected function (expression with empty source)".into())
+            _ => Err("expected function (expression with empty source)".into()),
         }
     }
 
     /// Makes the output of this expression an input to a [`Link`].
     pub fn chain(self, next: Link) -> Expr {
-        Expr::Eval(Rc::new(Node{
-            head: next.head,
-            source: Some(self),
-            args: next.args
-        }))
+        Expr::Eval(Rc::new(Node { head: next.head, source: Some(self), args: next.args }))
     }
 
     pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> SResult<Expr> {
         match self {
             Expr::Eval(node) => Ok(Expr::Eval(Rc::new(node.apply(source, args)?))),
-            Expr::Repl(Subst::Input(index)) =>
-                match index {
-                    None => source.as_ref()
-                        .ok_or(StreamError::with_expr("no source provided", self))
-                        .map(|item| item.clone().into()),
-                    Some(ix) => args.get(ix - 1)
-                        .ok_or(StreamError::with_expr("no such input", self))
-                        .map(|item| item.clone().into()),
-                },
-            Expr::Repl(Subst::InputList) =>
-                Ok(Expr::new_stream(List::from(args.to_owned()))),
-            _ => Ok(self.clone())
+            Expr::Repl(Subst::Input(index)) => match index {
+                None => source
+                    .as_ref()
+                    .ok_or(StreamError::with_expr("no source provided", self))
+                    .map(|item| item.clone().into()),
+                Some(ix) => args
+                    .get(ix - 1)
+                    .ok_or(StreamError::with_expr("no such input", self))
+                    .map(|item| item.clone().into()),
+            },
+            Expr::Repl(Subst::InputList) => Ok(Expr::new_stream(List::from(args.to_owned()))),
+            _ => Ok(self.clone()),
         }
     }
 
@@ -94,8 +90,9 @@ impl Expr {
         match self {
             Expr::Imm(item) => Ok(item.clone()),
             Expr::Eval(node) => node.eval(env),
-            Expr::Repl(_) => Err(StreamError::with_expr("out of context", self))
-        }.map_err(|expr| expr.wrap(self))
+            Expr::Repl(_) => Err(StreamError::with_expr("out of context", self)),
+        }
+        .map_err(|expr| expr.wrap(self))
     }
 }
 
@@ -117,7 +114,9 @@ impl From<&Rc<Node>> for Expr {
     }
 }
 
-impl<T> From<T> for Expr where T: Into<Node> {
+impl<T> From<T> for Expr
+where T: Into<Node>
+{
     fn from(item: T) -> Expr {
         Expr::Eval(Rc::new(item.into()))
     }
@@ -132,7 +131,6 @@ impl Describe for Expr {
         }
     }
 }
-
 
 /// The expression type for placeholder symbols like `#1`, `%`, etc.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -163,7 +161,9 @@ impl ToString for Subst {
 
 #[allow(unused_macros)]
 macro_rules! eval {
-    ($input:expr) => { crate::parser::parse($input).unwrap().eval_default().unwrap() }
+    ($input:expr) => {
+        crate::parser::parse($input).unwrap().eval_default().unwrap()
+    };
 }
 
 #[allow(unused)]

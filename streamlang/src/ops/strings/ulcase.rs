@@ -5,12 +5,12 @@ fn eval_ulcase(node: &Node, env: &Env) -> SResult<Item> {
     let func = match node.head.as_str() {
         Some("ucase") => Char::to_uppercase,
         Some("lcase") => Char::to_lowercase,
-        _ => panic!("ulcase: unhandled head {:?}", node.head)
+        _ => panic!("ulcase: unhandled head {:?}", node.head),
     };
     match node.source_checked()?.eval(env)? {
         Item::Char(ch) => Ok(Item::Char(func(&ch))),
-        Item::String(s) => Ok(Item::new_string(ULCase{head: node.head.clone(), source: s, func})),
-        _ => Err(StreamError::usage(&node.head))
+        Item::String(s) => Ok(Item::new_string(ULCase { head: node.head.clone(), source: s, func })),
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -39,6 +39,7 @@ impl Stream<Char> for ULCase {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("ucase", eval_ulcase, r#"
 Converts `char` or `string` to uppercase.

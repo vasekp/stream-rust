@@ -22,7 +22,7 @@ pub(crate) fn op_rules(op: &str) -> std::result::Result<(u32, bool), &'static st
         "*" => Ok((9, true)),
         "/" => Ok((9, false)),
         "^" => Ok((10, false)),
-        _ => Err("undefined operator")
+        _ => Err("undefined operator"),
     }
 }
 

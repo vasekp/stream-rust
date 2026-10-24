@@ -3,15 +3,17 @@ use crate::base::*;
 fn eval_riffle(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.to_stream()?;
-    if stm.is_empty()? { return Ok(Item::empty_stream()); }
+    if stm.is_empty()? {
+        return Ok(Item::empty_stream());
+    }
     let filler = node.only_arg_checked()?;
-    Ok(Item::new_stream(Riffle{head: node.head.clone(), source: stm, filler: filler.clone()}))
+    Ok(Item::new_stream(Riffle { head: node.head.clone(), source: stm, filler: filler.clone() }))
 }
 
 struct Riffle {
     head: Head,
     source: Rc<dyn Stream>,
-    filler: Item
+    filler: Item,
 }
 
 impl Describe for Riffle {
@@ -38,16 +40,17 @@ impl Stream for Riffle {
         RiffleIter {
             source: source_iter,
             filler: filler_iter,
-            which: RiffleState::Source{next: item},
+            which: RiffleState::Source { next: item },
             node: self,
-        }.wrap()
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
         let len1 = self.source.len();
         let len2 = match &self.filler {
             Item::Stream(stm) => stm.len(),
-            _ => Length::Infinite
+            _ => Length::Infinite,
         };
         // len1 == 0 handled in eval()
         Length::intersection(len1.map(|u| 2u32 * u - 1u32), len2.map(|v| 2u32 * v + 1u32))
@@ -58,26 +61,26 @@ struct RiffleIter {
     node: Rc<Riffle>,
     source: Box<dyn SIterator>,
     filler: Box<dyn SIterator>,
-    which: RiffleState
+    which: RiffleState,
 }
 
 enum RiffleState {
-    Source{next: Item},
-    Filler
+    Source { next: Item },
+    Filler,
 }
 
 impl PreIterator for RiffleIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         use RiffleState::*;
         match std::mem::replace(&mut self.which, RiffleState::Filler) {
-            Source{next} => {
+            Source { next } => {
                 //self.which = Filler; happens in mem::replace
                 Ok(Some(next))
             },
             Filler => {
-                self.which = Source{next: iter_try!(self.source.next())};
+                self.which = Source { next: iter_try!(self.source.next()) };
                 self.filler.next()
-            }
+            },
         }
     }
 
@@ -86,7 +89,7 @@ impl PreIterator for RiffleIter {
             return Ok(None);
         }
         let mut n = n.clone();
-        if matches!(&self.which, RiffleState::Source{..}) {
+        if matches!(&self.which, RiffleState::Source { .. }) {
             self.next()?; // can't fail
             n -= 1;
         }
@@ -101,11 +104,7 @@ impl PreIterator for RiffleIter {
         if let Some(rem) = rem {
             Ok(Some(2 * rem + odd))
         } else {
-            if odd == 1 && self.next()?.is_none() {
-                Ok(Some(1u32.into()))
-            } else {
-                Ok(None)
-            }
+            if odd == 1 && self.next()?.is_none() { Ok(Some(1u32.into())) } else { Ok(None) }
         }
     }
 
@@ -114,6 +113,7 @@ impl PreIterator for RiffleIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("riffle", eval_riffle, r#"
 Interleaves `stream` with copies of `filler`.

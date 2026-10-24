@@ -24,8 +24,7 @@ fn eval_endswith(node: &Node, env: &Env) -> SResult<Item> {
     let pfx_len = postfix.len();
     let mut iter = stm.iter();
     match stm.len() {
-        Length::Exact(len) | Length::AtMost(len) if len < UNumber::from(pfx_len)
-            => Ok(Item::Bool(false)),
+        Length::Exact(len) | Length::AtMost(len) if len < UNumber::from(pfx_len) => Ok(Item::Bool(false)),
         Length::Exact(len) => {
             iter.advance(&(len - pfx_len))?;
             for (c1, c2) in iter.transposed().zip(postfix.iter()) {
@@ -47,10 +46,11 @@ fn eval_endswith(node: &Node, env: &Env) -> SResult<Item> {
                 vec.push_back(item);
             }
             Ok(Item::Bool(vec == postfix))
-        }
+        },
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("startswith", eval_startswith, r#"
 Evaluates to `true` if `string` starts with `prefix`, `false` otherwise.

@@ -4,6 +4,7 @@ fn eval_assign(_node: &Node, _env: &Env) -> SResult<Item> {
     Err("assignment not possible here, use == for comparisons".into())
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("=", eval_assign, r#"
 Assigns `value` to `name`.

@@ -3,10 +3,11 @@ use crate::base::*;
 fn eval_select(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let cond = node.only_arg_checked()?.as_func()?;
-    Ok(Item::new_stream(Select{
+    Ok(Item::new_stream(Select {
         cond: Rc::clone(cond),
         head: node.head.clone(),
-        source: stm, env: env.clone(),
+        source: stm,
+        env: env.clone(),
     }))
 }
 
@@ -14,7 +15,7 @@ struct Select {
     head: Head,
     source: Rc<dyn Stream>,
     cond: Rc<Node>,
-    env: Env
+    env: Env,
 }
 
 struct SelectIter {
@@ -33,7 +34,7 @@ impl Describe for Select {
 
 impl Stream for Select {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        SelectIter{source: self.source.iter(), node: self}.wrap()
+        SelectIter { source: self.source.iter(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -46,7 +47,9 @@ impl PreIterator for SelectIter {
         loop {
             check_stop!();
             let source = iter_try!(self.source.next());
-            let cond = self.node.cond
+            let cond = self
+                .node
+                .cond
                 .with_source(Expr::from(&source))?
                 .eval(&self.node.env)?
                 .to_bool()?;
@@ -61,6 +64,7 @@ impl PreIterator for SelectIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["select", "filter"], eval_select, r#"
 Evaluates `cond` on every item of `stream` and returns only thise items for which it gave `true`.

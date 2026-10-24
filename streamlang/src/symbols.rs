@@ -27,8 +27,7 @@ impl Symbols {
         }
     }
 
-    pub(crate) fn insert(&mut self, names: impl AsSlice<&'static str>,
-            ctor: Constructor, doc_string: &'static str) {
+    pub(crate) fn insert(&mut self, names: impl AsSlice<&'static str>, ctor: Constructor, doc_string: &'static str) {
         let mut docs = DocRecord::from(doc_string);
         debug_assert!(docs.symbols.is_empty());
         docs.symbols = names.as_slice().to_vec();
@@ -56,11 +55,15 @@ pub(crate) trait AsSlice<T> {
 }
 
 impl<T> AsSlice<T> for T {
-    fn as_slice(&self) -> &[T] { std::slice::from_ref(self) }
+    fn as_slice(&self) -> &[T] {
+        std::slice::from_ref(self)
+    }
 }
 
 impl<T, const N: usize> AsSlice<T> for [T; N] {
-    fn as_slice(&self) -> &[T] { self }
+    fn as_slice(&self) -> &[T] {
+        self
+    }
 }
 
 pub fn find_docs(name: &str) -> Option<&DocRecord> {
@@ -81,8 +84,12 @@ mod tests {
         let mut res = Ok(());
         let mut visited = HashSet::new();
         for (sym, rec) in &SYMBOLS.0 {
-            if !visited.insert(Arc::as_ptr(rec)) { continue; }
-            let (_, Some(docs)) = &**rec else { continue; };
+            if !visited.insert(Arc::as_ptr(rec)) {
+                continue;
+            }
+            let (_, Some(docs)) = &**rec else {
+                continue;
+            };
             if docs.desc.is_empty() {
                 println!("{sym}: empty description");
                 res = Err(DocError);
@@ -143,10 +150,16 @@ mod tests {
         use crate::docs::RefStringItem;
         let mut res = Ok(());
         for part in docs::parse_line(line, sym) {
-            for rsym in part.content.iter()
-                .filter_map(|item| match item { RefStringItem::Ref(rsym) => Some(rsym), _ => None })
-                .filter(|rsym| **rsym != sym) {
-                    res = res.and(check_ref(rsym, sym));
+            for rsym in part
+                .content
+                .iter()
+                .filter_map(|item| match item {
+                    RefStringItem::Ref(rsym) => Some(rsym),
+                    _ => None,
+                })
+                .filter(|rsym| **rsym != sym)
+            {
+                res = res.and(check_ref(rsym, sym));
             }
         }
         res

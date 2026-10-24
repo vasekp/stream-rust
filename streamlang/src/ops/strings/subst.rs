@@ -7,11 +7,13 @@ fn eval_subst(node: &Node, env: &Env) -> SResult<Item> {
     match (node.source_checked()?, &node.args[..]) {
         (Item::String(stm), [orig, repl]) => {
             let (orig, repl) = match (orig, repl) {
-                (Item::Char(_) | Item::String(_), Item::Char(_) | Item::String(_))
-                    => (vec![orig.to_char_vec()?], vec![repl.to_char_vec()?]),
-                (Item::Stream(s1), Item::Stream(s2))
-                    => (s1.listout_with(|item| item.to_char_vec())?, s2.listout_with(|item| item.to_char_vec())?),
-                _ => return Err(StreamError::usage(&node.head))
+                (Item::Char(_) | Item::String(_), Item::Char(_) | Item::String(_)) => {
+                    (vec![orig.to_char_vec()?], vec![repl.to_char_vec()?])
+                },
+                (Item::Stream(s1), Item::Stream(s2)) => {
+                    (s1.listout_with(|item| item.to_char_vec())?, s2.listout_with(|item| item.to_char_vec())?)
+                },
+                _ => return Err(StreamError::usage(&node.head)),
             };
             if orig.len() != repl.len() {
                 return Err("the replacements lists must be of same length".into());
@@ -20,11 +22,21 @@ fn eval_subst(node: &Node, env: &Env) -> SResult<Item> {
                 return Err("the sought string can't be empty".into());
             }
             let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
-            Ok(Item::new_string(StringSubst { head: node.head.clone(), source: Rc::clone(stm), orig, repl, longest }))
+            Ok(Item::new_string(StringSubst {
+                head: node.head.clone(),
+                source: Rc::clone(stm),
+                orig,
+                repl,
+                longest,
+            }))
         },
-        (Item::Stream(stm), [orig, repl]) =>
-            Ok(Item::new_stream(StreamSubst { head: node.head.clone(), source: Rc::clone(stm), orig: orig.clone(), repl: repl.clone() })),
-        _ => Err(StreamError::usage(&node.head))
+        (Item::Stream(stm), [orig, repl]) => Ok(Item::new_stream(StreamSubst {
+            head: node.head.clone(),
+            source: Rc::clone(stm),
+            orig: orig.clone(),
+            repl: repl.clone(),
+        })),
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -55,9 +67,8 @@ impl Stream<Char> for StringSubst {
 
     fn len(&self) -> Length {
         match self.source.len() {
-            Length::Exact(_) | Length::AtMost(_) | Length::UnknownFinite => 
-                Length::UnknownFinite,
-            Length::Infinite | Length::Unknown => Length::Unknown
+            Length::Exact(_) | Length::AtMost(_) | Length::UnknownFinite => Length::UnknownFinite,
+            Length::Infinite | Length::Unknown => Length::Unknown,
         }
     }
 }
@@ -71,12 +82,7 @@ struct StringSubstIter {
 
 impl StringSubstIter {
     fn new(node: Rc<StringSubst>) -> Self {
-        StringSubstIter {
-            source: node.source.iter(),
-            cache: VecDeque::new(),
-            queued: None,
-            node
-        }
+        StringSubstIter { source: node.source.iter(), cache: VecDeque::new(), queued: None, node }
     }
 }
 
@@ -94,19 +100,28 @@ impl PreIterator<Char> for StringSubstIter {
                 }
             }
             if self.cache.len() == self.node.longest
-                && let Some(item) = self.cache.pop_front() {
-                    return Ok(Some(item));
-                }
+                && let Some(item) = self.cache.pop_front()
+            {
+                return Ok(Some(item));
+            }
             if let Some(item) = self.source.next()? {
                 self.cache.push_back(item);
                 'a: for (patt, repl) in self.node.orig.iter().zip(self.node.repl.iter()) {
-                    if patt.len() > self.cache.len() { continue; }
+                    if patt.len() > self.cache.len() {
+                        continue;
+                    }
                     /* Match found */
                     let bkpt = self.cache.len() - patt.len();
                     if self.cache.range(bkpt..).eq(patt) {
                         self.cache.truncate(bkpt);
-                        self.queued = Some((Box::new(std::mem::take(&mut self.cache).into_iter()
-                                .chain(repl.clone().into_iter())), false));
+                        self.queued = Some((
+                            Box::new(
+                                std::mem::take(&mut self.cache)
+                                    .into_iter()
+                                    .chain(repl.clone().into_iter()),
+                            ),
+                            false,
+                        ));
                         break 'a;
                     }
                 }
@@ -142,9 +157,11 @@ impl Stream for StreamSubst {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let orig = self.orig.clone();
         let repl = self.repl.clone();
-        Box::new(SMap::new(&self.source,
+        Box::new(SMap::new(
+            &self.source,
             move |item| if item.try_eq(&orig)? { Ok(repl.clone()) } else { Ok(item) },
-            &self))
+            &self,
+        ))
     }
 
     fn len(&self) -> Length {
@@ -152,6 +169,7 @@ impl Stream for StreamSubst {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["subst", "subs"], eval_subst, r#"
 Substs occurrences of `patt` by `repl`, or occurrences of `pattM` by `replM`.

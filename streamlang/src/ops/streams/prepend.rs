@@ -6,22 +6,21 @@ fn eval_prepend(node: &Node, env: &Env) -> SResult<Item> {
     node.check_args_nonempty()?;
     match node.source_checked()? {
         Item::Stream(stm) => {
-            let elems = node.args.iter()
-                .cloned()
-                .map(Joinable::Single)
-                .collect::<Vec<_>>();
-            Ok(Item::new_stream(Prepend{source: Rc::clone(stm), elems, head: node.head}))
+            let elems = node.args.iter().cloned().map(Joinable::Single).collect::<Vec<_>>();
+            Ok(Item::new_stream(Prepend { source: Rc::clone(stm), elems, head: node.head }))
         },
         Item::String(stm) => {
-            let elems = node.args.iter()
+            let elems = node
+                .args
+                .iter()
                 .cloned()
                 .map(|item| match item {
                     Item::Char(ch) => Joinable::Single(ch),
                     Item::String(stm) => Joinable::Stream(stm),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 })
                 .collect::<Vec<_>>();
-            Ok(Item::new_string(Prepend{source: Rc::clone(stm), elems, head: node.head}))
+            Ok(Item::new_string(Prepend { source: Rc::clone(stm), elems, head: node.head }))
         },
         _ => Err(StreamError::usage(&node.head)),
     }
@@ -30,7 +29,7 @@ fn eval_prepend(node: &Node, env: &Env) -> SResult<Item> {
 struct Prepend<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    elems: Vec<Joinable<I>>
+    elems: Vec<Joinable<I>>,
 }
 
 impl<I: ItemType> Describe for Prepend<I> {
@@ -52,14 +51,15 @@ impl<I: ItemType> Stream<I> for Prepend<I> {
             }
         }
         iters.push(self.source.iter());
-        JoinIter{iters, node: self}.wrap()
+        JoinIter { iters, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        self.elems.iter()
+        self.elems
+            .iter()
             .map(|item| match item {
                 Joinable::Single(_) => Length::Exact(UNumber::one()),
-                Joinable::Stream(stm) => stm.len()
+                Joinable::Stream(stm) => stm.len(),
             })
             .fold(self.source.len(), |acc, e| acc + e)
     }
@@ -70,22 +70,21 @@ fn eval_append(node: &Node, env: &Env) -> SResult<Item> {
     node.check_args_nonempty()?;
     match node.source_checked()? {
         Item::Stream(stm) => {
-            let elems = node.args.iter()
-                .cloned()
-                .map(Joinable::Single)
-                .collect::<Vec<_>>();
-            Ok(Item::new_stream(Append{source: Rc::clone(stm), elems, head: node.head}))
+            let elems = node.args.iter().cloned().map(Joinable::Single).collect::<Vec<_>>();
+            Ok(Item::new_stream(Append { source: Rc::clone(stm), elems, head: node.head }))
         },
         Item::String(stm) => {
-            let elems = node.args.iter()
+            let elems = node
+                .args
+                .iter()
                 .cloned()
                 .map(|item| match item {
                     Item::Char(ch) => Joinable::Single(ch),
                     Item::String(stm) => Joinable::Stream(stm),
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 })
                 .collect::<Vec<_>>();
-            Ok(Item::new_string(Append{source: Rc::clone(stm), elems, head: node.head}))
+            Ok(Item::new_string(Append { source: Rc::clone(stm), elems, head: node.head }))
         },
         _ => Err(StreamError::usage(&node.head)),
     }
@@ -94,7 +93,7 @@ fn eval_append(node: &Node, env: &Env) -> SResult<Item> {
 struct Append<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    elems: Vec<Joinable<I>>
+    elems: Vec<Joinable<I>>,
 }
 
 impl<I: ItemType> Describe for Append<I> {
@@ -116,19 +115,21 @@ impl<I: ItemType> Stream<I> for Append<I> {
                 Joinable::Single(item) => iters.push(Box::new(std::iter::once(Ok(item.clone())))),
             }
         }
-        JoinIter{iters, node: self}.wrap()
+        JoinIter { iters, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        self.elems.iter()
+        self.elems
+            .iter()
             .map(|item| match item {
                 Joinable::Single(_) => Length::Exact(UNumber::one()),
-                Joinable::Stream(stm) => stm.len()
+                Joinable::Stream(stm) => stm.len(),
             })
             .fold(self.source.len(), |acc, e| acc + e)
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("prepend", eval_prepend, r#"
 Prepends `item`s (in order of the arguments) to `stream` or `string`.

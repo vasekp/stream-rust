@@ -4,29 +4,29 @@ fn eval_alpha(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     match &node.args[..] {
         [] => {
-            let vec = env.alpha.iter()
-                .map(Item::Char)
-                .collect::<Vec<_>>();
+            let vec = env.alpha.iter().map(Item::Char).collect::<Vec<_>>();
             Ok(Item::from(vec))
         },
         [alpha, body] => {
             let alpha = match alpha.eval(env)? {
-                Item::Stream(stm) => stm.listout()?
+                Item::Stream(stm) => stm
+                    .listout()?
                     .into_iter()
                     .map(Item::into_char)
                     .collect::<SResult<Vec<_>>>()?
                     .try_into()?,
                 Item::String(stm) => stm.listout()?.try_into()?,
-                _ => return Err(StreamError::usage(&node.head))
+                _ => return Err(StreamError::usage(&node.head)),
             };
             let mut new_env = env.clone();
             new_env.alpha = Rc::new(alpha);
             body.eval(&new_env)
         },
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("alpha", eval_alpha, r#"
 Without arguments: returns the current alphabet as a stream of characters.

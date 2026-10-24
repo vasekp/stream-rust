@@ -4,7 +4,8 @@ fn eval_transpose(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let source = node.source_checked()?;
-    let streams = source.to_stream()?
+    let streams = source
+        .to_stream()?
         .listout()?
         .into_iter()
         .map(Item::into_stream)
@@ -12,11 +13,7 @@ fn eval_transpose(node: &Node, env: &Env) -> SResult<Item> {
     if streams.is_empty() {
         Ok(Item::empty_stream())
     } else {
-        Ok(Item::new_stream(Transpose{
-            head: node.head.clone(),
-            source: source.clone(),
-            streams,
-        }))
+        Ok(Item::new_stream(Transpose { head: node.head.clone(), source: source.clone(), streams }))
     }
 }
 
@@ -36,15 +33,13 @@ impl Describe for Transpose {
 
 impl Stream for Transpose {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        let iters = self.streams
-            .iter()
-            .map(<dyn Stream>::iter)
-            .collect();
-        TransposeIter{iters, node: self}.wrap()
+        let iters = self.streams.iter().map(<dyn Stream>::iter).collect();
+        TransposeIter { iters, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        self.streams.iter()
+        self.streams
+            .iter()
             .map(|s| s.len())
             .reduce(Length::intersection)
             .unwrap_or(Length::empty())
@@ -58,7 +53,9 @@ struct TransposeIter {
 
 impl PreIterator for TransposeIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let vec = self.iters.iter_mut()
+        let vec = self
+            .iters
+            .iter_mut()
             .map(|iter| iter.next())
             .collect::<SResult<Option<Vec<_>>>>()?;
         Ok(vec.map(Item::from))
@@ -83,6 +80,7 @@ impl PreIterator for TransposeIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["transpose", "trans"], eval_transpose, r#"
 Takes a stream of streams and returns another, transposed.

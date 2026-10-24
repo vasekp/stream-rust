@@ -7,12 +7,12 @@ fn eval_droplast(node: &Node, env: &Env) -> SResult<Item> {
     let count = match &node.args[..] {
         [] => 1u32.into(),
         [Item::Number(count)] => count.try_unsign()?,
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     match node.source_checked()? {
         Item::Stream(stm) => droplast_impl(&node.head, stm, count),
         Item::String(stm) => droplast_impl(&node.head, stm, count),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -23,21 +23,16 @@ fn droplast_impl<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumb
     match stm.len() {
         Length::Exact(len) if len < count => Ok(I::empty()),
         Length::Exact(len) => {
-            Ok(Item::from(Rc::new(KnownLen {
-                head: head.clone(),
-                source: Rc::clone(stm),
-                ceiling: len - &count,
-                count
-            }) as Rc<dyn Stream<I>>))
+            Ok(Item::from(
+                Rc::new(KnownLen { head: head.clone(), source: Rc::clone(stm), ceiling: len - &count, count })
+                    as Rc<dyn Stream<I>>,
+            ))
         },
         Length::Infinite => Err("stream is infinite".into()),
-        _ => {
-            Ok(Item::from(Rc::new(DropLast {
-                head: head.clone(),
-                source: Rc::clone(stm),
-                count: count.try_cast()?,
-            }) as Rc<dyn Stream<I>>))
-        }
+        _ => Ok(Item::from(
+            Rc::new(DropLast { head: head.clone(), source: Rc::clone(stm), count: count.try_cast()? })
+                as Rc<dyn Stream<I>>,
+        )),
     }
 }
 
@@ -50,11 +45,7 @@ struct KnownLen<I: ItemType> {
 
 impl<I: ItemType> Stream<I> for KnownLen<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
-        KnownLenIter{
-            source: self.source.iter(),
-            count_rem: self.ceiling.clone(),
-            node: self
-        }.wrap()
+        KnownLenIter { source: self.source.iter(), count_rem: self.ceiling.clone(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -74,7 +65,7 @@ impl<I: ItemType> Describe for KnownLen<I> {
 struct KnownLenIter<I: ItemType> {
     node: Rc<KnownLen<I>>,
     source: Box<dyn SIterator<I>>,
-    count_rem: UNumber
+    count_rem: UNumber,
 }
 
 impl<I: ItemType> PreIterator<I> for KnownLenIter<I> {
@@ -102,7 +93,6 @@ impl<I: ItemType> PreIterator<I> for KnownLenIter<I> {
     }
 }
 
-
 struct DropLast<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
@@ -115,13 +105,9 @@ impl<I: ItemType> Stream<I> for DropLast<I> {
     }
 
     fn len(&self) -> Length {
-        self.source.len().map(|len|
-            if len < &UNumber::from(self.count) {
-                UNumber::zero()
-            } else {
-                len - self.count
-            }
-        )
+        self.source
+            .len()
+            .map(|len| if len < &UNumber::from(self.count) { UNumber::zero() } else { len - self.count })
     }
 }
 
@@ -152,14 +138,13 @@ impl<I: ItemType> DropLastIter<I> {
                 Err(err) => return iter_error(err, &node),
             }
         }
-        Self{source: iter, queue, node}.wrap()
+        Self { source: iter, queue, node }.wrap()
     }
 }
 
 impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
     fn next(&mut self) -> SResult<Option<I>> {
-        let next = self.queue.pop_front()
-            .expect("queue should be full by precondition");
+        let next = self.queue.pop_front().expect("queue should be full by precondition");
         self.queue.push_back(iter_try!(self.source.next()));
         Ok(Some(next))
     }
@@ -173,9 +158,9 @@ impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
             _ => {
                 self.queue.clear();
                 n - self.node.count
-            }
+            },
         };
-        for _ in self.queue.len() .. self.node.count {
+        for _ in self.queue.len()..self.node.count {
             match self.source.next()? {
                 Some(item) => self.queue.push_back(item),
                 None => return Ok(Some(n + (self.node.count - self.queue.len()))),
@@ -189,6 +174,7 @@ impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("droplast", eval_droplast, r#"
 Skips last `count` items of `stream` ot last `count` characters of `string`.

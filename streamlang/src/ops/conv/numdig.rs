@@ -8,14 +8,14 @@ fn eval_numdig(node: &Node, env: &Env) -> SResult<Item> {
         [] => (10, None),
         [Item::Number(radix)] => (radix.try_cast_within(2u32..)?, None),
         [Item::Number(radix), Item::Number(minw)] => (radix.try_cast_within(2u32..)?, Some(minw.try_unsign()?)),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     let digits = Digits::new(num.try_unsign()?, radix)
         .map(Item::new_number)
         .collect::<Vec<_>>();
     if let Some(minw) = minw {
-        Expr::from(Item::from(digits)).chain(Link::new("padleft",
-                vec![Expr::new_number(minw), Expr::new_number(0)]))
+        Expr::from(Item::from(digits))
+            .chain(Link::new("padleft", vec![Expr::new_number(minw), Expr::new_number(0)]))
             .eval(env)
     } else {
         Ok(Item::from(digits))
@@ -28,7 +28,7 @@ fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
     let radix = match &node.args[..] {
         [] => 10,
         [Item::Number(radix)] => radix.try_cast_within(2u32..)?,
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     let vec = stm.listout_with(|item| item.into_num()?.try_cast_within(0..radix))?;
     if vec.is_empty() {
@@ -42,6 +42,7 @@ fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_number(num))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("numdig", eval_numdig, r#"
 Converts `number` to a stream of digits (most significant first).

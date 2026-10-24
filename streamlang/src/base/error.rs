@@ -21,16 +21,18 @@ pub enum Reason {
 
 impl StreamError {
     pub fn with_expr(reason: impl Into<Reason>, expr: &impl ToExpr) -> Self {
-        Self{reason: reason.into(), trace: vec![expr.to_expr()]}
+        Self { reason: reason.into(), trace: vec![expr.to_expr()] }
     }
 
     pub fn usage(head: &Head) -> Self {
-        let head_str = head.as_str().expect("StreamError::usage should be called with Head::Symbol or Head::Oper");
-        Self{reason: Reason::Usage(head_str), trace: vec![]}
+        let head_str = head
+            .as_str()
+            .expect("StreamError::usage should be called with Head::Symbol or Head::Oper");
+        Self { reason: Reason::Usage(head_str), trace: vec![] }
     }
 
     pub fn interrupt() -> Self {
-        Self{reason: Reason::Interrupt, trace: vec![]}
+        Self { reason: Reason::Interrupt, trace: vec![] }
     }
 
     pub(crate) fn wrap(mut self, expr: &impl ToExpr) -> Self {
@@ -47,11 +49,11 @@ impl StreamError {
     }
 }
 
-impl std::error::Error for StreamError { }
+impl std::error::Error for StreamError {}
 
 impl<T: Into<Reason>> From<T> for StreamError {
     fn from(reason: T) -> Self {
-        Self{reason: reason.into(), trace: vec![]}
+        Self { reason: reason.into(), trace: vec![] }
     }
 }
 
@@ -75,7 +77,7 @@ impl Display for Reason {
         match self {
             Self::Generic(s) => write!(f, "{s}"),
             Self::Usage(sym) => write!(f, "invalid call pattern: see ?{sym}"),
-            Self::Interrupt => write!(f, "interrupted")
+            Self::Interrupt => write!(f, "interrupted"),
         }
     }
 }
@@ -125,7 +127,6 @@ impl ToExpr for Char {
         Expr::Imm(Item::from(*self))
     }
 }
-
 
 macro_rules! check_stop {
     () => {

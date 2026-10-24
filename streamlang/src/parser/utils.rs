@@ -7,7 +7,8 @@ pub fn parse_string(slice: &str) -> Result<String, ParseError<'_>> {
     let mut it = inner.char_indices().peekable();
     while let Some((index, c)) = it.next() {
         if c == '\\' {
-            match it.next().unwrap().1 { // \ is guaranteed to be followed by at least 1 char
+            match it.next().unwrap().1 {
+                // \ is guaranteed to be followed by at least 1 char
                 d @ ('\\' | '\'' | '"') => ret.push(d),
                 'n' => ret.push('\n'),
                 'r' => ret.push('\r'),
@@ -15,10 +16,10 @@ pub fn parse_string(slice: &str) -> Result<String, ParseError<'_>> {
                 _ => {
                     let end_index = match it.peek() {
                         Some(&(pos, _)) => pos,
-                        None => inner.len()
+                        None => inner.len(),
                     };
                     return Err(ParseError::new("invalid escape sequence", &inner[index..end_index]));
-                }
+                },
             }
         } else {
             ret.push(c);
@@ -39,7 +40,8 @@ pub fn parse_char(slice: &str) -> Result<Char, ParseError<'_>> {
 pub fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
     match slice.split('_').collect::<Vec<_>>()[..] {
         [base_str, value_str] if !value_str.is_empty() => {
-            let base = base_str.parse::<u32>()
+            let base = base_str
+                .parse::<u32>()
                 .map_err(|_| ParseError::new("invalid base", base_str))?;
             if !matches!(base, 2..=36) {
                 return Err(ParseError::new("invalid base", base_str));
@@ -47,13 +49,12 @@ pub fn parse_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
             Number::from_str_radix(value_str, base)
                 .map_err(|_| ParseError::new(format!("invalid digits in base {base}"), value_str))
         },
-        _ => Err(ParseError::new("malformed number", slice))
+        _ => Err(ParseError::new("malformed number", slice)),
     }
 }
 
 pub fn parse_c_basenum(slice: &str) -> Result<Number, ParseError<'_>> {
-    Number::from_str_with_radix_prefix(slice)
-        .map_err(|_| ParseError::new("invalid digits".to_string(), slice))
+    Number::from_str_with_radix_prefix(slice).map_err(|_| ParseError::new("invalid digits".to_string(), slice))
 }
 
 #[cfg(test)]

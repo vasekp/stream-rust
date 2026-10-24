@@ -16,21 +16,11 @@ impl<'a> DescribeBuilder<'a> {
             Head::Lang(LangItem::Args) => u32::MAX,
             _ => 0,
         };
-        Self {
-            head,
-            env,
-            env_outer: None,
-            inner_prec,
-            source: None,
-            args: Vec::new(),
-        }
+        Self { head, env, env_outer: None, inner_prec, source: None, args: Vec::new() }
     }
 
     pub(crate) fn new_with_env(head: &'a Head, env_outer: &'a Env, env_inner: &'a Env) -> Self {
-        Self {
-            env_outer: Some(env_outer),
-            ..Self::new(head, env_inner)
-        }
+        Self { env_outer: Some(env_outer), ..Self::new(head, env_inner) }
     }
 
     pub(crate) fn set_source(&mut self, src: &impl Describe) -> &mut Self {
@@ -66,15 +56,16 @@ impl<'a> DescribeBuilder<'a> {
     fn to_string(&self, outer_prec: u32) -> String {
         let mut ret = String::new();
         match self.head {
-            Head::Symbol(_) | Head::Block{..} => {
-                if let Some(src) = &self.source { ret += &format!("{src}."); }
+            Head::Symbol(_) | Head::Block { .. } => {
+                if let Some(src) = &self.source {
+                    ret += &format!("{src}.");
+                }
                 match self.head {
                     Head::Symbol(sym) => ret += sym,
-                    Head::Block{body, reset_env} =>
-                        ret += &format!("{}{{{}}}",
-                            if *reset_env { "$" } else { "" },
-                            body.describe_inner(0, self.env)),
-                    _ => unreachable!()
+                    Head::Block { body, reset_env } => {
+                        ret += &format!("{}{{{}}}", if *reset_env { "$" } else { "" }, body.describe_inner(0, self.env))
+                    },
+                    _ => unreachable!(),
                 };
                 if !self.args.is_empty() {
                     ret.push('(');
@@ -85,10 +76,16 @@ impl<'a> DescribeBuilder<'a> {
             Head::Oper(op) => {
                 debug_assert!(self.source.is_none());
                 let parens = self.inner_prec <= outer_prec;
-                if parens { ret.push('('); }
-                if self.args.len() == 1 { ret += op; }
+                if parens {
+                    ret.push('(');
+                }
+                if self.args.len() == 1 {
+                    ret += op;
+                }
                 ret += &self.join_args(op);
-                if parens { ret.push(')'); }
+                if parens {
+                    ret.push(')');
+                }
             },
             Head::Lang(LangItem::List) => {
                 debug_assert!(self.source.is_none());
@@ -97,19 +94,27 @@ impl<'a> DescribeBuilder<'a> {
                 ret.push(']');
             },
             Head::Lang(LangItem::Part) => {
-                ret += self.source.as_ref().expect("[part] should have source by construction");
+                ret += self
+                    .source
+                    .as_ref()
+                    .expect("[part] should have source by construction");
                 ret.push('[');
                 ret += &self.join_args(", ");
                 ret.push(']');
             },
             Head::Lang(LangItem::Map) => {
-                ret += self.source.as_ref().expect("[map] should have source by construction");
+                ret += self
+                    .source
+                    .as_ref()
+                    .expect("[map] should have source by construction");
                 ret.push(':');
                 debug_assert!(self.args.len() == 1);
                 ret += &self.args[0];
             },
             Head::Lang(LangItem::Args) => {
-                if let Some(src) = &self.source { ret += &format!("{src}."); }
+                if let Some(src) = &self.source {
+                    ret += &format!("{src}.");
+                }
                 debug_assert!(self.args.len() == 2);
                 ret += &format!("{}@({})", self.args[0], self.args[1]);
             },
@@ -119,7 +124,9 @@ impl<'a> DescribeBuilder<'a> {
 
     fn join_args(&self, sep: &str) -> String {
         let mut iter = self.args.iter();
-        let Some(mut ret) = iter.next().cloned() else { return String::new(); };
+        let Some(mut ret) = iter.next().cloned() else {
+            return String::new();
+        };
         for s in iter {
             ret += sep;
             ret += s;

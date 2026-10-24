@@ -5,7 +5,7 @@ fn eval_digstr(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_stream()?;
     node.check_no_args()?;
-    Ok(Item::new_string(DigStr{source: Rc::clone(stm), head: node.head.clone()}))
+    Ok(Item::new_string(DigStr { source: Rc::clone(stm), head: node.head.clone() }))
 }
 
 struct DigStr {
@@ -23,11 +23,7 @@ impl Describe for DigStr {
 
 impl Stream<Char> for DigStr {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        Box::new(SMap::new(
-            &self.source,
-            |item: Item| dig_to_char(item.as_num()?.try_cast()?).map(Char::from),
-            &self
-        ))
+        Box::new(SMap::new(&self.source, |item: Item| dig_to_char(item.as_num()?.try_cast()?).map(Char::from), &self))
     }
 
     fn len(&self) -> Length {
@@ -39,7 +35,7 @@ fn eval_strdig(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_char_stream()?;
     node.check_no_args()?;
-    Ok(Item::new_stream(StrDig{source: Rc::clone(stm), head: node.head.clone()}))
+    Ok(Item::new_stream(StrDig { source: Rc::clone(stm), head: node.head.clone() }))
 }
 
 struct StrDig {
@@ -63,7 +59,7 @@ impl Stream for StrDig {
                 Char::Single(ch) => char_to_dig(ch).map(Item::new_number),
                 Char::Multi(_) => Err("invalid digit".into()),
             },
-            &self
+            &self,
         ))
     }
 
@@ -72,6 +68,7 @@ impl Stream for StrDig {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("digstr", eval_digstr, r#"
 Converts a stream of digits into a string.

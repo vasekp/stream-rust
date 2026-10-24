@@ -3,9 +3,7 @@ use crate::base::*;
 fn eval_gcd(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
-    let args = node.args.iter()
-        .map(Item::to_num)
-        .collect::<SResult<Vec<_>>>()?;
+    let args = node.args.iter().map(Item::to_num).collect::<SResult<Vec<_>>>()?;
     let mut iter = args.iter();
     let Some(first) = iter.next() else {
         return Err(StreamError::usage(&node.head));
@@ -14,8 +12,7 @@ fn eval_gcd(node: &Node, env: &Env) -> SResult<Item> {
 }
 
 fn gcd(a: &Number, b: &Number) -> Number {
-    if a.is_zero() && b.is_zero() { Number::zero() }
-    else { a.gcd(b) }
+    if a.is_zero() && b.is_zero() { Number::zero() } else { a.gcd(b) }
 }
 
 fn eval_egcd(node: &Node, env: &Env) -> SResult<Item> {
@@ -23,7 +20,7 @@ fn eval_egcd(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     let (a, b) = match &node.args[..] {
         [Item::Number(a), Item::Number(b)] => (a, b),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     let (g, (ca, cb)) = egcd(a, b);
     let list = vec![Item::Number(g), Item::Number(ca), Item::Number(cb)];
@@ -48,9 +45,7 @@ fn egcd(x: &Number, y: &Number) -> (Number, (Number, Number)) {
 fn eval_lcm(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
-    let args = node.args.iter()
-        .map(Item::to_num)
-        .collect::<SResult<Vec<_>>>()?;
+    let args = node.args.iter().map(Item::to_num).collect::<SResult<Vec<_>>>()?;
     let mut iter = args.iter();
     let Some(first) = iter.next() else {
         return Err(StreamError::usage(&node.head));
@@ -60,19 +55,13 @@ fn eval_lcm(node: &Node, env: &Env) -> SResult<Item> {
 
 fn lcm(a: &Number, b: &Number) -> Number {
     let g = gcd(a, b);
-    if g.is_zero() {
-        g
-    } else {
-        a / g * b
-    }
+    if g.is_zero() { g } else { a / g * b }
 }
 
 fn eval_chinese(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
-    let args = node.args.iter()
-        .map(Item::to_num)
-        .collect::<SResult<Vec<_>>>()?;
+    let args = node.args.iter().map(Item::to_num).collect::<SResult<Vec<_>>>()?;
     if args.len() < 2 {
         return Err(StreamError::usage(&node.head));
     }
@@ -87,7 +76,8 @@ fn eval_chinese(node: &Node, env: &Env) -> SResult<Item> {
         }
     }
     let lcm = args.iter().fold(Number::one(), |a, e| a * e);
-    let ret = args.iter()
+    let ret = args
+        .iter()
         .map(|arg| {
             let others = &lcm / arg;
             let (_, (_, q)) = egcd(arg, &others);
@@ -97,6 +87,7 @@ fn eval_chinese(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::from(ret))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("gcd", eval_gcd, r#"
 Greatest common divisor of all inputs.

@@ -67,49 +67,49 @@ impl Item {
     pub fn as_num(&self) -> SResult<&Number> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(StreamError::with_expr("expected number", self))
+            _ => Err(StreamError::with_expr("expected number", self)),
         }
     }
 
     pub fn to_num(&self) -> SResult<Number> {
         match self {
             Item::Number(x) => Ok(x.clone()),
-            _ => Err(StreamError::with_expr("expected number", self))
+            _ => Err(StreamError::with_expr("expected number", self)),
         }
     }
 
     pub fn into_num(self) -> SResult<Number> {
         match self {
             Item::Number(x) => Ok(x),
-            _ => Err(StreamError::with_expr("expected number", &self))
+            _ => Err(StreamError::with_expr("expected number", &self)),
         }
     }
 
     pub fn to_bool(&self) -> SResult<bool> {
         match self {
             Item::Bool(x) => Ok(*x),
-            _ => Err(StreamError::with_expr("expected boolean value", self))
+            _ => Err(StreamError::with_expr("expected boolean value", self)),
         }
     }
 
     pub fn as_char(&self) -> SResult<&Char> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(StreamError::with_expr("expected character", self))
+            _ => Err(StreamError::with_expr("expected character", self)),
         }
     }
 
     pub fn to_char(&self) -> SResult<Char> {
         match self {
             Item::Char(x) => Ok(*x),
-            _ => Err(StreamError::with_expr("expected character", self))
+            _ => Err(StreamError::with_expr("expected character", self)),
         }
     }
 
     pub fn into_char(self) -> SResult<Char> {
         match self {
             Item::Char(x) => Ok(x),
-            _ => Err(StreamError::with_expr("expected character", &self))
+            _ => Err(StreamError::with_expr("expected character", &self)),
         }
     }
 
@@ -120,21 +120,21 @@ impl Item {
     pub fn as_stream(&self) -> SResult<&Rc<dyn Stream>> {
         match self {
             Item::Stream(stm) => Ok(stm),
-            _ => Err(StreamError::with_expr("expected stream", self))
+            _ => Err(StreamError::with_expr("expected stream", self)),
         }
     }
 
     pub fn to_stream(&self) -> SResult<Rc<dyn Stream>> {
         match self {
             Item::Stream(stm) => Ok(Rc::clone(stm)),
-            _ => Err(StreamError::with_expr("expected stream", self))
+            _ => Err(StreamError::with_expr("expected stream", self)),
         }
     }
 
     pub fn into_stream(self) -> SResult<Rc<dyn Stream>> {
         match self {
             Item::Stream(stm) => Ok(stm),
-            _ => Err(StreamError::with_expr("expected stream", &self))
+            _ => Err(StreamError::with_expr("expected stream", &self)),
         }
     }
 
@@ -145,14 +145,14 @@ impl Item {
     pub fn as_char_stream(&self) -> SResult<&Rc<dyn Stream<Char>>> {
         match self {
             Item::String(stm) => Ok(stm),
-            _ => Err(StreamError::with_expr("expected string", self))
+            _ => Err(StreamError::with_expr("expected string", self)),
         }
     }
 
     pub fn to_char_stream(&self) -> SResult<Rc<dyn Stream<Char>>> {
         match self {
             Item::String(stm) => Ok(Rc::clone(stm)),
-            _ => Err(StreamError::with_expr("expected string", self))
+            _ => Err(StreamError::with_expr("expected string", self)),
         }
     }
 
@@ -185,7 +185,7 @@ impl Item {
         struct Stateful<'item> {
             item: &'item Item,
             count: Cell<usize>,
-            err: Cell<Option<StreamError>>
+            err: Cell<Option<StreamError>>,
         }
 
         impl Display for Stateful<'_> {
@@ -194,19 +194,19 @@ impl Item {
             }
         }
 
-        let s = Stateful{item: self, count: Default::default(), err: Default::default()};
+        let s = Stateful { item: self, count: Default::default(), err: Default::default() };
         let result = match (max_items, max_len) {
             (Some(width), Some(prec)) => format!("{s:w$.p$}", w = width, p = prec),
             (Some(width), None) => format!("{s:w$}", w = width),
             (None, Some(prec)) => format!("{s:.p$}", p = prec),
-            (None, None) => format!("{s}")
+            (None, None) => format!("{s}"),
         };
         (result, s.count.take(), s.err.take())
     }
 
-    pub(crate) fn format_int(&self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
-        -> std::fmt::Result
-    {
+    pub(crate) fn format_int(
+        &self, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>,
+    ) -> std::fmt::Result {
         use Item::*;
         count.set(count.get() + 1);
         match self {
@@ -238,28 +238,36 @@ impl Item {
             (Stream(x1), Stream(x2)) => {
                 let l1 = x1.len();
                 let l2 = x2.len();
-                if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
+                if !Length::possibly_eq(&l1, &l2) {
+                    return Ok(false);
+                }
                 let mut it1 = x1.iter();
                 let mut it2 = x2.iter();
                 while let (Some(x), Some(y)) = (it1.next()?, it2.next()?) {
                     check_stop!();
-                    if !x.try_eq(&y)? { return Ok(false); }
+                    if !x.try_eq(&y)? {
+                        return Ok(false);
+                    }
                 }
                 true
             },
             (String(x1), String(x2)) => {
                 let l1 = x1.len();
                 let l2 = x2.len();
-                if !Length::possibly_eq(&l1, &l2) { return Ok(false); }
+                if !Length::possibly_eq(&l1, &l2) {
+                    return Ok(false);
+                }
                 let mut it1 = x1.iter();
                 let mut it2 = x2.iter();
                 while let (Some(x), Some(y)) = (it1.next()?, it2.next()?) {
                     check_stop!();
-                    if x != y { return Ok(false); }
+                    if x != y {
+                        return Ok(false);
+                    }
                 }
                 true
             },
-            _ => false
+            _ => false,
         })
     }
 
@@ -270,7 +278,7 @@ impl Item {
             (Number(x), Number(y)) => x.cmp(y),
             (Bool(x), Bool(y)) => x.cmp(y),
             (Char(x), Char(y)) => alpha.cmp(x, y)?,
-            (Stream(x), Stream(y)) =>{
+            (Stream(x), Stream(y)) => {
                 let mut xi = x.iter();
                 let mut yi = y.iter();
                 loop {
@@ -284,12 +292,12 @@ impl Item {
                         (Some(lhs), Some(rhs)) => match lhs.lex_cmp(&rhs, alpha)? {
                             Ordering::Less => break Ordering::Less,
                             Ordering::Greater => break Ordering::Greater,
-                            Ordering::Equal => continue
-                        }
+                            Ordering::Equal => continue,
+                        },
                     }
                 }
             },
-            (String(x), String(y)) =>{
+            (String(x), String(y)) => {
                 let mut xi = x.iter();
                 let mut yi = y.iter();
                 loop {
@@ -303,12 +311,12 @@ impl Item {
                         (Some(lhs), Some(rhs)) => match alpha.cmp(&lhs, &rhs)? {
                             Ordering::Less => break Ordering::Less,
                             Ordering::Greater => break Ordering::Greater,
-                            Ordering::Equal => continue
-                        }
+                            Ordering::Equal => continue,
+                        },
                     }
                 }
             },
-            (x, y) => return Err(format!("can't compare {x:?} with {y:?}").into())
+            (x, y) => return Err(format!("can't compare {x:?} with {y:?}").into()),
         })
     }
 }
@@ -392,18 +400,26 @@ impl PartialEq for Item {
             (Stream(x1), Stream(x2)) => {
                 let l1 = x1.len();
                 let l2 = x2.len();
-                if !Length::possibly_eq(&l1, &l2) { return false; }
-                x1.iter().transposed().zip(x2.iter().transposed())
+                if !Length::possibly_eq(&l1, &l2) {
+                    return false;
+                }
+                x1.iter()
+                    .transposed()
+                    .zip(x2.iter().transposed())
                     .all(|(x, y)| x == y)
             },
             (String(x1), String(x2)) => {
                 let l1 = x1.len();
                 let l2 = x2.len();
-                if !Length::possibly_eq(&l1, &l2) { return false; }
-                x1.iter().transposed().zip(x2.iter().transposed())
+                if !Length::possibly_eq(&l1, &l2) {
+                    return false;
+                }
+                x1.iter()
+                    .transposed()
+                    .zip(x2.iter().transposed())
                     .all(|(x, y)| x == y)
             },
-            _ => false
+            _ => false,
         }
     }
 }

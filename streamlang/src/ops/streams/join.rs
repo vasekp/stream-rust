@@ -5,32 +5,38 @@ fn eval_join(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     node.check_args_nonempty()?;
 
-    let is_string = node.args.iter()
+    let is_string = node
+        .args
+        .iter()
         .all(|item| matches!(item, Item::Char(_) | Item::String(_)));
 
     if is_string {
-        let elems = node.args.into_iter()
+        let elems = node
+            .args
+            .into_iter()
             .map(|item| match item {
                 Item::Char(ch) => Joinable::Single(ch),
                 Item::String(stm) => Joinable::Stream(stm),
-                _ => unreachable!()
+                _ => unreachable!(),
             })
             .collect::<Vec<_>>();
-        Ok(Item::new_string(Join{head: node.head, elems}))
+        Ok(Item::new_string(Join { head: node.head, elems }))
     } else {
-        let elems = node.args.into_iter()
+        let elems = node
+            .args
+            .into_iter()
             .map(|item| match item {
                 Item::Stream(stm) => Joinable::Stream(stm),
-                _ => Joinable::Single(item)
+                _ => Joinable::Single(item),
             })
             .collect::<Vec<_>>();
-        Ok(Item::new_stream(Join{head: node.head, elems}))
+        Ok(Item::new_stream(Join { head: node.head, elems }))
     }
 }
 
 pub(super) enum Joinable<I: ItemType> {
     Single(I),
-    Stream(Rc<dyn Stream<I>>)
+    Stream(Rc<dyn Stream<I>>),
 }
 
 impl<I: ItemType> Describe for Joinable<I> {
@@ -44,7 +50,7 @@ impl<I: ItemType> Describe for Joinable<I> {
 
 struct Join<I: ItemType> {
     head: Head,
-    elems: Vec<Joinable<I>>
+    elems: Vec<Joinable<I>>,
 }
 
 impl<I: ItemType> Describe for Join<I> {
@@ -64,16 +70,18 @@ impl<I: ItemType> Stream<I> for Join<I> {
                 Joinable::Single(item) => iters.push(Box::new(std::iter::once(Ok(item.clone())))),
             }
         }
-        JoinIter{iters, node: self}.wrap()
+        JoinIter { iters, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        self.elems.iter()
+        self.elems
+            .iter()
             .map(|item| match item {
                 Joinable::Single(_) => Length::Exact(UNumber::one()),
-                Joinable::Stream(stm) => stm.len()
+                Joinable::Stream(stm) => stm.len(),
             })
-            .reduce(|acc, e| acc + e).unwrap() // args checked to be nonempty in eval()
+            .reduce(|acc, e| acc + e)
+            .unwrap() // args checked to be nonempty in eval()
     }
 }
 
@@ -100,7 +108,9 @@ impl<I: ItemType, S: Stream<I> + 'static> PreIterator<I> for JoinIter<I, S> {
         let mut n = n.clone();
         loop {
             check_stop!();
-            if n.is_zero() { return Ok(None); }
+            if n.is_zero() {
+                return Ok(None);
+            }
             let Some(iter) = self.iters.first_mut() else {
                 return Ok(Some(n));
             };
@@ -118,6 +128,7 @@ impl<I: ItemType, S: Stream<I> + 'static> PreIterator<I> for JoinIter<I, S> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("join", eval_join, r#"
 The concatenation of all `input`s. If all of them are strings or single characters, the result is a string, otherwise, a stream.

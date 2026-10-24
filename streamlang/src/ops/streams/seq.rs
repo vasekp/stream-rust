@@ -7,26 +7,27 @@ fn eval_seq(node: &Node, env: &Env) -> SResult<Item> {
         [] => (None, None),
         [Item::Number(from)] => (Some(from), None),
         [Item::Number(from), Item::Number(to)] => (Some(from), Some(to)),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
-    Ok(Item::new_stream(Seq{head: node.head, from: from.cloned(), step: step.cloned() }))
+    Ok(Item::new_stream(Seq { head: node.head, from: from.cloned(), step: step.cloned() }))
 }
 
 pub struct Seq {
     head: Head,
     from: Option<Number>,
-    step: Option<Number>
+    step: Option<Number>,
 }
 
 impl Stream for Seq {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        SeqIter{
+        SeqIter {
             value: match &self.from {
                 Some(from) => from.clone(),
-                None => Number::one()
+                None => Number::one(),
             },
             node: self,
-        }.wrap()
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
@@ -53,7 +54,7 @@ impl PreIterator for SeqIter {
         let ret = Item::new_number(self.value.clone());
         match &self.node.step {
             Some(step) => self.value += step,
-            None => self.value += 1
+            None => self.value += 1,
         }
         Ok(Some(ret))
     }
@@ -61,7 +62,7 @@ impl PreIterator for SeqIter {
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         match &self.node.step {
             Some(step) => self.value += step * Number::from(n),
-            None => self.value += Number::from(n)
+            None => self.value += Number::from(n),
         }
         Ok(None)
     }
@@ -71,6 +72,7 @@ impl PreIterator for SeqIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["seq", "iota"], eval_seq, r#"
 A stream of consecutive numbers. If `from` or `step` are not given, they default to 1.

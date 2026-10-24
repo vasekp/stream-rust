@@ -6,9 +6,9 @@ pub trait Tracer {
 
 pub enum Event<'a> {
     Enter(&'a Node),
-    Leave(&'a SResult<Item>)
+    Leave(&'a SResult<Item>),
 }
 
 impl Tracer for () {
-    fn log(&mut self, _ev: Event<'_>) { }
+    fn log(&mut self, _ev: Event<'_>) {}
 }

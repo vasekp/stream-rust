@@ -6,37 +6,35 @@ fn eval_rev(node: &Node, env: &Env) -> SResult<Item> {
     match node.source_checked()? {
         Item::Stream(stm) => eval_rev_impl(&node.head, stm),
         Item::String(stm) => eval_rev_impl(&node.head, stm),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
 fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> SResult<Item> {
     match source.len() {
         Length::Infinite => Err("input is infinite".into()),
-        Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) =>
-            Ok(Item::from(Rc::new(Rev{head: head.clone(), source: Rc::clone(source), length: len})
-                    as Rc<dyn Stream<I>>)),
+        Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) => {
+            Ok(Item::from(
+                Rc::new(Rev { head: head.clone(), source: Rc::clone(source), length: len }) as Rc<dyn Stream<I>>
+            ))
+        },
         _ => {
             let mut vec = source.listout()?;
             vec.reverse();
             Ok(vec.into())
-        }
+        },
     }
 }
 
 pub struct Rev<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    length: UNumber
+    length: UNumber,
 }
 
 impl<I: ItemType> Stream<I> for Rev<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
-        RevIter {
-            start: self.length.clone(),
-            cached: Vec::new(),
-            node: self,
-        }.wrap()
+        RevIter { start: self.length.clone(), cached: Vec::new(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -55,7 +53,7 @@ impl<I: ItemType> Describe for Rev<I> {
 struct RevIter<I: ItemType> {
     node: Rc<Rev<I>>,
     start: UNumber,
-    cached: Vec<I>
+    cached: Vec<I>,
 }
 
 impl<I: ItemType> PreIterator<I> for RevIter<I> {
@@ -70,8 +68,10 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
                     let (new_start, diff) = if size_n <= self.start {
                         (&self.start - size_n, CACHE_LEN)
                     } else {
-                        (UNumber::zero(), usize::try_from(&self.start)
-                            .expect("start < CACHE_LEN should fit into usize"))
+                        (
+                            UNumber::zero(),
+                            usize::try_from(&self.start).expect("start < CACHE_LEN should fit into usize"),
+                        )
                     };
                     let mut iter = self.node.source.iter();
                     iter.advance(&new_start)?;
@@ -79,13 +79,15 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
                     self.cached = iter.transposed().take(diff).collect::<SResult<_>>()?;
                     Ok(self.cached.pop())
                 }
-            }
+            },
         }
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let len = self.cached.len();
-        if let Ok(n) = usize::try_from(n) && n <= len {
+        if let Ok(n) = usize::try_from(n)
+            && n <= len
+        {
             self.cached.truncate(len - n);
             Ok(None)
         } else {
@@ -105,6 +107,7 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("rev", eval_rev, r#"
 The input `stream` or `string`, reversed.

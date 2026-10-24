@@ -4,7 +4,7 @@ use std::collections::HashMap;
 fn eval_primes(node: &Node, _env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     node.check_no_args()?;
-    Ok(Item::new_stream(Primes{head: node.head.clone()}))
+    Ok(Item::new_stream(Primes { head: node.head.clone() }))
 }
 
 struct Primes {
@@ -105,6 +105,7 @@ fn eval_isprime(node: &Node, env: &Env) -> SResult<Item> {
     unreachable!()
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("primes", eval_primes, r#"
 An infinite stream of primes.

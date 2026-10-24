@@ -4,6 +4,7 @@ mod ulcase;
 mod subst;
 mod sewith;
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     chars::init(symbols);
     cat::init(symbols);

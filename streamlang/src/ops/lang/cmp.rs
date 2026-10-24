@@ -19,7 +19,7 @@ fn find_fn(head: &Head) -> CmpFunc {
         ">" => gt_func,
         "<=" => le_func,
         ">=" => ge_func,
-        op => panic!("cmp: unhandled op '{op}'")
+        op => panic!("cmp: unhandled op '{op}'"),
     }
 }
 
@@ -28,7 +28,7 @@ fn eq_func(items: &[Item]) -> SResult<bool> {
     let first = iter.next().unwrap(); // args checked to be nonempty in eval()
     for item in iter {
         if !item.try_eq(first)? {
-            return Ok(false)
+            return Ok(false);
         }
     }
     Ok(true)
@@ -37,7 +37,7 @@ fn eq_func(items: &[Item]) -> SResult<bool> {
 fn ineq_func(items: &[Item]) -> SResult<bool> {
     match items {
         [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
-        _ => Err("exactly 2 arguments required".into())
+        _ => Err("exactly 2 arguments required".into()),
     }
 }
 
@@ -59,7 +59,8 @@ fn ge_func(items: &[Item]) -> SResult<bool> {
 
 fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> SResult<bool> {
     let mut iter = items.iter();
-    let mut prev = iter.next()
+    let mut prev = iter
+        .next()
         .unwrap() // args checked to be nonempty in eval()
         .as_num()?;
     for item in iter {
@@ -72,6 +73,7 @@ fn ineq_chain(items: &[Item], cmp: fn(&Number, &Number) -> bool) -> SResult<bool
     Ok(true)
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("==", eval_cmp, r#"
 Checks for equality of all `input`s: evaluates to `true` if they all are equal, `false` otherwise.

@@ -7,14 +7,14 @@ fn eval_last(node: &Node, env: &Env) -> SResult<Item> {
     let count: Option<UNumber> = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     match (node.source_checked()?, count) {
         (Item::Stream(stm), None) => eval_last_item(stm),
         (Item::Stream(stm), Some(count)) => eval_last_count(&node.head, stm, count),
         (Item::String(stm), None) => eval_last_item(stm).map(Item::Char),
         (Item::String(stm), Some(count)) => eval_last_count(&node.head, stm, count),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -23,21 +23,23 @@ fn eval_last_item<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
         Length::Exact(len) if !len.is_zero() => {
             let mut it = stm.iter();
             it.advance(&(len - 1u32))?;
-            it.next().transpose().expect("1 item should remain after skip(len - 1)")
+            it.next()
+                .transpose()
+                .expect("1 item should remain after skip(len - 1)")
         },
         Length::Infinite => Err("stream is infinite".into()),
         _ => {
             let mut iter = stm.iter();
             let mut last = match iter.next()? {
                 Some(item) => item,
-                None => return Err("stream is empty".into())
+                None => return Err("stream is empty".into()),
             };
             for res in iter.transposed() {
                 check_stop!();
                 last = res?;
             }
             Ok(last)
-        }
+        },
     }
 }
 
@@ -48,12 +50,8 @@ fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNu
     match stm.len() {
         Length::Exact(len) if len < count => Ok(stm.into()),
         Length::Exact(len) => {
-            Ok(Item::from(Rc::new(Last {
-                head: head.clone(),
-                source: Rc::clone(stm),
-                skip: len - &count,
-                count
-            }) as Rc<dyn Stream<I>>))
+            Ok(Item::from(Rc::new(Last { head: head.clone(), source: Rc::clone(stm), skip: len - &count, count })
+                as Rc<dyn Stream<I>>))
         },
         Length::Infinite => Err("stream is infinite".into()),
         _ => {
@@ -68,7 +66,7 @@ fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNu
                 vec.push_back(item);
             }
             Ok(I::from_vec(Vec::from(vec)))
-        }
+        },
     }
 }
 
@@ -76,7 +74,7 @@ struct Last<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
     count: UNumber,
-    skip: UNumber
+    skip: UNumber,
 }
 
 impl<I: ItemType> Stream<I> for Last<I> {
@@ -103,6 +101,7 @@ impl<I: ItemType> Describe for Last<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("last", eval_last, r#"
 Up to the last `count` items of `stream`, or up to the last `count` characters of `string`.

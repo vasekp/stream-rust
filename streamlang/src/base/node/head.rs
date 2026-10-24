@@ -9,15 +9,15 @@ use crate::interner::intern;
 pub enum Head {
     Symbol(&'static str),
     Oper(&'static str),
-    Block{body: Expr, reset_env: bool},
-    Lang(LangItem)
+    Block { body: Expr, reset_env: bool },
+    Lang(LangItem),
 }
 
 impl Head {
     pub(crate) fn as_str(&self) -> Option<&'static str> {
         match self {
             Head::Symbol(s) | Head::Oper(s) => Some(s),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -36,19 +36,19 @@ impl From<LangItem> for Head {
 
 impl From<Expr> for Head {
     fn from(expr: Expr) -> Head {
-        Head::Block{body: expr, reset_env: false}
+        Head::Block { body: expr, reset_env: false }
     }
 }
 
 impl From<Item> for Head {
     fn from(expr: Item) -> Head {
-        Head::Block{body: expr.into(), reset_env: false}
+        Head::Block { body: expr.into(), reset_env: false }
     }
 }
 
 impl From<Node> for Head {
     fn from(expr: Node) -> Head {
-        Head::Block{body: expr.into(), reset_env: false}
+        Head::Block { body: expr.into(), reset_env: false }
     }
 }
 
@@ -56,11 +56,10 @@ impl PartialEq<str> for Head {
     fn eq(&self, other: &str) -> bool {
         match self {
             Head::Symbol(sym) | Head::Oper(sym) => *sym == other,
-            _ => false
+            _ => false,
         }
     }
 }
-
 
 /// Special types of [`Head`] for language constructs with special syntax.
 #[derive(Debug, PartialEq, Clone)]

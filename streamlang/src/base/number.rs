@@ -11,7 +11,8 @@ pub type UNumber = ibig::UBig;
 
 pub use ibig::ops::{DivRem, DivRemEuclid, RemEuclid, UnsignedAbs};
 
-pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<'a> TryFrom<&'a Self> {
+pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero
+where T: IsSigned + for<'a> TryFrom<&'a Self> {
     fn try_cast(&self) -> SResult<T> {
         if Self::IS_SIGNED && !T::IS_SIGNED && self < &Self::zero() {
             Err("value can't be negative".into())
@@ -34,7 +35,7 @@ pub(crate) trait TryCast<T>: IsSigned + Ord + num::Zero where T: IsSigned + for<
                     (Included(min), Unbounded) => format!("value must be at least {min}"),
                     (Unbounded, Included(max)) => format!("value must be at most {max}"),
                     (Included(min), Included(max)) => format!("value must be between {min} and {max}"),
-                    _ => "value out of range".into()
+                    _ => "value out of range".into(),
                 };
                 Err(err.into())
             }
@@ -60,13 +61,13 @@ impl_is_signed!(
     Number => true, UNumber => false,
 );
 
-impl TryCast<u8> for Number { }
-impl TryCast<u32> for Number { }
-impl TryCast<usize> for Number { }
-impl TryCast<i32> for Number { }
-impl TryCast<UNumber> for Number { }
-impl TryCast<u32> for UNumber { }
-impl TryCast<usize> for UNumber { }
+impl TryCast<u8> for Number {}
+impl TryCast<u32> for Number {}
+impl TryCast<usize> for Number {}
+impl TryCast<i32> for Number {}
+impl TryCast<UNumber> for Number {}
+impl TryCast<u32> for UNumber {}
+impl TryCast<usize> for UNumber {}
 
 pub(crate) trait TryUnsign {
     type Unsigned;
@@ -78,10 +79,6 @@ impl TryUnsign for Number {
     type Unsigned = UNumber;
 
     fn try_unsign(&self) -> SResult<Self::Unsigned> {
-        if self.is_negative() {
-            Err("value can't be negative".into())
-        } else {
-            Ok(self.unsigned_abs())
-        }
+        if self.is_negative() { Err("value can't be negative".into()) } else { Ok(self.unsigned_abs()) }
     }
 }

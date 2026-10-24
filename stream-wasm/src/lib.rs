@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 use js_sys::{Object, Reflect, Array};
 
-thread_local!{
+thread_local! {
     static SESS: RefCell<Session> = RefCell::new(Session::new());
 }
 
@@ -30,12 +30,17 @@ pub fn process(input: String) -> Result<JsValue, JsValue> {
                 Err(err) => {
                     Reflect::set(&obj, &"type".into(), &"error".into())?;
                     Reflect::set(&obj, &"text".into(), &format!("{err}").into())?;
-                    Reflect::set(&obj, &"trace".into(), &err.backtrace()
-                        .iter().rev()
-                        .map(|expr| JsValue::from(&expr.describe()))
-                        .collect::<Array>()
-                        .into())?;
-                }
+                    Reflect::set(
+                        &obj,
+                        &"trace".into(),
+                        &err.backtrace()
+                            .iter()
+                            .rev()
+                            .map(|expr| JsValue::from(&expr.describe()))
+                            .collect::<Array>()
+                            .into(),
+                    )?;
+                },
             }
             Ok(())
         })?,
@@ -43,13 +48,17 @@ pub fn process(input: String) -> Result<JsValue, JsValue> {
             Reflect::set(&obj, &"type".into(), &"error".into())?;
             Reflect::set(&obj, &"text".into(), &format!("{err}").into())?;
             if let Some(range) = err.range_within(&input) {
-                Reflect::set(&obj, &"range".into(),
-                    &[range.start, range.end].into_iter()
+                Reflect::set(
+                    &obj,
+                    &"range".into(),
+                    &[range.start, range.end]
+                        .into_iter()
                         .map(JsValue::from)
                         .collect::<Array>()
-                        .into())?;
+                        .into(),
+                )?;
             }
-        }
+        },
     }
     Ok(obj.into())
 }
@@ -73,13 +82,17 @@ pub fn validate(input: String) -> Result<JsValue, JsValue> {
         Err(err) => {
             Reflect::set(&obj, &"valid".into(), &JsValue::FALSE)?;
             if let Some(range) = err.range_within(&input) {
-                Reflect::set(&obj, &"range".into(),
-                    &[range.start, range.end].into_iter()
+                Reflect::set(
+                    &obj,
+                    &"range".into(),
+                    &[range.start, range.end]
+                        .into_iter()
                         .map(JsValue::from)
                         .collect::<Array>()
-                        .into())?;
+                        .into(),
+                )?;
             }
-        }
+        },
     }
     Ok(obj.into())
 }
@@ -125,11 +138,16 @@ impl BoxedIterator {
                 let obj = Object::new();
                 Reflect::set(&obj, &"type".into(), &"error".into())?;
                 Reflect::set(&obj, &"text".into(), &format!("{err}").into())?;
-                Reflect::set(&obj, &"trace".into(), &err.backtrace()
-                    .iter().rev()
-                    .map(|expr| JsValue::from(&expr.describe()))
-                    .collect::<Array>()
-                    .into())?;
+                Reflect::set(
+                    &obj,
+                    &"trace".into(),
+                    &err.backtrace()
+                        .iter()
+                        .rev()
+                        .map(|expr| JsValue::from(&expr.describe()))
+                        .collect::<Array>()
+                        .into(),
+                )?;
                 obj
             },
         };
@@ -144,7 +162,9 @@ impl BoxedIterator {
 pub fn get_iter(index: usize) -> Result<BoxedIterator, JsValue> {
     SESS.with(|sess| {
         let sess = sess.borrow();
-        if index == 0 { return Err("invalid index".into()); }
+        if index == 0 {
+            return Err("invalid index".into());
+        }
         let Some(item) = sess.history().get(index - 1) else {
             return Err(format!("no such history index {index} len {}", sess.history().len()).into());
         };

@@ -7,11 +7,15 @@ pub trait ItemType: Clone + Describe + Into<Item> + 'static {
     fn try_eq(&self, other: &Self) -> SResult<bool>;
     fn empty() -> Item;
 
-    fn to_item(&self) -> Item { self.clone().into() }
+    fn to_item(&self) -> Item {
+        self.clone().into()
+    }
 }
 
 impl ItemType for Item {
-    fn type_name() -> &'static str { "stream" }
+    fn type_name() -> &'static str {
+        "stream"
+    }
 
     fn from_vec(vec: Vec<Item>) -> Item {
         Item::new_stream(List::from(vec))
@@ -31,7 +35,9 @@ impl ItemType for Item {
 }
 
 impl ItemType for Char {
-    fn type_name() -> &'static str { "string" }
+    fn type_name() -> &'static str {
+        "string"
+    }
 
     fn from_vec(vec: Vec<Char>) -> Item {
         Item::new_string(LiteralString::from(vec))

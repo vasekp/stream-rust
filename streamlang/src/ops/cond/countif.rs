@@ -6,15 +6,14 @@ fn eval_countif(node: &Node, env: &Env) -> SResult<Item> {
     let mut count = 0;
     for item in stm.iter().transposed() {
         check_stop!();
-        if cond.with_source(item?.into())?
-            .eval(env)?
-            .to_bool()? {
-                count += 1;
+        if cond.with_source(item?.into())?.eval(env)?.to_bool()? {
+            count += 1;
         }
     }
     Ok(Item::new_number(count))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("countif", eval_countif, r#"
 Evaluates `cond` on every item of `stream` and returns the count it was `true`.

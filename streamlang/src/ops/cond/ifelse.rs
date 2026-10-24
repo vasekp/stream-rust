@@ -9,6 +9,7 @@ fn eval_if(node: &Node, env: &Env) -> SResult<Item> {
     expr.eval(env)
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("if", eval_if, r#"
 If `condition` evaluates to `true`, evaluates `a`, otherwise evaluates `b`.

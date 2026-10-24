@@ -3,8 +3,10 @@ use crate::base::*;
 fn eval_args(node: &Node, env: &Env) -> SResult<Item> {
     debug_assert!(node.args.len() == 2);
     let head = if let Expr::Eval(head_node) = &node.args[0]
-        && head_node.source.is_none() && head_node.args.is_empty() {
-            head_node.head.clone()
+        && head_node.source.is_none()
+        && head_node.args.is_empty()
+    {
+        head_node.head.clone()
     } else {
         unreachable!("@ should have a bare node as first argument by construction");
     };
@@ -13,6 +15,7 @@ fn eval_args(node: &Node, env: &Env) -> SResult<Item> {
     Node::from(Node { head, source, args }).eval(env)
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_raw("[args]", eval_args);
 }

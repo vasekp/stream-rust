@@ -21,7 +21,7 @@ mod tests;
 pub struct Node<I = Expr> {
     pub head: Head,
     pub source: Option<I>,
-    pub args: Vec<I>
+    pub args: Vec<I>,
 }
 
 impl Node<Expr> {
@@ -34,28 +34,24 @@ impl Node<Expr> {
     // happen in Expr::apply(Context).
     pub fn eval(&self, env: &Env) -> SResult<Item> {
         env.tracer.borrow_mut().log(tracing::Event::Enter(self));
-        let res = (|| {
-            match &self.head {
-                Head::Symbol(sym) | Head::Oper(sym) => {
-                    if let Some(ctor) = Symbols::find_ctor(sym) {
-                        ctor(self, env)
-                    } else {
-                        Err(format!("symbol '{sym}' not found").into())
-                    }
-                },
-                Head::Lang(lang) => {
-                    let ctor = Symbols::find_ctor(lang.symbol()).expect("all LangItem symbols should exist");
+        let res = (|| match &self.head {
+            Head::Symbol(sym) | Head::Oper(sym) => {
+                if let Some(ctor) = Symbols::find_ctor(sym) {
                     ctor(self, env)
-                },
-                Head::Block{body, reset_env} => {
-                    let env = if *reset_env { env.base() } else { env.clone() };
-                    let source = self.source.as_ref().map(|expr| expr.eval(&env)).transpose()?;
-                    let args = self.args.iter()
-                        .map(|expr| expr.eval(&env))
-                        .collect::<SResult<_>>()?;
-                    body.apply(&source, &args)?.eval(&env)
-                },
-            }
+                } else {
+                    Err(format!("symbol '{sym}' not found").into())
+                }
+            },
+            Head::Lang(lang) => {
+                let ctor = Symbols::find_ctor(lang.symbol()).expect("all LangItem symbols should exist");
+                ctor(self, env)
+            },
+            Head::Block { body, reset_env } => {
+                let env = if *reset_env { env.base() } else { env.clone() };
+                let source = self.source.as_ref().map(|expr| expr.eval(&env)).transpose()?;
+                let args = self.args.iter().map(|expr| expr.eval(&env)).collect::<SResult<_>>()?;
+                body.apply(&source, &args)?.eval(&env)
+            },
         })();
         env.tracer.borrow_mut().log(tracing::Event::Leave(&res));
         res
@@ -64,12 +60,10 @@ impl Node<Expr> {
     pub(crate) fn eval_all(&self, env: &Env) -> SResult<Node<Item>> {
         let source = match &self.source {
             Some(source) => Some(source.eval(env)?),
-            None => None
+            None => None,
         };
-        let args = self.args.iter()
-            .map(|x| x.eval(env))
-            .collect::<SResult<Vec<_>>>()?;
-        Ok(Node{head: self.head.clone(), source, args})
+        let args = self.args.iter().map(|x| x.eval(env)).collect::<SResult<Vec<_>>>()?;
+        Ok(Node { head: self.head.clone(), source, args })
     }
 
     pub(in crate::base) fn apply(&self, source: &Option<Item>, args: &Vec<Item>) -> SResult<Node> {
@@ -77,11 +71,13 @@ impl Node<Expr> {
             head: self.head.clone(),
             source: match &self.source {
                 None => None,
-                Some(src) => Some(src.apply(source, args)?)
+                Some(src) => Some(src.apply(source, args)?),
             },
-            args: self.args.iter()
+            args: self
+                .args
+                .iter()
                 .map(|expr| expr.apply(source, args))
-                .collect::<SResult<Vec<_>>>()?
+                .collect::<SResult<Vec<_>>>()?,
         })
     }
 
@@ -89,7 +85,7 @@ impl Node<Expr> {
         if self.source.is_some() {
             Err(StreamError::with_expr("already has source", self))
         } else {
-            Ok(Node{head: self.head.clone(), source: Some(source), args: self.args.clone()})
+            Ok(Node { head: self.head.clone(), source: Some(source), args: self.args.clone() })
         }
     }
 
@@ -97,7 +93,7 @@ impl Node<Expr> {
         if !self.args.is_empty() {
             Err(StreamError::with_expr("already has arguments", self))
         } else {
-            Ok(Node{head: self.head.clone(), source: self.source.clone(), args})
+            Ok(Node { head: self.head.clone(), source: self.source.clone(), args })
         }
     }
 }
@@ -107,20 +103,20 @@ impl<I: Clone> Node<I> {
     /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
     /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
     pub fn new(head: impl Into<Head>, source: Option<I>, args: Vec<I>) -> Self {
-        Node{head: head.into(), source, args}
+        Node { head: head.into(), source, args }
     }
 
     pub(crate) fn check_source(&self) -> SResult<()> {
         match &self.source {
             Some(_) => Ok(()),
-            None => Err(StreamError::usage(&self.head))
+            None => Err(StreamError::usage(&self.head)),
         }
     }
 
     pub(crate) fn check_no_source(&self) -> SResult<()> {
         match &self.source {
             Some(_) => Err(StreamError::usage(&self.head)),
-            None => Ok(())
+            None => Ok(()),
         }
     }
 
@@ -129,19 +125,11 @@ impl<I: Clone> Node<I> {
     }
 
     pub(crate) fn check_no_args(&self) -> SResult<()> {
-        if !self.args.is_empty() {
-            Err(StreamError::usage(&self.head))
-        } else {
-            Ok(())
-        }
+        if !self.args.is_empty() { Err(StreamError::usage(&self.head)) } else { Ok(()) }
     }
 
     pub(crate) fn check_args_nonempty(&self) -> SResult<()> {
-        if self.args.is_empty() {
-            Err(StreamError::usage(&self.head))
-        } else {
-            Ok(())
-        }
+        if self.args.is_empty() { Err(StreamError::usage(&self.head)) } else { Ok(()) }
     }
 
     pub(crate) fn first_arg_checked(&self) -> SResult<&I> {
@@ -170,7 +158,7 @@ impl From<Node<Item>> for Node<Expr> {
         Node {
             head: node.head,
             source: node.source.map(Expr::from),
-            args: node.args.into_iter().map(Expr::from).collect()
+            args: node.args.into_iter().map(Expr::from).collect(),
         }
     }
 }

@@ -11,14 +11,14 @@ pub trait Stream<I = Item>: Describe {
     /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
     /// values.
     ///
-    /// This method does not return a `Result` and thus can't fail. Implementors may return 
-    /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the 
+    /// This method does not return a `Result` and thus can't fail. Implementors may return
+    /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the
     /// iterator.
     // TODO docstring
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
-    /// the entire stream. See [`Length`] for the possible return values. The return value must be 
+    /// the entire stream. See [`Length`] for the possible return values. The return value must be
     /// consistent with the actual behaviour of the stream.
     fn len(&self) -> Length;
 }
@@ -53,7 +53,7 @@ impl<I: ItemType> dyn Stream<I> {
                 }
             },
             Length::Infinite => return Err(StreamError::with_expr(format!("{} is infinite", I::type_name()), self)),
-            _ => ()
+            _ => (),
         };
         for item in self.iter().transposed() {
             check_stop!();
@@ -73,7 +73,7 @@ impl<I: ItemType> dyn Stream<I> {
                 }
             },
             Length::Infinite => return Err(StreamError::with_expr(format!("{} is infinite", I::type_name()), self)),
-            _ => ()
+            _ => (),
         };
         for item in self.iter().transposed() {
             check_stop!();
@@ -94,7 +94,7 @@ impl<I: ItemType> dyn Stream<I> {
                     ret += 1;
                 }
                 Ok(ret.into())
-            }
+            },
         }
     }
 
@@ -104,14 +104,14 @@ impl<I: ItemType> dyn Stream<I> {
 }
 
 impl dyn Stream<Item> {
-    pub(crate) fn writeout(self: &Rc<Self>, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>)
-        -> std::fmt::Result
-    {
+    pub(crate) fn writeout(
+        self: &Rc<Self>, f: &mut Formatter<'_>, count: &Cell<usize>, error: &Cell<Option<StreamError>>,
+    ) -> std::fmt::Result {
         let mut iter = self.iter();
         let (prec, max) = match (f.precision(), f.width()) {
             (Some(prec), width) => (Some(prec), width),
             (None, Some(width)) => (None, Some(width)),
-            (None, None) => (None, Some(5))
+            (None, None) => (None, Some(5)),
         };
         let max = max.map(|x| x + 1);
         let mut s = String::new();
@@ -133,7 +133,8 @@ impl dyn Stream<Item> {
                         if comma {
                             s += ", ";
                         }
-                        let (string, cnt, err) = item.format(max.map(|max| max - count.get() - 1), prec.map(|prec| prec - plen));
+                        let (string, cnt, err) =
+                            item.format(max.map(|max| max - count.get() - 1), prec.map(|prec| prec - plen));
                         count.set(count.get() + cnt);
                         s += &string;
                         if err.is_some() {
@@ -149,31 +150,33 @@ impl dyn Stream<Item> {
                         s += "<!>";
                         error.set(Some(err));
                         break 'a;
-                    }
+                    },
                 };
             }
             if iter.next().transpose().is_none() {
                 s.push(']');
             } else {
                 s += if comma { ", ..." } else { "..." };
-                if max.is_some_and(|max| max == count.get()) { s.push(']'); }
+                if max.is_some_and(|max| max == count.get()) {
+                    s.push(']');
+                }
             }
         }
         match prec {
             Some(prec) if prec < s.len() => write!(f, "{:.*}...", prec - 3, s),
-            _ => write!(f, "{}", s)
+            _ => write!(f, "{}", s),
         }
     }
 }
 
 impl dyn Stream<Char> {
-    pub(crate) fn writeout(self: &Rc<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>)
-        -> std::fmt::Result
-    {
+    pub(crate) fn writeout(
+        self: &Rc<Self>, f: &mut Formatter<'_>, error: &Cell<Option<StreamError>>,
+    ) -> std::fmt::Result {
         let mut iter = self.iter();
         let (prec, max) = match f.precision() {
             Some(prec) => (Some(std::cmp::max(prec, 4)), None),
-            None => (None, Some(20))
+            None => (None, Some(20)),
         };
         let mut s = String::new();
         let mut i = 0;
@@ -190,18 +193,18 @@ impl dyn Stream<Char> {
                         s += "<!>";
                         error.set(Some(err));
                         break 'a;
-                    }
+                    },
                 }
                 i += 1;
             }
             s += match iter.next().transpose() {
                 None => "\"",
-                Some(_) => "..."
+                Some(_) => "...",
             };
         }
         match prec {
             Some(prec) if prec < s.len() => write!(f, "{:.*}...", prec - 3, s),
-            _ => write!(f, "{}", s)
+            _ => write!(f, "{}", s),
         }
     }
 }
@@ -212,7 +215,9 @@ impl<I: ItemType> Describe for Rc<dyn Stream<I>> {
     }
 }
 
-pub(crate) fn iter_error<I: ItemType, T: Stream<I> + 'static>(err: impl Into<StreamError>, blame: &Rc<T>) -> Box<dyn SIterator<I>> {
+pub(crate) fn iter_error<I: ItemType, T: Stream<I> + 'static>(
+    err: impl Into<StreamError>, blame: &Rc<T>,
+) -> Box<dyn SIterator<I>> {
     Box::new(std::iter::once(Err(err.into().wrap(&(Rc::clone(blame) as Rc<dyn Stream<I>>)))))
 }
 
@@ -228,12 +233,16 @@ impl<I: ItemType> Empty<I> {
     }
 }
 
-impl<I: ItemType> Stream<I> for Empty<I> where Empty<I>: Describe {
+impl<I: ItemType> Stream<I> for Empty<I>
+where Empty<I>: Describe
+{
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Self::iter()
     }
 
-    fn len(&self) -> Length { Length::Exact(UNumber::zero()) }
+    fn len(&self) -> Length {
+        Length::Exact(UNumber::zero())
+    }
 }
 
 pub(crate) type EmptyStream = Empty<Item>;

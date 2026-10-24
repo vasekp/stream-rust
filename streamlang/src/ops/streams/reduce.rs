@@ -14,6 +14,7 @@ fn eval_reduce(node: &Node, env: &Env) -> SResult<Item> {
     Ok(val)
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("reduce", eval_reduce, r#"
 Merges all elements of `stream` using `func` as `func(func(x1, x2), x3)` etc.

@@ -4,17 +4,12 @@ fn eval_stride(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_stream()?;
     let (stride, offset) = match &node.args[..] {
-        [Item::Number(stride), Item::Number(offset)]
-            => (stride, Some(offset.try_unsign()?)),
+        [Item::Number(stride), Item::Number(offset)] => (stride, Some(offset.try_unsign()?)),
         [Item::Number(stride)] => (stride, None),
         _ => return Err(StreamError::usage(&node.head)),
     };
     let stride = stride.try_cast_within(UNumber::one()..)?;
-    Ok(Item::new_stream(Stride{
-        head: node.head.clone(),
-        stream: Rc::clone(stm),
-        stride, offset,
-    }))
+    Ok(Item::new_stream(Stride { head: node.head.clone(), stream: Rc::clone(stm), stride, offset }))
 }
 
 struct Stride {
@@ -44,15 +39,12 @@ impl Stream for Stride {
                 Err(err) => return iter_error(err, &self),
             };
         }
-        StrideIter{
-            iter,
-            first: true,
-            node: self
-        }.wrap()
+        StrideIter { iter, first: true, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        self.stream.len()
+        self.stream
+            .len()
             .map(|len| (len + &self.stride - self.offset.as_ref().cloned().unwrap_or_default() - 1) / &self.stride)
     }
 }
@@ -76,7 +68,9 @@ impl PreIterator for StrideIter {
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        if n.is_zero() { return Ok(None); }
+        if n.is_zero() {
+            return Ok(None);
+        }
         let mut n = n.clone();
         if self.first {
             if self.iter.next()?.is_none() {
@@ -87,9 +81,8 @@ impl PreIterator for StrideIter {
             }
         }
         match self.iter.advance(&(n * &self.node.stride))? {
-            Some(remain) =>
-                Ok(Some((remain + &self.node.stride - 1) / &self.node.stride)),
-            None => Ok(None)
+            Some(remain) => Ok(Some((remain + &self.node.stride - 1) / &self.node.stride)),
+            None => Ok(None),
         }
     }
 
@@ -98,6 +91,7 @@ impl PreIterator for StrideIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["stride", "step"], eval_stride, r#"
 Extracts a subsequence of `stream` at indices `1`, `1 + step`, `1 + 2*step`, etc.

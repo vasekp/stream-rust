@@ -6,7 +6,9 @@ fn eval_range(node: &Node, env: &Env) -> SResult<Item> {
     let (from, to, step, rtype) = match &node.args[..] {
         [Item::Number(to)] => (None, to.clone(), None, RangeType::Numeric),
         [Item::Number(from), Item::Number(to)] => (Some(from.clone()), to.clone(), None, RangeType::Numeric),
-        [Item::Number(from), Item::Number(to), Item::Number(step)] => (Some(from.clone()), to.clone(), Some(step.clone()), RangeType::Numeric),
+        [Item::Number(from), Item::Number(to), Item::Number(step)] => {
+            (Some(from.clone()), to.clone(), Some(step.clone()), RangeType::Numeric)
+        },
         [Item::Char(from), Item::Char(to)] => {
             let case = from.case();
             let from_ix = env.alpha.ord(from)?;
@@ -19,12 +21,12 @@ fn eval_range(node: &Node, env: &Env) -> SResult<Item> {
             let to_ix = env.alpha.ord(to)?;
             (Some(from_ix.into()), to_ix.into(), Some(step.clone()), RangeType::Character(case))
         },
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     if empty_helper(from.as_ref(), &to, step.as_ref()) {
         Ok(Item::empty_stream())
     } else {
-        Ok(Item::new_stream(Range{head: node.head.clone(), from, to, step, rtype, env: env.clone()}))
+        Ok(Item::new_stream(Range { head: node.head.clone(), from, to, step, rtype, env: env.clone() }))
     }
 }
 
@@ -38,15 +40,22 @@ fn len_helper(from: Option<&Number>, to: &Number, step: Option<&Number>) -> Opti
         return Some(UNumber::zero());
     }
     match step.map(|step| (step, i32::try_from(step))) {
-        None | Some((_, Ok(1))) => Some(UNumber::try_from(match from {
+        None | Some((_, Ok(1))) => Some(
+            UNumber::try_from(match from {
                 Some(from) => to - from + 1,
-                None => to.to_owned() })
-            .expect("expected to > from when step > 0")),
-        Some((_, Ok(-1))) => Some(UNumber::try_from(from.expect("step should not be Some if from is not") - to + 1)
-            .expect("expected to < from when step < 0")),
+                None => to.to_owned(),
+            })
+            .expect("expected to > from when step > 0"),
+        ),
+        Some((_, Ok(-1))) => Some(
+            UNumber::try_from(from.expect("step should not be Some if from is not") - to + 1)
+                .expect("expected to < from when step < 0"),
+        ),
         Some((_, Ok(0))) => None,
-        Some((step, _)) => Some(UNumber::try_from((to - from.expect("step should not be Some if from is not")) / step + 1)
-            .expect("to-from / step sign mismatch")),
+        Some((step, _)) => Some(
+            UNumber::try_from((to - from.expect("step should not be Some if from is not")) / step + 1)
+                .expect("to-from / step sign mismatch"),
+        ),
     }
 }
 
@@ -61,24 +70,25 @@ struct Range {
 
 enum RangeType {
     Numeric,
-    Character(CharCase)
+    Character(CharCase),
 }
 
 impl Stream for Range {
     fn to_iter(self: Rc<Range>) -> Box<dyn SIterator> {
-        RangeIter{
+        RangeIter {
             value: match &self.from {
                 Some(from) => from.clone(),
-                None => Number::one()
+                None => Number::one(),
             },
             node: self,
-        }.wrap()
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
         match len_helper(self.from.as_ref(), &self.to, self.step.as_ref()) {
             Some(num) => Length::Exact(num),
-            None => Length::Infinite
+            None => Length::Infinite,
         }
     }
 }
@@ -86,12 +96,11 @@ impl Stream for Range {
 impl Describe for Range {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
         match self.rtype {
-            RangeType::Numeric =>
-                DescribeBuilder::new(&self.head, env)
-                    .push_args(&self.from)
-                    .push_arg(&self.to)
-                    .push_args(&self.step)
-                    .finish(prec),
+            RangeType::Numeric => DescribeBuilder::new(&self.head, env)
+                .push_args(&self.from)
+                .push_arg(&self.to)
+                .push_args(&self.step)
+                .finish(prec),
             RangeType::Character(case) => {
                 let abc = &self.env.alpha;
                 DescribeBuilder::new_with_env(&self.head, env, &self.env)
@@ -99,7 +108,7 @@ impl Describe for Range {
                     .push_arg(&abc.chr(&self.to, case))
                     .push_args(&self.step)
                     .finish(prec)
-            }
+            },
         }
     }
 }
@@ -113,16 +122,17 @@ impl PreIterator for RangeIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         if self.node.step.as_ref().is_some_and(Number::is_zero)
             || (self.node.step.as_ref().is_none_or(Number::is_positive) && self.value <= self.node.to)
-            || (self.node.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.node.to) {
-                let ret = match self.node.rtype {
-                    RangeType::Numeric => Item::new_number(self.value.clone()),
-                    RangeType::Character(case) => Item::new_char(self.node.env.alpha.chr(&self.value, case))
-                };
-                match &self.node.step {
-                    Some(step) => self.value += step,
-                    None => self.value += 1
-                }
-                Ok(Some(ret))
+            || (self.node.step.as_ref().is_some_and(Number::is_negative) && self.value >= self.node.to)
+        {
+            let ret = match self.node.rtype {
+                RangeType::Numeric => Item::new_number(self.value.clone()),
+                RangeType::Character(case) => Item::new_char(self.node.env.alpha.chr(&self.value, case)),
+            };
+            match &self.node.step {
+                Some(step) => self.value += step,
+                None => self.value += 1,
+            }
+            Ok(Some(ret))
         } else {
             Ok(None)
         }
@@ -130,14 +140,15 @@ impl PreIterator for RangeIter {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if empty_helper(Some(&self.value), &self.node.to, self.node.step.as_ref()) {
-            return Ok(Some(n.clone()))
+            return Ok(Some(n.clone()));
         };
-        let Some(max) = len_helper(Some(&self.value), &self.node.to, self.node.step.as_ref())
-            else { return Ok(None); };
+        let Some(max) = len_helper(Some(&self.value), &self.node.to, self.node.step.as_ref()) else {
+            return Ok(None);
+        };
         if n <= &max {
             self.value += match &self.node.step {
                 Some(step) => step * Number::from(n),
-                None => Number::from(n)
+                None => Number::from(n),
             };
             Ok(None)
         } else {
@@ -150,6 +161,7 @@ impl PreIterator for RangeIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("..", eval_range, r#"
 A range of values (numbers or characters).

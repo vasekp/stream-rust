@@ -6,7 +6,7 @@ fn eval_len_am(node: &Node, env: &Env) -> SResult<Item> {
     match node.source_checked()? {
         Item::Stream(stm) => Ok(Item::new_stream(LenAM { head: node.head.clone(), src: Rc::clone(stm) })),
         Item::String(stm) => Ok(Item::new_string(LenAM { head: node.head.clone(), src: Rc::clone(stm) })),
-        _ => panic!()
+        _ => panic!(),
     }
 }
 
@@ -34,7 +34,7 @@ impl<I: ItemType> Stream<I> for LenAM<I> {
 }
 
 struct LenAMIter<I: ItemType> {
-    iter: Box<dyn SIterator<I>>
+    iter: Box<dyn SIterator<I>>,
 }
 
 impl<I: ItemType> SIterator<I> for LenAMIter<I> {
@@ -53,7 +53,7 @@ fn eval_len_uf(node: &Node, env: &Env) -> SResult<Item> {
     match node.source_checked()? {
         Item::Stream(stm) => Ok(Item::new_stream(LenUF { head: node.head.clone(), src: Rc::clone(stm) })),
         Item::String(stm) => Ok(Item::new_string(LenUF { head: node.head.clone(), src: Rc::clone(stm) })),
-        _ => panic!()
+        _ => panic!(),
     }
 }
 
@@ -81,7 +81,7 @@ impl<I: ItemType> Stream<I> for LenUF<I> {
 }
 
 struct LenUFIter<I: ItemType> {
-    iter: Box<dyn SIterator<I>>
+    iter: Box<dyn SIterator<I>>,
 }
 
 impl<I: ItemType> SIterator<I> for LenUFIter<I> {
@@ -100,7 +100,7 @@ fn eval_len_uu(node: &Node, env: &Env) -> SResult<Item> {
     match node.source_checked()? {
         Item::Stream(stm) => Ok(Item::new_stream(LenUU { head: node.head.clone(), src: Rc::clone(stm) })),
         Item::String(stm) => Ok(Item::new_string(LenUU { head: node.head.clone(), src: Rc::clone(stm) })),
-        _ => panic!()
+        _ => panic!(),
     }
 }
 
@@ -128,7 +128,7 @@ impl<I: ItemType> Stream<I> for LenUU<I> {
 }
 
 struct LenUUIter<I: ItemType> {
-    iter: Box<dyn SIterator<I>>
+    iter: Box<dyn SIterator<I>>,
 }
 
 impl<I: ItemType> SIterator<I> for LenUUIter<I> {
@@ -141,6 +141,7 @@ impl<I: ItemType> SIterator<I> for LenUUIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_raw("$lenAM", eval_len_am);
     symbols.insert_raw("$lenUF", eval_len_uf);

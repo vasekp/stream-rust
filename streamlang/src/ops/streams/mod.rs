@@ -40,6 +40,7 @@ mod spliton;
 mod unroll;
 mod rising;
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     seq::init(symbols);
     range::init(symbols);

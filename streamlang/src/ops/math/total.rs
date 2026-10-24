@@ -15,6 +15,7 @@ fn eval_total(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_number(total))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("total", eval_total, r#"
 Sums all numbers forming `stream`.

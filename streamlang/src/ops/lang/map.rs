@@ -3,19 +3,16 @@ use crate::base::*;
 fn eval_map(node: &Node, env: &Env) -> SResult<Item> {
     let body = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
-        Item::Stream(source) => Ok(Item::new_stream(Map{
+        Item::Stream(source) => {
+            Ok(Item::new_stream(Map { head: node.head.clone(), source, body: Rc::clone(body), env: env.clone() }))
+        },
+        Item::String(source) => Ok(Item::new_string(CharMap {
             head: node.head.clone(),
             source,
             body: Rc::clone(body),
             env: env.clone(),
         })),
-        Item::String(source) => Ok(Item::new_string(CharMap{
-            head: node.head.clone(),
-            source,
-            body: Rc::clone(body),
-            env: env.clone(),
-        })),
-        _ => Err("expected string or stream".into())
+        _ => Err("expected string or stream".into()),
     }
 }
 
@@ -23,7 +20,7 @@ struct Map {
     source: Rc<dyn Stream>,
     body: Rc<Node>,
     head: Head,
-    env: Env
+    env: Env,
 }
 
 impl Describe for Map {
@@ -39,10 +36,14 @@ impl Stream for Map {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let body = Rc::clone(&self.body);
         let env = self.env.clone();
-        Box::new(SMap::new(&self.source, move |item| {
-            body.with_source(item.into())
-                .and_then(|node| Expr::from(node).eval(&env)) },
-            &self))
+        Box::new(SMap::new(
+            &self.source,
+            move |item| {
+                body.with_source(item.into())
+                    .and_then(|node| Expr::from(node).eval(&env))
+            },
+            &self,
+        ))
     }
 
     fn len(&self) -> Length {
@@ -54,7 +55,7 @@ struct CharMap {
     source: Rc<dyn Stream<Char>>,
     body: Rc<Node>,
     head: Head,
-    env: Env
+    env: Env,
 }
 
 impl Describe for CharMap {
@@ -70,11 +71,15 @@ impl Stream<Char> for CharMap {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         let body = Rc::clone(&self.body);
         let env = self.env.clone();
-        Box::new(SMap::new(&self.source, move |ch| {
-            body.with_source(Item::Char(ch).into())
-                .and_then(|node| Expr::from(node).eval(&env))
-                .and_then(Item::into_char)},
-            &self))
+        Box::new(SMap::new(
+            &self.source,
+            move |ch| {
+                body.with_source(Item::Char(ch).into())
+                    .and_then(|node| Expr::from(node).eval(&env))
+                    .and_then(Item::into_char)
+            },
+            &self,
+        ))
     }
 
     fn len(&self) -> Length {
@@ -82,6 +87,7 @@ impl Stream<Char> for CharMap {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_raw("[map]", eval_map);
     symbols.insert(["foreach", "map"], eval_map, r#"

@@ -6,7 +6,7 @@ fn eval_repeat(node: &Node, env: &Env) -> SResult<Item> {
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     match (&item, count.as_ref().and_then(|x| u32::try_from(x).ok())) {
         (Item::String(stm), _) if stm.is_empty()? => Ok(item.clone()),
@@ -14,30 +14,33 @@ fn eval_repeat(node: &Node, env: &Env) -> SResult<Item> {
         (Item::Char(_) | Item::String(_), Some(0)) => Ok(Item::empty_string()),
         (_, Some(0)) => Ok(Item::empty_stream()),
         (Item::Stream(_) | Item::String(_), Some(1)) => Ok(item.clone()),
-        (Item::Stream(stm), _) => Ok(Item::new_stream(RepeatStream{head: node.head.clone(), stream: Rc::clone(stm), count})),
-        (Item::String(stm), _) => Ok(Item::new_string(RepeatStream{head: node.head.clone(), stream: Rc::clone(stm), count})),
-        (Item::Char(ch), _) => Ok(Item::new_string(RepeatItem{head: node.head.clone(), item: *ch, count})),
+        (Item::Stream(stm), _) => {
+            Ok(Item::new_stream(RepeatStream { head: node.head.clone(), stream: Rc::clone(stm), count }))
+        },
+        (Item::String(stm), _) => {
+            Ok(Item::new_string(RepeatStream { head: node.head.clone(), stream: Rc::clone(stm), count }))
+        },
+        (Item::Char(ch), _) => Ok(Item::new_string(RepeatItem { head: node.head.clone(), item: *ch, count })),
         (_, Some(1)) => Ok(Item::new_stream(List::from(vec![item.clone()]))),
-        _ => Ok(Item::new_stream(RepeatItem{head: node.head.clone(), item: item.clone(), count}))
+        _ => Ok(Item::new_stream(RepeatItem { head: node.head.clone(), item: item.clone(), count })),
     }
 }
 
 pub struct RepeatItem<I: ItemType> {
     head: Head,
     item: I,
-    count: Option<UNumber>
+    count: Option<UNumber>,
 }
 
 struct RepeatItemIter<I: ItemType> {
     node: Rc<RepeatItem<I>>,
-    count_rem: UNumber // None covered by std::iter::repeat_with
+    count_rem: UNumber, // None covered by std::iter::repeat_with
 }
-
 
 impl<I: ItemType> Stream<I> for RepeatItem<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         match &self.count {
-            Some(count) => RepeatItemIter{count_rem: count.to_owned(), node: self}.wrap(),
+            Some(count) => RepeatItemIter { count_rem: count.to_owned(), node: self }.wrap(),
             None => Box::new(std::iter::repeat(Ok(self.item.clone()))),
         }
     }
@@ -46,7 +49,7 @@ impl<I: ItemType> Stream<I> for RepeatItem<I> {
         use Length::*;
         match &self.count {
             Some(count) => Exact(count.to_owned()),
-            None => Infinite
+            None => Infinite,
         }
     }
 }
@@ -87,28 +90,30 @@ impl<I: ItemType> PreIterator<I> for RepeatItemIter<I> {
 pub struct RepeatStream<I: ItemType> {
     head: Head,
     stream: Rc<dyn Stream<I>>,
-    count: Option<UNumber>
+    count: Option<UNumber>,
 }
 
 impl<I: ItemType> Stream<I> for RepeatStream<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         RepeatStreamIter {
             iter: self.stream.iter(),
-            resets_rem: self.count.as_ref()
-                .map(|count| count - 1u32),
+            resets_rem: self.count.as_ref().map(|count| count - 1u32),
             node: self,
-        }.wrap()
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
         use Length::*;
-        if self.count == Some(UNumber::zero()) { return Exact(UNumber::zero()); }
+        if self.count == Some(UNumber::zero()) {
+            return Exact(UNumber::zero());
+        }
         match (self.stream.len(), &self.count) {
             (_, None) | (Infinite, _) => Infinite,
             (Exact(len), Some(count)) => Exact(len * count),
             (AtMost(len), Some(count)) => AtMost(len * count),
             (UnknownFinite, Some(_)) => UnknownFinite,
-            (Unknown, Some(_)) => Unknown
+            (Unknown, Some(_)) => Unknown,
         }
     }
 }
@@ -125,7 +130,7 @@ impl<I: ItemType> Describe for RepeatStream<I> {
 struct RepeatStreamIter<I: ItemType> {
     node: Rc<RepeatStream<I>>,
     iter: Box<dyn SIterator<I>>,
-    resets_rem: Option<UNumber>
+    resets_rem: Option<UNumber>,
 }
 
 impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
@@ -145,7 +150,9 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        let Some(n) = self.iter.advance(n)? else { return Ok(None); };
+        let Some(n) = self.iter.advance(n)? else {
+            return Ok(None);
+        };
 
         // If advance returned Some, iter is depleted. Restart.
         if let Some(ref mut count) = self.resets_rem {
@@ -160,7 +167,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
         // determine the length regardless of whether it's statically known.
         let (full_length, mut n) = match self.iter.advance(&n)? {
             None => return Ok(None),
-            Some(remain) => (n - &remain, remain)
+            Some(remain) => (n - &remain, remain),
         };
 
         if full_length.is_zero() {
@@ -193,6 +200,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("repeat", eval_repeat, r#"
 The `item` repeated `count`times.

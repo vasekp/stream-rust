@@ -5,10 +5,10 @@ fn eval_groups(node: &Node, env: &Env) -> SResult<Item> {
     let (size, body) = match &node.args[..] {
         [size] => (size, None),
         [size, Expr::Eval(node)] if node.args.is_empty() => (size, Some(Rc::clone(node))),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     let size = size.eval(env)?.as_num()?.try_cast_within(1usize..)?;
-    Ok(Item::new_stream(Groups{head: node.head.clone(), source: stm, size, body, env: env.clone()}))
+    Ok(Item::new_stream(Groups { head: node.head.clone(), source: stm, size, body, env: env.clone() }))
 }
 
 struct Groups {
@@ -39,7 +39,7 @@ impl Describe for Groups {
 impl Stream for Groups {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let iter = self.source.iter();
-        GroupsIter{size: self.size, iter, node: self}.wrap()
+        GroupsIter { size: self.size, iter, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -73,7 +73,7 @@ impl PreIterator for GroupsIter {
         let mul = n * UNumber::from(self.size);
         match self.iter.advance(&mul)? {
             Some(rem) => Ok(Some(n - (mul - rem) / self.size)),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -82,6 +82,7 @@ impl PreIterator for GroupsIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["groups", "group"], eval_groups, r#"
 Single-argument form: a stream of `size`-sized non-overlapping arrays from the input `stream`.

@@ -3,19 +3,19 @@ use crate::base::*;
 fn eval_consec(node: &Node, env: &Env) -> SResult<Item> {
     let func = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
-        Item::Stream(stm) => Ok(Item::new_stream(Consec{
+        Item::Stream(stm) => Ok(Item::new_stream(Consec {
             head: node.head.clone(),
             source: stm,
             func: Rc::clone(func),
             env: env.clone(),
         })),
-        Item::String(stm) => Ok(Item::new_stream(Consec{
+        Item::String(stm) => Ok(Item::new_stream(Consec {
             head: node.head.clone(),
             source: stm,
             func: Rc::clone(func),
             env: env.clone(),
         })),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -38,7 +38,7 @@ impl<I: ItemType> Describe for Consec<I> {
 impl<I: ItemType> Stream for Consec<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let iter = self.source.iter();
-        ConsecIter{iter, done: false, node: self}.wrap()
+        ConsecIter { iter, done: false, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -60,7 +60,9 @@ impl<I: ItemType> PreIterator for ConsecIter<I> {
         let mut vals = Vec::new();
         while let Some(val) = self.iter.next()? {
             check_stop!();
-            let cond = self.node.func
+            let cond = self
+                .node
+                .func
                 .with_source(val.to_item().into())?
                 .eval(&self.node.env)?
                 .to_bool()?;
@@ -71,11 +73,7 @@ impl<I: ItemType> PreIterator for ConsecIter<I> {
             }
         }
         self.done = true;
-        if !vals.is_empty() {
-            Ok(Some(Item::from(vals)))
-        } else {
-            Ok(None)
-        }
+        if !vals.is_empty() { Ok(Some(Item::from(vals))) } else { Ok(None) }
     }
 
     fn origin(&self) -> &Rc<Consec<I>> {
@@ -83,6 +81,7 @@ impl<I: ItemType> PreIterator for ConsecIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("consec", eval_consec, r#"
 A stream of chunks of consecutive items `x` from `stream` for which `x.func == true`.

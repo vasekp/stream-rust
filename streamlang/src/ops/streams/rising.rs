@@ -7,12 +7,7 @@ fn eval_rising(node: &Node, env: &Env) -> SResult<Item> {
         [expr] => Some(Rc::clone(expr.as_func()?)),
         _ => return Err(StreamError::usage(&node.head)),
     };
-    Ok(Item::new_stream(Rising{
-        head: node.head.clone(),
-        source: stm,
-        func,
-        env: env.clone()
-    }))
+    Ok(Item::new_stream(Rising { head: node.head.clone(), source: stm, func, env: env.clone() }))
 }
 
 struct Rising {
@@ -21,7 +16,6 @@ struct Rising {
     func: Option<Rc<Node>>,
     env: Env,
 }
-
 
 impl Describe for Rising {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
@@ -34,7 +28,7 @@ impl Describe for Rising {
 
 impl Stream for Rising {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        RisingIter{iter: self.source.iter(), last: None, node: self}.wrap()
+        RisingIter { iter: self.source.iter(), last: None, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -45,7 +39,7 @@ impl Stream for Rising {
 struct RisingIter {
     node: Rc<Rising>,
     iter: Box<dyn SIterator>,
-    last: Option<Item>
+    last: Option<Item>,
 }
 
 impl PreIterator for RisingIter {
@@ -57,7 +51,9 @@ impl PreIterator for RisingIter {
                 None => item.clone(),
                 Some(func) => func.with_source(Expr::from(&item))?.eval(&self.node.env)?,
             };
-            if let Some(last) = &self.last && key.lex_cmp(last, &self.node.env.alpha)? != std::cmp::Ordering::Greater {
+            if let Some(last) = &self.last
+                && key.lex_cmp(last, &self.node.env.alpha)? != std::cmp::Ordering::Greater
+            {
                 continue;
             }
             self.last = Some(key);
@@ -70,6 +66,7 @@ impl PreIterator for RisingIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("rising", eval_rising, r#"
 Keeps only a subsequence that's strictly increasing, starting from its first element.

@@ -14,13 +14,11 @@ mod tracer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rl: rl::Editor<(), _> = rl::Editor::with_history(
-    rl::config::Builder::new()
-        .auto_add_history(true)
-        .build(),
-    rl::history::MemHistory::new())?;
+        rl::config::Builder::new().auto_add_history(true).build(),
+        rl::history::MemHistory::new(),
+    )?;
 
-    ctrlc::set_handler(stream::base::stop::send_stop)
-        .expect("Error setting Ctrl-C handler");
+    ctrlc::set_handler(stream::base::stop::send_stop).expect("Error setting Ctrl-C handler");
 
     let mut sess = Session::new();
     let tracer = Rc::new(std::cell::RefCell::new(tracer::TextTracer::default()));
@@ -30,7 +28,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     while let Ok(input) = rl.readline("> ") {
         let input = input.trim();
-        if input.is_empty() { continue; }
+        if input.is_empty() {
+            continue;
+        }
         if input.as_bytes()[0] == b':' {
             let mut iter = input[1..].split(' ').filter(|s| !s.is_empty());
             match iter.next() {
@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 let _ = writeln!(stdin, "{}", format!("error: {err}").red());
                                 last_err = Some(err);
                                 break;
-                            }
+                            },
                         }
                     }
                     drop(stdin);
@@ -76,7 +76,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         _ => {
                             eprintln!("{}", "invalid command".red());
                             continue;
-                        }
+                        },
                     };
                     tracer.borrow_mut().toggle(state);
                 },
@@ -167,7 +167,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         DescType::Tip => "[*] ".bright_yellow(),
                         DescType::Warn => "[!] ".bright_red(),
                     };
-                    println!("{}{}" , prefix, format_cli(s, sym));
+                    println!("{}{}", prefix, format_cli(s, sym));
                 }
                 if !docs.examples.is_empty() {
                     println!();
@@ -182,13 +182,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         match example.output {
                             Ok(out) => {
-                                println!("{}",
-                                    format!("{} {}", format!("%{}:", index).dimmed(), out).white());
+                                println!("{}", format!("{} {}", format!("%{}:", index).dimmed(), out).white());
                                 index += 1;
                             },
                             Err(err) => {
                                 println!("{}", format!("! {}", err).bright_red());
-                            }
+                            },
                         }
                     }
                 }
@@ -230,18 +229,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Err(err) => {
                         println!("{}", format!("{err}").red());
                         last_err = Some(err);
-                    }
+                    },
                 }
             },
             Err(err) => {
                 if let Some(range) = err.range_within(input) {
-                    println!("{}{}{}",
+                    println!(
+                        "{}{}{}",
                         &input[0..range.start],
                         &input[range.start..range.end].red().bold(),
-                        &input[range.end..]);
+                        &input[range.end..]
+                    );
                 }
                 println!("{}", format!("{err}").red());
-            }
+            },
         }
     }
     Ok(())

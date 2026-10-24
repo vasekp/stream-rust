@@ -8,7 +8,7 @@ fn eval_numstr(node: &Node, env: &Env) -> SResult<Item> {
         [] => (10, None),
         [Item::Number(radix)] => (radix.try_cast_within(2..=36)?, None),
         [Item::Number(radix), Item::Number(minw)] => (radix.try_cast_within(2..=36u32)?, Some(minw.try_unsign()?)),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     if radix == 10 && minw.is_none() {
         Ok(Item::new_string(LiteralString::from(format!("{}", num).as_str())))
@@ -20,16 +20,15 @@ fn eval_numstr(node: &Node, env: &Env) -> SResult<Item> {
         match (sign, minw) {
             (false, None) => Ok(Item::new_string(LiteralString::from(s.as_str()))),
             (true, None) => Ok(Item::new_string(LiteralString::from(format!("-{s}").as_str()))),
-            (false, Some(minw)) =>
+            (false, Some(minw)) => Expr::from(Item::new_string(LiteralString::from(s.as_str())))
+                .chain(Link::new("padleft", vec![Expr::new_number(minw), Expr::new_char('0')]))
+                .eval(env),
+            (true, Some(minw)) => Expr::new_node("join", None, vec![
+                Expr::new_char('-'),
                 Expr::from(Item::new_string(LiteralString::from(s.as_str())))
-                    .chain(Link::new("padleft", vec![Expr::new_number(minw), Expr::new_char('0')]))
-                    .eval(env),
-            (true, Some(minw)) =>
-                Expr::new_node("join", None, vec![
-                    Expr::new_char('-'),
-                    Expr::from(Item::new_string(LiteralString::from(s.as_str())))
-                        .chain(Link::new("padleft", vec![Expr::new_number(minw), Expr::new_char('0')]))
-                ]).eval(env),
+                    .chain(Link::new("padleft", vec![Expr::new_number(minw), Expr::new_char('0')])),
+            ])
+            .eval(env),
         }
     }
 }
@@ -40,21 +39,26 @@ fn eval_strnum(node: &Node, env: &Env) -> SResult<Item> {
     let radix = match &node.args[..] {
         [] => 10,
         [Item::Number(radix)] => radix.try_cast_within(2..=36)?,
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
-    let st = stm.iter().transposed().map(|ch| -> SResult<char> {
-        check_stop!();
-        match ch? {
-            Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
-            c => Err(StreamError::with_expr("invalid character", &c))
-        }
-    }).collect::<SResult<String>>()?;
+    let st = stm
+        .iter()
+        .transposed()
+        .map(|ch| -> SResult<char> {
+            check_stop!();
+            match ch? {
+                Char::Single(c) if c.is_ascii() && (c.is_digit(radix) || c == '-' || c == '+') => Ok(c),
+                c => Err(StreamError::with_expr("invalid character", &c)),
+            }
+        })
+        .collect::<SResult<String>>()?;
     match Number::from_str_radix(&st, radix) {
         Ok(num) => Ok(Item::new_number(num)),
-        Err(_) => Err("invalid input".into())
+        Err(_) => Err("invalid input".into()),
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("numstr", eval_numstr, r#"
 Converts `number` to a string.

@@ -20,7 +20,7 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
         "isempty" => match item {
             Item::Stream(stm) => stm.is_empty(),
             Item::String(stm) => stm.is_empty(),
-            _ => Err(StreamError::with_expr("expected stream or string", item))
+            _ => Err(StreamError::with_expr("expected stream or string", item)),
         },
         "isalpha" => Ok(env.alpha.contains(item.as_char()?)),
         "isascii" => Ok(match item {
@@ -30,19 +30,21 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
                 let mut ret = true;
                 for ch in stm.iter().transposed() {
                     check_stop!();
-                    if let Char::Single(ch) = ch? && ch.is_ascii() { }
-                    else {
+                    if let Char::Single(ch) = ch?
+                        && ch.is_ascii()
+                    {
+                    } else {
                         ret = false;
                         break;
                     }
                 }
                 ret
             },
-            _ => return Err(StreamError::with_expr("expected character or string", item))
+            _ => return Err(StreamError::with_expr("expected character or string", item)),
         }),
         "iswhite" => Ok(match item.as_char()? {
             Char::Single(ch) => ch.is_whitespace(),
-            _ => false
+            _ => false,
         }),
         "isupper" => Ok(match item {
             Item::Char(ch) => ch.case() == CharCase::Upper,
@@ -54,12 +56,12 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
                     match ch.case() {
                         CharCase::Lower | CharCase::Mixed => return Ok(false),
                         CharCase::Upper => indet = false,
-                        CharCase::Indeterminate => ()
+                        CharCase::Indeterminate => (),
                     }
                 }
                 !indet
             },
-            _ => return Err(StreamError::with_expr("expected character or string", item))
+            _ => return Err(StreamError::with_expr("expected character or string", item)),
         }),
         "islower" => Ok(match item {
             Item::Char(ch) => ch.case() == CharCase::Lower,
@@ -71,19 +73,19 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
                     match ch.case() {
                         CharCase::Upper | CharCase::Mixed => return Ok(false),
                         CharCase::Lower => indet = false,
-                        CharCase::Indeterminate => ()
+                        CharCase::Indeterminate => (),
                     }
                 }
                 !indet
             },
-            _ => return Err(StreamError::with_expr("expected character or string", item))
+            _ => return Err(StreamError::with_expr("expected character or string", item)),
         }),
         "isnumeric" => {
             if let Item::Char(ch) = item {
                 return match ch {
                     Char::Single(ch) => Ok(ch.is_ascii_digit()),
-                    _ => Ok(false)
-                }
+                    _ => Ok(false),
+                };
             }
             let Item::String(stm) = item else {
                 return Err(StreamError::with_expr("expected character or string", item));
@@ -91,21 +93,21 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
             let mut iter = stm.iter();
             let mut nonempty = match iter.next()? {
                 Some(ch) => match ch {
-                    Char::Single('+'|'-') => false,
+                    Char::Single('+' | '-') => false,
                     Char::Single(x) if x.is_ascii_digit() => true,
-                    _ => return Ok(false)
+                    _ => return Ok(false),
                 },
-                None => return Ok(false)
+                None => return Ok(false),
             };
             for ch in iter.transposed() {
                 match ch? {
                     Char::Single(x) if x.is_ascii_digit() => nonempty = true,
-                    _ => return Ok(false)
+                    _ => return Ok(false),
                 }
             }
             Ok(nonempty)
         },
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }
 
@@ -123,6 +125,7 @@ fn eval_isdigit(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::Bool(ok))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("isnum", eval_class, r#"
 Evaluates to `true` if `input` is a number, `false` otherwise.

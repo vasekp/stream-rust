@@ -6,19 +6,18 @@ use std::fmt::{Display, Formatter, Debug};
 #[derive(Debug, PartialEq)]
 pub struct ParseError<'str> {
     reason: String,
-    slice: &'str str
+    slice: &'str str,
 }
 
 impl<'str> ParseError<'str> {
     pub fn new(text: impl Into<String>, slice: &'str str) -> ParseError<'str> {
-        ParseError{reason: text.into(), slice}
+        ParseError { reason: text.into(), slice }
     }
 
     pub fn range_within(&self, input: &'str str) -> Option<std::ops::Range<usize>> {
-        let start = input.as_bytes()
-            .element_offset(self.slice.as_bytes().first()?)?;
+        let start = input.as_bytes().element_offset(self.slice.as_bytes().first()?)?;
         let length = self.slice.len();
-        Some(start..(start+length))
+        Some(start..(start + length))
     }
 }
 

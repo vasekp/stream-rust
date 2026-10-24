@@ -7,11 +7,16 @@ fn eval_padl(node: &Node, env: &Env) -> SResult<Item> {
     };
     let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
-        (Item::Stream(stm), item) =>
-            Ok(Item::new_stream(PadLeft { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
-        (Item::String(stm), Item::Char(ch)) =>
-            Ok(Item::new_string(PadLeft { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
-        _ => Err(StreamError::usage(&node.head))
+        (Item::Stream(stm), item) => Ok(Item::new_stream(PadLeft {
+            source: Rc::clone(stm),
+            len,
+            padding: item.clone(),
+            head: node.head.clone(),
+        })),
+        (Item::String(stm), Item::Char(ch)) => {
+            Ok(Item::new_string(PadLeft { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() }))
+        },
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -22,11 +27,16 @@ fn eval_padr(node: &Node, env: &Env) -> SResult<Item> {
     };
     let len = len.try_unsign()?;
     match (node.source_checked()?, item) {
-        (Item::Stream(stm), item) =>
-            Ok(Item::new_stream(PadRight { source: Rc::clone(stm), len, padding: item.clone(), head: node.head.clone() })),
-        (Item::String(stm), Item::Char(ch)) =>
-            Ok(Item::new_string(PadRight { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() })),
-        _ => Err(StreamError::usage(&node.head))
+        (Item::Stream(stm), item) => Ok(Item::new_stream(PadRight {
+            source: Rc::clone(stm),
+            len,
+            padding: item.clone(),
+            head: node.head.clone(),
+        })),
+        (Item::String(stm), Item::Char(ch)) => {
+            Ok(Item::new_string(PadRight { source: Rc::clone(stm), len, padding: *ch, head: node.head.clone() }))
+        },
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -34,7 +44,7 @@ struct PadLeft<I: ItemType> {
     source: Rc<dyn Stream<I>>,
     len: UNumber,
     padding: I,
-    head: Head
+    head: Head,
 }
 
 impl<I: ItemType> Describe for PadLeft<I> {
@@ -56,26 +66,17 @@ impl<I: ItemType> Stream<I> for PadLeft<I> {
             Ok(len) => len,
             Err(err) => return iter_error(err, &self),
         };
-        let pad_remain = if len < self.len {
-            &self.len - &len
-        } else {
-            UNumber::zero()
-        };
-        PadLeftIter {
-            source: self.source.iter(),
-            pad_remain,
-            node: self,
-        }.wrap()
+        let pad_remain = if len < self.len { &self.len - &len } else { UNumber::zero() };
+        PadLeftIter { source: self.source.iter(), pad_remain, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
         match self.source.len() {
-            Length::Exact(len) | Length::AtMost(len) if len <= self.len
-                => Length::Exact(self.len.clone()),
+            Length::Exact(len) | Length::AtMost(len) if len <= self.len => Length::Exact(self.len.clone()),
             Length::Exact(len) => Length::Exact(len),
             Length::Infinite => Length::Infinite,
             Length::AtMost(_) | Length::UnknownFinite => Length::UnknownFinite,
-            Length::Unknown => Length::Unknown
+            Length::Unknown => Length::Unknown,
         }
     }
 }
@@ -114,7 +115,7 @@ struct PadRight<I: ItemType> {
     source: Rc<dyn Stream<I>>,
     len: UNumber,
     padding: I,
-    head: Head
+    head: Head,
 }
 
 impl<I: ItemType> Describe for PadRight<I> {
@@ -132,22 +133,17 @@ impl<I: ItemType> Stream<I> for PadRight<I> {
         if self.source.len() == Length::Infinite {
             self.source.iter()
         } else {
-            PadRightIter {
-                source: Some(self.source.iter()),
-                pos: UNumber::zero(),
-                node: self,
-            }.wrap()
+            PadRightIter { source: Some(self.source.iter()), pos: UNumber::zero(), node: self }.wrap()
         }
     }
 
     fn len(&self) -> Length {
         match self.source.len() {
-            Length::Exact(len) | Length::AtMost(len) if len <= self.len
-                => Length::Exact(self.len.clone()),
+            Length::Exact(len) | Length::AtMost(len) if len <= self.len => Length::Exact(self.len.clone()),
             Length::Exact(len) => Length::Exact(len),
             Length::Infinite => Length::Infinite,
             Length::AtMost(_) | Length::UnknownFinite => Length::UnknownFinite,
-            Length::Unknown => Length::Unknown
+            Length::Unknown => Length::Unknown,
         }
     }
 }
@@ -185,11 +181,7 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
                 self.source = None;
             }
         }
-        if self.pos > self.node.len {
-            Ok(Some(&self.pos - &self.node.len))
-        } else {
-            Ok(None)
-        }
+        if self.pos > self.node.len { Ok(Some(&self.pos - &self.node.len)) } else { Ok(None) }
     }
 
     fn origin(&self) -> &Rc<PadRight<I>> {
@@ -197,6 +189,7 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["padleft", "padl"], eval_padl, r#"
 Left-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).

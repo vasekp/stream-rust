@@ -3,10 +3,13 @@ use crate::base::*;
 fn eval_zip(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_args_nonempty()?;
-    let streams = node.source.iter().chain(&node.args)
+    let streams = node
+        .source
+        .iter()
+        .chain(&node.args)
         .map(Item::to_stream)
         .collect::<SResult<_>>()?;
-    Ok(Item::new_stream(Zip{head: node.head, streams}))
+    Ok(Item::new_stream(Zip { head: node.head, streams }))
 }
 
 struct Zip {
@@ -24,14 +27,13 @@ impl Describe for Zip {
 
 impl Stream for Zip {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        let iters = self.streams.iter()
-            .map(|stm| stm.iter())
-            .collect();
-        ZipIter{iters, node: self}.wrap()
+        let iters = self.streams.iter().map(|stm| stm.iter()).collect();
+        ZipIter { iters, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        self.streams.iter()
+        self.streams
+            .iter()
             .map(|stm| stm.len())
             .reduce(Length::intersection)
             .unwrap() // at least 1 arg
@@ -59,8 +61,7 @@ impl PreIterator for ZipIter {
                 remain = std::cmp::max(remain, r);
             }
         }
-        if remain.is_zero() { Ok(None) }
-        else { Ok(Some(remain)) }
+        if remain.is_zero() { Ok(None) } else { Ok(Some(remain)) }
     }
 
     fn origin(&self) -> &Rc<Zip> {
@@ -68,6 +69,7 @@ impl PreIterator for ZipIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("zip", eval_zip, r#"
 A stream of arrays whose `n`-th element comes from the `n`-th input `streamN`.

@@ -7,7 +7,7 @@ fn eval_drep(node: &Node, env: &Env) -> SResult<Item> {
         [expr] => Some((Rc::clone(expr.as_func()?), env.clone())),
         _ => return Err(StreamError::usage(&node.head)),
     };
-    Ok(Item::new_stream(DRep{head: node.head.clone(), source: stm, func}))
+    Ok(Item::new_stream(DRep { head: node.head.clone(), source: stm, func }))
 }
 
 struct DRep {
@@ -15,7 +15,6 @@ struct DRep {
     source: Rc<dyn Stream>,
     func: Option<(Rc<Node>, Env)>,
 }
-
 
 impl Describe for DRep {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
@@ -28,7 +27,7 @@ impl Describe for DRep {
 
 impl Stream for DRep {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        DRepIter{iter: self.source.iter(), last: None, node: self}.wrap()
+        DRepIter { iter: self.source.iter(), last: None, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -39,7 +38,7 @@ impl Stream for DRep {
 struct DRepIter {
     node: Rc<DRep>,
     iter: Box<dyn SIterator>,
-    last: Option<Item>
+    last: Option<Item>,
 }
 
 impl PreIterator for DRepIter {
@@ -51,7 +50,9 @@ impl PreIterator for DRepIter {
                 None => item.clone(),
                 Some((func, env)) => func.with_source(Expr::from(&item))?.eval(env)?,
             };
-            if let Some(last) = &self.last && last.try_eq(&key)? {
+            if let Some(last) = &self.last
+                && last.try_eq(&key)?
+            {
                 continue;
             }
             self.last = Some(key);
@@ -64,6 +65,7 @@ impl PreIterator for DRepIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("drep", eval_drep, r#"
 Keeps only the first of every chain of repeated items.

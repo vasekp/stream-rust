@@ -6,11 +6,12 @@ fn eval_len(node: &Node, env: &Env) -> SResult<Item> {
     let len = match node.source_checked()? {
         Item::Stream(stm) => stm.try_count()?,
         Item::String(stm) => stm.try_count()?,
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     Ok(Item::new_number(len))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["len", "length"], eval_len, r#"
 Counts the number of items in `stream`, or the number of characters in `string`.

@@ -8,13 +8,15 @@ fn eval_digits(node: &Node, env: &Env) -> SResult<Item> {
         [Item::Number(num)] => num.try_cast_within(2..=36)?,
         _ => return Err(StreamError::usage(&node.head)),
     };
-    let vec = ('0'..='9').chain('A'..='Z')
+    let vec = ('0'..='9')
+        .chain('A'..='Z')
         .take(base)
         .map(Item::new_char)
         .collect::<Vec<_>>();
     Ok(Item::new_stream(List::from(vec)))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("digits", eval_digits, r#"
 The list of digits in base `base` as characters.

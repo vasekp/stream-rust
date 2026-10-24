@@ -14,6 +14,7 @@ fn eval_sign(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::Number(num.signum()))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("abs", eval_abs, r#"
 Absolute value of `number`.

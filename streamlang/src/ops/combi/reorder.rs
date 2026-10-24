@@ -13,9 +13,10 @@ fn eval_reorder(node: &Node, env: &Env) -> SResult<Item> {
     }
     let max_index = indices.iter().max().cloned().unwrap_or_default();
     if let Length::Exact(len) | Length::AtMost(len) = stm.len()
-        && max_index > len {
-            return Err("requested index exceeds length of source".into());
-        }
+        && max_index > len
+    {
+        return Err("requested index exceeds length of source".into());
+    }
     Ok(Item::new_stream(ReorderStream { source: stm, head: node.head, indices, max_index }))
 }
 
@@ -42,7 +43,8 @@ impl Stream for ReorderStream {
             state: ReorderState::Args { iter: 0..self.indices.len() },
             pos: UNumber::zero(),
             node: self,
-        }.wrap()
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
@@ -60,7 +62,7 @@ struct ReorderIter {
 enum ReorderState {
     Args { iter: std::ops::Range<usize> },
     Missed { index: UNumber },
-    Rest
+    Rest,
 }
 
 impl PreIterator for ReorderIter {
@@ -68,25 +70,24 @@ impl PreIterator for ReorderIter {
         loop {
             check_stop!();
             match &mut self.state {
-                ReorderState::Args{iter} => {
+                ReorderState::Args { iter } => {
                     if let Some(next) = iter.next() {
                         match self.iter.nth_from_start(&self.node.indices[next] - 1u32)? {
                             Some(item) => {
                                 self.pos += 1;
-                                return Ok(Some(item))
+                                return Ok(Some(item));
                             },
-                            None => return Err("index past end".into())
+                            None => return Err("index past end".into()),
                         }
                     }
-                    if usize::try_from(&self.node.max_index)
-                            .is_ok_and(|max| max == self.node.indices.len()) {
+                    if usize::try_from(&self.node.max_index).is_ok_and(|max| max == self.node.indices.len()) {
                         self.iter.move_to(self.node.max_index.to_owned())?;
                         self.state = ReorderState::Rest;
                     } else {
-                        self.state = ReorderState::Missed{index: UNumber::one()};
+                        self.state = ReorderState::Missed { index: UNumber::one() };
                     }
                 },
-                ReorderState::Missed{index} => {
+                ReorderState::Missed { index } => {
                     if *index > self.node.max_index {
                         self.iter.move_to(&*index - 1u32)?;
                         self.state = ReorderState::Rest;
@@ -105,7 +106,7 @@ impl PreIterator for ReorderIter {
                 ReorderState::Rest => {
                     self.pos += 1;
                     return self.iter.next();
-                }
+                },
             }
         }
     }
@@ -118,7 +119,7 @@ impl PreIterator for ReorderIter {
                 return Ok(None);
             }
             match &mut self.state {
-                ReorderState::Args{iter} => {
+                ReorderState::Args { iter } => {
                     while !n.is_zero() && iter.next().is_some() {
                         n -= 1;
                         self.pos += 1;
@@ -126,11 +127,14 @@ impl PreIterator for ReorderIter {
                     if n.is_zero() {
                         return Ok(None);
                     }
-                    self.state = ReorderState::Missed{index: UNumber::one()};
+                    self.state = ReorderState::Missed { index: UNumber::one() };
                 },
-                ReorderState::Missed{index} => {
+                ReorderState::Missed { index } => {
                     let new_index = &*index + &n;
-                    let skipped = self.node.indices.iter()
+                    let skipped = self
+                        .node
+                        .indices
+                        .iter()
                         .filter(|ix| (&*index..&new_index).contains(ix))
                         .count();
                     self.pos += &n - skipped;
@@ -140,7 +144,7 @@ impl PreIterator for ReorderIter {
                             n = skipped.into()
                         },
                         Ok(Some(remain)) => return Ok(Some(remain + skipped)),
-                        Err(err) => return Err(err)
+                        Err(err) => return Err(err),
                     }
                     if self.pos > self.node.max_index {
                         self.state = ReorderState::Rest;
@@ -148,8 +152,8 @@ impl PreIterator for ReorderIter {
                 },
                 ReorderState::Rest => {
                     self.pos += &n;
-                    return self.iter.advance(&n)
-                }
+                    return self.iter.advance(&n);
+                },
             }
         }
     }
@@ -159,6 +163,7 @@ impl PreIterator for ReorderIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("reorder", eval_reorder, r#"
 Applies a given permutation on the input `stream`: returning `stream[i1]`, `stream[i2]` etc., followed by all the remaining items.

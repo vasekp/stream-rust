@@ -8,7 +8,10 @@ pub(super) struct Digits<T: TryFrom<UNumber>> {
 }
 
 impl<T> Digits<T>
-where T: TryFrom<UNumber>, UNumber: From<T> {
+where
+    T: TryFrom<UNumber>,
+    UNumber: From<T>,
+{
     pub fn new(mut num: UNumber, radix: T) -> Self {
         let mut power = UNumber::from(radix);
         let mut powers = Vec::new();
@@ -19,13 +22,15 @@ where T: TryFrom<UNumber>, UNumber: From<T> {
         }
         let mut queue = Vec::new();
         for (ix, p) in powers.iter().enumerate().rev() {
-            if &num < p { continue; }
+            if &num < p {
+                continue;
+            }
             let (quot, div) = num.div_rem(p);
             num = quot;
             queue.push((ix, div));
         }
         queue.push((0, num));
-        Self{powers, queue, _phantom: PhantomData}
+        Self { powers, queue, _phantom: PhantomData }
     }
 }
 

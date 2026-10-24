@@ -6,10 +6,8 @@ fn eval_weave(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_source()?;
     node.check_args_nonempty()?;
-    let streams = node.args.iter()
-        .map(Item::to_stream)
-        .collect::<SResult<Vec<_>>>()?;
-    Ok(Item::new_stream(Weave{head: node.head.clone(), streams}))
+    let streams = node.args.iter().map(Item::to_stream).collect::<SResult<Vec<_>>>()?;
+    Ok(Item::new_stream(Weave { head: node.head.clone(), streams }))
 }
 
 struct Weave {
@@ -27,17 +25,18 @@ impl Describe for Weave {
 
 impl Stream for Weave {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        let iters = self.streams.iter()
-            .map(|stm| stm.iter())
-            .collect();
-        WeaveIter{iters, node: self}.wrap()
+        let iters = self.streams.iter().map(|stm| stm.iter()).collect();
+        WeaveIter { iters, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
         let num = self.streams.len();
-        self.streams.iter().enumerate()
+        self.streams
+            .iter()
+            .enumerate()
             .map(|(ix, stm)| stm.len().map(|len| len * num + ix))
-            .reduce(Length::intersection).unwrap()
+            .reduce(Length::intersection)
+            .unwrap()
     }
 }
 
@@ -48,9 +47,12 @@ struct WeaveIter {
 
 impl PreIterator for WeaveIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let res = iter_try!(self.iters.front_mut()
-            .unwrap() // nonempty checked at eval
-            .next());
+        let res = iter_try!(
+            self.iters
+                .front_mut()
+                .unwrap() // nonempty checked at eval
+                .next()
+        );
         self.iters.rotate_left(1);
         Ok(Some(res))
     }
@@ -81,6 +83,7 @@ impl PreIterator for WeaveIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["weave", "alternate"], eval_weave, r#"
 Interleaves the values of given streams until one of them finishes.

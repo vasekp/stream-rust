@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_while(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let cond = node.only_arg_checked()?.as_func()?;
-    Ok(Item::new_stream(While{
+    Ok(Item::new_stream(While {
         cond: Rc::clone(cond),
         source: stm,
         head: node.head.clone(),
@@ -15,7 +15,7 @@ struct While {
     head: Head,
     source: Rc<dyn Stream>,
     cond: Rc<Node>,
-    env: Env
+    env: Env,
 }
 
 struct WhileIter {
@@ -34,7 +34,7 @@ impl Describe for While {
 
 impl Stream for While {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        WhileIter{source: self.source.iter(), node: self}.wrap()
+        WhileIter { source: self.source.iter(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -45,15 +45,13 @@ impl Stream for While {
 impl PreIterator for WhileIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
-        let cond = self.node.cond
+        let cond = self
+            .node
+            .cond
             .with_source(Expr::from(&source))?
             .eval(&self.node.env)?
             .to_bool()?;
-        if cond {
-            Ok(Some(source))
-        } else {
-            Ok(None)
-        }
+        if cond { Ok(Some(source)) } else { Ok(None) }
     }
 
     fn origin(&self) -> &Rc<While> {
@@ -61,6 +59,7 @@ impl PreIterator for WhileIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("while", eval_while, r#"
 Evaluates `cond` on items of `stream` and returns them as long as the result is `true`.

@@ -31,7 +31,7 @@ pub trait SIterator<I = Item> {
             check_stop!();
             match self.next()? {
                 Some(_) => (),
-                None => return Ok(Some(n))
+                None => return Ok(Some(n)),
             }
             n -= 1;
         }
@@ -64,7 +64,7 @@ pub(crate) trait PreIterator<I: ItemType = Item>: Sized + 'static {
             check_stop!();
             match self.next()? {
                 Some(_) => (),
-                None => return Ok(Some(n))
+                None => return Ok(Some(n)),
             }
             n -= 1;
         }
@@ -86,19 +86,18 @@ pub(crate) struct WrappedIterator<I: ItemType, T: PreIterator<I>>(T, std::marker
 
 impl<I: ItemType, T: PreIterator<I>> SIterator<I> for WrappedIterator<I, T> {
     fn next(&mut self) -> SResult<Option<I>> {
-        self.0.next()
-            .map_err(|err| err.wrap(&self.0.get_blame()))
+        self.0.next().map_err(|err| err.wrap(&self.0.get_blame()))
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        self.0.advance(n)
-            .map_err(|err| err.wrap(&self.0.get_blame()))
+        self.0.advance(n).map_err(|err| err.wrap(&self.0.get_blame()))
     }
 }
 
 impl<I, T, U, V> SIterator<I> for std::iter::Map<T, U>
-where T: Iterator<Item = V>,
-      U: FnMut(V) -> SResult<I>
+where
+    T: Iterator<Item = V>,
+    U: FnMut(V) -> SResult<I>,
 {
     fn next(&mut self) -> SResult<Option<I>> {
         Iterator::next(self).transpose()
@@ -156,7 +155,7 @@ pub(crate) struct Map<I1: ItemType, I2, F: Fn(I1) -> I2> {
 
 impl<I1: ItemType, I2, F: Fn(I1) -> I2> Map<I1, I2, F> {
     pub(crate) fn new(stream: &Rc<dyn Stream<I1>>, func: F) -> Self {
-        Map{source: stream.iter(), func}
+        Map { source: stream.iter(), func }
     }
 }
 
@@ -179,13 +178,14 @@ pub(crate) struct SMap<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> {
 impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SMap<I1, I2, F> {
     pub(crate) fn new<T>(stream: &Rc<dyn Stream<I1>>, func: F, origin: &Rc<T>) -> Self
     where T: Stream<I2> + 'static {
-        SMap{source: stream.iter(), func, origin: Rc::clone(origin) as Rc<dyn Stream<I2>>}
+        SMap { source: stream.iter(), func, origin: Rc::clone(origin) as Rc<dyn Stream<I2>> }
     }
 }
 
 impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMap<I1, I2, F> {
     fn next(&mut self) -> SResult<Option<I2>> {
-        self.source.next()
+        self.source
+            .next()
             .map_err(|e| e.wrap(&self.origin))?
             .map(&self.func)
             .transpose()
@@ -193,8 +193,7 @@ impl<I1: ItemType, I2: ItemType, F: Fn(I1) -> SResult<I2>> SIterator<I2> for SMa
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        self.source.advance(n)
-            .map_err(|e| e.wrap(&self.origin))
+        self.source.advance(n).map_err(|e| e.wrap(&self.origin))
     }
 }
 
@@ -202,9 +201,9 @@ macro_rules! iter_try {
     ($expr:expr) => {
         match $expr? {
             Some(ret) => ret,
-            None => return Ok(None)
+            None => return Ok(None),
         }
-    }
+    };
 }
 
 pub(crate) use iter_try;

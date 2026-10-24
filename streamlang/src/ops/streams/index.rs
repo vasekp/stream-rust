@@ -7,23 +7,25 @@ fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
     node.check_args_nonempty()?;
     match &node.source {
         Some(Item::Stream(stm)) => {
-            let mut queries = node.args.into_iter()
-                .map(Query::Pending)
-                .collect::<Vec<_>>();
+            let mut queries = node.args.into_iter().map(Query::Pending).collect::<Vec<_>>();
             let mut rem = queries.len();
             'a: for (ix, elm) in stm.iter().transposed().enumerate() {
                 check_stop!();
                 let elm = elm?;
                 for query in &mut queries {
                     if let Query::Pending(item) = query
-                        && elm.try_eq(item)? {
-                            *query = Query::Found(ix);
-                            rem -= 1;
-                        }
-                    if rem == 0 { break 'a; }
+                        && elm.try_eq(item)?
+                    {
+                        *query = Query::Found(ix);
+                        rem -= 1;
+                    }
+                    if rem == 0 {
+                        break 'a;
+                    }
                 }
             }
-            let mut res = queries.into_iter()
+            let mut res = queries
+                .into_iter()
                 .map(|q| match q {
                     Query::Found(ix) => Item::new_number(ix + 1),
                     Query::Pending(_) => Item::empty_stream(),
@@ -36,11 +38,17 @@ fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
             }
         },
         Some(Item::String(stm)) => {
-            let mut queries = node.args.iter()
+            let mut queries = node
+                .args
+                .iter()
                 .map(|item| Ok(Query::Pending(item.to_char_vec_nonempty()?)))
                 .collect::<SResult<Vec<_>>>()?;
-            let longest = queries.iter()
-                .map(|q| match q { Query::Pending(vec) => vec.len(), _ => unreachable!() })
+            let longest = queries
+                .iter()
+                .map(|q| match q {
+                    Query::Pending(vec) => vec.len(),
+                    _ => unreachable!(),
+                })
                 .reduce(std::cmp::max)
                 .unwrap(); // len ≥ 1
             let mut rem = queries.len();
@@ -64,30 +72,30 @@ fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
                             rem -= 1;
                         }
                     }
-                    if rem == 0 { break 'a; }
+                    if rem == 0 {
+                        break 'a;
+                    }
                 }
             }
-            let mut res = queries.into_iter()
+            let mut res = queries
+                .into_iter()
                 .map(|q| match q {
                     Query::Found(ix) => Item::new_number(ix + 1),
                     Query::Pending(_) => Item::empty_stream(),
                 })
                 .collect::<Vec<_>>();
-            if res.len() == 1 {
-                Ok(res.pop().unwrap())
-            } else {
-                Ok(Item::from(res))
-            }
+            if res.len() == 1 { Ok(res.pop().unwrap()) } else { Ok(Item::from(res)) }
         },
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
 enum Query<I> {
     Pending(I),
-    Found(usize)
+    Found(usize),
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["index", "find", "pos"], eval_index, r#"
 Attempts to find `item` in `stream`, or `char` or `substring` in `string`, and return its position within.

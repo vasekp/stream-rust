@@ -8,16 +8,21 @@ fn eval_sqrt(node: &Node, env: &Env) -> SResult<Item> {
 }
 
 fn sqrt_impl(n: &UNumber) -> UNumber {
-    if n.is_zero() { return UNumber::zero(); }
+    if n.is_zero() {
+        return UNumber::zero();
+    }
     let mut x = UNumber::one() << (n.bit_len() / 2 + 1);
     loop {
         let next_x = (&x + n / &x) >> 1;
-        if next_x >= x { break; }
+        if next_x >= x {
+            break;
+        }
         x = next_x;
     }
     x
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("sqrt", eval_sqrt, r#"
 Square root of `number`, rounded below to nearest integer.

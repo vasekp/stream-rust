@@ -5,36 +5,42 @@ fn eval_first(node: &Node, env: &Env) -> SResult<Item> {
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     match (node.source_checked()?, count) {
         (Item::Stream(stm), None) => first_item_impl(stm),
-        (Item::Stream(stm), Some(count)) => Ok(Item::new_stream(First{head: node.head.clone(), source: Rc::clone(stm), count })),
+        (Item::Stream(stm), Some(count)) => {
+            Ok(Item::new_stream(First { head: node.head.clone(), source: Rc::clone(stm), count }))
+        },
         (Item::String(stm), None) => first_item_impl(stm).map(Item::Char),
-        (Item::String(stm), Some(count)) => Ok(Item::new_string(First{head: node.head.clone(), source: Rc::clone(stm), count })),
-        _ => Err(StreamError::usage(&node.head))
+        (Item::String(stm), Some(count)) => {
+            Ok(Item::new_string(First { head: node.head.clone(), source: Rc::clone(stm), count }))
+        },
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
 fn first_item_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<I> {
-    stm.iter().next()?.ok_or(format!("{} is empty", I::type_name()).into())
+    stm.iter()
+        .next()?
+        .ok_or(format!("{} is empty", I::type_name()).into())
 }
 
 struct First<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    count: UNumber
+    count: UNumber,
 }
 
 struct FirstIter<I: ItemType> {
     node: Rc<First<I>>,
     source: Box<dyn SIterator<I>>,
-    count_rem: UNumber
+    count_rem: UNumber,
 }
 
 impl<I: ItemType> Stream<I> for First<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
-        FirstIter{source: self.source.iter(), count_rem: self.count.clone(), node: self}.wrap()
+        FirstIter { source: self.source.iter(), count_rem: self.count.clone(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -75,6 +81,7 @@ impl<I: ItemType> PreIterator<I> for FirstIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["first", "take"], eval_first, r#"
 Up to the first `count` items of `stream`, or up to the first `count` characters of `string`.

@@ -6,7 +6,7 @@ fn eval_factorial(node: &Node, env: &Env) -> SResult<Item> {
     let x = match (&node.source, &node.args[..]) {
         (Some(Item::Number(x)), []) => x,
         (None, [Item::Number(x)]) => x,
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     Ok(Item::new_number(factorial(x.try_cast()?)))
 }
@@ -16,7 +16,7 @@ fn eval_binom(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     let (n, k) = match &node.args[..] {
         [Item::Number(n), Item::Number(k)] => (n.try_cast()?, k.try_cast()?),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     if k > n {
         return Err("out of range".into());
@@ -31,8 +31,7 @@ fn eval_multi(node: &Node, env: &Env) -> SResult<Item> {
     let mut denom = UNumber::one();
     for arg in &node.args {
         let k = arg.to_num()?.try_cast()?;
-        total = total.checked_add(&k)
-            .ok_or("input too large")?;
+        total = total.checked_add(&k).ok_or("input too large")?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))
@@ -45,18 +44,20 @@ fn eval_rmulti(node: &Node, env: &Env) -> SResult<Item> {
     let mut vec = Vec::new();
     for arg in &node.args {
         let k = arg.to_num()?.try_cast()?;
-        if k == 0 { continue; }
+        if k == 0 {
+            continue;
+        }
         if vec.contains(&k) {
             denom *= 1 + vec.iter().filter(|x| *x == &k).count();
         }
         vec.push(k);
-        total = total.checked_add(&k)
-            .ok_or("input too large")?;
+        total = total.checked_add(&k).ok_or("input too large")?;
         denom *= factorial(k);
     }
     Ok(Item::new_number(factorial(total) / denom))
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("factorial", eval_factorial, r#"
 Factorial of `number`.

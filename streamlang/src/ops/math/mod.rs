@@ -12,6 +12,7 @@ mod sqrt;
 mod greedy;
 mod dot;
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     pi::init(symbols);
     gcd::init(symbols);

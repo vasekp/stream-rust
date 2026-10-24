@@ -8,15 +8,9 @@ fn eval_partition(node: &Node, env: &Env) -> SResult<Item> {
         _ => return Err(StreamError::usage(&node.head)),
     };
     match node.source_checked()? {
-        Item::Stream(stm) => Ok(Item::new_stream(Partition{
-            head: node.head.clone(),
-            source: Rc::clone(stm),
-            size})),
-        Item::String(stm) => Ok(Item::new_stream(Partition{
-            head: node.head.clone(),
-            source: Rc::clone(stm),
-            size})),
-        _ => Err(StreamError::usage(&node.head))
+        Item::Stream(stm) => Ok(Item::new_stream(Partition { head: node.head.clone(), source: Rc::clone(stm), size })),
+        Item::String(stm) => Ok(Item::new_stream(Partition { head: node.head.clone(), source: Rc::clone(stm), size })),
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -48,23 +42,17 @@ impl<I: ItemType> Stream for Partition<I> {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let iter = self.source.iter();
         match &self.size {
-            Size::Fixed(size) => HomPartitionIter{iter, size: *size, node: self}.wrap(),
+            Size::Fixed(size) => HomPartitionIter { iter, size: *size, node: self }.wrap(),
             Size::Stream(stm) => {
                 let size_iter = stm.iter();
-                HetPartitionIter{
-                    iter,
-                    size_iter,
-                    consumed: Some(UNumber::zero()),
-                    node: self
-                }.wrap()
-            }
+                HetPartitionIter { iter, size_iter, consumed: Some(UNumber::zero()), node: self }.wrap()
+            },
         }
     }
 
     fn len(&self) -> Length {
         match &self.size {
-            Size::Fixed(size) =>
-                self.source.len().map(|len| (len + size - 1) / size),
+            Size::Fixed(size) => self.source.len().map(|len| (len + size - 1) / size),
             Size::Stream(_) => Length::Unknown,
         }
     }
@@ -81,21 +69,19 @@ impl<I: ItemType> PreIterator for HomPartitionIter<I> {
         let mut vec = Vec::with_capacity(std::cmp::min(self.size, RESERVE_CAP));
         for _ in 0..self.size {
             check_stop!();
-            let Some(next) = self.iter.next()? else { break; };
+            let Some(next) = self.iter.next()? else {
+                break;
+            };
             vec.push(next);
         }
-        if vec.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(Item::from(vec)))
-        }
+        if vec.is_empty() { Ok(None) } else { Ok(Some(Item::from(vec))) }
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mul = n * UNumber::from(self.size);
         match self.iter.advance(&mul)? {
             Some(rem) => Ok(Some(rem / self.size)),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
@@ -117,11 +103,11 @@ impl<I: ItemType> PreIterator for HetPartitionIter<I> {
             return Ok(None);
         };
         let size = iter_try!(self.size_iter.next());
-        if let Item::Stream(stm) = &size && stm.is_empty()? {
+        if let Item::Stream(stm) = &size
+            && stm.is_empty()?
+        {
             let expr = Expr::from(Item::from(&self.node.source))
-                .chain(Link::new("skip",
-                    vec![Item::new_number(&*consumed).into()]
-                ));
+                .chain(Link::new("skip", vec![Item::new_number(&*consumed).into()]));
             self.consumed = None;
             return Ok(Some(expr.eval_default()?));
         }
@@ -139,11 +125,7 @@ impl<I: ItemType> PreIterator for HetPartitionIter<I> {
             };
             vec.push(next);
         }
-        if vec.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(Item::from(vec)))
-        }
+        if vec.is_empty() { Ok(None) } else { Ok(Some(Item::from(vec))) }
     }
 
     fn origin(&self) -> &Rc<Partition<I>> {
@@ -151,6 +133,7 @@ impl<I: ItemType> PreIterator for HetPartitionIter<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["partition", "ptt", "chunks"], eval_partition, r#"
 A stream of non-overlapping arrays from the input `stream` up to a given size, or substrings of `string` of up to such length.

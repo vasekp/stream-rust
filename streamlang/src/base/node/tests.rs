@@ -60,4 +60,3 @@ fn test_describe() {
     let copy = parse(&orig.describe()).unwrap();
     assert_eq!(orig, copy);
 }
-

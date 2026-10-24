@@ -6,46 +6,57 @@ use std::borrow::Cow;
 fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
     node.check_no_source()?;
     let (body, assigns) = if let Some((body, assigns)) = node.args.split_last()
-        && !assigns.is_empty() {
-            (body, assigns)
+        && !assigns.is_empty()
+    {
+        (body, assigns)
     } else {
         return Err(StreamError::usage(&node.head));
     };
     let mut replace = HashMap::<&str, Rc<Rhs>>::new();
     for assign in assigns {
         let (body, names) = if let Expr::Eval(node) = assign
-            && &node.head == "=" && node.source.is_none() {
-                node.args.split_last()
+            && &node.head == "="
+            && node.source.is_none()
+        {
+            node.args.split_last()
         } else {
             return Err(StreamError::with_expr("expected assignment", assign));
-        }.expect("= should have at least 2 arguments by construction");
-        let names = names.iter().map(|expr|
-            if let Expr::Eval(node) = expr
-            && let Head::Symbol(sym) = &node.head
-            && node.source.is_none() && node.args.is_empty() {
-                Ok(sym)
-            } else {
-                Err(StreamError::with_expr("expected variable name", expr))
-            }
-        ).collect::<SResult<Vec<_>>>()?;
+        }
+        .expect("= should have at least 2 arguments by construction");
+        let names = names
+            .iter()
+            .map(|expr| {
+                if let Expr::Eval(node) = expr
+                    && let Head::Symbol(sym) = &node.head
+                    && node.source.is_none()
+                    && node.args.is_empty()
+                {
+                    Ok(sym)
+                } else {
+                    Err(StreamError::with_expr("expected variable name", expr))
+                }
+            })
+            .collect::<SResult<Vec<_>>>()?;
         let body = replace_inner(body, &replace)?;
-        let rhs = Rc::new(if let Expr::Eval(node) = &*body
-            && let Head::Block{body, ..} = &node.head
-            && node.source.is_none() && node.args.is_empty() {
+        let rhs = Rc::new(
+            if let Expr::Eval(node) = &*body
+                && let Head::Block { body, .. } = &node.head
+                && node.source.is_none()
+                && node.args.is_empty()
+            {
                 Rhs::Function(body.clone())
             } else {
                 Rhs::Value(body.eval(env)?)
-            });
+            },
+        );
         for name in names {
             replace.insert(name, Rc::clone(&rhs));
         }
-    };
+    }
     replace_inner(body, &replace)?.eval(env)
 }
 
-fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
-    -> SResult<std::borrow::Cow<'a, Expr>>
-{
+fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap<&'_ str, Rc<Rhs>>) -> SResult<std::borrow::Cow<'a, Expr>> {
     let Expr::Eval(node) = expr else {
         return Ok(Cow::Borrowed(expr));
     };
@@ -60,39 +71,42 @@ fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                 return Err(StreamError::usage(&node.head));
             };
             let mut new_assign = Cow::Borrowed(&**assign);
-            let (body, names) = if &assign.head == "="
-                && assign.source.is_none() {
-                    assign.args.split_last()
+            let (body, names) = if &assign.head == "=" && assign.source.is_none() {
+                assign.args.split_last()
             } else {
                 return Err(StreamError::usage(&node.head));
-            }.expect("= should have at least 2 arguments by construction");
+            }
+            .expect("= should have at least 2 arguments by construction");
             if let Cow::Owned(new_body) = replace_inner(body, &replace)? {
                 new_assign.to_mut().args[assign.args.len() - 1] = new_body;
             }
             for expr in names {
                 if let Expr::Eval(node) = expr
                     && let Head::Symbol(sym) = node.head
-                    && node.source.is_none() && node.args.is_empty() {
-                        replace.remove(sym);
+                    && node.source.is_none()
+                    && node.args.is_empty()
+                {
+                    replace.remove(sym);
                 } else {
-                    return Err(StreamError::with_expr("expected variable name", expr))
+                    return Err(StreamError::with_expr("expected variable name", expr));
                 }
             }
             if let Cow::Owned(new_assign) = new_assign {
                 new_node.to_mut().args[ix] = new_assign.into();
             }
-        };
+        }
         if let Cow::Owned(new_body) = replace_inner(body, &replace)? {
             new_node.to_mut().args[node.args.len() - 1] = new_body;
         }
         return match new_node {
             Cow::Borrowed(_) => Ok(Cow::Borrowed(expr)),
             Cow::Owned(new_node) => Ok(Cow::Owned(new_node.into())),
-        }
+        };
     }
-    if let Head::Block{body, reset_env: false} = &node.head
-        && let Cow::Owned(new_body) = replace_inner(body, replace)? {
-            new_node.to_mut().head = Head::Block{body: new_body, reset_env: false};
+    if let Head::Block { body, reset_env: false } = &node.head
+        && let Cow::Owned(new_body) = replace_inner(body, replace)?
+    {
+        new_node.to_mut().head = Head::Block { body: new_body, reset_env: false };
     }
     if let Head::Symbol(sym) = node.head {
         match replace.get(sym).map(|rc| (**rc).clone()) {
@@ -101,16 +115,16 @@ fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
                     Ok(Cow::Owned(item.into()))
                 } else {
                     Err(StreamError::with_expr("no source or arguments allowed", node))
-                }
+                };
             },
-            Some(Rhs::Function(body)) =>
-                new_node.to_mut().head = Head::Block{body, reset_env: true},
-            None => ()
+            Some(Rhs::Function(body)) => new_node.to_mut().head = Head::Block { body, reset_env: true },
+            None => (),
         }
     }
     if let Some(source) = &node.source
-        && let Cow::Owned(new_source) = replace_inner(source, replace)? {
-            new_node.to_mut().source = Some(new_source);
+        && let Cow::Owned(new_source) = replace_inner(source, replace)?
+    {
+        new_node.to_mut().source = Some(new_source);
     }
     for (ix, arg) in node.args.iter().enumerate() {
         if let Cow::Owned(new_arg) = replace_inner(arg, replace)? {
@@ -123,6 +137,7 @@ fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap::<&'_ str, Rc<Rhs>>)
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("with", eval_with, r#"
 Defines or redefines symbols (local variables) for the evaluation of `expr`.

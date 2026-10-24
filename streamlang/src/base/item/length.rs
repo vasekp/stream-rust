@@ -12,7 +12,7 @@ pub enum Length {
     /// The length is not known but promises to be finite.
     UnknownFinite,
     /// Nothing can be inferred about the length.
-    Unknown
+    Unknown,
 }
 
 impl Length {
@@ -26,7 +26,7 @@ impl Length {
             Exact(x) => AtMost(x),
             AtMost(x) => AtMost(x),
             UnknownFinite => UnknownFinite,
-            _ => Unknown
+            _ => Unknown,
         }
     }
 
@@ -39,7 +39,7 @@ impl Length {
             (Exact(x), Exact(y)) => x == y,
             (Exact(x), AtMost(y)) => x <= y,
             (AtMost(x), Exact(y)) => y <= x,
-            _ => true
+            _ => true,
         }
     }
 
@@ -51,7 +51,7 @@ impl Length {
             // can't be merged with previous, otherwise (UnkFin, Unk) would give at_most(Unk) == Unk
             (UnknownFinite, len) | (len, UnknownFinite) => Length::at_most(len),
             (Exact(x), Exact(y)) => Exact(std::cmp::min(x, y)),
-            (Exact(x) | AtMost(x), Exact(y) | AtMost(y)) => AtMost(std::cmp::min(x, y))
+            (Exact(x) | AtMost(x), Exact(y) | AtMost(y)) => AtMost(std::cmp::min(x, y)),
         }
     }
 
@@ -62,12 +62,14 @@ impl Length {
             AtMost(len) => AtMost(f(len)),
             UnknownFinite => UnknownFinite,
             Unknown => Unknown,
-            Infinite => Infinite
+            Infinite => Infinite,
         }
     }
 }
 
-impl<T> From<T> for Length where T: Into<UNumber> {
+impl<T> From<T> for Length
+where T: Into<UNumber>
+{
     fn from(value: T) -> Self {
         Length::Exact(value.into())
     }
@@ -83,7 +85,7 @@ impl std::ops::Add for Length {
             (_, Unknown) | (Unknown, _) => Unknown,
             (_, UnknownFinite) | (UnknownFinite, _) => UnknownFinite,
             (Exact(a), Exact(b)) => Exact(a + b),
-            (Exact(a) | AtMost(a), Exact(b) | AtMost(b)) => AtMost(a + b)
+            (Exact(a) | AtMost(a), Exact(b) | AtMost(b)) => AtMost(a + b),
         }
     }
 }
@@ -93,7 +95,7 @@ impl<T: std::borrow::Borrow<UNumber>> std::ops::AddAssign<T> for Length {
         use Length::*;
         match self {
             Exact(len) | AtMost(len) => *len += rhs.borrow(),
-            _ => ()
+            _ => (),
         }
     }
 }

@@ -5,17 +5,18 @@ use std::collections::VecDeque;
 fn eval_counts(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     match &node.source {
-        Some(Item::Stream(stm)) if !node.args.is_empty() =>
-            stream_counts_listed_impl(stm, &node.args),
+        Some(Item::Stream(stm)) if !node.args.is_empty() => stream_counts_listed_impl(stm, &node.args),
         Some(Item::Stream(stm)) => counts_free_impl(stm),
         Some(Item::String(stm)) if !node.args.is_empty() => {
-            let args = node.args.iter()
+            let args = node
+                .args
+                .iter()
                 .map(Item::to_char_vec_nonempty)
                 .collect::<SResult<Vec<_>>>()?;
             string_counts_listed_impl(stm, &args)
         },
         Some(Item::String(stm)) => counts_free_impl(stm),
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
@@ -30,22 +31,16 @@ fn stream_counts_listed_impl(stm: &Rc<dyn Stream>, args: &[Item]) -> SResult<Ite
             }
         }
     }
-    let mut ret = counts.into_iter()
+    let mut ret = counts
+        .into_iter()
         .map(|(_, count)| Item::new_number(count))
         .collect::<Vec<_>>();
-    if ret.len() == 1 {
-        Ok(ret.pop().unwrap())
-    } else {
-        Ok(Item::from(ret))
-    }
+    if ret.len() == 1 { Ok(ret.pop().unwrap()) } else { Ok(Item::from(ret)) }
 }
 
 fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) -> SResult<Item> {
     let mut counts = chars.iter().map(|arg| (arg, 0)).collect::<Vec<_>>();
-    let longest = counts.iter()
-        .map(|(s, _)| s.len())
-        .reduce(std::cmp::max)
-        .unwrap(); // len ≥ 1
+    let longest = counts.iter().map(|(s, _)| s.len()).reduce(std::cmp::max).unwrap(); // len ≥ 1
     let mut deque = VecDeque::with_capacity(longest);
     for elm in stm.iter().transposed() {
         check_stop!();
@@ -65,14 +60,11 @@ fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) ->
             }
         }
     }
-    let mut res = counts.into_iter()
+    let mut res = counts
+        .into_iter()
         .map(|(_, count)| Item::new_number(count))
         .collect::<Vec<_>>();
-    if res.len() == 1 {
-        Ok(res.pop().unwrap())
-    } else {
-        Ok(Item::from(res))
-    }
+    if res.len() == 1 { Ok(res.pop().unwrap()) } else { Ok(Item::from(res)) }
 }
 
 fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<Item> {
@@ -90,16 +82,14 @@ fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<Item> {
             counts.push((item, 1));
         }
     }
-    let mut ret = counts.into_iter()
+    let mut ret = counts
+        .into_iter()
         .map(|(item, count)| Item::from(vec![item.into(), Item::new_number(count)]))
         .collect::<Vec<_>>();
-    if ret.len() == 1 {
-        Ok(ret.pop().unwrap())
-    } else {
-        Ok(Item::from(ret))
-    }
+    if ret.len() == 1 { Ok(ret.pop().unwrap()) } else { Ok(Item::from(ret)) }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["counts", "count", "tally", "freq"], eval_counts, r#"
 Form without arguments: counts unique items in `stream`, or unique characters in `string`, returning a stream of pairs `[item, count]` in order of first appearance.

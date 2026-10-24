@@ -1,0 +1,24 @@
+# Settings chosen to match the existing hand style as closely as rustfmt allows.
+# Several options are unstable: run `cargo +nightly fmt`. On stable, those lines
+# are ignored with a warning and the result drifts a bit further from the current style.
+unstable_features = true
+
+max_width = 120
+chain_width = 70
+fn_call_width = 100
+struct_lit_width = 80
+struct_variant_width = 60
+array_width = 100
+attr_fn_like_width = 100
+single_line_if_else_max_width = 100
+single_line_let_else_max_width = 100
+
+match_block_trailing_comma = true
+trailing_comma = "Vertical"
+overflow_delimited_expr = true
+where_single_line = true
+fn_params_layout = "Compressed"
+brace_style = "PreferSameLine"
+
+reorder_imports = false
+reorder_modules = false

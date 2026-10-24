@@ -5,13 +5,17 @@ pub struct List<I: ItemType>(Vec<I>);
 
 pub type LiteralString = List<Char>;
 
-impl<I: ItemType> List<I> where List<I>: Describe {
+impl<I: ItemType> List<I>
+where List<I>: Describe
+{
     pub fn iter(self: &Rc<Self>) -> Box<dyn SIterator<I>> {
         Rc::clone(self).to_iter()
     }
 }
 
-impl<I: ItemType> Stream<I> for List<I> where List<I>: Describe {
+impl<I: ItemType> Stream<I> for List<I>
+where List<I>: Describe
+{
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>> {
         Box::new(ListIter::new(self))
     }
@@ -72,7 +76,7 @@ struct ListIter<I: ItemType> {
 
 impl<I: ItemType> ListIter<I> {
     fn new(node: Rc<List<I>>) -> Self {
-        Self{node, index: 0}
+        Self { node, index: 0 }
     }
 }
 
@@ -90,9 +94,7 @@ impl<I: ItemType> SIterator<I> for ListIter<I> {
                 self.index += n;
                 Ok(None)
             },
-            _ => {
-                Ok(Some(n - remain))
-            }
+            _ => Ok(Some(n - remain)),
         }
     }
 }

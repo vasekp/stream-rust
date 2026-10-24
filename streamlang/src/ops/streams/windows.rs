@@ -7,10 +7,10 @@ fn eval_windows(node: &Node, env: &Env) -> SResult<Item> {
     let (size, body) = match &node.args[..] {
         [size] => (size, None),
         [size, Expr::Eval(node)] if node.args.is_empty() => (size, Some(Rc::clone(node))),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     let size = size.eval(env)?.as_num()?.try_cast_within(2usize..)?;
-    Ok(Item::new_stream(Windows{head: node.head.clone(), source: stm, size, body, env: env.clone()}))
+    Ok(Item::new_stream(Windows { head: node.head.clone(), source: stm, size, body, env: env.clone() }))
 }
 
 struct Windows {
@@ -20,7 +20,6 @@ struct Windows {
     body: Option<Rc<Node>>,
     env: Env,
 }
-
 
 impl Describe for Windows {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
@@ -51,16 +50,13 @@ impl Stream for Windows {
                 Err(err) => return iter_error(err, &self),
             }
         }
-        WindowsIter{size: self.size, iter, deque, node: self}.wrap()
+        WindowsIter { size: self.size, iter, deque, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        self.source.len().map(|len|
-            if len < &UNumber::from(self.size) {
-                UNumber::zero()
-            } else {
-                len - (self.size - 1)
-            })
+        self.source
+            .len()
+            .map(|len| if len < &UNumber::from(self.size) { UNumber::zero() } else { len - (self.size - 1) })
     }
 }
 
@@ -76,8 +72,7 @@ impl PreIterator for WindowsIter {
         let next = iter_try!(self.iter.next());
         let first = self.deque.pop_front().unwrap(); // for size ≥ 2, deque has ≥ 1 element
         self.deque.push_back(next);
-        let iter = std::iter::once(first)
-            .chain(self.deque.iter().cloned());
+        let iter = std::iter::once(first).chain(self.deque.iter().cloned());
         if let Some(body) = &self.node.body {
             body.with_args(iter.map(Expr::from).collect())
                 .and_then(|expr| expr.eval(&self.node.env))
@@ -89,13 +84,15 @@ impl PreIterator for WindowsIter {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         match n.try_into() {
-            Ok(num) if num < self.size => { self.deque.drain(0..num); },
+            Ok(num) if num < self.size => {
+                self.deque.drain(0..num);
+            },
             _ => {
                 self.deque.clear();
                 if let Some(rem) = self.iter.advance(&(n - (self.size - 1)))? {
                     return Ok(Some(rem + (self.size - 1)));
                 }
-            }
+            },
         }
         for _ in self.deque.len()..(self.size - 1) {
             let Some(next) = self.iter.next()? else {
@@ -111,6 +108,7 @@ impl PreIterator for WindowsIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("windows", eval_windows, r#"
 Single-argument form: a stream of `size`-sized arrays (overlapping) from the input `stream`.

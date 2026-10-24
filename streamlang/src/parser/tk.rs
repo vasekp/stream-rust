@@ -15,7 +15,7 @@ enum CharClass {
     Delim,
     Rel,
     Comment,
-    Other
+    Other,
 }
 
 impl CharClass {
@@ -27,7 +27,7 @@ impl CharClass {
             '"' | '\'' => Delim,
             '<' | '=' | '>' => Rel,
             ';' => Comment,
-            _ => Other
+            _ => Other,
         }
     }
 }
@@ -46,7 +46,7 @@ pub enum TokenClass {
     Open,
     Close,
     Comma,
-    Special
+    Special,
 }
 
 #[derive(PartialEq, Debug)]
@@ -72,7 +72,7 @@ impl Token<'_> {
             [b')' | b']' | b'}'] => Close,
             [b','] => Comma,
             [b'#' | b'$' | b'%'] => Special, // '%' can double as an operator
-            _ => return Err(ParseError::new("invalid character", slice))
+            _ => return Err(ParseError::new("invalid character", slice)),
         };
         Ok(Token(class, slice))
     }
@@ -80,7 +80,7 @@ impl Token<'_> {
 
 impl<'str> Tokenizer<'str> {
     pub fn new(input: &'str str) -> Tokenizer<'str> {
-        Tokenizer{input, iter: input.char_indices().peekable(), peek: None}
+        Tokenizer { input, iter: input.char_indices().peekable(), peek: None }
     }
 
     fn skip_same(&mut self, class: &CharClass) {
@@ -107,7 +107,8 @@ impl<'str> Tokenizer<'str> {
     }
 
     fn subslice_offset(&self, slice: &'str str) -> usize {
-        self.input.as_bytes()
+        self.input
+            .as_bytes()
             .element_offset(&slice.as_bytes()[0])
             .expect("slice should be a substring of input")
     }
@@ -116,13 +117,15 @@ impl<'str> Tokenizer<'str> {
         let start_index = self.subslice_offset(start);
         let end_index = match self.iter.peek() {
             Some(&(pos, _)) => pos,
-            None => self.input.len()
+            None => self.input.len(),
         };
         &self.input[start_index..end_index]
     }
 
     pub fn peek(&mut self) -> Result<Option<&Token<'str>>, ParseError<'str>> {
-        if let Some(ref ret) = self.peek { return Ok(ret.as_ref()); }
+        if let Some(ref ret) = self.peek {
+            return Ok(ret.as_ref());
+        }
         let next = self.next_tr()?;
         Ok(self.peek.insert(next).as_ref())
     }
@@ -160,14 +163,16 @@ impl<'str> Iterator for Tokenizer<'str> {
         use CharClass::*;
         match class {
             Ident | Rel => self.skip_same(&class),
-            Delim => if let Err(err) = self.skip_until(ch) {
-                return Some(Err(ParseError::new(err,
-                            &self.input[start..(start + 1)])));
+            Delim => {
+                if let Err(err) = self.skip_until(ch) {
+                    return Some(Err(ParseError::new(err, &self.input[start..(start + 1)])));
+                }
             },
-            Other if ch == '.' =>
+            Other if ch == '.' => {
                 if matches!(self.iter.peek(), Some(&(_, '.'))) {
                     self.iter.next();
-                },
+                }
+            },
             Other => (),
             Space => {
                 self.skip_same(&class);
@@ -176,11 +181,11 @@ impl<'str> Iterator for Tokenizer<'str> {
             Comment => {
                 self.iter = "".char_indices().peekable();
                 return None;
-            }
+            },
         };
         let end = match self.iter.peek() {
             Some(&(pos, _)) => pos,
-            None => self.input.len()
+            None => self.input.len(),
         };
         let slice = &self.input[start..end];
         Some(Token::new(slice))
@@ -300,4 +305,3 @@ fn test_tokenizer() {
     assert_eq!(it.next(), None);
     assert_eq!(it.next(), None);
 }
-

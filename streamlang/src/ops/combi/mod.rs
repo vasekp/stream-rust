@@ -16,7 +16,7 @@ mod util {
             _ => {
                 let mid = from + (to - from) / 2;
                 range_prod(from, mid) * range_prod(mid + 1, to)
-            }
+            },
         }
     }
 
@@ -33,6 +33,7 @@ mod util {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     reorder::init(symbols);
     perm::init(symbols);

@@ -8,7 +8,7 @@ fn eval_factor(node: &Node, env: &Env) -> SResult<Item> {
         return Err(StreamError::usage(&node.head));
     };
     let x = x.try_cast_within(UNumber::one()..)?;
-    Ok(Item::new_stream(Factor{x, head: node.head.clone()}))
+    Ok(Item::new_stream(Factor { x, head: node.head.clone() }))
 }
 
 struct Factor {
@@ -28,9 +28,7 @@ impl Stream for Factor {
 
 impl Describe for Factor {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new(&self.head, env)
-            .set_source(&self.x)
-            .finish(prec)
+        DescribeBuilder::new(&self.head, env).set_source(&self.x).finish(prec)
     }
 }
 
@@ -45,7 +43,7 @@ impl FactorIter {
     fn new(node: Rc<Factor>) -> Self {
         let mut iter = PrimesIter::new();
         let prime = iter.get_next();
-        Self{x: node.x.clone(), iter, prime, node}
+        Self { x: node.x.clone(), iter, prime, node }
     }
 }
 
@@ -71,6 +69,7 @@ impl PreIterator for FactorIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("factor", eval_factor, r#"
 Prime factors of `number` in increasing order, repeated in respective orders.

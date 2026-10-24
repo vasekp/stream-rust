@@ -3,9 +3,8 @@ use crate::base::*;
 fn eval_unweave(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let stm = node.source_checked()?.as_stream()?;
-    let count = node.only_arg_checked()?.as_num()?
-        .try_cast_within(UNumber::one()..)?;
-    Ok(Item::new_stream(Unweave{
+    let count = node.only_arg_checked()?.as_num()?.try_cast_within(UNumber::one()..)?;
+    Ok(Item::new_stream(Unweave {
         head: node.head.clone(),
         stream: Rc::clone(stm),
         count,
@@ -31,7 +30,7 @@ impl Describe for Unweave {
 
 impl Stream for Unweave {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        UnweaveIter{index: UNumber::zero(), node: self}.wrap()
+        UnweaveIter { index: UNumber::zero(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -50,10 +49,7 @@ impl PreIterator for UnweaveIter {
             let node = Node {
                 head: "stride".into(),
                 source: Some(Item::from(&self.node.stream).into()),
-                args: vec![
-                    Item::new_number(&self.node.count).into(),
-                    Item::new_number(&self.index).into()
-                ]
+                args: vec![Item::new_number(&self.node.count).into(), Item::new_number(&self.index).into()],
             };
             self.index += 1;
             Some(node.eval(&self.node.env)).transpose()
@@ -64,11 +60,7 @@ impl PreIterator for UnweaveIter {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.index += n;
-        if self.index >= self.node.count {
-            Ok(Some(&self.index - &self.node.count))
-        } else {
-            Ok(None)
-        }
+        if self.index >= self.node.count { Ok(Some(&self.index - &self.node.count)) } else { Ok(None) }
     }
 
     fn origin(&self) -> &Rc<Unweave> {
@@ -76,6 +68,7 @@ impl PreIterator for UnweaveIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("unweave", eval_unweave, r#"
 Separates `stream` into `count` substreams, items are distributed cyclically one by one.

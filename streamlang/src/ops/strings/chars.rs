@@ -4,12 +4,12 @@ fn eval_chars(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_char_stream()?;
-    Ok(Item::new_stream(Chars{head: node.head, source: stm}))
+    Ok(Item::new_stream(Chars { head: node.head, source: stm }))
 }
 
 struct Chars {
     head: Head,
-    source: Rc<dyn Stream<Char>>
+    source: Rc<dyn Stream<Char>>,
 }
 
 impl Describe for Chars {
@@ -34,12 +34,12 @@ fn eval_str(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
-    Ok(Item::new_string(Str{head: node.head, source: stm}))
+    Ok(Item::new_string(Str { head: node.head, source: stm }))
 }
 
 struct Str {
     head: Head,
-    source: Rc<dyn Stream>
+    source: Rc<dyn Stream>,
 }
 
 impl Describe for Str {
@@ -60,6 +60,7 @@ impl Stream<Char> for Str {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("chars", eval_chars, r#"
 Splits `string` into a stream of characters.

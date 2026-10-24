@@ -8,11 +8,7 @@ pub(crate) struct RandomAccess<I: ItemType = Item> {
 
 impl<I: ItemType> RandomAccess<I> {
     pub fn new(source: Rc<dyn Stream<I>>) -> Self {
-        Self {
-            iter: source.iter(),
-            consumed: UNumber::zero(),
-            source,
-        }
+        Self { iter: source.iter(), consumed: UNumber::zero(), source }
     }
 }
 
@@ -34,7 +30,9 @@ impl<I: ItemType> RandomAccess<I> {
             self.iter = self.source.iter();
             self.consumed = UNumber::zero();
         }
-        if index == self.consumed { return Ok(None) }
+        if index == self.consumed {
+            return Ok(None);
+        }
         let ret = self.iter.advance(&(&index - &self.consumed));
         self.consumed = index;
         ret

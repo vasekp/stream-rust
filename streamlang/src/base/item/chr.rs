@@ -7,7 +7,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Char {
     Single(char),
-    Multi(&'static str)
+    Multi(&'static str),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -15,23 +15,27 @@ pub enum CharCase {
     Indeterminate,
     Lower,
     Upper,
-    Mixed
+    Mixed,
 }
 
 impl Char {
     pub fn case(&self) -> CharCase {
         match self {
-            Char::Single(ch) =>
-                if ch.is_lowercase() { CharCase::Lower }
-                else if ch.is_uppercase() { CharCase::Upper }
-                else { CharCase::Indeterminate },
-            Char::Multi(ch) =>
-                match (ch == &ch.to_lowercase(), ch == &ch.to_uppercase()) {
-                    (true, false) => CharCase::Lower,
-                    (false, true) => CharCase::Upper,
-                    (false, false) => CharCase::Mixed,
-                    (true, true) => CharCase::Indeterminate
+            Char::Single(ch) => {
+                if ch.is_lowercase() {
+                    CharCase::Lower
+                } else if ch.is_uppercase() {
+                    CharCase::Upper
+                } else {
+                    CharCase::Indeterminate
                 }
+            },
+            Char::Multi(ch) => match (ch == &ch.to_lowercase(), ch == &ch.to_uppercase()) {
+                (true, false) => CharCase::Lower,
+                (false, true) => CharCase::Upper,
+                (false, false) => CharCase::Mixed,
+                (true, true) => CharCase::Indeterminate,
+            },
         }
     }
 
@@ -49,7 +53,7 @@ impl Char {
                     }
                 }
             },
-            Char::Multi(ch) => Char::Multi(intern(&ch.to_lowercase()))
+            Char::Multi(ch) => Char::Multi(intern(&ch.to_lowercase())),
         }
     }
 
@@ -67,7 +71,7 @@ impl Char {
                     }
                 }
             },
-            Char::Multi(ch) => Char::Multi(intern(&ch.to_uppercase()))
+            Char::Multi(ch) => Char::Multi(intern(&ch.to_uppercase())),
         }
     }
 }
@@ -81,11 +85,7 @@ impl From<char> for Char {
 impl From<&str> for Char {
     fn from(s: &str) -> Char {
         let mut it = s.chars();
-        if let (Some(c), None) = (it.next(), it.next()) {
-            Char::Single(c)
-        } else {
-            Char::Multi(intern(s))
-        }
+        if let (Some(c), None) = (it.next(), it.next()) { Char::Single(c) } else { Char::Multi(intern(s)) }
     }
 }
 
@@ -98,21 +98,37 @@ impl Display for Char {
                 '\r' => "\\r".into(),
                 '\t' => "\\t".into(),
                 '\\' => "\\\\".into(),
-                '\'' => if alt { c.into() } else { "\\'".into() },
-                '"' => if alt { "\\\"".into() } else { c.into() },
-                _ => c.into()
+                '\'' => {
+                    if alt {
+                        c.into()
+                    } else {
+                        "\\'".into()
+                    }
+                },
+                '"' => {
+                    if alt {
+                        "\\\"".into()
+                    } else {
+                        c.into()
+                    }
+                },
+                _ => c.into(),
             }
         };
-        if !alt { write!(f, "'")? };
+        if !alt {
+            write!(f, "'")?
+        };
         match self {
             Char::Single(c) => write!(f, "{}", escape(*c))?,
             Char::Multi(s) => {
                 for c in s.chars() {
                     write!(f, "{}", escape(c))?;
                 }
-            }
+            },
         }
-        if !alt { write!(f, "'")? };
+        if !alt {
+            write!(f, "'")?
+        };
         Ok(())
     }
 }

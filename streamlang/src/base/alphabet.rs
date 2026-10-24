@@ -8,7 +8,7 @@ pub enum Alphabet {
     #[default]
     Std26,
     /// An alphabet ordering created by explicitly listing the letters in order.
-    Listed { vec: Vec<Char>, map: HashMap<Char, isize> }
+    Listed { vec: Vec<Char>, map: HashMap<Char, isize> },
 }
 
 impl Alphabet {
@@ -22,15 +22,14 @@ impl Alphabet {
                 };
                 match ch.to_ascii_lowercase().try_into() {
                     Ok(ord @ b'a'..=b'z') => Ok((ord - b'a' + 1).into()),
-                    _ => Err(StreamError::with_expr("not in alphabet", chr))
+                    _ => Err(StreamError::with_expr("not in alphabet", chr)),
                 }
             },
-            Alphabet::Listed{map, ..} => {
-                map.get(chr)
-                    .or_else(|| map.get(&chr.to_lowercase()))
-                    .copied()
-                    .ok_or_else(|| StreamError::with_expr("not in alphabet", chr))
-            }
+            Alphabet::Listed { map, .. } => map
+                .get(chr)
+                .or_else(|| map.get(&chr.to_lowercase()))
+                .copied()
+                .ok_or_else(|| StreamError::with_expr("not in alphabet", chr)),
         }
     }
 
@@ -38,24 +37,22 @@ impl Alphabet {
     pub fn chr(&self, ord: &Number, case: CharCase) -> Char {
         match self {
             Alphabet::Std26 => {
-                let ord: u8 = ord.rem_euclid(&Number::from(26))
-                    .try_into().unwrap(); // 0..26 well within range of u8
+                let ord: u8 = ord.rem_euclid(&Number::from(26)).try_into().unwrap(); // 0..26 well within range of u8
                 let c = char::from(b'a' + (ord + 25u8) % 26u8);
                 Char::from(match case {
                     CharCase::Upper => c.to_ascii_uppercase(),
-                    _ => c
+                    _ => c,
                 })
             },
-            Alphabet::Listed{vec, ..} => {
-                let ix: usize = (ord - 1i32).rem_euclid(&Number::from(vec.len()))
-                    .try_into().unwrap(); // rem_euclid(vec.len()) < vec.len() <= usize::MAX
+            Alphabet::Listed { vec, .. } => {
+                let ix: usize = (ord - 1i32).rem_euclid(&Number::from(vec.len())).try_into().unwrap(); // rem_euclid(vec.len()) < vec.len() <= usize::MAX
                 let c = &vec[ix];
                 match case {
                     CharCase::Upper => c.to_uppercase(),
                     CharCase::Lower => c.to_lowercase(),
-                    _ => c.to_owned()
+                    _ => c.to_owned(),
                 }
-            }
+            },
         }
     }
 
@@ -68,7 +65,7 @@ impl Alphabet {
                 };
                 matches!(ch.to_ascii_lowercase().try_into(), Ok(b'a'..=b'z'))
             },
-            Alphabet::Listed{..} => self.ord(chr).is_ok()
+            Alphabet::Listed { .. } => self.ord(chr).is_ok(),
         }
     }
 
@@ -83,7 +80,7 @@ impl Alphabet {
     pub(crate) fn iter(&self) -> Box<dyn Iterator<Item = Char> + '_> {
         match self {
             Alphabet::Std26 => Box::new((0..26).map(|i| Char::from((b'a' + i) as char))),
-            Alphabet::Listed{vec, ..} => Box::new(vec.iter().cloned())
+            Alphabet::Listed { vec, .. } => Box::new(vec.iter().cloned()),
         }
     }
 
@@ -96,7 +93,7 @@ impl Alphabet {
     pub(crate) fn describe(&self) -> String {
         match self {
             Self::Std26 => "[]".to_string(),
-            Self::Listed{vec, ..} => {
+            Self::Listed { vec, .. } => {
                 let mut iter = vec.iter();
                 let mut ret = '['.to_string();
                 if let Some(chr) = iter.next() {
@@ -108,7 +105,7 @@ impl Alphabet {
                 }
                 ret.push(']');
                 ret
-            }
+            },
         }
     }
 }
@@ -136,7 +133,7 @@ impl TryFrom<Vec<Char>> for Alphabet {
             }
             res_vec.push(chr);
         }
-        Ok(Alphabet::Listed{vec: res_vec, map})
+        Ok(Alphabet::Listed { vec: res_vec, map })
     }
 }
 
@@ -167,7 +164,9 @@ mod tests {
 
     #[test]
     fn test_custom_alpha() {
-        let abc = Rc::new(Alphabet::try_from(vec![Char::from('b'), Char::from('á'), Char::from("Ch"), Char::from('a')]).unwrap());
+        let abc = Rc::new(
+            Alphabet::try_from(vec![Char::from('b'), Char::from('á'), Char::from("Ch"), Char::from('a')]).unwrap(),
+        );
         assert_eq!(abc.ord(&Char::from('a')), Ok(4isize));
         assert_eq!(abc.ord(&Char::from('Á')), Ok(2isize));
         assert_eq!(abc.ord(&Char::from("CH")), Ok(3isize));

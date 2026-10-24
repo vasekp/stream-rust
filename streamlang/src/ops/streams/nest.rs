@@ -5,7 +5,7 @@ struct NestSource {
     source: Item,
     body: Rc<Node>,
     head: Head,
-    env: Env
+    env: Env,
 }
 
 struct NestIterSource {
@@ -16,7 +16,7 @@ struct NestIterSource {
 struct NestArgs {
     body: Node<Item>,
     head: Head,
-    env: Env
+    env: Env,
 }
 
 struct NestIterArgs {
@@ -26,17 +26,17 @@ struct NestIterArgs {
 
 fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
     let body = node.only_arg_checked()?.as_func()?;
-    if body.args.is_empty() && let Some(source) = &node.source {
-        Ok(Item::new_stream(NestSource{
+    if body.args.is_empty()
+        && let Some(source) = &node.source
+    {
+        Ok(Item::new_stream(NestSource {
             head: node.head.clone(),
             source: source.eval(env)?,
             body: Rc::clone(body),
-            env: env.clone()}))
+            env: env.clone(),
+        }))
     } else if !body.args.is_empty() && node.source.is_none() {
-        Ok(Item::new_stream(NestArgs{
-            head: node.head.clone(),
-            body: body.eval_all(env)?,
-            env: env.clone()}))
+        Ok(Item::new_stream(NestArgs { head: node.head.clone(), body: body.eval_all(env)?, env: env.clone() }))
     } else {
         Err(StreamError::usage(&node.head))
     }
@@ -61,7 +61,7 @@ impl Describe for NestArgs {
 
 impl Stream for NestSource {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        NestIterSource{prev: self.source.clone(), node: self}.wrap()
+        NestIterSource { prev: self.source.clone(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -72,7 +72,7 @@ impl Stream for NestSource {
 impl Stream for NestArgs {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let args = self.body.args.iter().cloned().collect();
-        NestIterArgs{prev: args, node: self}.wrap()
+        NestIterArgs { prev: args, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -82,9 +82,7 @@ impl Stream for NestArgs {
 
 impl PreIterator for NestIterSource {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let node = Node::new(self.node.body.head.clone(),
-            Some(Expr::from(&self.prev)),
-            vec![]);
+        let node = Node::new(self.node.body.head.clone(), Some(Expr::from(&self.prev)), vec![]);
         let item = node.eval(&self.node.env)?;
         self.prev = item.clone();
         Ok(Some(item))
@@ -97,9 +95,7 @@ impl PreIterator for NestIterSource {
 
 impl PreIterator for NestIterArgs {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let args = self.prev.iter()
-            .map(|item| Expr::Imm(item.to_owned()))
-            .collect();
+        let args = self.prev.iter().map(|item| Expr::Imm(item.to_owned())).collect();
         let node = Node::new(self.node.body.head.clone(), None, args);
         let item = node.eval(&self.node.env)?;
         self.prev.pop_front();
@@ -112,6 +108,7 @@ impl PreIterator for NestIterArgs {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("nest", eval_nest, r#"
 Input-form: a stream where `s[n]` is the result of `s[n-1].func` (`input.func` if first).

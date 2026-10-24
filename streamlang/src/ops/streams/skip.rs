@@ -5,19 +5,19 @@ fn eval_skip(node: &Node, env: &Env) -> SResult<Item> {
     let count = match &node.args[..] {
         [] => None,
         [Item::Number(count)] => Some(count.try_unsign()?),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     match node.source_checked()? {
-        Item::Stream(stm) => Ok(Item::new_stream(Skip{head: node.head.clone(), source: Rc::clone(stm), count })),
-        Item::String(stm) => Ok(Item::new_string(Skip{head: node.head.clone(), source: Rc::clone(stm), count })),
-        _ => Err(StreamError::usage(&node.head))
+        Item::Stream(stm) => Ok(Item::new_stream(Skip { head: node.head.clone(), source: Rc::clone(stm), count })),
+        Item::String(stm) => Ok(Item::new_string(Skip { head: node.head.clone(), source: Rc::clone(stm), count })),
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
 struct Skip<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    count: Option<UNumber>
+    count: Option<UNumber>,
 }
 
 impl<I: ItemType> Stream<I> for Skip<I> {
@@ -32,11 +32,22 @@ impl<I: ItemType> Stream<I> for Skip<I> {
     }
 
     fn len(&self) -> Length {
-        self.source.len()
-            .map(|x| match &self.count {
-                Some(count) => if count < x { x - count } else { UNumber::zero() },
-                None => if x.is_zero() { x.to_owned() } else { x - 1u32 }
-            })
+        self.source.len().map(|x| match &self.count {
+            Some(count) => {
+                if count < x {
+                    x - count
+                } else {
+                    UNumber::zero()
+                }
+            },
+            None => {
+                if x.is_zero() {
+                    x.to_owned()
+                } else {
+                    x - 1u32
+                }
+            },
+        })
     }
 }
 
@@ -49,6 +60,7 @@ impl<I: ItemType> Describe for Skip<I> {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["skip", "dropfirst"], eval_skip, r#"
 Skips first `count` items of `stream` ot first `count` characters of `string`.

@@ -6,7 +6,7 @@ fn eval_flatten(node: &Node, env: &Env) -> SResult<Item> {
     let depth = match &node.args[..] {
         [] => None,
         [Item::Number(depth)] => Some(depth.try_unsign()?),
-        _ => return Err(StreamError::usage(&node.head))
+        _ => return Err(StreamError::usage(&node.head)),
     };
     Ok(Item::new_stream(Flatten { source: stm, head: node.head.clone(), depth }))
 }
@@ -14,7 +14,7 @@ fn eval_flatten(node: &Node, env: &Env) -> SResult<Item> {
 struct Flatten {
     source: Rc<dyn Stream>,
     depth: Option<UNumber>,
-    head: Head
+    head: Head,
 }
 
 impl Describe for Flatten {
@@ -32,8 +32,9 @@ impl Stream for Flatten {
             outer: self.source.iter(),
             iters: vec![],
             depth: self.depth.as_ref().and_then(|d| d.try_into().ok()),
-            node: self
-        }.wrap()
+            node: self,
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
@@ -54,7 +55,7 @@ impl PreIterator for FlattenIter {
             check_stop!();
             let next = match self.iters.last_mut() {
                 Some(iter) => iter.next(),
-                None => self.outer.next()
+                None => self.outer.next(),
             }?;
             match next {
                 Some(Item::Stream(stm)) => {
@@ -71,7 +72,7 @@ impl PreIterator for FlattenIter {
                     } else {
                         self.iters.pop();
                     }
-                }
+                },
             }
         }
     }
@@ -85,13 +86,15 @@ impl PreIterator for FlattenIter {
             }
             if self.depth.is_some_and(|d| self.iters.len() == d) {
                 let Some(iter) = self.iters.last_mut() else { unreachable!() };
-                let Some(m) = iter.advance(&n)? else { return Ok(None); };
+                let Some(m) = iter.advance(&n)? else {
+                    return Ok(None);
+                };
                 self.iters.pop();
                 n = m;
             } else {
                 let res = match self.iters.last_mut() {
                     Some(iter) => iter.next(),
-                    None => self.outer.next()
+                    None => self.outer.next(),
                 };
                 match res? {
                     Some(Item::Stream(stm)) => {
@@ -104,7 +107,7 @@ impl PreIterator for FlattenIter {
                         } else {
                             self.iters.pop();
                         }
-                    }
+                    },
                 }
             }
         }
@@ -115,6 +118,7 @@ impl PreIterator for FlattenIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("flatten", eval_flatten, r#"
 Flattens `stream` up to `depth` levels. If `depth` is omitted, `stream` is flattened to all levels.

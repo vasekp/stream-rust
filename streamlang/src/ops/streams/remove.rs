@@ -4,14 +4,8 @@ fn eval_remove(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_args_nonempty()?;
     let stm = node.source_checked()?.as_stream()?;
-    let index = node.only_arg_checked()?
-        .as_num()?
-        .try_cast_within(UNumber::one()..)?;
-    Ok(Item::new_stream(Remove{
-        head: node.head.clone(),
-        source: Rc::clone(stm),
-        index,
-    }))
+    let index = node.only_arg_checked()?.as_num()?.try_cast_within(UNumber::one()..)?;
+    Ok(Item::new_stream(Remove { head: node.head.clone(), source: Rc::clone(stm), index }))
 }
 
 struct Remove {
@@ -31,19 +25,14 @@ impl Describe for Remove {
 
 impl Stream for Remove {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        RemoveIter{
-            index: UNumber::one(),
-            iter: self.source.iter(),
-            node: self
-        }.wrap()
+        RemoveIter { index: UNumber::one(), iter: self.source.iter(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
         let slen = self.source.len();
         match &slen {
             Length::Exact(len) if len >= &self.index => Length::Exact(len - 1),
-            Length::Exact(_) | Length::AtMost(_) | Length::UnknownFinite
-                | Length::Unknown | Length::Infinite => slen
+            Length::Exact(_) | Length::AtMost(_) | Length::UnknownFinite | Length::Unknown | Length::Infinite => slen,
         }
     }
 }
@@ -89,6 +78,7 @@ impl PreIterator for RemoveIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("remove", eval_remove, r#"
 Returns `stream` with item at position `index` removed.

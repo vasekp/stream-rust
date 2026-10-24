@@ -3,7 +3,7 @@ use crate::base::*;
 fn eval_fold(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = node.only_arg_checked()?.as_func()?;
-    Ok(Item::new_stream(Fold{
+    Ok(Item::new_stream(Fold {
         head: node.head.clone(),
         source: stm,
         func: Rc::clone(func),
@@ -35,7 +35,7 @@ impl Describe for Fold {
 
 impl Stream for Fold {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        FoldIter{source: self.source.iter(), prev: None, node: self}.wrap()
+        FoldIter { source: self.source.iter(), prev: None, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -47,7 +47,10 @@ impl PreIterator for FoldIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let next = iter_try!(self.source.next());
         let item = match &self.prev {
-            Some(prev) => self.node.func.with_args(vec![prev.into(), next.into()])?
+            Some(prev) => self
+                .node
+                .func
+                .with_args(vec![prev.into(), next.into()])?
                 .eval(&self.node.env)?,
             None => next,
         };
@@ -60,6 +63,7 @@ impl PreIterator for FoldIter {
     }
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("fold", eval_fold, r#"
 A stream `s` where `s[n]` is the result of `func(s[n-1], stream[n])`.

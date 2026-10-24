@@ -8,6 +8,7 @@ mod assign;
 mod lexcmp;
 mod bools;
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     list::init(symbols);
     part::init(symbols);

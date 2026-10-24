@@ -21,12 +21,14 @@ fn eval_minmax(node: &Node, env: &Env) -> SResult<Item> {
             };
             eval_mapped(&stm, func, cmp, env)
         },
-        _ => Err(StreamError::usage(&node.head))
+        _ => Err(StreamError::usage(&node.head)),
     }
 }
 
 fn eval_fn(node: &Node<Item>, func: fn(Number, Number) -> Number) -> SResult<Number> {
-    if let Some(Item::Stream(stm)) = &node.source && node.args.is_empty() {
+    if let Some(Item::Stream(stm)) = &node.source
+        && node.args.is_empty()
+    {
         let mut iter = stm.iter();
         let Some(first) = iter.next()? else {
             return Err("stream is empty".into());
@@ -49,8 +51,7 @@ fn eval_fn(node: &Node<Item>, func: fn(Number, Number) -> Number) -> SResult<Num
     }
 }
 
-fn eval_mapped(stm: &Rc<dyn Stream>, func: &Rc<Node>,
-    cmp: fn(&Number, &Number) -> bool, env: &Env) -> SResult<Item> {
+fn eval_mapped(stm: &Rc<dyn Stream>, func: &Rc<Node>, cmp: fn(&Number, &Number) -> bool, env: &Env) -> SResult<Item> {
     let mut iter = stm.iter();
     let Some(mut val) = iter.next()? else {
         return Err("stream is empty".into());
@@ -68,6 +69,7 @@ fn eval_mapped(stm: &Rc<dyn Stream>, func: &Rc<Node>,
     Ok(val)
 }
 
+#[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("min", eval_minmax, r#"
 Minimum of an input stream of numbers, or of given arguments.
