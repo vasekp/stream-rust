@@ -7,7 +7,7 @@ use crate::base::*;
 ///
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
-/// replicable, so the behaviour of doing so is undefined.
+/// replicable, so the behaviour of doing so is unspecified.
 pub trait SIterator<I = Item> {
     fn next(&mut self) -> SResult<Option<I>>;
 
@@ -17,7 +17,7 @@ pub trait SIterator<I = Item> {
     /// The return value is `Ok(None)` if `n` elements were skipped. If the iterator finishes
     /// early, the result is `Ok(Some(k))`, where `k` is the number of remaining elements. This is
     /// important to know when multiple iterators are chained. Calling `next()` after this
-    /// condition, or after an `Err` is returned, is undefined behaviour.
+    /// condition, or after an `Err` is returned, is unspecified behaviour.
     ///
     /// It is possible to return `Ok(Some(0))` to indicate that all elements have been skipped
     /// without remainder, but that `next()` should not be called again. If `None` is returned
