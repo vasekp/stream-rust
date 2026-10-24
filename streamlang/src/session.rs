@@ -32,84 +32,74 @@ impl Session {
     pub fn process(&mut self, expr: Expr) -> SResult<SessionUpdate<'_>> {
         stop::reset_stop();
         match &expr {
-            Expr::Eval(node) => match &**node {
-                Node { head: Head::Oper("="), source: None, args } => {
-                    let Some((rhs, lhs)) = args.split_last() else { unreachable!() };
-                    let rhs = self.apply_context(rhs)?;
-                    let rhs = if let Expr::Eval(node) = &*rhs
-                        && node.source.is_none() && node.args.is_empty()
-                        && let Head::Block{body, ..} = &node.head {
-                            Rhs::Function(body.clone())
-                    } else {
-                        Rhs::Value(rhs.eval(&self.env)?)
-                    };
-                    let mut names = Vec::with_capacity(lhs.len());
-                    for arg in lhs {
-                        let name = if let Expr::Eval(node) = arg
-                            && node.source.is_none() && node.args.is_empty()
-                            && let Head::Symbol(sym) = &node.head
-                            && sym.starts_with('$') {
-                                if sym.as_bytes()[1].is_ascii_digit() {
-                                    return Err(StreamError::with_expr("reserved variable name", arg));
-                                } else {
-                                    *sym
-                                }
-                            } else {
-                                return Err(StreamError::with_expr("expected global variable ($name)", arg));
-                            };
-                        names.push(name);
-                    }
-                    let last = names.pop();
-                    for name in &names {
-                        self.vars.insert(name, rhs.clone());
-                    }
-                    if let Some(name) = last {
-                        self.vars.insert(name, rhs);
-                        names.push(name);
-                    }
-                    self.counter += 1;
-                    Ok(SessionUpdate::Globals(names))
-                },
-                Node { head: Head::Symbol("clear"), source: None, args } => {
-                    let mut names = Vec::with_capacity(args.len());
-                    let mut updated = Vec::with_capacity(args.len());
-                    for arg in args {
-                        let name = if let Expr::Eval(node) = arg
-                            && node.source.is_none() && node.args.is_empty()
-                            && let Head::Symbol(sym) = &node.head
-                            && sym.starts_with('$') {
-                                if sym.as_bytes()[1].is_ascii_digit() {
-                                    return Err(StreamError::with_expr("reserved variable name", arg));
-                                } else {
-                                    *sym
-                                }
-                            } else {
-                                return Err(StreamError::with_expr("expected global variable ($name)", arg));
-                            };
-                        names.push(name);
-                    }
-                    for name in names {
-                        if self.vars.remove(name).is_some() {
-                            updated.push(name);
-                        }
-                    }
-                    self.counter += 1;
-                    Ok(SessionUpdate::Globals(updated))
-                },
-                _ => {
-                    let item = self.apply_context(&expr)?.eval(&self.env)?;
-                    self.hist.push(item);
-                    self.counter += 1;
-                    Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
-                }
-            },
-            _ => {
-                let item = self.apply_context(&expr)?.eval(&self.env)?;
-                self.hist.push(item);
-                self.counter += 1;
-                Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
+            Expr::Eval(node) if &node.head == "=" && node.source.is_none() =>
+                self.assign(&node.args),
+            Expr::Eval(node) if &node.head == "clear" && node.source.is_none() =>
+                self.clear(&node.args),
+            _ => self.evaluate(&expr),
+        }
+    }
+
+    /// Handles `$a = $b = ... = rhs`. The `args` are the operands of `=`, so the last one is the
+    /// right-hand side and all the others must be global variable names.
+    fn assign(&mut self, args: &[Expr]) -> SResult<SessionUpdate<'_>> {
+        let Some((rhs, lhs)) = args.split_last() else { unreachable!("= should have at least 2 arguments by construction") };
+        let rhs = self.apply_context(rhs)?;
+        let rhs = if let Expr::Eval(node) = &*rhs
+            && node.source.is_none() && node.args.is_empty()
+            && let Head::Block{body, ..} = &node.head {
+                Rhs::Function(body.clone())
+        } else {
+            Rhs::Value(rhs.eval(&self.env)?)
+        };
+        let mut names = lhs.iter().map(Self::global_name).collect::<SResult<Vec<_>>>()?;
+        let last = names.pop();
+        for name in &names {
+            self.vars.insert(name, rhs.clone());
+        }
+        if let Some(name) = last {
+            self.vars.insert(name, rhs);
+            names.push(name);
+        }
+        self.counter += 1;
+        Ok(SessionUpdate::Globals(names))
+    }
+
+    /// Handles `clear($a, $b, ...)`. Reports only the names which were actually defined.
+    fn clear(&mut self, args: &[Expr]) -> SResult<SessionUpdate<'_>> {
+        let names = args.iter().map(Self::global_name).collect::<SResult<Vec<_>>>()?;
+        let mut updated = Vec::with_capacity(names.len());
+        for name in names {
+            if self.vars.remove(name).is_some() {
+                updated.push(name);
             }
         }
+        self.counter += 1;
+        Ok(SessionUpdate::Globals(updated))
+    }
+
+    /// Evaluates any other expression and appends the result to the history.
+    fn evaluate(&mut self, expr: &Expr) -> SResult<SessionUpdate<'_>> {
+        let item = self.apply_context(expr)?.eval(&self.env)?;
+        self.hist.push(item);
+        self.counter += 1;
+        Ok(SessionUpdate::History(self.hist.len(), self.hist.last().expect("should be nonempty after push()")))
+    }
+
+    /// Checks that `expr` is a bare global variable name (`$name`, not `$123`) and returns it.
+    fn global_name(expr: &Expr) -> SResult<&'static str> {
+        if let Expr::Eval(node) = expr
+            && node.source.is_none() && node.args.is_empty()
+            && let Head::Symbol(sym) = &node.head
+            && sym.starts_with('$') {
+                if sym.as_bytes()[1].is_ascii_digit() {
+                    Err(StreamError::with_expr("reserved variable name", expr))
+                } else {
+                    Ok(*sym)
+                }
+            } else {
+                Err(StreamError::with_expr("expected global variable ($name)", expr))
+            }
     }
 
     fn apply_context<'a>(&self, expr: &'a Expr) -> SResult<Cow<'a, Expr>> {
