@@ -130,23 +130,31 @@ impl PreIterator for ReorderIter {
                     self.state = ReorderState::Missed { index: UNumber::one() };
                 },
                 ReorderState::Missed { index } => {
-                    let new_index = &*index + &n;
+                    // The source may be positioned anywhere after reading the listed items.
+                    if self.iter.move_to(&*index - 1u32)?.is_some() {
+                        return Ok(Some(n));
+                    }
+                    let res = self.iter.advance(&n)?;
+                    let traversed = match &res {
+                        None => n.clone(),
+                        Some(remain) => &n - remain,
+                    };
+                    let new_index = &*index + &traversed;
                     let skipped = self
                         .node
                         .indices
                         .iter()
                         .filter(|ix| (&*index..&new_index).contains(ix))
                         .count();
-                    self.pos += &n - skipped;
-                    match self.iter.advance(&n) {
-                        Ok(None) => {
+                    self.pos += &traversed - skipped;
+                    match res {
+                        None => {
                             *index = new_index;
                             n = skipped.into()
                         },
-                        Ok(Some(remain)) => return Ok(Some(remain + skipped)),
-                        Err(err) => return Err(err),
+                        Some(remain) => return Ok(Some(remain + skipped)),
                     }
-                    if self.pos > self.node.max_index {
+                    if *index > self.node.max_index {
                         self.state = ReorderState::Rest;
                     }
                 },
@@ -196,7 +204,17 @@ mod tests {
         test_eval!("('a'..'e').reorder(3,3)" => err);
         test_eval!("('a'..'e').reorder(3,3)" => err);
         test_eval!("range(10^100).reorder(10^10)" => "[10000000000, 1, 2, 3, 4, ...]");
+        test_eval!("range(10).reorder(5).stride(9)" => "[5, 10]");
+        test_eval!("range(10).reorder(5).stride(6)" => "[5, 7]");
+        test_eval!("range(10).reorder(5).stride(5)" => "[5, 6]");
+        test_eval!("range(10).reorder(5,2).stride(4)" => "[5, 4, 9]");
+        test_eval!("range(10).reorder(5,2)[3..10]" : 10 => "[1, 3, 4, 6, 7, 8, 9, 10]");
+        test_eval!("range(10).reorder(2,5).skip(3).first" => "3");
+        test_eval!("range(10).$lenUF.reorder(5).stride(9)" => "[5, 10]");
+        test_eval!("range(10).$lenUU.reorder(5,2).stride(4)" => "[5, 4, 9]");
         test_advance("range(10).reorder(5)");
+        test_advance("range(10).$lenUF.reorder(5)");
+        test_advance("range(10).$lenUU.reorder(5,2)");
         test_advance("range(10).reorder(5,2)");
         test_advance("range(10).reorder(5,6)");
         test_advance("range(10).reorder(5,7)");

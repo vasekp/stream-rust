@@ -82,13 +82,16 @@ impl PreIterator for PiIter {
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        match n.try_into() {
-            Ok(n) => {
-                self.inner.advance(n)?;
-                Ok(None)
-            },
-            _ => Err("numerical overflow".into()),
+        let Ok(n) = usize::try_from(n) else {
+            return Err("numerical overflow".into());
+        };
+        // Digits already pulled from `inner` and waiting in `cached` come first.
+        let from_cache = std::cmp::min(n, self.cached.len());
+        self.cached.drain(..from_cache);
+        if n > from_cache {
+            self.inner.advance(n - from_cache)?;
         }
+        Ok(None)
     }
 
     fn origin(&self) -> &Rc<PiStream> {
@@ -174,7 +177,15 @@ mod tests {
         test_eval!("pi(16)" : 30 => "[3, 2, 4, 3, 15, 6, 10, 8, 8, 8, 5, 10, 3, 0, 8, 13, 3, 1, 3, 1, 9, 8, 10, 2, 14, 0, 3, 7, 0, 7, ...]");
         test_eval!("pi(10000)" => "[3, 1415, 9265, 3589, 7932, ...]");
         test_eval!("pi(65535)" => "[3, 9279, 17992, 54480, 37699, ...]");
+        test_eval!("pi.stride(2)" : 10 => "[3, 4, 5, 2, 5, 5, 9, 9, 2, 8, ...]");
+        test_eval!("pi.stride(3)" : 10 => "[3, 1, 2, 3, 9, 3, 8, 2, 3, 3, ...]");
+        test_eval!("pi.skip(1).stride(2)" : 10 => "[1, 1, 9, 6, 3, 8, 7, 3, 3, 4, ...]");
+        test_eval!("pi.skip(100).stride(3)" : 5 => "[9, 1, 0, 5, 2, ...]");
+        test_eval!("pi(2).stride(2)" : 15 => "[1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, ...]");
+        test_eval!("pi(16).stride(2)" : 10 => "[3, 4, 15, 10, 8, 5, 3, 8, 3, 3, ...]");
         test_advance("pi.take(1000)");
+        test_advance("pi(2).take(1000)");
+        test_advance("pi(3).take(1000)");
         test_describe!("pi" => "pi");
         test_describe!("pi(3)" => "pi(3)");
     }

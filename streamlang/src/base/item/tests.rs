@@ -244,6 +244,20 @@ fn test_advance_exact_impl<I: ItemType + PartialEq + Debug>(stm: &Rc<dyn Stream<
     assert_ne!(i2.next()?, None, "advance(len/2) + next()");
     assert_eq!(i1.next(), i2.next(), "next() after advance(len/2) + [advance(1) | next()]");
 
+    // next() followed by advance() = advance(1 + n)
+    if &half + 1u32 < len {
+        let (mut i1, mut i2) = (stm.iter(), stm.iter());
+        assert_ne!(i1.next()?, None, "next() on fresh iterator");
+        assert_eq!(i1.advance(&half)?, None, "next() + advance(len/2)");
+        assert_eq!(i2.advance(&(&half + 1u32))?, None, "advance(len/2 + 1)");
+        let n2 = i2.next()?;
+        assert!(n2.is_some(), "next() after advance(len/2 + 1)");
+        assert_eq!(i1.next()?, n2, "next() after next() + advance(len/2) vs. advance(len/2 + 1)");
+    }
+    let mut it = stm.iter();
+    assert_ne!(it.next()?, None, "next() on fresh iterator");
+    assert_eq!(it.advance(&len)?, Some(UNumber::one()), "next() + advance(len)");
+
     // advance() from within past end
     half += 1;
     rest += 1; // now half + rest = len + 1
