@@ -83,8 +83,9 @@ impl<I: ItemType> PreIterator<I> for KnownLenIter<I> {
             Ok(Some(n - std::mem::take(&mut self.count_rem)))
         } else {
             self.count_rem -= n;
-            debug_assert!(matches!(self.source.advance(n), Ok(None)));
-            Ok(None)
+            let res = self.source.advance(n);
+            debug_assert!(matches!(res, Ok(None)), "source has exact length, advance() must succeed");
+            res
         }
     }
 
@@ -150,20 +151,24 @@ impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        let n = match usize::try_from(n) {
+        // Every output item corresponds to one more item pulled from the source, with the queue
+        // always holding the last `count` items pulled.
+        match usize::try_from(n) {
             Ok(n0) if n0 < self.node.count => {
                 self.queue.drain(0..n0);
-                0u32.into()
             },
             _ => {
                 self.queue.clear();
-                n - self.node.count
+                if let Some(rem) = self.source.advance(&(n - self.node.count))? {
+                    return Ok(Some(rem + self.node.count));
+                }
             },
         };
         for _ in self.queue.len()..self.node.count {
+            check_stop!();
             match self.source.next()? {
                 Some(item) => self.queue.push_back(item),
-                None => return Ok(Some(n + (self.node.count - self.queue.len()))),
+                None => return Ok(Some(UNumber::from(self.node.count - self.queue.len()))),
             }
         }
         Ok(None)
@@ -225,7 +230,27 @@ mod tests {
         test_len!("(1..3).droplast(2)" => 1);
         test_len!("(1..3).droplast(3)" => 0);
         test_len!("(1..3).droplast(4)" => 0);
+        // Known length: advance() must move the source, not just the counter
+        test_eval!("(1..10).droplast(2).skip(3)" => "[4, 5, 6, 7, 8]");
+        test_eval!("(1..10).droplast(2)[4]" => "4");
+        test_eval!("(1..10).droplast(2).last" => "8");
+        test_eval!("\"abcdefgh\".droplast(2).skip(3)" => "\"def\"");
+        // Unknown length: advance() past `count` must advance the source as well
+        test_eval!("(1..10).$lenUF.droplast(2).skip(3)" => "[4, 5, 6, 7, 8]");
+        test_eval!("(1..10).$lenUF.droplast(2).skip(7)" => "[8]");
+        test_eval!("(1..10).$lenUF.droplast(2).skip(8)" => "[]");
+        test_eval!("(1..10).$lenUF.droplast(2).skip(9)" => "[]");
+        test_eval!("(1..10).$lenUF.droplast(2)[4]" => "4");
+        test_eval!("(1..10).$lenUU.droplast(2).last" => "8");
+        test_eval!("((1..10).$lenUF.droplast(2)~[0]).skip(9)" => "[]");
+        test_eval!("((1..10).$lenUF.droplast(2)~[0]).skip(8)" => "[0]");
+        test_eval!("((1..10).$lenUF.droplast(2)~[0]).skip(7)" => "[8, 0]");
         test_advance("range(10^9).droplast(10^10)");
+        test_advance("(1..10).droplast(2)");
+        test_advance("(1..10).$lenUF.droplast(2)");
+        test_advance("(1..10).$lenUU.droplast(2)");
+        test_advance("(1..10).$lenAM.droplast(2)");
+        test_advance("\"abcdefgh\".droplast(2)");
         test_advance("range(10^11).droplast(10^10)");
         test_describe!("(1..3).droplast(0)" => "1..3");
         test_describe!("(1..3).droplast(4)" => "[]");
