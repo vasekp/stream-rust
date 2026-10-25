@@ -204,5 +204,15 @@ mod tests {
         test_eval!("1+2==3" => "true");
         test_eval!("[1,2,'a']:{1+#}==[2,3]" => "false");
         test_eval!("[1,2,'a']:{1+#}==[2,3,4]" => err);
+        // Lengths not known in advance
+        test_eval!("[1,2,3].while{#<3}==[1,2,3]" => "false");
+        test_eval!("[1,2,3]==[1,2,3].while{#<3}" => "false");
+        test_eval!("seq.while{#<2}==[1,2]" => "false");
+        test_eval!("[1,2]<>seq.while{#<3}" => "false");
+        test_eval!("[1,2]<>seq.while{#<4}" => "true");
+        test_eval!("[1,2,3].while{#<3}==[1,2]" => "true");
+        test_eval!("\"abc\"+[1,2]==\"bdx\"" => "false");
+        test_eval!("\"abc\"+[1,2]==\"bd\"" => "true");
+        test_eval!("\"abcd\"==\"abc\"+[0,0,0]" => "false");
     }
 }

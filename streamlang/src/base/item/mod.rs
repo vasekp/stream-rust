@@ -243,13 +243,14 @@ impl Item {
                 }
                 let mut it1 = x1.iter();
                 let mut it2 = x2.iter();
-                while let (Some(x), Some(y)) = (it1.next()?, it2.next()?) {
+                loop {
                     check_stop!();
-                    if !x.try_eq(&y)? {
-                        return Ok(false);
+                    match (it1.next()?, it2.next()?) {
+                        (Some(x), Some(y)) => if !x.try_eq(&y)? { return Ok(false); },
+                        (None, None) => return Ok(true),
+                        _ => return Ok(false)
                     }
                 }
-                true
             },
             (String(x1), String(x2)) => {
                 let l1 = x1.len();
@@ -259,13 +260,14 @@ impl Item {
                 }
                 let mut it1 = x1.iter();
                 let mut it2 = x2.iter();
-                while let (Some(x), Some(y)) = (it1.next()?, it2.next()?) {
+                loop {
                     check_stop!();
-                    if x != y {
-                        return Ok(false);
+                    match (it1.next()?, it2.next()?) {
+                        (Some(x), Some(y)) => if x != y { return Ok(false); },
+                        (None, None) => return Ok(true),
+                        _ => return Ok(false)
                     }
                 }
-                true
             },
             _ => false,
         })
