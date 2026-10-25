@@ -62,7 +62,7 @@ fn eval_contains(node: &Node, env: &Env) -> SResult<Item> {
                         let found = if len == 1 {
                             deque.back().unwrap() == &item[0]
                         } else {
-                            deque.range(longest - len..).eq(item)
+                            deque.len() >= len && deque.range(deque.len() - len..).eq(item)
                         };
                         if found {
                             *query = Query::Found;
@@ -129,5 +129,10 @@ mod tests {
         test_eval!("\"abcdefghijklmnopqrstuvwxyz\".repeat().contains(\"yza\")" => "true");
         test_eval!("(1..5).repeat(2).skip(1).contains(1,5,7)" => "[true, true, false]");
         test_eval!("\"abcde\".contains('b',\"b\",\"cd\",\"de\",\"ef\")" => "[true, true, true, true, false]");
+        // Queries shorter than the longest one, matching before the window is full
+        test_eval!("\"abcd\".contains(\"abcd\",\"bc\")" => "[true, true]");
+        test_eval!("\"abc\".contains(\"abc\",\"ab\")" => "[true, true]");
+        test_eval!("\"ab\".contains(\"abcd\",\"ab\")" => "[false, true]");
+        test_eval!("\"a\".contains(\"abcd\",\"ab\",'a')" => "[false, false, true]");
     }
 }

@@ -53,7 +53,7 @@ fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) ->
             let found = if len == 1 {
                 deque.back().unwrap() == &cmp[0]
             } else {
-                deque.range(longest - len..).eq(cmp.iter())
+                deque.len() >= len && deque.range(deque.len() - len..).eq(cmp.iter())
             };
             if found {
                 *count += 1;
@@ -117,6 +117,11 @@ mod tests {
         test_eval!("[1,2,3].repeat(5).count(2)" => "5");
         test_eval!("[1,2,3].repeat(5).counts(2,2,4)" => "[5, 5, 0]");
         test_eval!("\"This is a test string\".counts('i', \" \", \"is\", \"st\", 'st')" => "[3, 4, 2, 2, 0]");
+        // Queries shorter than the longest one, matching before the window is full
+        test_eval!("\"abcd\".counts(\"abcd\", \"bc\")" => "[1, 1]");
+        test_eval!("\"bcabc\".counts(\"abc\", \"bc\")" => "[1, 2]");
+        test_eval!("\"ab\".counts(\"abcd\", \"ab\")" => "[0, 1]");
+        test_eval!("\"a\".counts(\"abcd\", \"ab\", 'a')" => "[0, 0, 1]");
         test_eval!("pi.first(10).counts@range(0,9)" : 10 => "[0, 2, 1, 2, 1, 2, 1, 0, 0, 1]");
         test_eval!("pi.first(10).counts" : 21 => "[[3, 2], [1, 2], [4, 1], [5, 2], [9, 1], [2, 1], [6, 1]]");
         test_eval!("\"The quick brown fox jumps over the lazy dog.\".lcase.counts@alpha" : 26 => 

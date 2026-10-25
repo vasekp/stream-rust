@@ -65,7 +65,7 @@ fn eval_index(node: &Node, env: &Env) -> SResult<Item> {
                         let found = if len == 1 {
                             deque.back().unwrap() == &item[0]
                         } else {
-                            deque.range(longest - len..).eq(item)
+                            deque.len() >= len && deque.range(deque.len() - len..).eq(item)
                         };
                         if found {
                             *query = Query::Found(ix + 1 - len);
@@ -138,5 +138,10 @@ mod tests {
         test_eval!("\"abcdefghijklmnopqrstuvwxyz\".repeat().index(\"yza\")" => "25");
         test_eval!("(1..5).repeat(2).skip(1).index(1,5,7)" => "[5, 4, []]");
         test_eval!("\"abcde\".index('b',\"b\",\"cd\",\"de\",\"ef\")" => "[2, 2, 3, 4, []]");
+        // Queries shorter than the longest one, matching before the window is full
+        test_eval!("\"abcd\".index(\"abcd\",\"bc\")" => "[1, 2]");
+        test_eval!("\"abc\".index(\"abc\",\"ab\")" => "[1, 1]");
+        test_eval!("\"ab\".index(\"abcd\",\"ab\")" => "[[], 1]");
+        test_eval!("\"a\".index(\"abcd\",\"ab\",'a')" => "[[], [], 1]");
     }
 }
