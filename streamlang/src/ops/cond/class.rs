@@ -201,7 +201,7 @@ Evaluates to `true` if `number` is odd, `false` otherwise.
 = number.?
 > 1.? => true
 > 0.? => false
-> 'a'.? => !not a number
+> 'a'.? => !expected number
 : isnum
 : isnumeric
 "#);
@@ -210,7 +210,7 @@ Evaluates to `true` if `number` is even, `false` otherwise.
 = number.?
 > 1.? => false
 > 0.? => true
-> 'a'.? => !not a number
+> 'a'.? => !expected number
 : isnum
 : isnumeric
 "#);
@@ -231,7 +231,7 @@ Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` othe
 > 'a'.? => true
 > 'A'.? => true
 > 'á'.? => false
-> "a".? => !not a character
+> "a".? => !expected character
 : ischar
 : isascii
 : isdigit
@@ -266,7 +266,7 @@ If `base` is omitted, it defaults to 10 (digits `0` through `9`).
 > 'a'.?(15) => true
 > '5'.? => true
 > '5'.?(2) => false
-> "5".? => !not a character
+> "5".? => !expected character
 : ischar
 : isalpha
 : isascii
@@ -282,7 +282,7 @@ Evaluates to `true` if `char` is a whitespace character, `false` otherwise.
 > ' '.? => true
 > '\n'.? => true
 > '5'.? => false
-> " ".? => !not a character
+> " ".? => !expected character
 : ischar
 : isalpha
 : isascii

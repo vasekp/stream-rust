@@ -116,7 +116,7 @@ The input `stream` or `string`, reversed.
 = string.?
 > ?range(5).? => [5, 4, 3, 2, 1]
 > "Hello".? => "olleH"
-> ?seq.? => !stream is infinite
+> ?seq.? => !input is infinite
 "#);
 }
 

@@ -105,7 +105,7 @@ In case of multiple arguments, evaluates to a stream of one `true` or `false` pe
 > ?range(10).?(3, 'a', []) => [true, false, false]
 > "abc".?('a') => true
 > "abc".?("ab") => true
-> "abc".?("") => !substring can't be empty
+> "abc".?("") => !expected character or nonempty string
 : index
 "#);
 }

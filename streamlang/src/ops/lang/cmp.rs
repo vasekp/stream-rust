@@ -118,7 +118,7 @@ Evaluates to `true` if each number is strictly less than the next.
 = op1 ? op2 ? ...
 > 10 ? 11 => true
 > 10 ? 11 ? 11 ? 12 => false
-> 10 ? 11 <= 11 => !can not mix inequalities, use ?and
+> 10 ? 11 <= 11 => !cannot mix with '<', please rewrite separately
 : <=
 : >
 : ==
@@ -130,7 +130,7 @@ Evaluates to `true` if each number is strictly greater than the next.
 = op1 ? op2 ? ...
 > 11 ? 10 => true
 > 12 ? 11 ? 11 ? 10 => false
-> 11 ? 10 >= 10 => !can not mix inequalities, use ?and
+> 11 ? 10 >= 10 => !cannot mix with '>', please rewrite separately
 : <
 : >=
 : ==
@@ -142,7 +142,7 @@ Evaluates to `true` if each number is less than or equal to the next.
 = op1 ? op2 ? ...
 > 10 ? 11 => true
 > 10 ? 11 ? 11 ? 12 => true
-> 11 ? 11 < 12 => !can not mix inequalities, use ?and
+> 11 ? 11 < 12 => !cannot mix with '<=', please rewrite separately
 : <
 : >=
 : ==
@@ -154,7 +154,7 @@ Evaluates to `true` if each number is greater than or equal to the next.
 = op1 ? op2 ? ...
 > 11 ? 10 => true
 > 12 ? 11 ? 11 ? 11 => true
-> 11 ? 11 > 10 => !can not mix inequalities, use ?and
+> 11 ? 11 > 10 => !cannot mix with '>=', please rewrite separately
 : >
 : <=
 : ==

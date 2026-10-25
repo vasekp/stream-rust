@@ -178,7 +178,7 @@ Applies a given permutation on the input `stream`: returning `stream[i1]`, `stre
 = stream.?(i1, ..., iK)
 > ('a'..'e').?(3, 2, 1) => ['c', 'b', 'a', 'd', 'e']
 > (1..5).?(3) => [3, 1, 2, 4, 5]
-> ?seq.?(10, 10) => !indices can not repeat
+> ?seq.?(10, 10) => !index 10 repeats
 : perm
 "#);
 }

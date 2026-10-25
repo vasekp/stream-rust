@@ -124,21 +124,30 @@ mod tests {
             panic!("malformed example in {}: {}", sym, ex.input);
         };
         let input = line.flatten();
-        let Ok(expr) = crate::parse(&input) else {
-            if ex.output.is_err() {
-                return Ok(());
-            } else {
-                panic!("failed to parse example in {}: {:?}", sym, input);
-            }
+        let expr = match crate::parse(&input) {
+            Ok(expr) => expr,
+            Err(err) => match ex.output {
+                // The quoted error message must match the actual one, so that the help text
+                // stays truthful.
+                Err(msg) if err.to_string() == msg => return Ok(()),
+                Err(msg) => {
+                    println!("{sym}: example {input:?} gives parse error {:?}, documented as {msg:?}", err.to_string());
+                    return Err(DocError);
+                },
+                Ok(_) => panic!("failed to parse example in {}: {:?}", sym, input),
+            },
         };
         let res = expr.eval_default();
-        let success = match (&ex.width, ex.output, res) {
-            (None, Ok(out), res) => res.is_ok_and(|item| item.to_string() == out),
-            (Some(width), Ok(out), res) => res.is_ok_and(|item| format!("{:1$}", item, width) == out),
-            (_, Err(_), res) => res.is_err(),
+        let success = match (&ex.width, ex.output, &res) {
+            (None, Ok(out), res) => res.as_ref().is_ok_and(|item| item.to_string() == out),
+            (Some(width), Ok(out), res) => res.as_ref().is_ok_and(|item| format!("{:1$}", item, width) == out),
+            (_, Err(msg), res) => res.as_ref().is_err_and(|err| err.reason().to_string() == msg),
         };
         if !success {
-            println!("{sym}: failed example: {input:?}");
+            match (ex.output, res) {
+                (Err(msg), Err(err)) => println!("{sym}: example {input:?} gives error {:?}, documented as {msg:?}", err.reason().to_string()),
+                _ => println!("{sym}: failed example: {input:?}"),
+            }
             Err(DocError)
         } else {
             Ok(())

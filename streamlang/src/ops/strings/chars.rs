@@ -74,7 +74,7 @@ Turns a stream of characters into a string.
 * Functionally equivalent to `?cat` but optimized for this purpose.
 = stream.?
 > ['a', 'b', 'c'].? => "abc"
-> 1.? => !not a stream
+> 1.? => !expected stream
 > ['a', 'b', 1].? => "ab<!> ; non-character in the stream only causes error when it's reached
 : chars
 : cat

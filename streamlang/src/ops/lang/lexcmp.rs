@@ -41,7 +41,7 @@ Lexical comparison: Evaluates to `true` if each `item` compares before the next.
 = op1 ? op2 ? ...
 > "abc" ? "abd" ? "ac" => true
 > "a" ? "A" => false
-> 'a' ? "a" => !can't compare characters and strings
+> 'a' ? "a" => !can't compare char 'a' with string "a"
 > [1,2,3] ? [1,2,4] ? [1,3] => true
 : <<=
 : >>
@@ -55,7 +55,7 @@ Lexical comparison: Evaluates to `true` if each `item` compares after the next.
 = op1 ? op2 ? ...
 > "abc" ? "aba" ? "ab" => true
 > "a" ? "A" => false
-> 'a' ? "a" => !can't compare characters and strings
+> 'a' ? "a" => !can't compare char 'a' with string "a"
 > [1,2,3] ? [1,2,1] ? [1,2] => true
 : <<
 : >>=
@@ -69,7 +69,7 @@ Lexical comparison: Evaluates to `true` if each `item` compares before or equall
 = op1 ? op2 ? ...
 > "abc" ? "abd" ? "ac" => true
 > "a" ? "A" => true
-> 'a' ? "a" => !can't compare characters and strings
+> 'a' ? "a" => !can't compare char 'a' with string "a"
 > [1,2,3] ? [1,3] ? [1,3] => true
 : <<
 : >>=
@@ -83,7 +83,7 @@ Lexical comparison: Evaluates to `true` if each `item` compares after or equally
 = op1 ? op2 ? ...
 > "abc" ? "abc" ? "ab" => true
 > "a" ? "A" => true
-> 'a' ? "a" => !can't compare characters and strings
+> 'a' ? "a" => !can't compare char 'a' with string "a"
 > [1,2,1] ? [1,2,1] ? [1,2] => true
 : >>
 : <<=

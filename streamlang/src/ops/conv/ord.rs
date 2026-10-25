@@ -96,7 +96,7 @@ Converts `number` to a character at its Unicode codepoint.
 = number.?
 > 0x2192.unichr => '→'
 > (0x1F311..0x1F318):unichr : 10 => ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
-> 0xD900.unichr => !invalid Unicode ; A surrogate codepoint
+> 0xD900.unichr => !invalid Unicode codepoint ; A surrogate codepoint
 : uniord
 : chr
 "#);

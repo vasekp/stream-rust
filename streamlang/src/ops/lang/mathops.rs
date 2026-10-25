@@ -415,7 +415,7 @@ Automatically threads over streams to arbitrary depth, or multiples streams and 
 > [1, [2, [3]]] * 10 => [10, [20, [30]]]
 > 'a' * 3 => 'c'
 > 3 * 'a' => !expected number ; not the other way!
-> "a, a, a" * 3 => !not available for strings
+> "a, a, a" * 3 => !operation * not available for strings
 > [1, 2, 3] * [5, 6] => [5, 12] ; the stream that ends first determines the length
 > 10 * 2^2 => 40 ; power takes precedence
 : +

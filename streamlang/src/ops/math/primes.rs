@@ -120,7 +120,7 @@ Evaluates to `true` if `number` is a prime, `false` otherwise.
 = number.?
 > [23, 25, 27, 29]:? => [true, false, false, true]
 > (100..120).?filter(?) => [101, 103, 107, 109, 113]
-> 0.? => !out of range
+> 0.? => !value must be at least 1
 : primes
 : factor
 "#);

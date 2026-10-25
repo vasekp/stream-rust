@@ -10,8 +10,8 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Assigns `value` to `name`.
 This can only be used for local assignments using `?with` or for global variables. Use `==` for comparison.
 = name = variable
-> 10 = 11 => !can not assign to 10
-> a = 10 => !can only assign to global symbols
+> 10 = 11 => !assignment not possible here, use == for comparisons
+> a = 10 => !assignment not possible here, use == for comparisons ; only global variables ($name) can be assigned
 > ?with(a = 10, a) => 10
 : ==
 : with
