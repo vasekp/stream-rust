@@ -100,9 +100,9 @@ Greatest common divisor of all inputs.
 "#);
     symbols.insert("egcd", eval_egcd, r#"
 Extended greatest common divisor.
-`gcd(a, b)` evaluates to a list `[g, x, y]` such that `g == gcd(a, b) == x*a + y*b`.
+`?(a, b)` evaluates to a list `[g, x, y]` such that `g == gcd(a, b) == x*a + y*b`.
 = ?(number, number)
-> ?(100, 85) => [5, 6, -7] ; 6*100 - 7*85 == 1
+> ?(100, 85) => [5, 6, -7] ; 6*100 - 7*85 == 5
 : gcd
 : crt
 "#);
@@ -115,11 +115,11 @@ Least common multiple of all inputs.
 "#);
     symbols.insert("crt", eval_chinese, r#"
 Finds the base multipliers for Chinese Remainder Theorem,
-i.e., numbers `[mult1, ..., multN]` within 0 and the product of all `number`s whose remainders are `[1, 0, 0, ...`, `[0, 1, 0, ...` etc.
+i.e., numbers `[mult1, ..., multN]` between 0 (inclusive) and the product of all `number`s (exclusive) whose remainders modulo the `number`s are `[1, 0, 0, ...]`, `[0, 1, 0, ...]` etc.
 = ?(number, number, ...)
 > ?(3, 7, 10) => [70, 120, 21]
 > 70 % [3, 7, 10] => [1, 0, 0] ; check
-> [1, 2, 3].dot([70, 120, 21]) => 373 ; use this to find `x` for any given tuple of reminders
+> [1, 2, 3].dot([70, 120, 21]) => 373 ; use this to find `x` for any given tuple of remainders
 > 373 % [3, 7, 10] => [1, 2, 3]
 : gcd
 : egcd

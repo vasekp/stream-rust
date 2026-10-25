@@ -105,7 +105,7 @@ impl<I: ItemType> Describe for Last<I> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("last", eval_last, r#"
 Up to the last `count` items of `stream`, or up to the last `count` characters of `string`.
-If `count` is not given, only gives the last item or the last character (no stream / string).
+If `count` is omitted, returns the last item (or character) itself rather than a one-element stream.
 = stream.?
 = stream.?(count)
 = string.?

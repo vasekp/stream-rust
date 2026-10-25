@@ -409,7 +409,7 @@ Negation only works for numbers and streams of numbers.
     symbols.insert("*", eval_op, r#"
 Multiplication. Can multiply numbers with numbers or characters with numbers
 (shifting in alphabet with wrap-around).
-Automatically threads over streams to arbitrary depth, or multiples streams and constants.
+Automatically threads over streams to arbitrary depth, or multiplies streams and constants.
 = op1 * op2 * ...
 > 1 * 2 * 3 => 6
 > [1, [2, [3]]] * 10 => [10, [20, [30]]]

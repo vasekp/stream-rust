@@ -16,7 +16,7 @@ fn eval_subst(node: &Node, env: &Env) -> SResult<Item> {
                 _ => return Err(StreamError::usage(&node.head)),
             };
             if orig.len() != repl.len() {
-                return Err("the replacements lists must be of same length".into());
+                return Err("the replacement lists must be of the same length".into());
             }
             if orig.iter().any(Vec::is_empty) {
                 return Err("the sought string can't be empty".into());
@@ -174,7 +174,7 @@ impl Stream for StreamSubst {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["subst", "subs"], eval_subst, r#"
-Substs occurrences of `patt` by `repl`, or occurrences of `pattM` by `replM`.
+Substitutes occurrences of `patt` with `repl`, or occurrences of `pattM` with `replM`.
 For strings, each `patt` and each `repl` may be a character or a substring.
 For streams, the latter variant is not available, as `[patt1, ...]` is treated as a valid `patt` itself.
 = string.?(patt, repl)

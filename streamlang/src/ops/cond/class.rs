@@ -133,7 +133,6 @@ Evaluates to `true` if `input` is a number, `false` otherwise.
 > 1.? => true
 > [1, 2].? => false
 > "1".? => false
-: isnum
 : isbool
 : ischar
 : isstream
@@ -223,7 +222,6 @@ Evaluates to `true` if `input` is an empty stream or an empty string, `false` ot
 > " ".? => false
 : isstream
 : isstring
-: isnumeric
 "#);
     symbols.insert("isalpha", eval_class, r#"
 Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` otherwise.
@@ -333,8 +331,7 @@ For strings: evaluates to `true` if all alphabetic characters are lowercase and 
 "#);
     symbols.insert("isnumeric", eval_class, r#"
 For characters: evaluates to `true` if `char` is a digit (0 through 9), `false` otherwise.
-For strings: evaluates to `true` if the string represents a number. Apart from digits, it can start 
-with a sign `+` or `-`.
+For strings: evaluates to `true` if the string is an optionally signed (`+` or `-`) sequence of decimal digits.
 = char.?
 = string.?
 > '1'.? => true

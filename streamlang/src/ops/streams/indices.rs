@@ -69,8 +69,8 @@ impl<I: ItemType> PreIterator for IndicesIter<I> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["indices", "positions"], eval_indices, r#"
-Returns all indices in which an `item` appears in `stream`, or in which `char` appears in `string`.
-Multiple items can be specified, in that case, an index is returned if it matches any of them.
+Returns the positions (counted from 1) at which `item` appears in `stream`, or `char` in `string`.
+If several items are given, a position is returned when the element matches any of them.
 ! Does not accept substrings in contrast to `?index` or `?contains`.
 = stream.?(item, ...)
 = string.?(char, ...)

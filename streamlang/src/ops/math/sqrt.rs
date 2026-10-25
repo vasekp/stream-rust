@@ -25,7 +25,7 @@ fn sqrt_impl(n: &UNumber) -> UNumber {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("sqrt", eval_sqrt, r#"
-Square root of `number`, rounded below to nearest integer.
+Integer square root of a nonnegative `number`, i.e. the square root rounded down.
 = number.?
 > 10.? => 3
 "#);

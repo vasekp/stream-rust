@@ -98,10 +98,10 @@ enum Query<I> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["index", "find", "pos"], eval_index, r#"
-Attempts to find `item` in `stream`, or `char` or `substring` in `string`, and return its position within.
+Returns the position (counted from 1) of the first occurrence of `item` in `stream`, or of `char` or `substring` in `string`.
 If the match is not found, evaluates to `[]`.
 If multiple arguments are provided, evaluates to a stream of the results.
-! Can halt for infinite stream which does not contain any match.
+! Never terminates on an infinite input which does not contain all of the queried items.
 = stream.?(item)
 = stream.?(item, ...)
 = string.?(char)

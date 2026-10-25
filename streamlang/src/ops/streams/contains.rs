@@ -94,7 +94,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("contains", eval_contains, r#"
 Evaluates to `true` if `stream` contains `item`, or if `string` contains `char` or `substring`, otherwise `false`.
 In case of multiple arguments, evaluates to a stream of one `true` or `false` per argument.
-! Can halt for infinite stream which does not contain any match.
+! Never terminates on an infinite input which does not contain all of the queried items.
 = stream.?(item)
 = stream.?(item, item, ...)
 = string.?(char)

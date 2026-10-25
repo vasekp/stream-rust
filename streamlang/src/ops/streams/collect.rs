@@ -27,8 +27,8 @@ fn eval_collect(node: &Node, env: &Env) -> SResult<Item> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("collect", eval_collect, r#"
-Groups the elements `x` of `stream` agreeing in the value of `x.func`.
-Returns a stream of pairs `[key, [x1, x2, ...]]` in order of appearance.
+Groups the elements `x` of `stream` by the value of `x.func`.
+Returns a stream of pairs `[key, [x1, x2, ...]]`; keys appear in order of first appearance and elements keep their original order within each group.
 = stream.?(func)
 > ["one", "two", "three"].?(?last) : 15 => [['e', ["one", "three"]], ['o', ["two"]]]
 : group

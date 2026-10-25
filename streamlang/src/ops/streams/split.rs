@@ -83,7 +83,7 @@ impl<I: ItemType> PreIterator for SplitIter<I> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("split", eval_split, r#"
-Splits `stream` to substreams by evaluating `cond` on its items. Every time the condition is `true`, the item is dropped and a new substream starts.
+Splits `stream` into substreams by evaluating `cond` on each item. Every time the condition is `true`, the item is dropped and a new substream starts.
 If the input is a string, evaluates `cond` on characters and returns a stream of strings similarly.
 = stream.?{cond}
 = string.?{cond}

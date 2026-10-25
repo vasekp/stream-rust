@@ -66,8 +66,7 @@ impl PreIterator for FoldIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("fold", eval_fold, r#"
-A stream `s` where `s[n]` is the result of `func(s[n-1], stream[n])`.
-The first element is returned unchanged.
+The running accumulation of `stream`: a stream `s` with `s[1] = stream[1]` and `s[n] = func(s[n-1], stream[n])`.
 = stream.?{func}
 = stream.?(func)
 > ?seq.?(plus) => [1, 3, 6, 10, 15, ...] ; partial sums

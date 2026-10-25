@@ -207,7 +207,7 @@ If the input length is already `length` or more, returns unchanged.
 = string.?(length, char)
 > [1, 2].?(5, 0) => [1, 2, 0, 0, 0]
 > "ab".?(5, ' ') => "ab   "
-: padright
+: padleft
 "#);
 }
 

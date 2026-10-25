@@ -189,7 +189,7 @@ impl PreIterator<Char> for RiffleCatIter {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("cat", eval_cat, r#"
 Concatenates a stream of strings or characters into a single string.
-If a `filler` (character or string) is given, it's inserted between each pair of strings.
+If a `filler` (character or string) is given, it is inserted between neighbouring items.
 = stream.?
 = stream.?(filler)
 > ["Hello", ' ', "world"].? => "Hello world"

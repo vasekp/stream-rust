@@ -84,7 +84,7 @@ impl<I: ItemType> PreIterator for ConsecIter<I> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("consec", eval_consec, r#"
-A stream of chunks of consecutive items `x` from `stream` for which `x.func == true`.
+Splits `stream` into maximal runs of consecutive items `x` for which `x.func == true`; items failing the condition are dropped and separate the runs. For a `string`, the runs are strings.
 = stream.?(func)
 = string.?(func)
 > (20..30).?{!#.?isprime} : 15 => [[20, 21, 22], [24, 25, 26, 27, 28], [30]]

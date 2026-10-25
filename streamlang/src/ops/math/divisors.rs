@@ -112,7 +112,7 @@ impl PreIterator for DivisorsIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("divisors", eval_divisors, r#"
-All integer divisors of `number` in unspecified order.
+All positive divisors of a positive `number`, in unspecified order.
 = number.?
 > 20.? : 10 => [1, 2, 4, 5, 10, 20]
 : factor

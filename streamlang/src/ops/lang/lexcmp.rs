@@ -37,7 +37,7 @@ fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> SResult<b
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("<<", eval_lex, r#"
-Lexical comparison: Evaluates to `true` if each `item` compares before the next.
+Lexical comparison: Evaluates to `true` if each `op` compares before the next.
 = op1 ? op2 ? ...
 > "abc" ? "abd" ? "ac" => true
 > "a" ? "A" => false
@@ -51,7 +51,7 @@ Lexical comparison: Evaluates to `true` if each `item` compares before the next.
 : sort
 "#);
     symbols.insert(">>", eval_lex, r#"
-Lexical comparison: Evaluates to `true` if each `item` compares after the next.
+Lexical comparison: Evaluates to `true` if each `op` compares after the next.
 = op1 ? op2 ? ...
 > "abc" ? "aba" ? "ab" => true
 > "a" ? "A" => false
@@ -65,7 +65,7 @@ Lexical comparison: Evaluates to `true` if each `item` compares after the next.
 : sort
 "#);
     symbols.insert("<<=", eval_lex, r#"
-Lexical comparison: Evaluates to `true` if each `item` compares before or equally with the next.
+Lexical comparison: Evaluates to `true` if each `op` compares before or equally with the next.
 = op1 ? op2 ? ...
 > "abc" ? "abd" ? "ac" => true
 > "a" ? "A" => true
@@ -79,7 +79,7 @@ Lexical comparison: Evaluates to `true` if each `item` compares before or equall
 : sort
 "#);
     symbols.insert(">>=", eval_lex, r#"
-Lexical comparison: Evaluates to `true` if each `item` compares after or equally with the next.
+Lexical comparison: Evaluates to `true` if each `op` compares after or equally with the next.
 = op1 ? op2 ? ...
 > "abc" ? "abc" ? "ab" => true
 > "a" ? "A" => true

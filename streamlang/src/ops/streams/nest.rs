@@ -111,9 +111,8 @@ impl PreIterator for NestIterArgs {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("nest", eval_nest, r#"
-Input-form: a stream where `s[n]` is the result of `s[n-1].func` (`input.func` if first).
-Argument-form: a stream where `s[n]` is computed from `m` previous items as `func(..., s[n-1])`, 
-starting with `func(arg1, ..., argM)`.
+Source form: an infinite stream whose first item is `input.func` and each further item is `func` applied to the previous one.
+Argument form: an infinite stream whose first item is `func(arg1, ..., argM)` and each further item is `func` applied to the `M` most recent items (the arguments count as the first ones).
 = input.?{func}
 = ?{func}(arg1, ..., argM)
 > 1.?{#*2} => [2, 4, 8, 16, 32, ...]

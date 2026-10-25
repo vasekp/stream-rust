@@ -95,8 +95,8 @@ impl PreIterator for StrideIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["stride", "step"], eval_stride, r#"
-Extracts a subsequence of `stream` at indices `1`, `1 + step`, `1 + 2*step`, etc.
-If `offset` is specified, the subsequence is shifted by it.
+Takes every `step`-th item of `stream`, i.e. the items at indices `1`, `1 + step`, `1 + 2*step`, ...
+If `offset` is given, starts at index `1 + offset` instead.
 = stream.?(step)
 = stream.?(step, offset)
 > ?seq.?(5) => [1, 6, 11, 16, 21, ...]

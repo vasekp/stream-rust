@@ -203,7 +203,7 @@ impl<I: ItemType> PreIterator<I> for RepeatStreamIter<I> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("repeat", eval_repeat, r#"
-The `item` repeated `count`times.
+The `item` repeated `count` times.
 If the `item` is a stream, concatenates the repetitions in a single stream.
 If the `item` is a character or a string, evaluates to a string.
 If `count` is omitted, repeats indefinitely.

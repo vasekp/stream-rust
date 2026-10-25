@@ -81,7 +81,7 @@ Converts a stream of digits into a string.
 "#);
     symbols.insert("strdig", eval_strdig, r#"
 Converts a string of digit characters into a stream of numeric digits.
-= stream.?
+= string.?
 > "12F".? => [1, 2, 15]
 : digstr
 : strnum

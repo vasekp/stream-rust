@@ -56,7 +56,7 @@ impl PreIterator for EnumIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("enum", eval_enum, r#"
-Accompanies every item in `stream` with its position in it.
+Pairs every item of `stream` with its position (counted from 1), as `[item, position]`.
 * Equivalent to `stream.?zip(?seq)`.
 = stream.?
 > ["one", "two", "three"].? : 10 => [["one", 1], ["two", 2], ["three", 3]]

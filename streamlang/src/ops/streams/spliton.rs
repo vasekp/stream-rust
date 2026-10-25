@@ -139,7 +139,7 @@ impl PreIterator for SplitStreamIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("spliton", eval_spliton, r#"
-Splits `string` on occurrences of any of the `delimiter`s, which can each be a character or a substring.
+Splits `string` at every occurrence of any of the `delimiter`s, each of which may be a character or a nonempty string.
 For streams: the `delimiter`s are any items, which are compared for exact match.
 = string.?(delimiter...)
 = stream.?(delimiter...)

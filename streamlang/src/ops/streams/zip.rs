@@ -72,8 +72,8 @@ impl PreIterator for ZipIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("zip", eval_zip, r#"
-A stream of arrays whose `n`-th element comes from the `n`-th input `streamN`.
-The input which finishes first determines the length of the zip.
+A stream of arrays; the `n`-th array contains the `n`-th items of all the input streams.
+The shortest input determines the length.
 = ?(stream1, ..., streamM)
 = stream1.?(stream2, ..., streamM)
 > "abc".?chars.?(?seq) : 10 => [['a', 1], ['b', 2], ['c', 3]]
@@ -87,7 +87,7 @@ The input which finishes first determines the length of the zip.
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_riffle() {
+    fn test_zip() {
         use super::*;
         test_eval!("zip(seq,seq)" : 10 => "[[1, 1], [2, 2], [3, 3], [...], ...]");
         test_eval!("zip(1..3,'a'..'c',\"xyz\".chars)" : 12 => "[[1, 'a', 'x'], [2, 'b', 'y'], [3, 'c', 'z']]");

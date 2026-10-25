@@ -83,7 +83,7 @@ Binomial coefficient, i.e., `?factorial(n) / (?factorial(k) * ?factorial(n-k))` 
 : multi
 "#);
     symbols.insert("multi", eval_multi, r#"
-Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * factorial(k2) * ...)`.
+Multinomial coefficient, i.e., `?factorial(k1 + k2 + ...) / (?factorial(k1) * ?factorial(k2) * ...)`.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 4200
 > ?(3, 3, 4) == ?factorial(3+3+4) / (?factorial(3)^2 * ?factorial(4)) => true
@@ -91,7 +91,7 @@ Multinomial coefficient, i.e., `factorial(k1 + k2 + ...) / (factorial(k1) * fact
 : rmulti
 "#);
     symbols.insert("rmulti", eval_rmulti, r#"
-The number of partitions of a set of type `(k1, ..., kM)`, i.e., `?multi(k1, ..., kM)` divided by the number of permutations keeping the argument tuple unchanged.
+The number of ways to split a set of `k1 + ... + kM` elements into unlabelled blocks of sizes `k1, ..., kM`, i.e., `?multi(k1, ..., kM)` divided by `m!` for every size repeated `m` times.
 = ?(k1, ..., kM)
 > ?(3, 3, 4) => 2100
 > ?(3, 3, 4) == ?multi(3, 3, 4) / (?factorial(2) * ?factorial(1)) => true ; 3 repeats twice, 4 once

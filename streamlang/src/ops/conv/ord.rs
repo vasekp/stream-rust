@@ -68,7 +68,7 @@ Converts `char` to its order in the current alphabet, or one provided in the arg
 : uniord
 "#);
     symbols.insert("chr", eval_chr, r#"
-Converts `number` to character in the current alphabet (lowercase).
+Converts `number` to the character of that order in the current alphabet. In the default alphabet the result is lowercase; in a custom alphabet the character is returned as listed.
 If a custom alphabet is provided in the argument (in same form as for `?alpha`), it is used instead.
 * This function wraps automatically.
 = number.?
@@ -77,7 +77,7 @@ If a custom alphabet is provided in the argument (in same form as for `?alpha`),
 > [8, 5, 12, 12, 15]:?.?string => "hello"
 > ?range(25, 28):? => ['y', 'z', 'a', 'b'] ; wraps automatically
 > ?alpha("αβγ", 2.?) => 'β'
-> [3, 2, 1]:chr("qwerty") => ['e', 'w', 'q']
+> [3, 2, 1]:?("qwerty") => ['e', 'w', 'q']
 : alpha
 : ord
 : unichr

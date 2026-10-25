@@ -131,7 +131,7 @@ impl<I: ItemType, S: Stream<I> + 'static> PreIterator<I> for JoinIter<I, S> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("join", eval_join, r#"
-The concatenation of all `input`s. If all of them are strings or single characters, the result is a string, otherwise, a stream.
+The concatenation of all `input`s. If every input is a string or a character the result is a string; otherwise the result is a stream, in which non-stream inputs (including strings and characters) become single items.
 The shorthand for `?(a, b, c, ...)` is `a~b~c~...`.
 = ?(input1, input2, ...)
 > ["ab", "cd", "ef"].?windows(2, ?) => ["abcd", "cdef"]
@@ -141,7 +141,7 @@ The shorthand for `?(a, b, c, ...)` is `a~b~c~...`.
 : flatten
 "#);
     symbols.insert("~", eval_join, r#"
-The concatenation of all `input`s. If all of them are strings or single characters, the result is a string, otherwise, a stream.
+The concatenation of all `input`s. If every input is a string or a character the result is a string; otherwise the result is a stream, in which non-stream inputs (including strings and characters) become single items.
 = input1~input2~...
 > ['a', 'b', 'c']~?seq => ['a', 'b', 'c', 1, 2, ...]
 > [1, 2]~3~"abc" => [1, 2, 3, "abc"]

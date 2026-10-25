@@ -121,7 +121,7 @@ impl PreIterator for FlattenIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("flatten", eval_flatten, r#"
-Flattens `stream` up to `depth` levels. If `depth` is omitted, `stream` is flattened to all levels.
+Flattens nested streams inside `stream` up to `depth` levels deep. If `depth` is omitted, all levels are flattened.
 = stream.?
 = stream.?(depth)
 > [1, [2, [3]]].? => [1, 2, 3]

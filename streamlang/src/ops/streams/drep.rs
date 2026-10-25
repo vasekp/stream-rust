@@ -68,8 +68,8 @@ impl PreIterator for DRepIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("drep", eval_drep, r#"
-Keeps only the first of every chain of repeated items.
-If `func` is provided, compares `item.func` instead of `item` itself.
+Collapses every run of consecutive equal items into its first item.
+If `func` is given, consecutive items are considered equal when `item.func` agrees; the original items are returned.
 = stream.?
 = stream.?(func)
 > [1, 1, 2, 2, 1].? => [1, 2, 1]

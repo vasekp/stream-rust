@@ -62,7 +62,7 @@ fn eval_strnum(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("numstr", eval_numstr, r#"
 Converts `number` to a string.
-If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
+If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decimal).
 If `min_width` is given, the string is zero-padded if shorter.
 = number.?
 = number.?(base)
@@ -76,7 +76,7 @@ If `min_width` is given, the string is zero-padded if shorter.
 "#);
     symbols.insert("strnum", eval_strnum, r#"
 Converts `string` into a number.
-If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decadic).
+If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decimal).
 = string.?
 = string.?(base)
 > "-42".? => -42

@@ -19,7 +19,7 @@ struct Rising {
 
 impl Describe for Rising {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env) // TODO všude, kde je func
+        DescribeBuilder::new_with_env(&self.head, env, &self.env) // TODO everywhere a func is captured
             .set_source(&self.source)
             .push_args(self.func.as_deref())
             .finish(prec)
@@ -69,7 +69,7 @@ impl PreIterator for RisingIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("rising", eval_rising, r#"
-Keeps only a subsequence that's strictly increasing, starting from its first element.
+Keeps the first item and afterwards only the items strictly greater than the last one kept, i.e. a strictly increasing subsequence of `stream`.
 If `func` is provided, compares `item.func` instead of `item` itself.
 Comparison is done lexicographically, same way as in `?sort`.
 = stream.?

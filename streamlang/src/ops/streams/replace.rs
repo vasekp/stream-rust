@@ -67,8 +67,8 @@ impl PreIterator for ReplaceIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("replace", eval_replace, r#"
-Returns `stream` with item at position `index` replaced by `item`.
-If the stream has less than `index` items, it is unchanged.
+Returns `stream` with the item at position `index` (counted from 1) replaced by `item`.
+If the stream has fewer than `index` items, it is unchanged.
 = stream.?(index, item)
 > (1..5).?(3, "a") => [1, 2, "a", 4, 5]
 : subst

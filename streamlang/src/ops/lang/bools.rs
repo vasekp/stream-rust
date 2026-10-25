@@ -46,9 +46,9 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("and", eval_and, r#"
 Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`, `false` otherwise.
 The shorthand for `?(input1, input2, ...)` is `input1 & input2 & ...`.
-* Allows short-circuting: if any `inputM` is `false`, does not evaluate the rest.
+* Allows short-circuiting: if any `inputM` is `false`, does not evaluate the rest.
 = ?(input1, input2, ...)
-> [true, true, false, false].?windows(2, ?and) => [true, false, false]
+> [true, true, false, false].?windows(2, ?) => [true, false, false]
 : &
 : or
 : not
@@ -56,7 +56,7 @@ The shorthand for `?(input1, input2, ...)` is `input1 & input2 & ...`.
 "#);
     symbols.insert("&", eval_and, r#"
 Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`, `false` otherwise.
-* Allows short-circuting: if any `inputM` is `false`, does not evaluate the rest.
+* Allows short-circuiting: if any `inputM` is `false`, does not evaluate the rest.
 = input1 ? input2 ? ...
 > 1+1 == 2 ? [] == [] => true
 > "a" == "a" ? 1 == "1" => false
@@ -67,7 +67,7 @@ Logical `AND` of all inputs: evaluates to `true` only if all `inputM` are `true`
     symbols.insert("or", eval_or, r#"
 Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `true`, `false` otherwise.
 The shorthand for `?(input1, input2, ...)` is `input1 | input2 | ...`.
-* Allows short-circuting: if any `inputM` is `true`, does not evaluate the rest.
+* Allows short-circuiting: if any `inputM` is `true`, does not evaluate the rest.
 = ?(input1, input2, ...)
 > [true, true, false, false].?windows(2, ?) => [true, true, false]
 : |
@@ -77,7 +77,7 @@ The shorthand for `?(input1, input2, ...)` is `input1 | input2 | ...`.
 "#);
     symbols.insert("|", eval_or, r#"
 Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `true`, `false` otherwise.
-* Allows short-circuting: if any `inputM` is `true`, does not evaluate the rest.
+* Allows short-circuiting: if any `inputM` is `true`, does not evaluate the rest.
 = input1 ? input2 ? ...
 > 1+1 == 2 ? [] == [] => true
 > "a" == "a" ? 1 == "1" => true
@@ -88,7 +88,7 @@ Logical `OR` of all inputs: evaluates to `true` if at least one `inputM` is `tru
 "#);
     symbols.insert("not", eval_not, r#"
 Logical `NOT`: evaluates to `true` if `input` is `false`, `false` if it is `true`.
-The shorthand for `?(input)` is `!input1`.
+The shorthand for `?(input)` is `!input`.
 = ?(input)
 > ?(1 > 2) => true
 > ?("a" == "a") => false

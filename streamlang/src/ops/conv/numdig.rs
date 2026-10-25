@@ -46,9 +46,9 @@ fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("numdig", eval_numdig, r#"
 Converts `number` to a stream of digits (most significant first).
-If `base` is omitted, it defaults to 10 (decadic).
+If `base` is omitted, it defaults to 10 (decimal).
 If `min_width` is given, the stream is zero-padded if shorter.
-! `?` can not accept negative numbers.
+! `?` cannot accept negative numbers.
 = number.?
 = number.?(base)
 = number.?(base, min_width)
@@ -61,7 +61,7 @@ If `min_width` is given, the stream is zero-padded if shorter.
 "#);
     symbols.insert("dignum", eval_dignum, r#"
 Converts a stream of digits into a number.
-If `base` is omitted, it defaults to 10 (decadic).
+If `base` is omitted, it defaults to 10 (decimal).
 = stream.?
 = stream.?(base)
 > [1, 6].? => 16

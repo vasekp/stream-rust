@@ -85,8 +85,8 @@ impl PreIterator for GroupsIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["groups", "group"], eval_groups, r#"
-Single-argument form: a stream of `size`-sized non-overlapping arrays from the input `stream`.
-Two-argument form: evaluations of the function `func` on the above, entering as arguments (`#1, #2, ...`).
+Splits `stream` into consecutive non-overlapping groups of `size` items.
+If `func` is given, each group is passed to it as arguments (`#1`, `#2`, ...) and the results are returned instead.
 = stream.?(size)
 = stream.?(size, {func})
 > ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]

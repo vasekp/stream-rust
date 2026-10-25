@@ -71,8 +71,8 @@ impl PreIterator for UnweaveIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("unweave", eval_unweave, r#"
-Separates `stream` into `count` substreams, items are distributed cyclically one by one.
-= stream.?(step)
+Separates `stream` into `count` substreams, distributing its items cyclically; the `k`-th substream is `stream.?stride(count, k-1)`.
+= stream.?(count)
 > (1..6).?(2) : 10 => [[1, 3, 5], [2, 4, 6]]
 : stride
 : weave

@@ -68,8 +68,8 @@ impl PreIterator for DDupIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["ddup", "uniq"], eval_ddup, r#"
-Keeps only the first appearance of any repeated item in `stream`.
-If `func` is provided, compares `item.func` for the uniqueness instead of `item` itself.
+Keeps only the first occurrence of each distinct item of `stream`, preserving order.
+If `func` is given, two items are considered equal when `item.func` agrees; the original items are returned, not the keys.
 = stream.?
 = stream.?(func)
 > [1, 2, 1, 2, 3].? => [1, 2, 3]

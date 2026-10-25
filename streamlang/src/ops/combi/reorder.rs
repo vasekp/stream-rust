@@ -174,7 +174,7 @@ impl PreIterator for ReorderIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("reorder", eval_reorder, r#"
-Applies a given permutation on the input `stream`: returning `stream[i1]`, `stream[i2]` etc., followed by all the remaining items.
+Moves the items at positions `i1`, ..., `iK` of `stream` to the front, in that order, followed by all remaining items in their original order.
 = stream.?(i1, ..., iK)
 > ('a'..'e').?(3, 2, 1) => ['c', 'b', 'a', 'd', 'e']
 > (1..5).?(3) => [3, 1, 2, 4, 5]

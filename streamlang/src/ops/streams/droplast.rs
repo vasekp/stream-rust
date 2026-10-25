@@ -182,9 +182,9 @@ impl<I: ItemType> PreIterator<I> for DropLastIter<I> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("droplast", eval_droplast, r#"
-Skips last `count` items of `stream` ot last `count` characters of `string`.
+Drops the last `count` items of `stream` or the last `count` characters of `string`.
 If `count` is omitted, it defaults to one.
-If `count` is longer than `stream`, returns an empty stream (string).
+If `count` exceeds the length of the input, the result is empty.
 = stream.?
 = stream.?(count)
 = string.?

@@ -72,7 +72,7 @@ impl PreIterator for FactorIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("factor", eval_factor, r#"
-Prime factors of `number` in increasing order, repeated in respective orders.
+Prime factors of `number` in increasing order, each repeated according to its multiplicity.
 = number.?
 > 20.? => [2, 2, 5]
 : primes

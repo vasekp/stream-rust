@@ -16,7 +16,7 @@ fn eval_countif(node: &Node, env: &Env) -> SResult<Item> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("countif", eval_countif, r#"
-Evaluates `cond` on every item of `stream` and returns the count it was `true`.
+Evaluates `cond` on every item of `stream` and returns the number of items for which it was `true`.
 = stream.?{cond}
 > [1, 2, -1, 0, 5].?{# > 0} => 3
 > ?range(10).?(?isodd) => 5

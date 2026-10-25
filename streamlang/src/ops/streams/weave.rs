@@ -93,7 +93,7 @@ impl PreIterator for WeaveIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["weave", "alternate"], eval_weave, r#"
-Interleaves the values of given streams until one of them finishes.
+Interleaves the items of the given streams, taking one from each in turn, until one of them runs out.
 = ?(stream, stream, ...)
 > ?(?seq, ?alpha) => [1, 'a', 2, 'b', 3, ...]
 : zip

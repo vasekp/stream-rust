@@ -85,7 +85,7 @@ impl<I: ItemType> PreIterator<I> for FirstIter<I> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["first", "take"], eval_first, r#"
 Up to the first `count` items of `stream`, or up to the first `count` characters of `string`.
-If `count` is not given, only gives the first item or the first character (no stream / string).
+If `count` is omitted, returns the first item (or character) itself rather than a one-element stream.
 = stream.?
 = stream.?(count)
 = string.?

@@ -63,14 +63,13 @@ impl<I: ItemType> Describe for Skip<I> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["skip", "dropfirst"], eval_skip, r#"
-Skips first `count` items of `stream` ot first `count` characters of `string`.
+Skips the first `count` items of `stream` or the first `count` characters of `string`.
 If `count` is omitted, it defaults to one.
-If `count` is longer than `stream`, returns an empty stream (string).
+If `count` exceeds the length of the input, the result is empty.
 = stream.?
 = stream.?(count)
 = string.?
 = string.?(count)
-= (stream|string).?
 > ?range(5).? => [2, 3, 4, 5]
 > ?seq.?(10) => [11, 12, 13, 14, 15, ...]
 > "Hello".?(2) => "llo"

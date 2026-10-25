@@ -93,7 +93,7 @@ impl PreIterator for UnrollIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("unroll", eval_unroll, r#"
-Takes a stream of pairs `[item, count]` and returns a stream where each `item` repeats `count`-times.
+Takes a stream of pairs `[item, count]` and returns a stream in which each `item` is repeated `count` times.
 = stream.?
 > [['A', 1], ['B', 2], ['A', 1]].?.?string => "ABBA"
 : repeat

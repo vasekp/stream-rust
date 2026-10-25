@@ -70,13 +70,12 @@ impl PreIterator for GreedyIter {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("greedy", eval_greedy, r#"
 Decomposes a nonnegative `number` into multiples of items of `stream` using the greedy algorithm.
-The stream must contain of a sequence of positive numbers, usually in decreasing order.
+`stream` must consist of positive numbers, usually in decreasing order.
 * The last element should be 1 such that it can consume any remainder.
 = number.?(stream)
 > 39.?([50, 20, 10, 5, 2, 1]) : 6 => [0, 1, 1, 1, 2, 0] ; coin denominations
 > 532.?([100, 10, 1]) => [5, 3, 2] ; ?numdig may be a better fit here
-> 10.?([3, 2]) => [3, 0] ; the remainder of 10 - 3*3 = 1 can't be covered by multiples of 2: silently 
-dropped
+> 10.?([3, 2]) => [3, 0] ; the remainder of 10 - 3*3 = 1 can't be covered by multiples of 2: silently dropped
 : numdig
 : dot
 "#);

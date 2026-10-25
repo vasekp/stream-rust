@@ -30,7 +30,7 @@ fn eval_alpha(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("alpha", eval_alpha, r#"
 Without arguments: returns the current alphabet as a stream of characters.
-With arguments: changes alphabet for the evaluation of `expr`.
+With arguments: changes the alphabet for the evaluation of `expr`.
 The new alphabet can be given as a list of characters, or a string.
 = ?
 = ?(stream, expr)

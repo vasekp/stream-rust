@@ -40,7 +40,7 @@ Evaluates to `true` if `item` appears in `stream`, `false` otherwise.
 : iswithin
 "#);
     symbols.insert("iswithin", eval_iswithin, r#"
-Evaluates to `true` if `x` lies in a range given by `min` and `max`.
+Evaluates to `true` if `min <= x <= max` (both bounds inclusive).
 All three values may (simultaneously) be numbers or characters.
 = x.?(min, max)
 > (1..5):?(2, 4) => [false, true, true, true, false]
