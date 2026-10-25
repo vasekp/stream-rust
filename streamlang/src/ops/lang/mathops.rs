@@ -442,7 +442,7 @@ Automatically threads over streams to arbitrary depth, or accepts streams and co
 "#);
     symbols.insert("%", eval_op, r#"
 Integer modulo (remainder) operation.
-Satisfies that `(a / b) + (a % b) = a` for any `a`, `b` except `b == 0`.
+Satisfies `(a / b) * b + (a % b) = a` for any `a`, `b` except `b == 0`; the result takes the sign of `a`.
 Automatically threads over streams to arbitrary depth, or accepts streams and constants.
 = op1 % op2
 > 10 % 3 => 1

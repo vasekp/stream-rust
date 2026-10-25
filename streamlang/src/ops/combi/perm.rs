@@ -145,7 +145,8 @@ impl PreIterator for PermIter {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("perm", eval_perm, r#"
-A stream of all permutations of the input `stream`, listed in reverse lexicographical order.
+A stream of all permutations of the input `stream`.
+The order is such that all permutations of the first `k` items come before any permutation moving a later item (the first position varies fastest), which allows the input to be infinite.
 = stream.?
 > [2, 4, 6].? : 16 => [[2, 4, 6], [4, 2, 6], [2, 6, 4], [6, 2, 4], ...]
 > [1, 2, 3, 4].?.?length => 24

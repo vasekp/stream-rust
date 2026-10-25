@@ -165,8 +165,14 @@ impl<I: ItemType> PreIterator for RunsByIter<I> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["runs", "reps"], eval_runs, r#"
 Replaces every chain of repeated items in `stream` by a pair `[item, count]`.
+If `func` is given, consecutive items with the same value of `item.func` are grouped instead, and the result is a stream of pairs `[key, items]`.
+For a `string` source (only with `func`), the `items` are strings.
 = stream.?
+= stream.?{func}
+= string.?{func}
 > "mummy".?chars.? : 15 => [['m', 1], ['u', 1], ['m', 2], ['y', 1]]
+> (1..7).?{#/3} : 20 => [[0, [1, 2]], [1, [3, 4, 5]], [2, [6, 7]]]
+> "hello world".?(?isalpha) : 10 => [[true, "hello"], [false, " "], [true, "world"]]
 : drep
 : counts
 : consec
