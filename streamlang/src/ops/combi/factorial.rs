@@ -8,7 +8,7 @@ fn eval_factorial(node: &Node, env: &Env) -> SResult<Item> {
         (None, [Item::Number(x)]) => x,
         _ => return Err(StreamError::usage(&node.head)),
     };
-    Ok(Item::new_number(factorial(x.try_cast()?)))
+    Ok(Item::new_number(factorial(x.try_cast()?)?))
 }
 
 fn eval_binom(node: &Node, env: &Env) -> SResult<Item> {
@@ -21,7 +21,15 @@ fn eval_binom(node: &Node, env: &Env) -> SResult<Item> {
     if k > n {
         return Err("out of range".into());
     }
-    Ok(Item::new_number(factorial(n) / (factorial(k) * factorial(n - k))))
+    // Multiplicative formula over min(k, n - k) terms: every intermediate value is itself
+    // a binomial coefficient, so the division is exact.
+    let k: u32 = std::cmp::min(k, n - k);
+    let mut ret = UNumber::one();
+    for i in 1..=k {
+        check_stop!();
+        ret = ret * (n - k + i) / i;
+    }
+    Ok(Item::new_number(ret))
 }
 
 fn eval_multi(node: &Node, env: &Env) -> SResult<Item> {
@@ -32,9 +40,9 @@ fn eval_multi(node: &Node, env: &Env) -> SResult<Item> {
     for arg in &node.args {
         let k = arg.to_num()?.try_cast()?;
         total = total.checked_add(&k).ok_or("input too large")?;
-        denom *= factorial(k);
+        denom *= factorial(k)?;
     }
-    Ok(Item::new_number(factorial(total) / denom))
+    Ok(Item::new_number(factorial(total)? / denom))
 }
 fn eval_rmulti(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
@@ -52,9 +60,9 @@ fn eval_rmulti(node: &Node, env: &Env) -> SResult<Item> {
         }
         vec.push(k);
         total = total.checked_add(&k).ok_or("input too large")?;
-        denom *= factorial(k);
+        denom *= factorial(k)?;
     }
-    Ok(Item::new_number(factorial(total) / denom))
+    Ok(Item::new_number(factorial(total)? / denom))
 }
 
 #[rustfmt::skip]
@@ -109,6 +117,17 @@ mod tests {
         use super::*;
         test_eval!("seq(0):{binom(5,#)}" : 7 => "[1, 5, 10, 10, 5, 1, <!>");
         test_eval!("binom(0,0)" => "1");
+        test_eval!("binom(30,15)" => "155117520");
+        test_eval!("binom(30,0)" => "1");
+        test_eval!("binom(30,30)" => "1");
+        test_eval!("binom(30,1)" => "30");
+        test_eval!("binom(30,29)" => "30");
+        test_eval!("binom(5,6)" => err);
+        test_eval!("binom(10^6,1)" => "1000000");
+        test_eval!("binom(10^6,10^6-1)" => "1000000");
+        test_eval!("binom(10^9,2)" => "499999999500000000");
+        test_eval!("range(0,20):{binom(20,#)}.total" => "1048576");
+        test_eval!("range(0,25).all{binom(25,#)==factorial(25)/(factorial(#)*factorial(25-#))}" => "true");
         test_eval!("binom(-1,0)" => err);
         test_eval!("binom(0,-1)" => err);
         test_eval!("binom(0,1)" => err);

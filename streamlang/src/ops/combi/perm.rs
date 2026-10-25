@@ -1,21 +1,32 @@
 use crate::base::*;
-use super::util::factorial;
+use super::util::{factorial, factorial_capped};
+
+/// Source lengths up to this value have their permutation count computed up front and reported
+/// as an exact length; longer sources report `UnknownFinite`.
+const PERM_EXACT_LEN_MAX: u32 = 10_000;
 
 fn eval_perm(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     node.check_no_args()?;
     let stm = node.source_checked()?.to_stream()?;
     if stm.len() == Length::Infinite {
-        Ok(Item::new_stream(PermStream { source: stm, len: None, head: node.head.clone() }))
+        Ok(Item::new_stream(PermStream { source: stm, len: None, count: None, head: node.head.clone() }))
     } else {
-        let count = stm.try_count()?;
-        Ok(Item::new_stream(PermStream { source: stm, len: Some(count), head: node.head.clone() }))
+        let len = stm.try_count()?;
+        let count = match u32::try_from(&len) {
+            Ok(x) if x <= PERM_EXACT_LEN_MAX => Some(factorial(x)?),
+            _ => None,
+        };
+        Ok(Item::new_stream(PermStream { source: stm, len: Some(len), count, head: node.head.clone() }))
     }
 }
 
 struct PermStream {
     source: Rc<dyn Stream>,
+    /// Length of the source, `None` if infinite.
     len: Option<UNumber>,
+    /// Number of permutations (`len!`), if the source is short enough for it to be computed.
+    count: Option<UNumber>,
     head: Head,
 }
 
@@ -29,22 +40,14 @@ impl Describe for PermStream {
 
 impl Stream for PermStream {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        PermIter {
-            self_len: self.len.as_ref().and_then(|x| u32::try_from(x).ok()).map(factorial),
-            order: vec![],
-            num_read: UNumber::zero(),
-            node: self,
-        }
-        .wrap()
+        PermIter { order: vec![], num_read: UNumber::zero(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
-        match &self.len {
-            Some(len) => match u32::try_from(len) {
-                Ok(x) => Length::Exact(factorial(x)),
-                _ => Length::UnknownFinite,
-            },
-            None => Length::Infinite,
+        match (&self.len, &self.count) {
+            (None, _) => Length::Infinite,
+            (Some(_), Some(count)) => Length::Exact(count.clone()),
+            (Some(_), None) => Length::UnknownFinite,
         }
     }
 }
@@ -75,7 +78,6 @@ fn build_order(mut n: UNumber) -> Vec<usize> {
 
 struct PermIter {
     node: Rc<PermStream>,
-    self_len: Option<UNumber>,
     order: Vec<usize>,
     num_read: UNumber,
 }
@@ -118,10 +120,18 @@ impl PreIterator for PermIter {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.num_read += n;
-        if let Some(len) = &self.self_len
-            && &self.num_read >= len
-        {
-            return Ok(Some(&self.num_read - len));
+        // The stream ends after len! permutations. If that number was not precomputed, the
+        // factorial is only computed as far as needed to decide whether num_read exceeds it.
+        let count = match (&self.node.count, &self.node.len) {
+            (Some(count), _) => (&self.num_read >= count).then(|| count.clone()),
+            (None, Some(len)) => match u32::try_from(len) {
+                Ok(len) => factorial_capped(len, &self.num_read)?,
+                Err(_) => None,
+            },
+            (None, None) => None,
+        };
+        if let Some(count) = count {
+            return Ok(Some(&self.num_read - count));
         }
         self.order = build_order(self.num_read.clone());
         Ok(None)
@@ -157,6 +167,22 @@ mod tests {
         test_eval!("[2,4,6].skip(1).perm" : 10 => "[[4, 6], [6, 4]]");
         test_eval!("alpha.perm.rnd(0).first.string" => "\"uorclhnmzvjdsfqiwtbp...");
         test_len!("[2,4,6].perm" => 6);
+        test_eval!("range(10^4).perm.len.numstr.len" => "35660");
+        test_len!("range(10^4+1).perm" => Length::UnknownFinite);
+        // No factorial of the source length is computed unless the end is actually approached
+        test_eval!("range(10^7).perm.first.first" => "1");
+        test_eval!("range(10^7).perm[2].first" => "2");
+        test_eval!("range(10^7).perm[3].first" => "1");
+        test_eval!("range(10^7).perm.skip(10^30).first.first(5) == range(10^7).perm[10^30+1].first(5)" => "true");
+        test_eval!("range(5).perm[120]" => "[5, 4, 3, 2, 1]");
+        test_eval!("range(5).perm[121]" => err);
+        test_eval!("range(5).perm.skip(119)" : 10 => "[[5, 4, 3, 2, 1]]");
+        test_eval!("[2,4,6].perm.skip(6)" => "[]");
+        test_eval!("[2,4,6].perm.skip(5)" : 10 => "[[6, 4, 2]]");
+        test_eval!("([2,4,6].perm~[0]).skip(6)" : 10 => "[0]");
+        test_eval!("([2,4,6].perm~[0]).skip(7)" : 10 => "[]");
+        test_advance("[2,4,6].perm");
+        test_advance("range(4).perm");
         test_len!("range(10^50).perm" => Length::UnknownFinite);
         test_len!("seq.perm" => Length::Infinite);
         test_advance("[2,4,6].perm");
