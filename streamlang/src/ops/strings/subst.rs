@@ -21,7 +21,9 @@ fn eval_subst(node: &Node, env: &Env) -> SResult<Item> {
             if orig.iter().any(Vec::is_empty) {
                 return Err("the sought string can't be empty".into());
             }
-            let longest = orig.iter().map(Vec::len).reduce(std::cmp::max).unwrap(); // len ≥ 1
+            let Some(longest) = orig.iter().map(Vec::len).reduce(std::cmp::max) else {
+                return Ok(Item::String(Rc::clone(stm))); // nothing to substitute
+            };
             Ok(Item::new_string(StringSubst {
                 head: node.head.clone(),
                 source: Rc::clone(stm),
@@ -200,6 +202,9 @@ mod tests {
         test_eval!("\"abcde\".subst(['b', 'e'], ['q', \"\"])" => "\"aqcd\"");
         test_eval!("seq.subst(3,[])" => "[1, 2, [], 4, 5, ...]");
         test_eval!("\"abc\".subst()" => err);
+        test_eval!("\"abc\".subst([], [])" => "\"abc\"");
+        test_eval!("\"abc\".subst([], [\"x\"])" => err);
+        test_eval!("\"abc\".subst([\"x\"], [])" => err);
         test_eval!("'a'.repeat.subst('b','B')" => "\"aaaaaaaaaaaaaaaaaaaa...");
         test_describe!("\"abc\".subst('a', \"a\")" => "\"abc\".subst([\"a\"], [\"a\"])");
         test_describe!("\"abc\".subst(['a', 'b'], [\"a\", '1'])" => "\"abc\".subst([\"a\", \"b\"], [\"a\", \"1\"])");

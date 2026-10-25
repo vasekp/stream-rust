@@ -154,7 +154,7 @@ impl PreIterator<Char> for StringPartIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         match iter_try!(self.iter.next()) {
             Item::Number(index) => eval_index_impl(&self.node.source, &index).map(Option::Some),
-            _ => todo!(),
+            item => Err(StreamError::with_expr("expected number", &item)),
         }
     }
 
@@ -218,6 +218,11 @@ mod tests {
         test_eval!("seq[2,5]" => err);
         test_eval!("seq[[2,5]]" => "[2, 5]");
         test_eval!("seq[[[2,5]]]" => "[[2, 5]]"); // subject to change
+        test_eval!("\"abc\"[['a']]" => "\"<!>");
+        test_eval!("\"abc\"[['a']][1]" => err);
+        test_eval!("\"abc\"[[[1,2]]][1]" => err);
+        test_eval!("\"abc\"[[1,'a']][1]" => "'a'");
+        test_eval!("\"abc\"[[1,'a']][2]" => err);
         test_len!("seq[[2,5]]" => 2);
         test_len!("seq[[]]" => 0);
 

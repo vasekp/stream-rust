@@ -15,11 +15,11 @@ fn eval_prepend(node: &Node, env: &Env) -> SResult<Item> {
                 .iter()
                 .cloned()
                 .map(|item| match item {
-                    Item::Char(ch) => Joinable::Single(ch),
-                    Item::String(stm) => Joinable::Stream(stm),
-                    _ => unreachable!(),
+                    Item::Char(ch) => Ok(Joinable::Single(ch)),
+                    Item::String(stm) => Ok(Joinable::Stream(stm)),
+                    _ => Err(StreamError::with_expr("expected character or string", &item)),
                 })
-                .collect::<Vec<_>>();
+                .collect::<SResult<Vec<_>>>()?;
             Ok(Item::new_string(Prepend { source: Rc::clone(stm), elems, head: node.head }))
         },
         _ => Err(StreamError::usage(&node.head)),
@@ -79,11 +79,11 @@ fn eval_append(node: &Node, env: &Env) -> SResult<Item> {
                 .iter()
                 .cloned()
                 .map(|item| match item {
-                    Item::Char(ch) => Joinable::Single(ch),
-                    Item::String(stm) => Joinable::Stream(stm),
-                    _ => unreachable!(),
+                    Item::Char(ch) => Ok(Joinable::Single(ch)),
+                    Item::String(stm) => Ok(Joinable::Stream(stm)),
+                    _ => Err(StreamError::with_expr("expected character or string", &item)),
                 })
-                .collect::<Vec<_>>();
+                .collect::<SResult<Vec<_>>>()?;
             Ok(Item::new_string(Append { source: Rc::clone(stm), elems, head: node.head }))
         },
         _ => Err(StreamError::usage(&node.head)),
@@ -183,6 +183,10 @@ mod tests {
         test_eval!("seq.append(5)" => "[1, 2, 3, 4, 5, ...]");
         test_eval!("[5].append(seq)" => "[5, [1, 2, 3, ...]]");
         test_eval!("\"This is\".append(' ', \"a \", \"\", \"test\")" => "\"This is a test\"");
+        test_eval!("\"abc\".prepend(1)" => err);
+        test_eval!("\"abc\".prepend('x', [1])" => err);
+        test_eval!("\"abc\".append([1])" => err);
+        test_eval!("\"abc\".append(\"x\", 1)" => err);
         test_advance("(1..10^5).append@(1..10)");
         test_advance("\"abcde\".append(\"f\", \"\", \"\", 'g')");
     }

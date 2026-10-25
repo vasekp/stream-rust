@@ -59,15 +59,22 @@ impl PreIterator for WeaveIter {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let (quot, mut rem) = n.div_rem(&self.iters.len());
-        let mut q = UNumber::zero();
         let num = self.iters.len();
+        // If some stream ends during the advance, `avail` is the number of items the weave could
+        // produce in total (full rounds, then one item from each stream before the ended one).
+        let mut avail: Option<UNumber> = None;
         for (ix, iter) in self.iters.iter_mut().enumerate() {
-            if let Some(rem) = iter.advance(&quot)? {
-                q = std::cmp::max(q, rem * num - ix);
+            if let Some(r) = iter.advance(&quot)? {
+                // `r` may be zero: the stream has ended exactly, but must not be read again.
+                *iter = EmptyStream::iter();
+                let this = (&quot - r) * num + ix;
+                avail = Some(avail.map_or(this.clone(), |a| std::cmp::min(a, this)));
             }
         }
-        if !q.is_zero() {
-            return Ok(Some(q + rem));
+        if let Some(avail) = avail
+            && &avail < n
+        {
+            return Ok(Some(n - avail));
         }
         while rem != 0 {
             if self.next()?.is_none() {
@@ -116,6 +123,20 @@ mod tests {
         test_len!("weave(1..5, 1..6, 1..7)" => 15);
         test_len!("weave(1..7, 1..6, 1..5)" => 17);
         test_advance("weave(1..5, 1..10)");
+        // Inner streams whose advance() reports an exact end (Some(0))
+        test_eval!("weave(seq, (1..10).unweave(2)).skip(4)" => "[3]");
+        test_eval!("weave(seq, (1..10).unweave(2))[5]" => "3");
+        test_eval!("weave(seq, (1..10).unweave(2)).skip(5)" => "[]");
+        test_eval!("weave(seq, (1..10).unweave(2)).skip(6)" => "[]");
+        test_eval!("weave((1..10).unweave(2), seq).skip(3)" => "[2]");
+        test_eval!("weave((1..10).unweave(2), seq).skip(4)" => "[]");
+        test_eval!("(weave(seq, (1..10).unweave(2))~[0]).skip(5)" => "[0]");
+        test_eval!("(weave(seq, (1..10).unweave(2))~[0]).skip(6)" => "[]");
+        test_advance("weave(seq, (1..10).unweave(2))");
+        test_advance("weave((1..10).unweave(2), seq)");
+        test_advance("weave((1..10).unweave(2), (1..10).unweave(3))");
+        test_advance("weave(1..3, 1..5, 1..4)");
+        test_advance("weave(1..5, 1..4, 1..3)");
         test_advance("weave(1..10, 1..5)");
         test_advance("weave(seq, 1..10^5)");
         test_advance("weave(1..10^5, seq)");

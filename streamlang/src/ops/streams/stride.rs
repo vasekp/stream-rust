@@ -43,9 +43,10 @@ impl Stream for Stride {
     }
 
     fn len(&self) -> Length {
-        self.stream
-            .len()
-            .map(|len| (len + &self.stride - self.offset.as_ref().cloned().unwrap_or_default() - 1) / &self.stride)
+        let offset = self.offset.clone().unwrap_or_default();
+        self.stream.len().map(|len| {
+            if *len <= offset { UNumber::zero() } else { (len - &offset + &self.stride - 1u32) / &self.stride }
+        })
     }
 }
 
@@ -121,6 +122,20 @@ mod tests {
         test_eval!("(1..5).stride(5,0)" => "[1]");
         test_eval!("(1..5).stride(5,1)" => "[2]");
         test_eval!("(1..5).stride(5,5)" => "[]");
+        test_eval!("(1..5).stride(2,7).len" => "0");
+        test_eval!("(1..5).stride(2,7) == []" => "true");
+        test_eval!("[].stride(1,1).len" => "0");
+        test_len!("(1..5).stride(2,7)" => 0);
+        test_len!("(1..5).stride(2,6)" => 0);
+        test_len!("(1..5).stride(2,5)" => 0);
+        test_len!("(1..5).stride(2,4)" => 1);
+        test_len!("(1..5).stride(2,3)" => 1);
+        test_len!("(1..5).stride(2,1)" => 2);
+        test_len!("(1..5).stride(2)" => 3);
+        test_len!("(1..5).stride(1,5)" => 0);
+        test_len!("(1..5).stride(1,4)" => 1);
+        test_len!("[].stride(1,1)" => 0);
+        test_len!("[].stride(3)" => 0);
         test_eval!("seq.stride(10^6, 10^4)" : 3 => "[10001, 1010001, 2010001, ...]");
         test_len!("(1..5).stride(2)" => 3);
         test_len!("(1..5).stride(2, 1)" => 2);

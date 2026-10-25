@@ -217,6 +217,8 @@ mod tests {
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(20)));
         assert!(sess.process(parse("$b").unwrap()).is_err());
         assert!(sess.process(parse("$c={$c}").unwrap()).is_err());
+        assert_eq!(sess.process(parse("$a=[1]").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
+        assert!(sess.process(parse("$a@[2]").unwrap()).is_err());
 
         let mut sess = Session::new();
         assert_eq!(sess.process(parse("100").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(100)));
