@@ -1,8 +1,8 @@
 use crate::base::*;
 use super::util::factorial;
 
-/// Source lengths up to this value have their permutation count computed up front and reported
-/// as an exact length; longer sources report `UnknownFinite`.
+// Source lengths up to this value have their permutation count computed up front and reported
+// as an exact length; longer sources report `UnknownFinite`.
 const PERM_EXACT_LEN_MAX: u32 = 10_000;
 
 fn eval_perm(node: &Node, env: &Env) -> SResult<Item> {
@@ -23,9 +23,9 @@ fn eval_perm(node: &Node, env: &Env) -> SResult<Item> {
 
 struct PermStream {
     source: Rc<dyn Stream>,
-    /// Length of the source, `None` if infinite.
+    // Length of the source, `None` if infinite.
     len: Option<UNumber>,
-    /// Number of permutations (`len!`), if the source is short enough for it to be computed.
+    // Number of permutations (`len!`), if the source is short enough for it to be computed.
     count: Option<UNumber>,
     head: Head,
 }

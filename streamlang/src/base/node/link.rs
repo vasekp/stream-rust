@@ -9,9 +9,9 @@ pub struct Link {
 }
 
 impl Link {
-    /// Creates a new `Link`. The `head` may be specified by [`Head`] directly, but also by
-    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
-    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
+    /// Creates a new `Link`. The `head` may be specified by [`Head`] directly, but also by a
+    /// `&str` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]), [`Expr`], [`Item`] or [`Node`]
+    /// (all three for [`Head::Block`]).
     pub fn new(head: impl Into<Head>, args: Vec<Expr>) -> Link {
         Link { head: head.into(), args }
     }

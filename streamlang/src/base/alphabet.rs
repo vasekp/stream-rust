@@ -12,8 +12,8 @@ pub enum Alphabet {
 }
 
 impl Alphabet {
-    /// Returns the order of `chr` in the alphabet. Counts between 1 and the size.
-    /// The information about the case of the character is preserved using `CharCase`.
+    /// Returns the order of `chr` in the alphabet, counting from 1. The lookup is
+    /// case-insensitive. Fails if `chr` is not in the alphabet.
     pub fn ord(&self, chr: &Char) -> SResult<isize> {
         match self {
             Alphabet::Std26 => {
@@ -33,7 +33,9 @@ impl Alphabet {
         }
     }
 
-    /// Returns the `ord`-th character in the alphabet in the given `CharCase`. Wraps around.
+    /// Returns the `ord`-th character in the alphabet, wrapping around, in the given `CharCase`.
+    /// `Lower` and `Upper` force the case; otherwise the character is returned as listed
+    /// (lowercase for the standard alphabet).
     pub fn chr(&self, ord: &Number, case: CharCase) -> Char {
         match self {
             Alphabet::Std26 => {
@@ -84,7 +86,7 @@ impl Alphabet {
         }
     }
 
-    /// Compares two characters
+    /// Compares two characters by their order in the alphabet. Fails if either is not in it.
     pub fn cmp(&self, x: &Char, y: &Char) -> SResult<std::cmp::Ordering> {
         let (ox, oy) = (self.ord(x)?, self.ord(y)?);
         Ok(ox.cmp(&oy))

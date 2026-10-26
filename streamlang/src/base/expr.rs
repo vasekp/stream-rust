@@ -1,14 +1,17 @@
 use crate::base::*;
 use crate::interner::intern;
 
-/// Any Stream language expression. This may be either a directly accessible [`Item`] (including
-/// e.g. literal expressions) or a [`Node`], which becomes [`Item`] on evaluation.
-// TODO docstring
+/// Any Stream language expression. This may be a directly accessible [`Item`] (including e.g.
+/// literal expressions), a [`Node`], which becomes an [`Item`] on evaluation, or a placeholder
+/// ([`Subst`]), which must be replaced by one of the former before evaluation.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Expr {
+    /// An immediate value.
     Imm(Item),
+    /// A node to be evaluated.
     Eval(Rc<Node>),
+    /// A placeholder to be substituted.
     Repl(Subst),
 }
 
@@ -85,7 +88,8 @@ impl Expr {
     }
 
     /// Evaluates this `Expr`. If it already describes an `Item`, returns that, otherwise calls
-    /// `Node::eval()`.
+    /// [`Node::eval()`]. A [`Subst`] placeholder which has not been substituted is an error. Any
+    /// error is extended with this expression on its backtrace.
     pub fn eval(&self, env: &Env) -> SResult<Item> {
         match self {
             Expr::Imm(item) => Ok(item.clone()),

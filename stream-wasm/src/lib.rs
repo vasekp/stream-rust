@@ -110,9 +110,10 @@ pub struct BoxedIterator {
 
 #[wasm_bindgen]
 impl BoxedIterator {
-    /// Returns `{done: true}` at the end of the stream, `{done: false, value}` for an item, or
-    /// `{done: true, value}` with an error object if the iteration failed. After either `done`
-    /// response the iterator is finished and further calls return `{done: true}` again.
+    /// Returns `{done: false, value}` with an item object for an item, `{done: false, value}`
+    /// with an error object if the iteration failed, or `{done: true}` at the end of the stream.
+    /// After an error or the end, the iterator is finished and further calls return
+    /// `{done: true}`.
     pub fn next(&mut self) -> Result<JsValue, JsValue> {
         if self.done {
             let obj = Object::new();

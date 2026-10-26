@@ -15,6 +15,8 @@ pub fn send_stop() {
     STOP.store(true, Ordering::SeqCst);
 }
 
+/// Returns whether an interrupt request is pending. Evaluation code uses this through
+/// `check_stop!()`.
 pub fn should_stop() -> bool {
     STOP.load(Ordering::SeqCst)
 }

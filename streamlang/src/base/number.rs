@@ -2,8 +2,8 @@ use crate::base::error::*;
 use num::Signed;
 
 /// The base type for representing all numbers in Stream. The requirement is that it allows
-/// arbitrary-precision integer arithmetics. Currently alias to BigInt, but may become an i64 with
-/// BigInt fallback in the future for better performance.
+/// arbitrary-precision integer arithmetics. Currently an alias to [`ibig::IBig`], but may become
+/// an `i64` with a big-integer fallback in the future for better performance.
 pub type Number = ibig::IBig;
 
 /// The unsigned variant of the [`Number`] type.

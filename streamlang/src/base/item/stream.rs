@@ -3,18 +3,19 @@ use crate::base::*;
 use std::fmt::Formatter;
 use std::cell::Cell;
 
-/// The common trait for [`Stream`] [`Item`]s. Represents a stream of other [`Item`]s. Internally,
-/// types implementing this trait need to hold enough information to produce a reconstructible
-/// [`Iterator`].
+/// The common trait for streams, i.e. the contents of [`Item::Stream`] (`I = Item`) and
+/// [`Item::String`] (`I = Char`). Types implementing this trait need to hold enough information
+/// to produce an [`SIterator`] over the same items any number of times, and to reconstruct an
+/// equivalent input expression through [`Describe`].
 #[allow(clippy::len_without_is_empty)]
 pub trait Stream<I = Item>: Describe {
-    /// Create an [`SIterator`] of this stream. Every instance of the iterator must produce the same
-    /// values.
+    /// Creates an [`SIterator`] of this stream. Every instance of the iterator must produce the
+    /// same values. This is usually called through [`iter()`](Stream#method.iter), which takes
+    /// care of cloning the `Rc`.
     ///
-    /// This method does not return a `Result` and thus can't fail. Implementors may return
-    /// a `std::iter::once(Err(...))` to report errors that may happen during constructing the
-    /// iterator.
-    // TODO docstring
+    /// This method does not return a `Result` and thus can't fail. Implementors may return an
+    /// iterator yielding a single `Err(...)` (see `iter_error()`) to report errors that may happen
+    /// during constructing the iterator.
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<I>>;
 
     /// Returns the length of this stream, in as much information as available *without* consuming
@@ -28,12 +29,9 @@ impl<I: ItemType> dyn Stream<I> {
         Rc::clone(self).to_iter()
     }
 
-    /// Checks for emptiness. The default implementation first tries to answer statically from
-    /// looking at [`len()`](Stream::len). If the information is insufficient, constructs the
-    /// iterator and tries reading from it. This usually does not need to be overridden.
-    ///
-    /// This function can't return an error. If the first call to `iter().next()` produces an
-    /// error, i.e. `Some(Err(_))`, it's reported that the stream is nonempty.
+    /// Checks for emptiness. First tries to answer statically from [`len()`](Stream::len). If the
+    /// information is insufficient, constructs the iterator and tries reading one item from it,
+    /// propagating any error that this produces.
     pub fn is_empty(self: &Rc<Self>) -> SResult<bool> {
         Ok(match self.len() {
             Length::Exact(len) | Length::AtMost(len) if len.is_zero() => true,

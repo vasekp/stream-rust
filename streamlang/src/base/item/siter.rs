@@ -1,13 +1,17 @@
 use crate::base::*;
 
-/// The iterator trait returned by [`Stream::iter()`](Stream#method.iter). Every call to `next()` returns either:
-/// - `Some(Ok(item))`: any [`Item`] ready for direct consumption,
-/// - `Some(Err(err))`: an error occurred at some point,
-/// - `None`: the stream ended.
+/// The iterator trait returned by [`Stream::iter()`](Stream#method.iter). Every call to `next()`
+/// returns either:
+/// - `Ok(Some(item))`: an item of type `I` ([`Item`] or [`Char`]) ready for direct consumption,
+/// - `Ok(None)`: the stream ended,
+/// - `Err(err)`: an error occurred at some point.
 ///
 /// `next()` should not be called any more after *either* of the two latter conditions.
 /// The iterators are not required to be fused and errors are not meant to be recoverable or
 /// replicable, so the behaviour of doing so is unspecified.
+///
+/// Within the crate, iterators are usually written against `PreIterator` and converted using its
+/// `wrap()`, which attaches the originating stream to the backtrace of every error.
 pub trait SIterator<I = Item> {
     fn next(&mut self) -> SResult<Option<I>>;
 
@@ -20,11 +24,11 @@ pub trait SIterator<I = Item> {
     /// condition, or after an `Err` is returned, is unspecified behaviour.
     ///
     /// It is possible to return `Ok(Some(0))` to indicate that all elements have been skipped
-    /// without remainder, but that `next()` should not be called again. If `None` is returned
-    /// in such case, `next()` may be called but must return `None` for consistency.
+    /// without remainder, but that `next()` should not be called again. If `Ok(None)` is returned
+    /// in such case, `next()` may be called but must return `Ok(None)` for consistency.
     ///
-    /// The default implementation calls `next()` an appropriate number of times, and thus is
-    /// reasonably usable only for small values of `n`.
+    /// The default implementation calls `next()` an appropriate number of times, checking for an
+    /// interrupt request in between, and thus is reasonably usable only for small values of `n`.
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         let mut n = n.clone();
         while !n.is_zero() {
@@ -55,6 +59,11 @@ impl<I> Iterator for Transposed<'_, I> {
     }
 }
 
+/// The trait against which concrete iterators are written. It mirrors [`SIterator`], with the
+/// same contract for `next()` and `advance()`, but adds [`origin()`](PreIterator::origin), the
+/// stream the iterator was created from. [`wrap()`](PreIterator::wrap) turns the implementor into
+/// a boxed [`SIterator`] which pushes that stream onto the backtrace of every error, so that the
+/// implementations themselves don't need to care about blame.
 pub(crate) trait PreIterator<I: ItemType = Item>: Sized + 'static {
     fn next(&mut self) -> SResult<Option<I>>;
 

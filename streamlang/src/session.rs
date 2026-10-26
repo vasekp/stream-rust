@@ -5,8 +5,9 @@ use crate::base::stop;
 use std::collections::HashMap;
 use std::borrow::Cow;
 
-/// A `Session` holds information necessary for evaluating symbolic expressions. This includes a
-/// register of defined symbols.
+/// A `Session` holds the state which makes evaluation context-dependent: the history of results
+/// (`%`, `%n`), the global variables (`$name`), the evaluation [`Env`] and the input counter
+/// (`$#`).
 pub struct Session {
     hist: Vec<Item>,
     vars: HashMap<&'static str, Rhs>,
@@ -15,7 +16,7 @@ pub struct Session {
 }
 
 impl Session {
-    /// Create a new `Session` and initialize the predefined symbols register.
+    /// Creates a new `Session` with empty history and variables and the default environment.
     pub fn new() -> Session {
         Session { hist: Vec::new(), vars: HashMap::new(), env: Default::default(), counter: 1 }
     }

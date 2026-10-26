@@ -3,7 +3,8 @@ use std::fmt::{Display, Formatter, Debug};
 
 pub type SResult<T> = std::result::Result<T, StreamError>;
 
-/// The runtime error type.
+/// The runtime error type: a [`Reason`] plus a backtrace of the expressions the error passed
+/// through on its way out, innermost first (see [`backtrace()`](StreamError::backtrace)).
 #[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct StreamError {
@@ -11,11 +12,16 @@ pub struct StreamError {
     trace: Vec<Expr>,
 }
 
+/// The cause of a [`StreamError`].
 #[derive(Clone, Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Reason {
+    /// A free-form message.
     Generic(String),
+    /// The symbol was called with an unsupported combination of source and arguments. The message
+    /// refers the user to the symbol's documentation.
     Usage(&'static str),
+    /// The evaluation was interrupted through [`stop::send_stop()`](crate::base::stop::send_stop).
     Interrupt,
 }
 

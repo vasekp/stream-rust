@@ -1,15 +1,23 @@
 use crate::base::*;
 use crate::interner::intern;
 
-/// The head of a [`Node`]. This can either be an identifier (`source.ident(args)`), or a body
-/// formed by an entire expression (`source.{body}(args)`). In the latter case, the `source` and
-/// `args` are accessed via `#` and `#1`, `#2` etc., respectively.
+/// The head of a [`Node`]. This can be an identifier (`source.ident(args)`), an operator
+/// (`arg1 + arg2`, `-arg`), a body formed by an entire expression (`source.{body}(args)`), or one
+/// of the language constructs with their own syntax ([`LangItem`]). In the case of a body, the
+/// `source` and `args` are accessed via `#` and `#1`, `#2` etc. (`##` for the whole argument
+/// list), respectively.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Head {
+    /// An identifier, interned.
     Symbol(&'static str),
+    /// An operator, interned. The operands are the `args`, the `source` is never set.
     Oper(&'static str),
+    /// An expression used in place of an identifier. With `reset_env` set (written `${body}`,
+    /// used for functions defined at the session level), the body is evaluated in the default
+    /// environment instead of the one in effect at the call site.
     Block { body: Expr, reset_env: bool },
+    /// A language construct.
     Lang(LangItem),
 }
 

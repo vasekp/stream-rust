@@ -15,7 +15,11 @@ mod tests;
 /// A `Node` is a type of [`Expr`] representing a head object along with, optionally, its source
 /// and arguments. This is an abstract representation, which may evaluate to a stream or an atomic
 /// value, potentially depending on the nature of the source or arguments provided. This evaluation
-/// happens in [`Expr::eval()`].
+/// happens in [`Node::eval()`].
+///
+/// The type parameter is the type of the source and arguments: `Node<Expr>` (the default) is the
+/// unevaluated form produced by the parser, `Node<Item>` is what the operators receive after
+/// `eval_all()`.
 #[derive(Debug, Clone)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Node<I = Expr> {
@@ -28,10 +32,16 @@ impl Node<Expr> {
     /// Evaluates this `Node` to an `Item`. This is the point at which it is decided whether it
     /// describes an atomic constant or a stream.
     ///
-    /// The evaluation is done by finding the head of the node in a global symbol table.
-    /// Locally defined symbols aren't handled here.
-    // Note to self: for assignments, this will happen in Session::process. For `with`, this will
-    // happen in Expr::apply(Context).
+    /// A [`Head::Symbol`] or [`Head::Oper`] is looked up in the global symbol table and its
+    /// constructor is called with this node and `env`; a [`Head::Lang`] is handled the same way
+    /// through its reserved symbol. For a [`Head::Block`], the source and arguments are evaluated
+    /// first, substituted for `#`, `#1`, ... in the body, and the body is evaluated in turn (in
+    /// the default environment if `reset_env` is set).
+    ///
+    /// Variables are not handled here. Local ones are substituted into the body by `with` before
+    /// it is evaluated; session globals and history references by
+    /// [`Session::process()`](crate::session::Session::process) before the expression is passed
+    /// to this function. Entry and exit are reported to the tracer in `env`.
     pub fn eval(&self, env: &Env) -> SResult<Item> {
         env.tracer.borrow_mut().log(tracing::Event::Enter(self));
         let res = (|| match &self.head {
@@ -99,9 +109,9 @@ impl Node<Expr> {
 }
 
 impl<I: Clone> Node<I> {
-    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by
-    /// anything implementing `Into<String>` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]),
-    /// [`Expr`], [`Item`] or [`Node`] (all three for [`Head::Block`]).
+    /// Creates a new `Node`. The `head` may be specified by [`Head`] directly, but also by a
+    /// `&str` ([`Head::Symbol`]), [`LangItem`] ([`Head::Lang`]), [`Expr`], [`Item`] or [`Node`]
+    /// (all three for [`Head::Block`]).
     pub fn new(head: impl Into<Head>, source: Option<I>, args: Vec<I>) -> Self {
         Node { head: head.into(), source, args }
     }

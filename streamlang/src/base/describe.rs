@@ -2,14 +2,19 @@ use super::*;
 
 /// A trait for the ability to turn a Stream language object (notably, [`Expr`]) into an input form.
 pub trait Describe {
-    /// Construct a string representation of `self`. This is meant for storing object across
-    /// sessions. The resulting `String` must be a syntactically valid input that reconstruct a
+    /// Construct a string representation of `self`. This is meant for storing objects across
+    /// sessions. The resulting `String` must be a syntactically valid input that reconstructs a
     /// copy of the original object on [`parser::parse()`](crate::parser::parse()) and
     /// [`Expr::eval()`].
     fn describe(&self) -> String {
         self.describe_inner(0, &Default::default())
     }
 
+    /// The implementation behind [`describe()`](Describe::describe). `prec` is the precedence of
+    /// the operator `self` is an operand of (0 at the top level, `u32::MAX` for the source of a
+    /// `.` chain), used to decide whether parentheses are needed. `env` is the environment of the
+    /// enclosing expression, so that an alphabet captured by `self` which differs from it can be
+    /// made explicit through `alpha(...)`.
     fn describe_inner(&self, prec: u32, env: &Env) -> String;
 }
 

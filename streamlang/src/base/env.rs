@@ -4,8 +4,9 @@ use super::tracing::Tracer;
 pub use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 
-/// The environment in which expressions are evaluated (variable assignments made using `with`).
-/// This is passed as an argument to [`Expr::eval()`].
+/// The context in which expressions are evaluated: the alphabet in effect (set using `alpha`) and
+/// the tracer receiving evaluation events. This is passed as an argument to [`Expr::eval()`].
+/// Variables are not part of it: `with` substitutes them into its body before evaluation.
 #[derive(Clone)]
 pub struct Env {
     pub alpha: Rc<Alphabet>,
@@ -34,6 +35,9 @@ impl Default for Env {
     }
 }
 
+/// The right-hand side of a variable assignment, in `with` or at the session level
+/// (`$name = ...`): either a value, or a function body (`{...}`) which receives the source and
+/// arguments of each use of the variable.
 #[derive(Clone)]
 pub enum Rhs {
     Value(Item),
