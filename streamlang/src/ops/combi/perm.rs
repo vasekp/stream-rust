@@ -1,5 +1,5 @@
 use crate::base::*;
-use super::util::{factorial, factorial_capped};
+use super::util::factorial;
 
 /// Source lengths up to this value have their permutation count computed up front and reported
 /// as an exact length; longer sources report `UnknownFinite`.
@@ -40,7 +40,7 @@ impl Describe for PermStream {
 
 impl Stream for PermStream {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        PermIter { order: vec![], num_read: UNumber::zero(), node: self }.wrap()
+        PermIter { order: vec![], num_read: UNumber::zero(), curr_limit: 1u32.into(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -80,6 +80,7 @@ struct PermIter {
     node: Rc<PermStream>,
     order: Vec<usize>,
     num_read: UNumber,
+    curr_limit: UNumber,
 }
 
 impl PreIterator for PermIter {
@@ -105,9 +106,14 @@ impl PreIterator for PermIter {
                     {
                         return Ok(None);
                     }
+                    debug_assert!(
+                        factorial(prev_len as u32).is_ok_and(|f| f == self.curr_limit),
+                        "curr_limit must be (order.len())! when the order grows"
+                    );
                     self.order.push(self.order[0]);
                     self.order[0] = prev_len;
                     self.order[0..prev_len].sort();
+                    self.curr_limit *= self.order.len();
                 },
             }
         }
@@ -120,18 +126,23 @@ impl PreIterator for PermIter {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.num_read += n;
-        // The stream ends after len! permutations. If that number was not precomputed, the
-        // factorial is only computed as far as needed to decide whether num_read exceeds it.
-        let count = match (&self.node.count, &self.node.len) {
-            (Some(count), _) => (&self.num_read >= count).then(|| count.clone()),
-            (None, Some(len)) => match u32::try_from(len) {
-                Ok(len) => factorial_capped(len, &self.num_read)?,
-                Err(_) => None,
-            },
-            (None, None) => None,
-        };
-        if let Some(count) = count {
+        if let Some(count) = &self.node.count
+            && count <= &self.num_read
+        {
             return Ok(Some(&self.num_read - count));
+        }
+        // Permutation #m has order length L with (L-1)! < m <= L!. Grow `curr_limit` = olen! until
+        // num_read <= olen!, so that it matches the length of the order built below. If the source
+        // length is known and reached on the way, the stream has ended.
+        let len = self.node.len.as_ref().and_then(|len| usize::try_from(len).ok());
+        let mut olen = self.order.len();
+        while self.num_read > self.curr_limit {
+            check_stop!();
+            if Some(olen) == len {
+                return Ok(Some(&self.num_read - &self.curr_limit));
+            }
+            olen += 1;
+            self.curr_limit *= olen;
         }
         self.order = build_order(self.num_read.clone());
         Ok(None)
@@ -176,6 +187,15 @@ mod tests {
         test_eval!("range(10^7).perm[3].first" => "1");
         test_eval!("range(10^7).perm.skip(10^30).first.first(5) == range(10^7).perm[10^30+1].first(5)" => "true");
         test_eval!("range(5).perm[120]" => "[5, 4, 3, 2, 1]");
+        // Sources longer than PERM_EXACT_LEN_MAX: the end is detected from the incremental limit,
+        // which must stay consistent across mixed next()/advance() sequences.
+        test_eval!("(range(10001).perm~[0]).skip(1).stride(factorial(10001)+1):first(3)" => "[[2, 1, 3]]");
+        test_eval!("(range(10001).perm~[0]).skip(1).stride(factorial(10001)):first(3)" => "[[2, 1, 3]]");
+        test_eval!("(range(10001).perm~[0]).stride(factorial(10001)+1):first(3)" => "[[1, 2, 3]]");
+        test_eval!("(range(10001).perm~[0]).skip(factorial(10001))" => "[0]");
+        test_eval!("(range(10001).perm~[0]).skip(factorial(10001)+1)" => "[]");
+        test_eval!("range(10001).perm[factorial(10001)].first(3)" => "[10001, 10000, 9999]");
+        test_eval!("range(10001).perm[factorial(10001)+1]" => err);
         test_eval!("range(5).perm[121]" => err);
         test_eval!("range(5).perm.skip(119)" : 10 => "[[5, 4, 3, 2, 1]]");
         test_eval!("[2,4,6].perm.skip(6)" => "[]");

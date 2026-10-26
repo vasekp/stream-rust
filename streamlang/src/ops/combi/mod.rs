@@ -21,36 +21,16 @@ mod util {
         })
     }
 
-    /// Returns `x!` if it does not exceed `cap`, `None` otherwise. Stops multiplying as soon as
-    /// the cap is exceeded, so this is cheap for small `cap` even when `x` is huge.
-    pub(crate) fn factorial_capped(x: u32, cap: &UNumber) -> SResult<Option<UNumber>> {
-        let mut prod = UNumber::one();
-        if &prod > cap {
-            return Ok(None);
-        }
-        for i in 2..=x {
-            check_stop!();
-            prod *= i;
-            if &prod > cap {
-                return Ok(None);
-            }
-        }
-        Ok(Some(prod))
-    }
-
     #[cfg(test)]
     #[test]
     fn test_factorial() {
-        let mut r = 1u64;
         assert_eq!(factorial(0).unwrap(), 1u32.into());
+        let mut r = 1u64;
         for x in 1..20 {
             r *= x as u64;
             assert_eq!(factorial(x).unwrap(), r.into());
-            assert_eq!(factorial_capped(x, &r.into()).unwrap(), Some(r.into()));
-            assert_eq!(factorial_capped(x, &(r - 1).into()).unwrap(), None);
         }
         assert_eq!(factorial(100).unwrap(), "93326215443944152681699238856266700490715968264381621468592963895217599993229915608941463976156518286253697920827223758251185210916864000000000000000000000000".parse().unwrap());
-        assert_eq!(factorial_capped(u32::MAX, &1000u32.into()).unwrap(), None);
     }
 }
 
