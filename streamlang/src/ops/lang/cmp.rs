@@ -37,7 +37,7 @@ fn eq_func(items: &[Item]) -> SResult<bool> {
 fn ineq_func(items: &[Item]) -> SResult<bool> {
     match items {
         [lhs, rhs] => lhs.try_eq(rhs).map(|b| !b),
-        _ => Err("exactly 2 arguments required".into()),
+        _ => Err("cannot chain inequality, please rewrite as separate conditions".into()),
     }
 }
 
@@ -104,12 +104,13 @@ The shorthand for `?(input1, input2, ...)` is `input1 == input2 == ...`.
 : not
 "#);
     symbols.insert("<>", eval_cmp, r#"
-Checks for inequality of `op1` and `op2`: evaluates to `false` if they all are equal, `true` otherwise.
+Checks for inequality of `op1` and `op2`: evaluates to `false` if they are equal, `true` otherwise.
 = op1 ? op2
 > 0 ? "0" => true
 > [] ? "" => true
 > [] ? [[]] => true
 > [1, 2, 2, 3, 3].?windows(2, {#1 ? #2}) => [true, false, true, false]
+> 2 ? 3 ? 4 => !cannot chain inequality, please rewrite as separate conditions
 : ==
 : !
 "#);
@@ -118,7 +119,7 @@ Evaluates to `true` if each number is strictly less than the next.
 = op1 ? op2 ? ...
 > 10 ? 11 => true
 > 10 ? 11 ? 11 ? 12 => false
-> 10 ? 11 <= 11 => !cannot mix with '<', please rewrite separately
+> 10 ? 11 <= 11 => !cannot mix with '<', please rewrite as separate conditions
 : <=
 : >
 : ==
@@ -130,7 +131,7 @@ Evaluates to `true` if each number is strictly greater than the next.
 = op1 ? op2 ? ...
 > 11 ? 10 => true
 > 12 ? 11 ? 11 ? 10 => false
-> 11 ? 10 >= 10 => !cannot mix with '>', please rewrite separately
+> 11 ? 10 >= 10 => !cannot mix with '>', please rewrite as separate conditions
 : <
 : >=
 : ==
@@ -142,7 +143,7 @@ Evaluates to `true` if each number is less than or equal to the next.
 = op1 ? op2 ? ...
 > 10 ? 11 => true
 > 10 ? 11 ? 11 ? 12 => true
-> 11 ? 11 < 12 => !cannot mix with '<=', please rewrite separately
+> 11 ? 11 < 12 => !cannot mix with '<=', please rewrite as separate conditions
 : <
 : >=
 : ==
@@ -154,7 +155,7 @@ Evaluates to `true` if each number is greater than or equal to the next.
 = op1 ? op2 ? ...
 > 11 ? 10 => true
 > 12 ? 11 ? 11 ? 11 => true
-> 11 ? 11 > 10 => !cannot mix with '>=', please rewrite separately
+> 11 ? 11 > 10 => !cannot mix with '>=', please rewrite as separate conditions
 : >
 : <=
 : ==

@@ -220,7 +220,7 @@ impl<'str> Parser<'str> {
                             break;
                         } else if entry.prec == prec {
                             return Err(ParseError::new(
-                                format!("cannot mix with '{}', please rewrite separately", entry.op),
+                                format!("cannot mix with '{}', please rewrite as separate conditions", entry.op),
                                 op,
                             ));
                         } else {
