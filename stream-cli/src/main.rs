@@ -211,7 +211,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 last_err = None;
                 match sess.process(expr) {
                     Ok(SessionUpdate::History(index, item)) => {
+                        // Formatting evaluates the lazy result; trace that too (`:list` does not).
+                        let traced = stream::tracing::install(Rc::clone(&tracer) as _);
                         let (s, _, err) = item.format(None, Some(80));
+                        drop(traced);
                         println!("{} {s}", format!("%{index}:").dimmed());
                         if let Some(err) = err {
                             println!("{}", format!("{err}").red());

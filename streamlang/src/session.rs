@@ -1,33 +1,38 @@
 use crate::base::*;
-use crate::base::tracing::Tracer;
 use crate::base::stop;
+use crate::base::tracing::{self, Tracer};
+use std::cell::RefCell;
 
 use std::collections::HashMap;
 use std::borrow::Cow;
 
 /// A `Session` holds the state which makes evaluation context-dependent: the history of results
-/// (`%`, `%n`), the global variables (`$name`), the evaluation [`Env`] and the input counter
-/// (`$#`).
+/// (`%`, `%n`), the global variables (`$name`), the evaluation [`Env`], the input counter
+/// (`$#`) and the tracer, if any.
 pub struct Session {
     hist: Vec<Item>,
     vars: HashMap<&'static str, Rhs>,
     env: Env,
     counter: usize,
+    tracer: Option<Rc<RefCell<dyn Tracer>>>,
 }
 
 impl Session {
     /// Creates a new `Session` with empty history and variables and the default environment.
     pub fn new() -> Session {
-        Session { hist: Vec::new(), vars: HashMap::new(), env: Default::default(), counter: 1 }
+        Session { hist: Vec::new(), vars: HashMap::new(), env: Default::default(), counter: 1, tracer: None }
     }
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
     /// context-dependent through symbol assignments or history, and thus a function of `Session`.
     ///
     /// Clears any pending interrupt request (see [`stop::send_stop()`]) before evaluating, so that
-    /// a stale request from an earlier evaluation cannot affect this one.
+    /// a stale request from an earlier evaluation cannot affect this one. The tracer set by
+    /// [`set_tracer()`](Self::set_tracer) is installed for the duration of this call only: iterating
+    /// a returned stream afterwards is not traced.
     pub fn process(&mut self, expr: Expr) -> SResult<SessionUpdate<'_>> {
         stop::reset_stop();
+        let _tracer = self.tracer.as_ref().map(|tracer| tracing::install(Rc::clone(tracer)));
         match &expr {
             Expr::Eval(node) if &node.head == "=" && node.source.is_none() => self.assign(&node.args),
             Expr::Eval(node) if &node.head == "clear" && node.source.is_none() => self.clear(&node.args),
@@ -169,8 +174,9 @@ impl Session {
         &self.hist
     }
 
-    pub fn set_tracer(&mut self, tracer: Rc<std::cell::RefCell<impl Tracer + 'static>>) {
-        self.env.tracer = tracer;
+    /// Sets the tracer receiving the evaluation events of [`process()`](Self::process).
+    pub fn set_tracer(&mut self, tracer: Rc<RefCell<impl Tracer + 'static>>) {
+        self.tracer = Some(tracer);
     }
 
     pub fn vars(&self) -> &HashMap<&'static str, Rhs> {

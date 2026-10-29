@@ -1,16 +1,13 @@
 use crate::base::*;
-use super::tracing::Tracer;
 
 pub use std::rc::{Rc, Weak};
-use std::cell::RefCell;
 
-/// The context in which expressions are evaluated: the alphabet in effect (set using `alpha`) and
-/// the tracer receiving evaluation events. This is passed as an argument to [`Expr::eval()`].
+/// The lexical context in which expressions are evaluated: currently just the alphabet in effect
+/// (set using `alpha`). This is passed as an argument to [`Expr::eval()`].
 /// Variables are not part of it: `with` substitutes them into its body before evaluation.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Env {
     pub alpha: Rc<Alphabet>,
-    pub tracer: Rc<RefCell<dyn Tracer>>,
 }
 
 impl Env {
@@ -22,16 +19,6 @@ impl Env {
         } else {
             format!("alpha({}, {})", inner.alpha.describe(), call(0))
         }
-    }
-
-    pub(crate) fn base(&self) -> Self {
-        Env { alpha: Default::default(), tracer: Rc::clone(&self.tracer) }
-    }
-}
-
-impl Default for Env {
-    fn default() -> Env {
-        Env { alpha: Default::default(), tracer: Rc::new(RefCell::new(())) }
     }
 }
 

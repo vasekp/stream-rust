@@ -41,9 +41,10 @@ impl Node<Expr> {
     /// Variables are not handled here. Local ones are substituted into the body by `with` before
     /// it is evaluated; session globals and history references by
     /// [`Session::process()`](crate::session::Session::process) before the expression is passed
-    /// to this function. Entry and exit are reported to the tracer in `env`.
+    /// to this function. Entry and exit are reported to the installed tracer, if any (see
+    /// [`tracing::install()`]).
     pub fn eval(&self, env: &Env) -> SResult<Item> {
-        env.tracer.borrow_mut().log(tracing::Event::Enter(self));
+        tracing::log(tracing::Event::Enter(self));
         let res = (|| match &self.head {
             Head::Symbol(sym) | Head::Oper(sym) => {
                 if let Some(ctor) = Symbols::find_ctor(sym) {
@@ -57,13 +58,13 @@ impl Node<Expr> {
                 ctor(self, env)
             },
             Head::Block { body, reset_env } => {
-                let env = if *reset_env { env.base() } else { env.clone() };
+                let env = if *reset_env { Env::default() } else { env.clone() };
                 let source = self.source.as_ref().map(|expr| expr.eval(&env)).transpose()?;
                 let args = self.args.iter().map(|expr| expr.eval(&env)).collect::<SResult<_>>()?;
                 body.apply(&source, &args)?.eval(&env)
             },
         })();
-        env.tracer.borrow_mut().log(tracing::Event::Leave(&res));
+        tracing::log(tracing::Event::Leave(&res));
         res
     }
 
