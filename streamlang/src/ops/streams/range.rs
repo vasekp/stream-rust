@@ -202,6 +202,7 @@ mod tests {
         test_eval!("range(1, 10, 10)" => "[1]");
         test_eval!("range(1, 10, 0)" => "[1, 1, 1, 1, 1, ...]");
         test_eval!("range(1, 1, 0)" => "[1, 1, 1, 1, 1, ...]");
+        test_eval!("range(1, 0, 0)" => "[1, 1, 1, 1, 1, ...]");
         test_eval!("range(1, 10, -1)" => "[]");
         test_eval!("range(1, -10, -3)" => "[1, -2, -5, -8]");
 
