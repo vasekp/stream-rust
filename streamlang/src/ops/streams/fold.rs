@@ -6,16 +6,14 @@ fn eval_fold(node: &Node, env: &Env) -> SResult<Item> {
     Ok(Item::new_stream(Fold {
         head: node.head.clone(),
         source: stm,
-        func: Rc::clone(func),
-        env: env.clone(),
+        func: Function::new(func, env),
     }))
 }
 
 struct Fold {
     head: Head,
     source: Rc<dyn Stream>,
-    func: Rc<Node>,
-    env: Env,
+    func: Function,
 }
 
 struct FoldIter {
@@ -26,9 +24,9 @@ struct FoldIter {
 
 impl Describe for Fold {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.func))
             .set_source(&self.source)
-            .push_arg(&*self.func)
+            .push_arg(&self.func)
             .finish(prec)
     }
 }
@@ -47,11 +45,7 @@ impl PreIterator for FoldIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let next = iter_try!(self.source.next());
         let item = match &self.prev {
-            Some(prev) => self
-                .node
-                .func
-                .with_args(vec![prev.into(), next.into()])?
-                .eval(&self.node.env)?,
+            Some(prev) => self.node.func.call_args(vec![prev.clone(), next])?,
             None => next,
         };
         self.prev = Some(item.clone());

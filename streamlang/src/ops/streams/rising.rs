@@ -4,7 +4,7 @@ fn eval_rising(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = match &node.args[..] {
         [] => None,
-        [expr] => Some(Rc::clone(expr.as_func()?)),
+        [expr] => Some(Function::new(expr.as_func()?, env)),
         _ => return Err(StreamError::usage(&node.head)),
     };
     Ok(Item::new_stream(Rising { head: node.head.clone(), source: stm, func, env: env.clone() }))
@@ -13,15 +13,16 @@ fn eval_rising(node: &Node, env: &Env) -> SResult<Item> {
 struct Rising {
     head: Head,
     source: Rc<dyn Stream>,
-    func: Option<Rc<Node>>,
+    func: Option<Function>,
+    /// Needed for the ordering of the keys, not only for `func`.
     env: Env,
 }
 
 impl Describe for Rising {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env) // TODO everywhere a func is captured
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
             .set_source(&self.source)
-            .push_args(self.func.as_deref())
+            .push_args(&self.func)
             .finish(prec)
     }
 }
@@ -49,7 +50,7 @@ impl PreIterator for RisingIter {
             let item = iter_try!(self.iter.next());
             let key = match &self.node.func {
                 None => item.clone(),
-                Some(func) => func.with_source(Expr::from(&item))?.eval(&self.node.env)?,
+                Some(func) => func.call_source(item.clone())?,
             };
             if let Some(last) = &self.last
                 && key.lex_cmp(last, &self.node.env.alpha)? != std::cmp::Ordering::Greater

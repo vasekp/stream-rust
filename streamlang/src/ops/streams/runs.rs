@@ -6,14 +6,12 @@ fn eval_runs(node: &Node, env: &Env) -> SResult<Item> {
         (Item::Stream(stm), [expr]) => Ok(Item::new_stream(RunsBy {
             head: node.head.clone(),
             source: Rc::clone(&stm),
-            func: Rc::clone(expr.as_func()?),
-            env: env.clone(),
+            func: Function::new(expr.as_func()?, env),
         })),
         (Item::String(stm), [expr]) => Ok(Item::new_stream(RunsBy {
             head: node.head.clone(),
             source: Rc::clone(&stm),
-            func: Rc::clone(expr.as_func()?),
-            env: env.clone(),
+            func: Function::new(expr.as_func()?, env),
         })),
         _ => Err(StreamError::usage(&node.head)),
     }
@@ -87,15 +85,14 @@ impl PreIterator for RunsIter {
 struct RunsBy<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    func: Rc<Node>,
-    env: Env,
+    func: Function,
 }
 
 impl<I: ItemType> Describe for RunsBy<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.func))
             .set_source(&self.source)
-            .push_arg(&*self.func)
+            .push_arg(&self.func)
             .finish(prec)
     }
 }
@@ -129,21 +126,13 @@ impl<I: ItemType> PreIterator for RunsByIter<I> {
             key
         } else {
             let val = iter_try!(self.iter.next());
-            let key = self
-                .node
-                .func
-                .with_source(val.to_item().into())?
-                .eval(&self.node.env)?;
+            let key = self.node.func.call_source(val.to_item())?;
             vals.push(val);
             key
         };
         while let Some(val) = self.iter.next()? {
             check_stop!();
-            let new_key = self
-                .node
-                .func
-                .with_source(val.to_item().into())?
-                .eval(&self.node.env)?;
+            let new_key = self.node.func.call_source(val.to_item())?;
             if new_key.try_eq(&key)? {
                 vals.push(val);
                 continue;

@@ -227,10 +227,10 @@ mod tests {
         test_eval!("alpha(\"cba\", with(f={1}, ${['a', 'c', 'b'].sort}))" => "['a', 'b', 'c']");
         test_eval!("alpha(\"cba\", alpha([], ['a', 'c', 'b'].sort))" => "['a', 'b', 'c']");
 
-        // A closure describes relative to the default environment, wherever it appears. (The outer
-        // `alpha(...)` comes from `map` holding its own environment; it is redundant here.)
-        test_describe!("alpha(\"cba\", with(f={#+1}, seq:f))" => "alpha(['c', 'b', 'a'], seq:${alpha(['c', 'b', 'a'], #+1)})");
-        test_describe!("with(f={#+1}, alpha(\"cba\", seq:f))" => "alpha(['c', 'b', 'a'], seq:${#+1})");
+        // A closure describes relative to the default environment, wherever it appears, and an op
+        // whose function is a closure needs no `alpha(...)` wrapper of its own.
+        test_describe!("alpha(\"cba\", with(f={#+1}, seq:f))" => "seq:${alpha(['c', 'b', 'a'], #+1)}");
+        test_describe!("with(f={#+1}, alpha(\"cba\", seq:f))" => "seq:${#+1}");
         test_describe!("alpha(\"cba\", seq:{'a'+#})" => "alpha(['c', 'b', 'a'], seq:{'a'+#})");
         test_describe!("alpha(\"cba\", seq:ucase)" => "alpha(['c', 'b', 'a'], seq:ucase)");
         test_describe!("alpha(\"cba\", with(f={'a'+#}, [1]:{with(x=#, x.f)}))" => "alpha(['c', 'b', 'a'], [1]:{with(x=#, x.${alpha(['c', 'b', 'a'], 'a'+#)})})");

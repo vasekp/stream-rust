@@ -4,18 +4,16 @@ fn eval_while(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let cond = node.only_arg_checked()?.as_func()?;
     Ok(Item::new_stream(While {
-        cond: Rc::clone(cond),
+        cond: Function::new(cond, env),
         source: stm,
         head: node.head.clone(),
-        env: env.clone(),
     }))
 }
 
 struct While {
     head: Head,
     source: Rc<dyn Stream>,
-    cond: Rc<Node>,
-    env: Env,
+    cond: Function,
 }
 
 struct WhileIter {
@@ -25,9 +23,9 @@ struct WhileIter {
 
 impl Describe for While {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.cond))
             .set_source(&self.source)
-            .push_arg(&*self.cond)
+            .push_arg(&self.cond)
             .finish(prec)
     }
 }
@@ -45,12 +43,7 @@ impl Stream for While {
 impl PreIterator for WhileIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let source = iter_try!(self.source.next());
-        let cond = self
-            .node
-            .cond
-            .with_source(Expr::from(&source))?
-            .eval(&self.node.env)?
-            .to_bool()?;
+        let cond = self.node.cond.call_source(source.clone())?.to_bool()?;
         if cond { Ok(Some(source)) } else { Ok(None) }
     }
 

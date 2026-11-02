@@ -3,9 +3,8 @@ use std::collections::VecDeque;
 
 struct NestSource {
     source: Item,
-    body: Rc<Node>,
+    body: Function,
     head: Head,
-    env: Env,
 }
 
 struct NestIterSource {
@@ -14,9 +13,10 @@ struct NestIterSource {
 }
 
 struct NestArgs {
-    body: Node<Item>,
+    /// The function, stripped of its arguments, which hold the initial values instead.
+    body: Function,
+    init: Vec<Item>,
     head: Head,
-    env: Env,
 }
 
 struct NestIterArgs {
@@ -32,11 +32,12 @@ fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
         Ok(Item::new_stream(NestSource {
             head: node.head.clone(),
             source: source.eval(env)?,
-            body: Rc::clone(body),
-            env: env.clone(),
+            body: Function::new(body, env),
         }))
     } else if !body.args.is_empty() && node.source.is_none() {
-        Ok(Item::new_stream(NestArgs { head: node.head.clone(), body: body.eval_all(env)?, env: env.clone() }))
+        let init = body.args.iter().map(|arg| arg.eval(env)).collect::<SResult<Vec<_>>>()?;
+        let bare = Rc::new(Node { head: body.head.clone(), source: None, args: vec![] });
+        Ok(Item::new_stream(NestArgs { head: node.head.clone(), body: Function::new(&bare, env), init }))
     } else {
         Err(StreamError::usage(&node.head))
     }
@@ -44,17 +45,18 @@ fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
 
 impl Describe for NestSource {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.body))
             .set_source(&self.source)
-            .push_arg(&*self.body)
+            .push_arg(&self.body)
             .finish(prec)
     }
 }
 
 impl Describe for NestArgs {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
-            .push_arg(&self.body)
+        let body = Node { head: self.body.head().clone(), source: None, args: self.init.clone() };
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.body))
+            .push_arg(&body)
             .finish(prec)
     }
 }
@@ -71,8 +73,8 @@ impl Stream for NestSource {
 
 impl Stream for NestArgs {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        let args = self.body.args.iter().cloned().collect();
-        NestIterArgs { prev: args, node: self }.wrap()
+        let init = self.init.iter().cloned().collect();
+        NestIterArgs { prev: init, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -82,8 +84,7 @@ impl Stream for NestArgs {
 
 impl PreIterator for NestIterSource {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let node = Node::new(self.node.body.head.clone(), Some(Expr::from(&self.prev)), vec![]);
-        let item = node.eval(&self.node.env)?;
+        let item = self.node.body.call_source(self.prev.clone())?;
         self.prev = item.clone();
         Ok(Some(item))
     }
@@ -95,9 +96,7 @@ impl PreIterator for NestIterSource {
 
 impl PreIterator for NestIterArgs {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let args = self.prev.iter().map(|item| Expr::Imm(item.to_owned())).collect();
-        let node = Node::new(self.node.body.head.clone(), None, args);
-        let item = node.eval(&self.node.env)?;
+        let item = self.node.body.call_args(self.prev.iter().cloned().collect())?;
         self.prev.pop_front();
         self.prev.push_back(item.clone());
         Ok(Some(item))

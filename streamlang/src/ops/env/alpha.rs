@@ -74,4 +74,50 @@ mod tests {
         test_describe!("alpha(\"abcd\", alpha([], \"abc\"+1))" => "\"abc\"+1");
         test_describe!("alpha(\"abcd\", alpha(\"\", \"abc\"+1))" => "\"abc\"+1");
     }
+
+    #[test]
+    fn test_alpha_functions() {
+        use super::*;
+        // An op evaluating a function written in place depends on the alphabet of its construction
+        // and describes with an `alpha(...)` wrapper; one holding a closure does not need it.
+        test_describe!("alpha(\"cba\", seq.consec{#.isodd})" => "alpha(['c', 'b', 'a'], seq.consec({#.isodd}))");
+        test_describe!("alpha(\"cba\", seq.consec(${#.isodd}))" => "seq.consec(${#.isodd})");
+        test_describe!("alpha(\"cba\", seq.select{#>2})" => "alpha(['c', 'b', 'a'], seq.select({#>2}))");
+        test_describe!("alpha(\"cba\", seq.select(${#>2}))" => "seq.select(${#>2})");
+        test_describe!("alpha(\"cba\", seq.while{#<5})" => "alpha(['c', 'b', 'a'], seq.while({#<5}))");
+        test_describe!("alpha(\"cba\", seq.while(${#<5}))" => "seq.while(${#<5})");
+        test_describe!("alpha(\"cba\", seq.split{#.isodd})" => "alpha(['c', 'b', 'a'], seq.split({#.isodd}))");
+        test_describe!("alpha(\"cba\", seq.split(${#.isodd}))" => "seq.split(${#.isodd})");
+        test_describe!("alpha(\"cba\", seq.fold{#1+#2})" => "alpha(['c', 'b', 'a'], seq.fold({#1+#2}))");
+        test_describe!("alpha(\"cba\", seq.fold(${#1+#2}))" => "seq.fold(${#1+#2})");
+        test_describe!("alpha(\"cba\", seq:{#+1})" => "alpha(['c', 'b', 'a'], seq:{#+1})");
+        test_describe!("alpha(\"cba\", seq:${#+1})" => "seq:${#+1}");
+        test_describe!("alpha(\"cba\", seq:{#+#1}(2))" => "alpha(['c', 'b', 'a'], seq:{#+#1}(2))");
+        test_describe!("alpha(\"cba\", \"abc\":{#+1})" => "alpha(['c', 'b', 'a'], \"abc\":{#+1})");
+        test_describe!("alpha(\"cba\", \"abc\":${#+1})" => "\"abc\":${#+1}");
+        test_describe!("alpha(\"cba\", self{1~(#+1)})" => "alpha(['c', 'b', 'a'], self({1~#+1}))");
+        test_describe!("alpha(\"cba\", self(${1~(#+1)}))" => "self(${1~#+1})");
+        test_describe!("alpha(\"cba\", seq.groups(2, {#1+#2}))" => "alpha(['c', 'b', 'a'], seq.groups(2, {#1+#2}))");
+        test_describe!("alpha(\"cba\", seq.groups(2, ${#1+#2}))" => "seq.groups(2, ${#1+#2})");
+        test_describe!("alpha(\"cba\", seq.groups(2))" => "seq.groups(2)");
+        test_describe!("alpha(\"cba\", seq.windows(2, {#1+#2}))" => "alpha(['c', 'b', 'a'], seq.windows(2, {#1+#2}))");
+        test_describe!("alpha(\"cba\", seq.windows(2, ${#1+#2}))" => "seq.windows(2, ${#1+#2})");
+        test_describe!("alpha(\"cba\", seq.windows(2))" => "seq.windows(2)");
+        test_describe!("alpha(\"cba\", seq.runs{#/3})" => "alpha(['c', 'b', 'a'], seq.runs({#/3}))");
+        test_describe!("alpha(\"cba\", seq.runs(${#/3}))" => "seq.runs(${#/3})");
+        test_describe!("alpha(\"cba\", seq.ddup{-#})" => "alpha(['c', 'b', 'a'], seq.ddup({-#}))");
+        test_describe!("alpha(\"cba\", seq.ddup(${-#}))" => "seq.ddup(${-#})");
+        test_describe!("alpha(\"cba\", seq.ddup)" => "seq.ddup");
+        test_describe!("alpha(\"cba\", seq.drep{#%3})" => "alpha(['c', 'b', 'a'], seq.drep({#%3}))");
+        test_describe!("alpha(\"cba\", seq.drep(${#%3}))" => "seq.drep(${#%3})");
+        test_describe!("alpha(\"cba\", 'a'.nest{#+1})" => "alpha(['c', 'b', 'a'], 'a'.nest({#+1}))");
+        test_describe!("alpha(\"cba\", 'a'.nest(${#+1}))" => "'a'.nest(${#+1})");
+        test_eval!("alpha(\"cba\", 'a'.nest{#+1})" : 5 => "['c', 'b', 'a', 'c', 'b', ...]");
+        test_eval!("alpha(\"cba\", 'a'.nest(${#+1}))" : 5 => "['b', 'c', 'd', 'e', 'f', ...]");
+        test_describe!("alpha(\"cba\", nest({#1+#2}(1, 1)))" => "alpha(['c', 'b', 'a'], nest({#1+#2}(1, 1)))");
+        test_describe!("alpha(\"cba\", nest(${#1+#2}(1, 1)))" => "nest(${#1+#2}(1, 1))");
+        // Ops which also order by the alphabet keep the wrapper even for a closure.
+        test_describe!("alpha(\"cba\", seq.rising(${#*2}))" => "alpha(['c', 'b', 'a'], seq.rising(${#*2}))");
+        test_describe!("alpha(\"cba\", range(20).sort(${-#}))" => "alpha(['c', 'b', 'a'], range(20).sort(${-#}))");
+    }
 }

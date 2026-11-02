@@ -8,13 +8,12 @@ fn eval_self(node: &Node, env: &Env) -> SResult<Item> {
         None => None,
         Some(source) => Some(source.eval(env)?.to_stream()?),
     };
-    Ok(Item::new_stream(SelfRef { pre, head: node.head.clone(), body: Rc::clone(body), env: env.clone() }))
+    Ok(Item::new_stream(SelfRef { pre, head: node.head.clone(), body: Function::new(body, env) }))
 }
 
 struct SelfRef {
     head: Head,
-    body: Rc<Node>,
-    env: Env,
+    body: Function,
     pre: Option<Rc<dyn Stream>>,
 }
 
@@ -23,8 +22,7 @@ impl SelfRef {
         let hist = Rc::new(RefCell::new(Vec::new()));
         let stm = self
             .body
-            .with_source(Expr::new_stream(BackRef { parent: Rc::downgrade(&hist) }))?
-            .eval(&self.env)?
+            .call_source(Item::new_stream(BackRef { parent: Rc::downgrade(&hist) }))?
             .to_stream()?;
         Ok((stm, hist))
     }
@@ -32,9 +30,9 @@ impl SelfRef {
 
 impl Describe for SelfRef {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.body))
             .set_source_opt(&self.pre)
-            .push_arg(&*self.body)
+            .push_arg(&self.body)
             .finish(prec)
     }
 }

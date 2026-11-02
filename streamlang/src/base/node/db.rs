@@ -23,6 +23,16 @@ impl<'a> DescribeBuilder<'a> {
         Self { env_outer: Some(env_outer), ..Self::new(head, env_inner) }
     }
 
+    /// Like [`new_with_env()`](Self::new_with_env) for an op whose only dependence on its
+    /// environment is a [`Function`] it evaluates lazily. A function which is a closure describes
+    /// itself independently of the context, so no `alpha(...)` wrapper is needed for it.
+    pub(crate) fn new_with_func(head: &'a Head, env: &'a Env, func: Option<&'a Function>) -> Self {
+        match func {
+            Some(func) if !func.is_closure() => Self::new_with_env(head, env, func.env()),
+            _ => Self::new(head, env),
+        }
+    }
+
     pub(crate) fn set_source(&mut self, src: &impl Describe) -> &mut Self {
         self.source = Some(src.describe_inner(u32::MAX, self.env));
         self

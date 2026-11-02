@@ -4,16 +4,14 @@ fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
     let cond = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
         Item::Stream(stm) => Ok(Item::new_stream(Split {
-            cond: Rc::clone(cond),
+            cond: Function::new(cond, env),
             source: stm,
             head: node.head.clone(),
-            env: env.clone(),
         })),
         Item::String(stm) => Ok(Item::new_stream(Split {
-            cond: Rc::clone(cond),
+            cond: Function::new(cond, env),
             source: stm,
             head: node.head.clone(),
-            env: env.clone(),
         })),
         _ => Err(StreamError::usage(&node.head)),
     }
@@ -22,8 +20,7 @@ fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
 struct Split<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    cond: Rc<Node>,
-    env: Env,
+    cond: Function,
 }
 
 struct SplitIter<I: ItemType> {
@@ -34,9 +31,9 @@ struct SplitIter<I: ItemType> {
 
 impl<I: ItemType> Describe for Split<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.cond))
             .set_source(&self.source)
-            .push_arg(&*self.cond)
+            .push_arg(&self.cond)
             .finish(prec)
     }
 }
@@ -60,12 +57,7 @@ impl<I: ItemType> PreIterator for SplitIter<I> {
         for item in self.source.transposed() {
             check_stop!();
             let item = item?;
-            let cond = self
-                .node
-                .cond
-                .with_source(item.to_item().into())?
-                .eval(&self.node.env)?
-                .to_bool()?;
+            let cond = self.node.cond.call_source(item.to_item())?.to_bool()?;
             if cond {
                 return Ok(Some(Item::from(cache)));
             }

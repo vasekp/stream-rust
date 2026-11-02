@@ -301,7 +301,7 @@ mod tests {
         // A global function is closed over the session environment, wherever it is used.
         assert_eq!(globals(&mut sess, "$g={#+1}"), ["$g"]);
         assert_eq!(eval(&mut sess, "alpha(\"cba\", \"abc\".$g)"), "\"bcd\""); // %1
-        roundtrip(&mut sess, "alpha(\"cba\", seq:$g)", "alpha(['c', 'b', 'a'], seq:${#+1})"); // %2
+        roundtrip(&mut sess, "alpha(\"cba\", seq:$g)", "seq:${#+1}"); // %2
         // ... and stays opaque to the locals of a `with` it is spliced into, even after a round trip.
         assert_eq!(globals(&mut sess, "$a={#.len}"), ["$a"]);
         roundtrip(&mut sess, "[1]:{with(len={1}, range(3).$a)}", "[1]:{with(len={1}, range(3).${#.len})}"); // %3

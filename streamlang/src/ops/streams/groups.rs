@@ -4,35 +4,27 @@ fn eval_groups(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let (size, body) = match &node.args[..] {
         [size] => (size, None),
-        [size, Expr::Eval(node)] if node.args.is_empty() => (size, Some(Rc::clone(node))),
+        [size, Expr::Eval(node)] if node.args.is_empty() => (size, Some(Function::new(node, env))),
         _ => return Err(StreamError::usage(&node.head)),
     };
     let size = size.eval(env)?.as_num()?.try_cast_within(1usize..)?;
-    Ok(Item::new_stream(Groups { head: node.head.clone(), source: stm, size, body, env: env.clone() }))
+    Ok(Item::new_stream(Groups { head: node.head.clone(), source: stm, size, body }))
 }
 
 struct Groups {
     head: Head,
     source: Rc<dyn Stream>,
     size: usize,
-    body: Option<Rc<Node>>,
-    env: Env,
+    body: Option<Function>,
 }
 
 impl Describe for Groups {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        if let Some(body) = &self.body {
-            DescribeBuilder::new_with_env(&self.head, env, &self.env)
-                .set_source(&self.source)
-                .push_arg(&self.size)
-                .push_arg(&**body)
-                .finish(prec)
-        } else {
-            DescribeBuilder::new(&self.head, env)
-                .set_source(&self.source)
-                .push_arg(&self.size)
-                .finish(prec)
-        }
+        DescribeBuilder::new_with_func(&self.head, env, self.body.as_ref())
+            .set_source(&self.source)
+            .push_arg(&self.size)
+            .push_args(&self.body)
+            .finish(prec)
     }
 }
 
@@ -61,9 +53,7 @@ impl PreIterator for GroupsIter {
             vec.push(iter_try!(self.iter.next()));
         }
         if let Some(body) = &self.node.body {
-            body.with_args(vec.into_iter().map(Expr::from).collect())
-                .and_then(|expr| expr.eval(&self.node.env))
-                .map(Option::Some)
+            body.call_args(vec).map(Option::Some)
         } else {
             Ok(Some(Item::from(vec)))
         }

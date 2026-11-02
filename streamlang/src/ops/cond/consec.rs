@@ -6,14 +6,12 @@ fn eval_consec(node: &Node, env: &Env) -> SResult<Item> {
         Item::Stream(stm) => Ok(Item::new_stream(Consec {
             head: node.head.clone(),
             source: stm,
-            func: Rc::clone(func),
-            env: env.clone(),
+            func: Function::new(func, env),
         })),
         Item::String(stm) => Ok(Item::new_stream(Consec {
             head: node.head.clone(),
             source: stm,
-            func: Rc::clone(func),
-            env: env.clone(),
+            func: Function::new(func, env),
         })),
         _ => Err(StreamError::usage(&node.head)),
     }
@@ -22,15 +20,14 @@ fn eval_consec(node: &Node, env: &Env) -> SResult<Item> {
 struct Consec<I: ItemType> {
     head: Head,
     source: Rc<dyn Stream<I>>,
-    func: Rc<Node>,
-    env: Env,
+    func: Function,
 }
 
 impl<I: ItemType> Describe for Consec<I> {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.func))
             .set_source(&self.source)
-            .push_arg(&*self.func)
+            .push_arg(&self.func)
             .finish(prec)
     }
 }
@@ -60,12 +57,7 @@ impl<I: ItemType> PreIterator for ConsecIter<I> {
         let mut vals = Vec::new();
         while let Some(val) = self.iter.next()? {
             check_stop!();
-            let cond = self
-                .node
-                .func
-                .with_source(val.to_item().into())?
-                .eval(&self.node.env)?
-                .to_bool()?;
+            let cond = self.node.func.call_source(val.to_item())?.to_bool()?;
             if cond {
                 vals.push(val);
             } else if !vals.is_empty() {

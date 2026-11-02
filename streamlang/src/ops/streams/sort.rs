@@ -12,7 +12,7 @@ fn eval_sort(node: &Node, env: &Env) -> SResult<Item> {
                 .listout_with(|item| func.with_source(Expr::from(&item))?.eval(env).map(|key| (key, item)))?
                 .into_iter()
                 .unzip();
-            (Some(Rc::clone(func)), vals, Some(keys))
+            (Some(Function::new(func, env)), vals, Some(keys))
         },
         _ => return Err(StreamError::usage(&node.head)),
     };
@@ -115,19 +115,19 @@ impl SortHeap {
 struct Sorted {
     head: Head,
     source: Rc<dyn Stream>,
-    func: Option<Rc<Node>>,
+    /// Only kept for the description: the keys are computed up front.
+    func: Option<Function>,
+    /// Needed for the ordering, not only for `func`.
     env: Env,
     heap: SortHeap,
 }
 
 impl Describe for Sorted {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        let mut builder = DescribeBuilder::new_with_env(&self.head, env, &self.env);
-        builder.set_source(&self.source);
-        if let Some(func) = &self.func {
-            builder.push_arg(&**func);
-        }
-        builder.finish(prec)
+        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+            .set_source(&self.source)
+            .push_args(&self.func)
+            .finish(prec)
     }
 }
 

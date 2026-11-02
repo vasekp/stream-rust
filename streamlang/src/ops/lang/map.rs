@@ -4,13 +4,12 @@ fn eval_map(node: &Node, env: &Env) -> SResult<Item> {
     let body = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
         Item::Stream(source) => {
-            Ok(Item::new_stream(Map { head: node.head.clone(), source, body: Rc::clone(body), env: env.clone() }))
+            Ok(Item::new_stream(Map { head: node.head.clone(), source, body: Function::new(body, env) }))
         },
         Item::String(source) => Ok(Item::new_string(CharMap {
             head: node.head.clone(),
             source,
-            body: Rc::clone(body),
-            env: env.clone(),
+            body: Function::new(body, env),
         })),
         _ => Err("expected string or stream".into()),
     }
@@ -18,30 +17,25 @@ fn eval_map(node: &Node, env: &Env) -> SResult<Item> {
 
 struct Map {
     source: Rc<dyn Stream>,
-    body: Rc<Node>,
+    body: Function,
     head: Head,
-    env: Env,
 }
 
 impl Describe for Map {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.body))
             .set_source(&self.source)
-            .push_arg(&*self.body)
+            .push_arg(&self.body)
             .finish(prec)
     }
 }
 
 impl Stream for Map {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        let body = Rc::clone(&self.body);
-        let env = self.env.clone();
+        let body = self.body.clone();
         Box::new(SMap::new(
             &self.source,
-            move |item| {
-                body.with_source(item.into())
-                    .and_then(|node| Expr::from(node).eval(&env))
-            },
+            move |item| body.call_source(item),
             &self,
         ))
     }
@@ -53,31 +47,25 @@ impl Stream for Map {
 
 struct CharMap {
     source: Rc<dyn Stream<Char>>,
-    body: Rc<Node>,
+    body: Function,
     head: Head,
-    env: Env,
 }
 
 impl Describe for CharMap {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new_with_env(&self.head, env, &self.env)
+        DescribeBuilder::new_with_func(&self.head, env, Some(&self.body))
             .set_source(&self.source)
-            .push_arg(&*self.body)
+            .push_arg(&self.body)
             .finish(prec)
     }
 }
 
 impl Stream<Char> for CharMap {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        let body = Rc::clone(&self.body);
-        let env = self.env.clone();
+        let body = self.body.clone();
         Box::new(SMap::new(
             &self.source,
-            move |ch| {
-                body.with_source(Item::Char(ch).into())
-                    .and_then(|node| Expr::from(node).eval(&env))
-                    .and_then(Item::into_char)
-            },
+            move |ch| body.call_source(Item::Char(ch)).and_then(Item::into_char),
             &self,
         ))
     }

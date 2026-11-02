@@ -4,7 +4,7 @@ fn eval_drep(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = match &node.args[..] {
         [] => None,
-        [expr] => Some((Rc::clone(expr.as_func()?), env.clone())),
+        [expr] => Some(Function::new(expr.as_func()?, env)),
         _ => return Err(StreamError::usage(&node.head)),
     };
     Ok(Item::new_stream(DRep { head: node.head.clone(), source: stm, func }))
@@ -13,14 +13,14 @@ fn eval_drep(node: &Node, env: &Env) -> SResult<Item> {
 struct DRep {
     head: Head,
     source: Rc<dyn Stream>,
-    func: Option<(Rc<Node>, Env)>,
+    func: Option<Function>,
 }
 
 impl Describe for DRep {
     fn describe_inner(&self, prec: u32, env: &Env) -> String {
-        DescribeBuilder::new(&self.head, env)
+        DescribeBuilder::new_with_func(&self.head, env, self.func.as_ref())
             .set_source(&self.source)
-            .push_args(self.func.as_ref().map(|(func, _)| &**func))
+            .push_args(&self.func)
             .finish(prec)
     }
 }
@@ -48,7 +48,7 @@ impl PreIterator for DRepIter {
             let item = iter_try!(self.iter.next());
             let key = match &self.node.func {
                 None => item.clone(),
-                Some((func, env)) => func.with_source(Expr::from(&item))?.eval(env)?,
+                Some(func) => func.call_source(item.clone())?,
             };
             if let Some(last) = &self.last
                 && last.try_eq(&key)?
