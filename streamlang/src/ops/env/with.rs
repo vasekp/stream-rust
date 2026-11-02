@@ -229,27 +229,27 @@ mod tests {
 
         // A closure describes relative to the default environment, wherever it appears. (The outer
         // `alpha(...)` comes from `map` holding its own environment; it is redundant here.)
-        test_roundtrip!("alpha(\"cba\", with(f={#+1}, seq:f))" => "alpha(['c', 'b', 'a'], seq:${alpha(['c', 'b', 'a'], #+1)})");
-        test_roundtrip!("with(f={#+1}, alpha(\"cba\", seq:f))" => "alpha(['c', 'b', 'a'], seq:${#+1})");
-        test_roundtrip!("alpha(\"cba\", seq:{'a'+#})" => "alpha(['c', 'b', 'a'], seq:{'a'+#})");
-        test_roundtrip!("alpha(\"cba\", seq:ucase)" => "alpha(['c', 'b', 'a'], seq:ucase)");
-        test_roundtrip!("alpha(\"cba\", with(f={'a'+#}, [1]:{with(x=#, x.f)}))" => "alpha(['c', 'b', 'a'], [1]:{with(x=#, x.${alpha(['c', 'b', 'a'], 'a'+#)})})");
+        test_describe!("alpha(\"cba\", with(f={#+1}, seq:f))" => "alpha(['c', 'b', 'a'], seq:${alpha(['c', 'b', 'a'], #+1)})");
+        test_describe!("with(f={#+1}, alpha(\"cba\", seq:f))" => "alpha(['c', 'b', 'a'], seq:${#+1})");
+        test_describe!("alpha(\"cba\", seq:{'a'+#})" => "alpha(['c', 'b', 'a'], seq:{'a'+#})");
+        test_describe!("alpha(\"cba\", seq:ucase)" => "alpha(['c', 'b', 'a'], seq:ucase)");
+        test_describe!("alpha(\"cba\", with(f={'a'+#}, [1]:{with(x=#, x.f)}))" => "alpha(['c', 'b', 'a'], [1]:{with(x=#, x.${alpha(['c', 'b', 'a'], 'a'+#)})})");
 
         // Values whose description is free of symbols are substituted as they are; any other value
         // is substituted as a closure, so that a `with` in the description cannot capture it.
-        test_roundtrip!("with(n=3, seq:{#*n})" => "seq:{#*3}");
-        test_roundtrip!("with(a=[1, 2], seq:{#~a})" => "seq:{#~[1, 2]}");
-        test_roundtrip!("with(s=\"ab\", seq:{#~s})" => "seq:{#~\"ab\"}");
-        test_roundtrip!("with(a=[[1], 'a', true], seq:{#~a})" => "seq:{#~[[1], 'a', true]}");
-        test_roundtrip!("with(a=[seq], seq:{#~a})" => "seq:{#~${[seq]}}");
-        test_roundtrip!("with(a=seq:{#+1}, seq:{#~a})" => "seq:{#~${seq:{#+1}}}");
-        test_roundtrip!("with(s=\"ab\".ucase, seq:{#~s})" => "seq:{#~${\"ab\".ucase}}");
-        test_roundtrip!("with(a=seq:{#+1}, a~[1])" => "seq:{#+1}~[1]");
+        test_describe!("with(n=3, seq:{#*n})" => "seq:{#*3}");
+        test_describe!("with(a=[1, 2], seq:{#~a})" => "seq:{#~[1, 2]}");
+        test_describe!("with(s=\"ab\", seq:{#~s})" => "seq:{#~\"ab\"}");
+        test_describe!("with(a=[[1], 'a', true], seq:{#~a})" => "seq:{#~[[1], 'a', true]}");
+        test_describe!("with(a=[seq], seq:{#~a})" => "seq:{#~${[seq]}}");
+        test_describe!("with(a=seq:{#+1}, seq:{#~a})" => "seq:{#~${seq:{#+1}}}");
+        test_describe!("with(s=\"ab\".ucase, seq:{#~s})" => "seq:{#~${\"ab\".ucase}}");
+        test_describe!("with(a=seq:{#+1}, a~[1])" => "seq:{#+1}~[1]");
         // ... including when the value is in error, which must survive the round trip.
-        test_roundtrip!("with(v=seq:{x+#}, [1]:{with(x=5, v)})" => "[1]:{with(x=5, ${seq:{x+#}})}");
+        test_describe!("with(v=seq:{x+#}, [1]:{with(x=5, v)})" => "[1]:{with(x=5, ${seq:{x+#}})}");
         test_eval!("with(v=seq:{x+#}, [1]:{with(x=5, v)})" : 5 => "[[<!>");
         test_eval!("[1]:{with(x=5, seq:{x+#})}" : 5 => "[[6, 7, 8, 9, ...]]");
-        test_roundtrip!("with(v=[[1], [2, 3]]:len, [1]:{with(len={1}, v)})" => "[1]:{with(len={1}, ${[[1], [2, 3]]:len})}");
+        test_describe!("with(v=[[1], [2, 3]]:len, [1]:{with(len={1}, v)})" => "[1]:{with(len={1}, ${[[1], [2, 3]]:len})}");
         test_eval!("with(v=[[1], [2, 3]]:len, [1]:{with(len={1}, v)})" => "[[1, 2]]");
         test_eval!("[1]:{with(len={1}, [[1], [2, 3]]:len)}" => "[[1, 1]]");
     }

@@ -14,15 +14,9 @@ macro_rules! test_eval {
     };
 }
 
-macro_rules! test_describe {
-    ($input:expr => $output:literal) => {
-        assert_eq!(eval!($input).describe(), $output);
-    };
-}
-
 /// Checks that the description of the result of `$input` is `$output`, and that evaluating that
 /// description again gives a result which prints and describes the same. See [`check_roundtrip()`].
-macro_rules! test_roundtrip {
+macro_rules! test_describe {
     ($input:expr => $output:literal) => {
         check_roundtrip(&eval!($input), $output);
     };
@@ -54,7 +48,6 @@ macro_rules! test_len {
 
 pub(crate) use test_eval;
 pub(crate) use test_describe;
-pub(crate) use test_roundtrip;
 pub(crate) use test_len;
 
 #[track_caller]
