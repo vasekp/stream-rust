@@ -2,11 +2,11 @@ use crate::base::*;
 
 fn eval_countif(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let cond = node.only_arg_checked()?.as_func()?;
+    let cond = Function::new(node.only_arg_checked()?.as_func()?, env);
     let mut count = 0;
     for item in stm.iter().transposed() {
         check_stop!();
-        if cond.with_source(item?.into())?.eval(env)?.to_bool()? {
+        if cond.call_source(item?)?.to_bool()? {
             count += 1;
         }
     }

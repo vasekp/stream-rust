@@ -2,10 +2,10 @@ use crate::base::*;
 
 fn eval_all(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let cond = node.only_arg_checked()?.as_func()?;
+    let cond = Function::new(node.only_arg_checked()?.as_func()?, env);
     for item in stm.iter().transposed() {
         check_stop!();
-        let val = cond.with_source(item?.into())?.eval(env)?.to_bool()?;
+        let val = cond.call_source(item?)?.to_bool()?;
         if !val {
             return Ok(Item::Bool(false));
         }
@@ -15,10 +15,10 @@ fn eval_all(node: &Node, env: &Env) -> SResult<Item> {
 
 fn eval_some(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let cond = node.only_arg_checked()?.as_func()?;
+    let cond = Function::new(node.only_arg_checked()?.as_func()?, env);
     for item in stm.iter().transposed() {
         check_stop!();
-        let val = cond.with_source(item?.into())?.eval(env)?.to_bool()?;
+        let val = cond.call_source(item?)?.to_bool()?;
         if val {
             return Ok(Item::Bool(true));
         }

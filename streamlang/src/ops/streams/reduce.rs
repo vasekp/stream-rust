@@ -2,14 +2,14 @@ use crate::base::*;
 
 fn eval_reduce(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let func = node.only_arg_checked()?.as_func()?;
+    let func = Function::new(node.only_arg_checked()?.as_func()?, env);
     let mut iter = stm.iter();
     let Some(mut val) = iter.next()? else {
         return Err("stream is empty".into());
     };
     for res in iter.transposed() {
         check_stop!();
-        val = func.with_args(vec![Expr::from(val), Expr::from(res?)])?.eval(env)?;
+        val = func.call_args(vec![val, res?])?;
     }
     Ok(val)
 }

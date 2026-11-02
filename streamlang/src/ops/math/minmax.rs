@@ -13,13 +13,13 @@ fn eval_minmax(node: &Node, env: &Env) -> SResult<Item> {
             eval_fn(&node, cmp).map(Item::Number)
         },
         (Some(Item::Stream(stm)), [expr]) => {
-            let func = expr.as_func()?;
+            let func = Function::new(expr.as_func()?, env);
             let cmp = match &node.head.as_str().unwrap()[0..3] {
                 "min" => PartialOrd::lt,
                 "max" => PartialOrd::gt,
                 _ => unreachable!(),
             };
-            eval_mapped(&stm, func, cmp, env)
+            eval_mapped(&stm, &func, cmp)
         },
         _ => Err(StreamError::usage(&node.head)),
     }
@@ -51,16 +51,16 @@ fn eval_fn(node: &Node<Item>, func: fn(Number, Number) -> Number) -> SResult<Num
     }
 }
 
-fn eval_mapped(stm: &Rc<dyn Stream>, func: &Rc<Node>, cmp: fn(&Number, &Number) -> bool, env: &Env) -> SResult<Item> {
+fn eval_mapped(stm: &Rc<dyn Stream>, func: &Function, cmp: fn(&Number, &Number) -> bool) -> SResult<Item> {
     let mut iter = stm.iter();
     let Some(mut val) = iter.next()? else {
         return Err("stream is empty".into());
     };
-    let mut key = func.with_source(Expr::from(&val))?.eval(env)?.to_num()?;
+    let mut key = func.call_source(val.clone())?.to_num()?;
     for res in iter.transposed() {
         check_stop!();
         let item = res?;
-        let x = func.with_source(Expr::from(&item))?.eval(env)?.to_num()?;
+        let x = func.call_source(item.clone())?.to_num()?;
         if cmp(&x, &key) {
             key = x;
             val = item;

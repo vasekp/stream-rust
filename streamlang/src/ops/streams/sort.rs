@@ -7,12 +7,12 @@ fn eval_sort(node: &Node, env: &Env) -> SResult<Item> {
     let (func, vals, keys) = match &node.args[..] {
         [] => (None, source.listout()?, None),
         [expr] => {
-            let func = expr.as_func()?;
+            let func = Function::new(expr.as_func()?, env);
             let (keys, vals): (Vec<_>, Vec<_>) = source
-                .listout_with(|item| func.with_source(Expr::from(&item))?.eval(env).map(|key| (key, item)))?
+                .listout_with(|item| func.call_source(item.clone()).map(|key| (key, item)))?
                 .into_iter()
                 .unzip();
-            (Some(Function::new(func, env)), vals, Some(keys))
+            (Some(func), vals, Some(keys))
         },
         _ => return Err(StreamError::usage(&node.head)),
     };

@@ -2,12 +2,12 @@ use crate::base::*;
 
 fn eval_collect(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
-    let func = node.only_arg_checked()?.as_func()?;
+    let func = Function::new(node.only_arg_checked()?.as_func()?, env);
     let mut map: Vec<(Item, Vec<Item>)> = Vec::new();
     'a: for res in stm.iter().transposed() {
         check_stop!();
         let item = res?;
-        let new_key = func.with_source((&item).into())?.eval(env)?;
+        let new_key = func.call_source(item.clone())?;
         for (key, vec) in &mut map {
             if key.try_eq(&new_key)? {
                 vec.push(item);
