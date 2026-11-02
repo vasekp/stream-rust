@@ -223,79 +223,87 @@ impl<'a> SessionUpdate<'a> {
 mod tests {
     use super::*;
     use crate::parser::parse;
+    use crate::base::{check_roundtrip, Describe};
+
+    /// Processes `input` and returns the names reported as (re)defined or cleared.
+    fn globals(sess: &mut Session, input: &str) -> Vec<&'static str> {
+        match sess.process(parse(input).unwrap()).unwrap() {
+            SessionUpdate::Globals(names) => names,
+            SessionUpdate::History(..) => panic!("{input}: expected an assignment"),
+        }
+    }
+
+    /// Processes `input` and returns the printed form of the result, which is also appended to the
+    /// history.
+    fn eval(sess: &mut Session, input: &str) -> String {
+        match sess.process(parse(input).unwrap()).unwrap() {
+            SessionUpdate::History(_, item) => item.to_string(),
+            SessionUpdate::Globals(_) => panic!("{input}: expected a value"),
+        }
+    }
+
+    /// Processes `input` and checks that it fails.
+    fn fails(sess: &mut Session, input: &str) {
+        assert!(sess.process(parse(input).unwrap()).is_err(), "{input}: expected an error");
+    }
+
+    /// Evaluates `input` in the session, then checks its description and that the description
+    /// evaluates to the same thing again at the top level, with no globals or history in sight.
+    fn roundtrip(sess: &mut Session, input: &str, desc: &str) {
+        check_roundtrip(sess.process(parse(input).unwrap()).unwrap().unwrap(), desc);
+    }
 
     #[test]
     fn test_session() {
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a=$b=10").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a", "$b"]));
-        assert_eq!(sess.process(parse("$a=$a+$b").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
-        assert_eq!(sess.process(parse("clear($b)").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$b"]));
-        assert_eq!(sess.process(parse("$a").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(20)));
-        assert!(sess.process(parse("$b").unwrap()).is_err());
-        assert!(sess.process(parse("$c={$c}").unwrap()).is_err());
-        assert_eq!(sess.process(parse("$a=[1]").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
-        assert!(sess.process(parse("$a@[2]").unwrap()).is_err());
+        assert_eq!(globals(&mut sess, "$a=$b=10"), ["$a", "$b"]);
+        assert_eq!(globals(&mut sess, "$a=$a+$b"), ["$a"]);
+        assert_eq!(globals(&mut sess, "clear($b)"), ["$b"]);
+        assert_eq!(eval(&mut sess, "$a"), "20");
+        assert_eq!(sess.history().len(), 1); // assignments do not count
+        fails(&mut sess, "$b");
+        fails(&mut sess, "$c={$c}");
+        assert_eq!(globals(&mut sess, "$a=[1]"), ["$a"]);
+        fails(&mut sess, "$a@[2]");
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("100").unwrap()).unwrap(), SessionUpdate::History(1, &Item::new_number(100)));
-        assert_eq!(
-            sess.process(parse("% * %1").unwrap()).unwrap(),
-            SessionUpdate::History(2, &Item::new_number(10000))
-        );
-        assert_eq!(
-            sess.process(parse("% + %1").unwrap()).unwrap(),
-            SessionUpdate::History(3, &Item::new_number(10100))
-        );
+        assert_eq!(eval(&mut sess, "100"), "100");
+        assert_eq!(eval(&mut sess, "% * %1"), "10000");
+        assert_eq!(eval(&mut sess, "% + %1"), "10100");
+        assert_eq!(sess.history().len(), 3);
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a={#+#1*#2}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
-        assert_eq!(sess.process(parse("5.$a(6,7)").unwrap()).unwrap().unwrap(), &Item::new_number(47));
-        assert_eq!(sess.process(parse("{5.$a(6,7)}").unwrap()).unwrap().unwrap(), &Item::new_number(47));
-        assert_eq!(sess.process(parse("5.$a@[6,7]").unwrap()).unwrap().unwrap(), &Item::new_number(47));
-        assert_eq!(sess.process(parse("5.{#.$a(#1,#2)}(6,7)").unwrap()).unwrap().unwrap(), &Item::new_number(47));
-        assert_eq!(
-            sess.process(parse("5.{#.$a(#1,#2)}@[6,7]").unwrap())
-                .unwrap()
-                .unwrap(),
-            &Item::new_number(47)
-        );
+        assert_eq!(globals(&mut sess, "$a={#+#1*#2}"), ["$a"]);
+        assert_eq!(eval(&mut sess, "5.$a(6,7)"), "47");
+        assert_eq!(eval(&mut sess, "{5.$a(6,7)}"), "47");
+        assert_eq!(eval(&mut sess, "5.$a@[6,7]"), "47");
+        assert_eq!(eval(&mut sess, "5.{#.$a(#1,#2)}(6,7)"), "47");
+        assert_eq!(eval(&mut sess, "5.{#.$a(#1,#2)}@[6,7]"), "47");
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$a={a}").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
-        assert_eq!(sess.process(parse("with(a=1,{a})").unwrap()).unwrap().unwrap(), &Item::new_number(1));
-        assert!(sess.process(parse("with(a=1,$a)").unwrap()).is_err());
-        assert!(sess.process(parse("$1=1").unwrap()).is_err());
+        assert_eq!(globals(&mut sess, "$a={a}"), ["$a"]);
+        assert_eq!(eval(&mut sess, "with(a=1,{a})"), "1");
+        fails(&mut sess, "with(a=1,$a)");
+        fails(&mut sess, "$1=1");
 
         let mut sess = Session::new();
-        assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(1));
-        assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(2));
-        assert_eq!(sess.process(parse("$a=$#").unwrap()).unwrap(), SessionUpdate::Globals(vec!["$a"]));
-        assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(4));
-        assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
-        assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
+        assert_eq!(eval(&mut sess, "$#"), "1");
+        assert_eq!(eval(&mut sess, "$#"), "2");
+        assert_eq!(globals(&mut sess, "$a=$#"), ["$a"]);
+        assert_eq!(eval(&mut sess, "$#"), "4");
+        assert_eq!(eval(&mut sess, "$a"), "3");
+        assert_eq!(eval(&mut sess, "$a"), "3");
     }
 
     #[test]
     fn test_session_closures() {
-        use crate::base::Describe;
-        use crate::base::check_roundtrip;
-
-        /// Evaluates `input` in the session, then checks its description and that the description
-        /// evaluates to the same thing again at the top level, with no globals or history in sight.
-        fn roundtrip(sess: &mut Session, input: &str, desc: &str) {
-            check_roundtrip(sess.process(parse(input).unwrap()).unwrap().unwrap(), desc);
-        }
-        fn eval(sess: &mut Session, input: &str) -> String {
-            sess.process(parse(input).unwrap()).unwrap().unwrap().to_string()
-        }
-
         let mut sess = Session::new();
         // A global function is closed over the session environment, wherever it is used.
-        sess.process(parse("$g={#+1}").unwrap()).unwrap();
+        assert_eq!(globals(&mut sess, "$g={#+1}"), ["$g"]);
         assert_eq!(eval(&mut sess, "alpha(\"cba\", \"abc\".$g)"), "\"bcd\""); // %1
         roundtrip(&mut sess, "alpha(\"cba\", seq:$g)", "alpha(['c', 'b', 'a'], seq:${#+1})"); // %2
         // ... and stays opaque to the locals of a `with` it is spliced into, even after a round trip.
-        sess.process(parse("$a={#.len}").unwrap()).unwrap();
+        assert_eq!(globals(&mut sess, "$a={#.len}"), ["$a"]);
         roundtrip(&mut sess, "[1]:{with(len={1}, range(3).$a)}", "[1]:{with(len={1}, range(3).${#.len})}"); // %3
         assert_eq!(eval(&mut sess, "%"), "[3]"); // %4
         // History and global values: symbol-free ones are spliced as they are, lazy ones as closures.
@@ -307,20 +315,20 @@ mod tests {
         assert_eq!(eval(&mut sess, "seq:{#+1}"), "[2, 3, 4, 5, 6, ...]"); // %10
         roundtrip(&mut sess, "%10~[1]", "seq:{#+1}~[1]"); // %11
         roundtrip(&mut sess, "seq:{#~%10}", "seq:{#~${seq:{#+1}}}"); // %12
-        sess.process(parse("$v=[seq]").unwrap()).unwrap();
+        assert_eq!(globals(&mut sess, "$v=[seq]"), ["$v"]);
         roundtrip(&mut sess, "seq:{#~$v}", "seq:{#~${[seq]}}"); // %13
-        sess.process(parse("$w=[1, 'a']").unwrap()).unwrap();
+        assert_eq!(globals(&mut sess, "$w=[1, 'a']"), ["$w"]);
         roundtrip(&mut sess, "seq:{#~$w}", "seq:{#~[1, 'a']}"); // %14
         // A value which is in error keeps erroring after the round trip.
         assert!(eval(&mut sess, "seq:{x+#}").contains("<!>")); // %15
         roundtrip(&mut sess, "[1]:{with(x=5, %15)}", "[1]:{with(x=5, ${seq:{x+#}})}"); // %16
         assert!(eval(&mut sess, "%").contains("<!>")); // %17
         // `${...}` written at the prompt may refer to history and globals.
-        sess.process(parse("$n=10").unwrap()).unwrap();
+        assert_eq!(globals(&mut sess, "$n=10"), ["$n"]);
         assert_eq!(eval(&mut sess, "${%8+$n}"), "[11, 12]"); // %18
         assert_eq!(eval(&mut sess, "alpha(\"cba\", ${%8:{'a'+#}})"), "['b', 'c']"); // %19
         // A `${...}` right-hand side is a closure already and is stored as is.
-        sess.process(parse("$h=${#+1}").unwrap()).unwrap();
+        assert_eq!(globals(&mut sess, "$h=${#+1}"), ["$h"]);
         assert_eq!(eval(&mut sess, "1.$h"), "2"); // %20
         assert_eq!(sess.vars().get("$h").unwrap().describe(), "${#+1}");
         assert_eq!(sess.vars().get("$g").unwrap().describe(), "${#+1}");
