@@ -31,7 +31,8 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("alpha", eval_alpha, r#"
 Without arguments: returns the current alphabet as a stream of characters.
 With arguments: changes the alphabet for the evaluation of `expr`.
-The new alphabet can be given as a list of characters, or a string.
+The new alphabet can be given as a list of characters, or a string. An empty one restores the default.
+* Functions defined by `?with` keep the alphabet in effect where they were defined. Session globals and blocks `${...}` use the default alphabet.
 = ?
 = ?(stream, expr)
 = ?(string, expr)
@@ -40,6 +41,9 @@ The new alphabet can be given as a list of characters, or a string.
 > ?(['α', 'β', 'γ'], ["αβα", "γγ", "γαβ", "β"].?sort) => ["αβα", "β", "γαβ", "γγ"]
 > ["αβα", "γγ", "γαβ", "β"].?sort => !not in alphabet
 > ?("xyz", 'x' + 'x') => 'y'
+> ?("xyz", 'z' + 1) => 'x'
+> ?("xyz", ?([], 'z' + 1)) => 'a'
+> ?("xyz", ?with(f={#+1}, ?([], 'z'.f))) => 'x' ; `f` was defined under "xyz"
 : ord
 : chr
 : with

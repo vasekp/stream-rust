@@ -50,9 +50,13 @@ impl Session {
         let rhs = if let Expr::Eval(node) = &*rhs
             && node.source.is_none()
             && node.args.is_empty()
-            && let Head::Block { body, .. } = &node.head
+            && let Some(closure) = match &node.head {
+                Head::Block(body) => Some(Closure::new(body.clone(), self.env.clone())),
+                Head::Closure(closure) => Some(closure.clone()),
+                _ => None,
+            }
         {
-            Rhs::Function(body.clone())
+            Rhs::Function(closure)
         } else {
             Rhs::Value(rhs.eval(&self.env)?)
         };
@@ -115,7 +119,7 @@ impl Session {
                     self.hist
                         .get(ix - 1)
                         .cloned()
-                        .map(Expr::from)
+                        .map(splice_value)
                         .ok_or(StreamError::with_expr("history item does not exist", expr))?,
                 )),
                 Some(0) => Err(StreamError::with_expr("invalid history index", expr)),
@@ -123,7 +127,7 @@ impl Session {
                     self.hist
                         .last()
                         .cloned()
-                        .map(Expr::from)
+                        .map(splice_value)
                         .ok_or(StreamError::with_expr("history is empty", expr))?,
                 )),
             },
@@ -136,20 +140,25 @@ impl Session {
                     match self.vars.get(sym) {
                         Some(Rhs::Value(item)) => {
                             return if node.source.is_none() && node.args.is_empty() {
-                                Ok(Cow::Owned(Expr::Imm(item.clone())))
+                                Ok(Cow::Owned(splice_value(item.clone())))
                             } else {
                                 Err(StreamError::with_expr("no source or arguments allowed", expr))
                             };
                         },
-                        Some(Rhs::Function(body)) => {
-                            nnode.to_mut().head = Head::Block { body: body.clone(), reset_env: true };
+                        Some(Rhs::Function(closure)) => {
+                            nnode.to_mut().head = Head::Closure(closure.clone());
                         },
                         None => return Err(StreamError::with_expr("variable not defined", expr)),
                     }
-                } else if let Head::Block { body, reset_env } = &node.head
+                } else if let Head::Block(body) = &node.head
                     && let Cow::Owned(new_body) = self.apply_context(body)?
                 {
-                    nnode.to_mut().head = Head::Block { body: new_body, reset_env: *reset_env };
+                    nnode.to_mut().head = Head::Block(new_body);
+                } else if let Head::Closure(closure) = &node.head
+                    && let Cow::Owned(new_body) = self.apply_context(closure.body())?
+                {
+                    // `${...}` written at the prompt may itself refer to history or globals.
+                    nnode.to_mut().head = Head::Closure(Closure::new(new_body, closure.env().clone()));
                 }
                 if let Some(source) = &node.source
                     && let Cow::Owned(new_source) = self.apply_context(source)?
@@ -264,5 +273,56 @@ mod tests {
         assert_eq!(sess.process(parse("$#").unwrap()).unwrap().unwrap(), &Item::new_number(4));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
         assert_eq!(sess.process(parse("$a").unwrap()).unwrap().unwrap(), &Item::new_number(3));
+    }
+
+    #[test]
+    fn test_session_closures() {
+        use crate::base::Describe;
+        use crate::base::check_roundtrip;
+
+        /// Evaluates `input` in the session, then checks its description and that the description
+        /// evaluates to the same thing again at the top level, with no globals or history in sight.
+        fn roundtrip(sess: &mut Session, input: &str, desc: &str) {
+            check_roundtrip(sess.process(parse(input).unwrap()).unwrap().unwrap(), desc);
+        }
+        fn eval(sess: &mut Session, input: &str) -> String {
+            sess.process(parse(input).unwrap()).unwrap().unwrap().to_string()
+        }
+
+        let mut sess = Session::new();
+        // A global function is closed over the session environment, wherever it is used.
+        sess.process(parse("$g={#+1}").unwrap()).unwrap();
+        assert_eq!(eval(&mut sess, "alpha(\"cba\", \"abc\".$g)"), "\"bcd\""); // %1
+        roundtrip(&mut sess, "alpha(\"cba\", seq:$g)", "alpha(['c', 'b', 'a'], seq:${#+1})"); // %2
+        // ... and stays opaque to the locals of a `with` it is spliced into, even after a round trip.
+        sess.process(parse("$a={#.len}").unwrap()).unwrap();
+        roundtrip(&mut sess, "[1]:{with(len={1}, range(3).$a)}", "[1]:{with(len={1}, range(3).${#.len})}"); // %3
+        assert_eq!(eval(&mut sess, "%"), "[3]"); // %4
+        // History and global values: symbol-free ones are spliced as they are, lazy ones as closures.
+        assert_eq!(eval(&mut sess, "[[1], [2, 3]]:len"), "[1, 2]"); // %5
+        roundtrip(&mut sess, "[1]:{with(len={1}, %5)}", "[1]:{with(len={1}, ${[[1], [2, 3]]:len})}"); // %6
+        assert_eq!(eval(&mut sess, "%"), "[[1, 2]]"); // %7
+        assert_eq!(eval(&mut sess, "[1, 2]"), "[1, 2]"); // %8
+        roundtrip(&mut sess, "seq:{#~%8}", "seq:{#~[1, 2]}"); // %9
+        assert_eq!(eval(&mut sess, "seq:{#+1}"), "[2, 3, 4, 5, 6, ...]"); // %10
+        roundtrip(&mut sess, "%10~[1]", "seq:{#+1}~[1]"); // %11
+        roundtrip(&mut sess, "seq:{#~%10}", "seq:{#~${seq:{#+1}}}"); // %12
+        sess.process(parse("$v=[seq]").unwrap()).unwrap();
+        roundtrip(&mut sess, "seq:{#~$v}", "seq:{#~${[seq]}}"); // %13
+        sess.process(parse("$w=[1, 'a']").unwrap()).unwrap();
+        roundtrip(&mut sess, "seq:{#~$w}", "seq:{#~[1, 'a']}"); // %14
+        // A value which is in error keeps erroring after the round trip.
+        assert!(eval(&mut sess, "seq:{x+#}").contains("<!>")); // %15
+        roundtrip(&mut sess, "[1]:{with(x=5, %15)}", "[1]:{with(x=5, ${seq:{x+#}})}"); // %16
+        assert!(eval(&mut sess, "%").contains("<!>")); // %17
+        // `${...}` written at the prompt may refer to history and globals.
+        sess.process(parse("$n=10").unwrap()).unwrap();
+        assert_eq!(eval(&mut sess, "${%8+$n}"), "[11, 12]"); // %18
+        assert_eq!(eval(&mut sess, "alpha(\"cba\", ${%8:{'a'+#}})"), "['b', 'c']"); // %19
+        // A `${...}` right-hand side is a closure already and is stored as is.
+        sess.process(parse("$h=${#+1}").unwrap()).unwrap();
+        assert_eq!(eval(&mut sess, "1.$h"), "2"); // %20
+        assert_eq!(sess.vars().get("$h").unwrap().describe(), "${#+1}");
+        assert_eq!(sess.vars().get("$g").unwrap().describe(), "${#+1}");
     }
 }

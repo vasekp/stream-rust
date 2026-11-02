@@ -22,6 +22,13 @@ pub trait Stream<I = Item>: Describe {
     /// the entire stream. See [`Length`] for the possible return values. The return value must be
     /// consistent with the actual behaviour of the stream.
     fn len(&self) -> Length;
+
+    /// If this stream is a literal list of items (or a literal string), returns them. Used to tell
+    /// values whose description is free of symbols from lazy ones (see
+    /// [`splice_value()`](crate::base::splice_value)).
+    fn as_list(&self) -> Option<&[I]> {
+        None
+    }
 }
 
 impl<I: ItemType> dyn Stream<I> {

@@ -53,9 +53,10 @@ impl<'str> Parser<'str> {
         }))
     }
 
-    fn read_block_link(&mut self, open: &'str str, reset_env: bool) -> Result<Link, ParseError<'str>> {
+    fn read_block_link(&mut self, open: &'str str, closed: bool) -> Result<Link, ParseError<'str>> {
         use TokenClass as TC;
-        let head = Head::Block { body: self.read_arg(open)?, reset_env };
+        let body = self.read_arg(open)?;
+        let head = if closed { Head::Closure(Closure::new(body, Env::default())) } else { Head::Block(body) };
         Ok(match self.tk.peek()? {
             Some(&Token(TC::Open, bkt @ "(")) => {
                 self.tk.next();
@@ -505,7 +506,7 @@ fn test_parser() {
     assert_eq!(
         parse("1.${2}(3)"),
         Ok(Expr::new_number(1)
-            .chain(Link::new(Head::Block { body: Expr::new_number(2), reset_env: true }, vec![Expr::new_number(3)])))
+            .chain(Link::new(Head::Closure(Closure::new(Expr::new_number(2), Env::default())), vec![Expr::new_number(3)])))
     );
     assert!(parse("${}").is_err());
 

@@ -13,10 +13,14 @@ pub enum Head {
     Symbol(&'static str),
     /// An operator, interned. The operands are the `args`, the `source` is never set.
     Oper(&'static str),
-    /// An expression used in place of an identifier. With `reset_env` set (written `${body}`,
-    /// used for functions defined at the session level), the body is evaluated in the default
-    /// environment instead of the one in effect at the call site.
-    Block { body: Expr, reset_env: bool },
+    /// An expression used in place of an identifier (written `{body}`). The body is evaluated in
+    /// the environment in effect at the call site, and local variables of an enclosing `with` are
+    /// substituted into it.
+    Block(Expr),
+    /// A [`Closure`]: a body together with the environment it was defined in (written `${body}`
+    /// for the default environment; also what a function variable or a session global is
+    /// substituted as). Opaque to local variables.
+    Closure(Closure),
     /// A language construct.
     Lang(LangItem),
 }
@@ -44,19 +48,19 @@ impl From<LangItem> for Head {
 
 impl From<Expr> for Head {
     fn from(expr: Expr) -> Head {
-        Head::Block { body: expr, reset_env: false }
+        Head::Block(expr)
     }
 }
 
 impl From<Item> for Head {
     fn from(expr: Item) -> Head {
-        Head::Block { body: expr.into(), reset_env: false }
+        Head::Block(expr.into())
     }
 }
 
 impl From<Node> for Head {
     fn from(expr: Node) -> Head {
-        Head::Block { body: expr.into(), reset_env: false }
+        Head::Block(expr.into())
     }
 }
 

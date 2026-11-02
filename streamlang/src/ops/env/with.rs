@@ -40,11 +40,15 @@ fn eval_with(node: &Node, env: &Env) -> SResult<Item> {
         let body = replace_inner(body, &replace)?;
         let rhs = Rc::new(
             if let Expr::Eval(node) = &*body
-                && let Head::Block { body, .. } = &node.head
                 && node.source.is_none()
                 && node.args.is_empty()
+                && let Some(closure) = match &node.head {
+                    Head::Block(body) => Some(Closure::new(body.clone(), env.clone())),
+                    Head::Closure(closure) => Some(closure.clone()),
+                    _ => None,
+                }
             {
-                Rhs::Function(body.clone())
+                Rhs::Function(closure)
             } else {
                 Rhs::Value(body.eval(env)?)
             },
@@ -103,21 +107,22 @@ fn replace_inner<'a>(expr: &'a Expr, replace: &'_ HashMap<&'_ str, Rc<Rhs>>) -> 
             Cow::Owned(new_node) => Ok(Cow::Owned(new_node.into())),
         };
     }
-    if let Head::Block { body, reset_env: false } = &node.head
+    // A closure (`${...}`, or an already substituted function or value) is opaque to locals.
+    if let Head::Block(body) = &node.head
         && let Cow::Owned(new_body) = replace_inner(body, replace)?
     {
-        new_node.to_mut().head = Head::Block { body: new_body, reset_env: false };
+        new_node.to_mut().head = Head::Block(new_body);
     }
     if let Head::Symbol(sym) = node.head {
         match replace.get(sym).map(|rc| (**rc).clone()) {
             Some(Rhs::Value(item)) => {
                 return if node.source.is_none() && node.args.is_empty() {
-                    Ok(Cow::Owned(item.into()))
+                    Ok(Cow::Owned(splice_value(item)))
                 } else {
                     Err(StreamError::with_expr("no source or arguments allowed", node))
                 };
             },
-            Some(Rhs::Function(body)) => new_node.to_mut().head = Head::Block { body, reset_env: true },
+            Some(Rhs::Function(closure)) => new_node.to_mut().head = Head::Closure(closure),
             None => (),
         }
     }
@@ -143,11 +148,16 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Defines or redefines symbols (local variables) for the evaluation of `expr`.
 Both values and functions can be assigned: expressions enclosed in `{}` can refer to `#, #1, ...` and are evaluated only when used.
 * The assignments are processed from left to right, so one assignment can already be used in defining the next.
+* Scoping is lexical: a function body sees the variables and the alphabet in effect where it was defined, not where it is used.
+* Blocks `${...}` do not see local variables and use the default alphabet, which makes them the way to reach a keyword hidden by a local.
 = ?(var1=value1, ..., expr)
 > ?(str="input", str~", "~str) => "input, input"
 > ?(func={#.isodd & #>=3}, (1..5).?filter(func)) => [3, 5]
 > ?(a = [3, 4, 5], b = a + 1, b - a) => [1, 1, 1]
 > ?(seq=[1, 2, 3], seq) => [1, 2, 3] ; can redefine existing keywords
+> ?(a=1, b={a+#}, a=10, 2.b) => 3 ; `b` keeps the `a` it was defined with
+> ?(len={1}, [1, 2].len) => 1
+> ?(len={1}, ${[1, 2].len}) => 2
 : alpha
 "#);
 }
@@ -194,5 +204,53 @@ mod tests {
 
         test_describe!("1.nest{with(a={#+1},#.a)}[3]" => "4");
         test_describe!("[1].nest{with(a={#+1},#:a)}[2]" => "[1]:${#+1}:${#+1}");
+    }
+
+    #[test]
+    fn test_with_scoping() {
+        use super::*;
+
+        // A function sees the alphabet in effect where it was defined, not where it is used.
+        test_eval!("alpha(\"cba\", with(f={#+1}, \"abc\".f))" => "\"cab\"");
+        test_eval!("with(f={#+1}, alpha(\"cba\", \"abc\".f))" => "\"bcd\"");
+        test_eval!("with(f={#+1}, alpha(\"cba\", with(g={#.f}, \"abc\".g)))" => "\"bcd\"");
+        // The source and arguments of a call belong to the call site.
+        test_eval!("with(f={#}, alpha(\"cba\", (\"a\"+1).f))" => "\"c\"");
+        test_eval!("alpha(\"cba\", with(f={#}, (\"a\"+1).f))" => "\"c\"");
+        test_eval!("with(f={#+#1}, alpha(\"cba\", 'a'.f('a'+1)))" => "'d'");
+        // A `${...}` right-hand side keeps the default environment; `{...}` captures the current one.
+        test_eval!("with(a=${#+#1}, 1.a(2))" => "3");
+        test_eval!("alpha(\"cba\", with(a=${'a'+#}, 1.a))" => "'b'");
+        test_eval!("alpha(\"cba\", with(a={'a'+#}, 1.a))" => "'c'");
+        // A `${...}` block is opaque to locals and uses the default alphabet.
+        test_eval!("with(len={1}, ${range(3).len})" => "3");
+        test_eval!("alpha(\"cba\", with(f={1}, ${['a', 'c', 'b'].sort}))" => "['a', 'b', 'c']");
+        test_eval!("alpha(\"cba\", alpha([], ['a', 'c', 'b'].sort))" => "['a', 'b', 'c']");
+
+        // A closure describes relative to the default environment, wherever it appears. (The outer
+        // `alpha(...)` comes from `map` holding its own environment; it is redundant here.)
+        test_roundtrip!("alpha(\"cba\", with(f={#+1}, seq:f))" => "alpha(['c', 'b', 'a'], seq:${alpha(['c', 'b', 'a'], #+1)})");
+        test_roundtrip!("with(f={#+1}, alpha(\"cba\", seq:f))" => "alpha(['c', 'b', 'a'], seq:${#+1})");
+        test_roundtrip!("alpha(\"cba\", seq:{'a'+#})" => "alpha(['c', 'b', 'a'], seq:{'a'+#})");
+        test_roundtrip!("alpha(\"cba\", seq:ucase)" => "alpha(['c', 'b', 'a'], seq:ucase)");
+        test_roundtrip!("alpha(\"cba\", with(f={'a'+#}, [1]:{with(x=#, x.f)}))" => "alpha(['c', 'b', 'a'], [1]:{with(x=#, x.${alpha(['c', 'b', 'a'], 'a'+#)})})");
+
+        // Values whose description is free of symbols are substituted as they are; any other value
+        // is substituted as a closure, so that a `with` in the description cannot capture it.
+        test_roundtrip!("with(n=3, seq:{#*n})" => "seq:{#*3}");
+        test_roundtrip!("with(a=[1, 2], seq:{#~a})" => "seq:{#~[1, 2]}");
+        test_roundtrip!("with(s=\"ab\", seq:{#~s})" => "seq:{#~\"ab\"}");
+        test_roundtrip!("with(a=[[1], 'a', true], seq:{#~a})" => "seq:{#~[[1], 'a', true]}");
+        test_roundtrip!("with(a=[seq], seq:{#~a})" => "seq:{#~${[seq]}}");
+        test_roundtrip!("with(a=seq:{#+1}, seq:{#~a})" => "seq:{#~${seq:{#+1}}}");
+        test_roundtrip!("with(s=\"ab\".ucase, seq:{#~s})" => "seq:{#~${\"ab\".ucase}}");
+        test_roundtrip!("with(a=seq:{#+1}, a~[1])" => "seq:{#+1}~[1]");
+        // ... including when the value is in error, which must survive the round trip.
+        test_roundtrip!("with(v=seq:{x+#}, [1]:{with(x=5, v)})" => "[1]:{with(x=5, ${seq:{x+#}})}");
+        test_eval!("with(v=seq:{x+#}, [1]:{with(x=5, v)})" : 5 => "[[<!>");
+        test_eval!("[1]:{with(x=5, seq:{x+#})}" : 5 => "[[6, 7, 8, 9, ...]]");
+        test_roundtrip!("with(v=[[1], [2, 3]]:len, [1]:{with(len={1}, v)})" => "[1]:{with(len={1}, ${[[1], [2, 3]]:len})}");
+        test_eval!("with(v=[[1], [2, 3]]:len, [1]:{with(len={1}, v)})" => "[[1, 2]]");
+        test_eval!("[1]:{with(len={1}, [[1], [2, 3]]:len)}" => "[[1, 1]]");
     }
 }

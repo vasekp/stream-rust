@@ -23,6 +23,10 @@ where List<I>: Describe
     fn len(&self) -> Length {
         Length::from(self.0.len())
     }
+
+    fn as_list(&self) -> Option<&[I]> {
+        Some(&self.0)
+    }
 }
 
 impl Describe for List<Item> {

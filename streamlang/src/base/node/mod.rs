@@ -35,8 +35,9 @@ impl Node<Expr> {
     /// A [`Head::Symbol`] or [`Head::Oper`] is looked up in the global symbol table and its
     /// constructor is called with this node and `env`; a [`Head::Lang`] is handled the same way
     /// through its reserved symbol. For a [`Head::Block`], the source and arguments are evaluated
-    /// first, substituted for `#`, `#1`, ... in the body, and the body is evaluated in turn (in
-    /// the default environment if `reset_env` is set).
+    /// first, substituted for `#`, `#1`, ... in the body, and the body is evaluated in turn. For a
+    /// [`Head::Closure`] the same happens, except that the body is evaluated in the closure's own
+    /// environment; the source and arguments still belong to the call site and use `env`.
     ///
     /// Variables are not handled here. Local ones are substituted into the body by `with` before
     /// it is evaluated; session globals and history references by
@@ -57,11 +58,15 @@ impl Node<Expr> {
                 let ctor = Symbols::find_ctor(lang.symbol()).expect("all LangItem symbols should exist");
                 ctor(self, env)
             },
-            Head::Block { body, reset_env } => {
-                let env = if *reset_env { Env::default() } else { env.clone() };
-                let source = self.source.as_ref().map(|expr| expr.eval(&env)).transpose()?;
-                let args = self.args.iter().map(|expr| expr.eval(&env)).collect::<SResult<_>>()?;
-                body.apply(&source, &args)?.eval(&env)
+            Head::Block(body) => {
+                let source = self.source.as_ref().map(|expr| expr.eval(env)).transpose()?;
+                let args = self.args.iter().map(|expr| expr.eval(env)).collect::<SResult<_>>()?;
+                body.apply(&source, &args)?.eval(env)
+            },
+            Head::Closure(closure) => {
+                let source = self.source.as_ref().map(|expr| expr.eval(env)).transpose()?;
+                let args = self.args.iter().map(|expr| expr.eval(env)).collect::<SResult<_>>()?;
+                closure.call(&source, &args)
             },
         })();
         tracing::log(tracing::Event::Leave(&res));

@@ -2,7 +2,8 @@ use crate::base::*;
 use std::collections::HashMap;
 
 /// The notion of alphabet ordering in Stream.
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum Alphabet {
     /// Plain English 26-letter alphabet.
     #[default]

@@ -20,6 +20,24 @@ macro_rules! test_describe {
     };
 }
 
+/// Checks that the description of the result of `$input` is `$output`, and that evaluating that
+/// description again gives a result which prints and describes the same. See [`check_roundtrip()`].
+macro_rules! test_roundtrip {
+    ($input:expr => $output:literal) => {
+        check_roundtrip(&eval!($input), $output);
+    };
+}
+
+/// Checks that `item` describes as `desc`, and that evaluating `desc` again (in the default
+/// environment, which is where a description is re-read) gives an item which prints and describes
+/// the same.
+pub(crate) fn check_roundtrip(item: &Item, desc: &str) {
+    assert_eq!(item.describe(), desc);
+    let again = crate::parser::parse(desc).unwrap().eval_default().unwrap();
+    assert_eq!(again.to_string(), item.to_string(), "re-evaluating {desc:?}");
+    assert_eq!(again.describe(), desc);
+}
+
 macro_rules! test_len {
     ($input:expr => $len:literal) => {
         test_len_exact($input, $len);
@@ -36,6 +54,7 @@ macro_rules! test_len {
 
 pub(crate) use test_eval;
 pub(crate) use test_describe;
+pub(crate) use test_roundtrip;
 pub(crate) use test_len;
 
 #[track_caller]
