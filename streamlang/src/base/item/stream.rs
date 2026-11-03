@@ -25,7 +25,7 @@ pub trait Stream<I = Item>: Describe {
 
     /// If this stream is a literal list of items (or a literal string), returns them. Used to tell
     /// values whose description is free of symbols from lazy ones (see
-    /// [`splice_value()`](crate::base::splice_value)).
+    /// `splice_value()` in `base/closure.rs`).
     fn as_list(&self) -> Option<&[I]> {
         None
     }

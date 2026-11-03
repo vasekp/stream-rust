@@ -26,7 +26,7 @@ thread_local! {
 /// Dropping the guard restores the tracer installed before, if any. Evaluation outside any such
 /// scope is not traced.
 ///
-/// The tracer is ambient state, like the interrupt flag ([`stop`](crate::base::stop)), not part of
+/// The tracer is ambient state, like the interrupt flag ([`stop`]), not part of
 /// an [`Env`]: it belongs to whoever drives the evaluation, not to the expressions being evaluated.
 /// [`Session::process()`](crate::session::Session::process) installs the session's tracer for the
 /// duration of each call.

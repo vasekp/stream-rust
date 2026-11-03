@@ -8,7 +8,15 @@ use std::borrow::Cow;
 /// This is what an op which evaluates a user-supplied function lazily keeps, instead of the node
 /// and an environment separately. The function is applied by [`call()`](Self::call), which
 /// completes the node with a source and arguments and evaluates it in the captured environment,
-/// so that nothing has to be supplied at the time of the call.
+/// so that nothing has to be supplied at the time of the call (iteration has no environment of
+/// its own, and passing one would invite passing the wrong one).
+///
+/// Unlike a [`Closure`], which holds a *body* with placeholders, this holds a *node* to be
+/// completed, because what follows `seq:` may be a symbol or a call as well as a block. An op and a
+/// function written in place always share one environment, so the only way a `Function` holds an
+/// environment other than its op's is through a closure head, which carries its own; that is why
+/// `DescribeBuilder::new_with_func()` adds the
+/// `alpha(...)` wrapper for the op only when the function is not a closure.
 #[derive(Clone)]
 pub struct Function {
     node: Rc<Node>,
