@@ -3,11 +3,7 @@ use crate::base::*;
 fn eval_while(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let cond = node.only_arg_checked()?.as_func()?;
-    Ok(Item::new_stream(While {
-        cond: Function::new(cond, env),
-        source: stm,
-        head: node.head.clone(),
-    }))
+    Ok(Item::new_stream(While { cond: Function::new(cond, env), source: stm, head: node.head.clone() }))
 }
 
 struct While {

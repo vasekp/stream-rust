@@ -3,16 +3,12 @@ use crate::base::*;
 fn eval_consec(node: &Node, env: &Env) -> SResult<Item> {
     let func = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
-        Item::Stream(stm) => Ok(Item::new_stream(Consec {
-            head: node.head.clone(),
-            source: stm,
-            func: Function::new(func, env),
-        })),
-        Item::String(stm) => Ok(Item::new_stream(Consec {
-            head: node.head.clone(),
-            source: stm,
-            func: Function::new(func, env),
-        })),
+        Item::Stream(stm) => {
+            Ok(Item::new_stream(Consec { head: node.head.clone(), source: stm, func: Function::new(func, env) }))
+        },
+        Item::String(stm) => {
+            Ok(Item::new_stream(Consec { head: node.head.clone(), source: stm, func: Function::new(func, env) }))
+        },
         _ => Err(StreamError::usage(&node.head)),
     }
 }

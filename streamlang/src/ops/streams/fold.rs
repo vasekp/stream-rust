@@ -3,11 +3,7 @@ use crate::base::*;
 fn eval_fold(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = node.only_arg_checked()?.as_func()?;
-    Ok(Item::new_stream(Fold {
-        head: node.head.clone(),
-        source: stm,
-        func: Function::new(func, env),
-    }))
+    Ok(Item::new_stream(Fold { head: node.head.clone(), source: stm, func: Function::new(func, env) }))
 }
 
 struct Fold {

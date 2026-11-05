@@ -20,7 +20,13 @@ pub struct Session {
 impl Session {
     /// Creates a new `Session` with empty history and variables and the default environment.
     pub fn new() -> Session {
-        Session { hist: Vec::new(), vars: HashMap::new(), env: Default::default(), counter: 1, tracer: None }
+        Session {
+            hist: Vec::new(),
+            vars: HashMap::new(),
+            env: Default::default(),
+            counter: 1,
+            tracer: None,
+        }
     }
 
     /// A call to `eval` evaluates an [`Expr`] into an [`Item`]. This is potentially
@@ -54,8 +60,7 @@ impl Session {
                 Head::Block(body) => Some(Closure::new(body.clone(), self.env.clone())),
                 Head::Closure(closure) => Some(closure.clone()),
                 _ => None,
-            }
-        {
+            } {
             Rhs::Function(closure)
         } else {
             Rhs::Value(rhs.eval(&self.env)?)

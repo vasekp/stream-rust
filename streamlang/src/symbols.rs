@@ -145,7 +145,10 @@ mod tests {
         };
         if !success {
             match (ex.output, res) {
-                (Err(msg), Err(err)) => println!("{sym}: example {input:?} gives error {:?}, documented as {msg:?}", err.reason().to_string()),
+                (Err(msg), Err(err)) => println!(
+                    "{sym}: example {input:?} gives error {:?}, documented as {msg:?}",
+                    err.reason().to_string()
+                ),
                 _ => println!("{sym}: failed example: {input:?}"),
             }
             Err(DocError)

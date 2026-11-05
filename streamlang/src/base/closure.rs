@@ -71,7 +71,11 @@ pub(crate) fn splice_value(item: Item) -> Expr {
     if is_symbol_free(&item) {
         Expr::Imm(item)
     } else {
-        Expr::Eval(Rc::new(Node { head: Head::Closure(Closure::new(Expr::Imm(item), Env::default())), source: None, args: vec![] }))
+        Expr::Eval(Rc::new(Node {
+            head: Head::Closure(Closure::new(Expr::Imm(item), Env::default())),
+            source: None,
+            args: vec![],
+        }))
     }
 }
 

@@ -6,11 +6,9 @@ fn eval_map(node: &Node, env: &Env) -> SResult<Item> {
         Item::Stream(source) => {
             Ok(Item::new_stream(Map { head: node.head.clone(), source, body: Function::new(body, env) }))
         },
-        Item::String(source) => Ok(Item::new_string(CharMap {
-            head: node.head.clone(),
-            source,
-            body: Function::new(body, env),
-        })),
+        Item::String(source) => {
+            Ok(Item::new_string(CharMap { head: node.head.clone(), source, body: Function::new(body, env) }))
+        },
         _ => Err("expected string or stream".into()),
     }
 }
@@ -33,11 +31,7 @@ impl Describe for Map {
 impl Stream for Map {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
         let body = self.body.clone();
-        Box::new(SMap::new(
-            &self.source,
-            move |item| body.call_source(item),
-            &self,
-        ))
+        Box::new(SMap::new(&self.source, move |item| body.call_source(item), &self))
     }
 
     fn len(&self) -> Length {
@@ -63,11 +57,7 @@ impl Describe for CharMap {
 impl Stream<Char> for CharMap {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
         let body = self.body.clone();
-        Box::new(SMap::new(
-            &self.source,
-            move |ch| body.call_source(Item::Char(ch)).and_then(Item::into_char),
-            &self,
-        ))
+        Box::new(SMap::new(&self.source, move |ch| body.call_source(Item::Char(ch)).and_then(Item::into_char), &self))
     }
 
     fn len(&self) -> Length {

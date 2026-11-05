@@ -246,9 +246,13 @@ impl Item {
                 loop {
                     check_stop!();
                     match (it1.next()?, it2.next()?) {
-                        (Some(x), Some(y)) => if !x.try_eq(&y)? { return Ok(false); },
+                        (Some(x), Some(y)) => {
+                            if !x.try_eq(&y)? {
+                                return Ok(false);
+                            }
+                        },
                         (None, None) => return Ok(true),
-                        _ => return Ok(false)
+                        _ => return Ok(false),
                     }
                 }
             },
@@ -263,9 +267,13 @@ impl Item {
                 loop {
                     check_stop!();
                     match (it1.next()?, it2.next()?) {
-                        (Some(x), Some(y)) => if x != y { return Ok(false); },
+                        (Some(x), Some(y)) => {
+                            if x != y {
+                                return Ok(false);
+                            }
+                        },
                         (None, None) => return Ok(true),
-                        _ => return Ok(false)
+                        _ => return Ok(false),
                     }
                 }
             },

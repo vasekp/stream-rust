@@ -506,7 +506,9 @@ fn test_parser() {
     assert_eq!(
         parse("1.${2}(3)"),
         Ok(Expr::new_number(1)
-            .chain(Link::new(Head::Closure(Closure::new(Expr::new_number(2), Env::default())), vec![Expr::new_number(3)])))
+            .chain(Link::new(Head::Closure(Closure::new(Expr::new_number(2), Env::default())), vec![
+                Expr::new_number(3)
+            ])))
     );
     assert!(parse("${}").is_err());
 

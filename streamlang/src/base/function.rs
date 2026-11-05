@@ -43,7 +43,11 @@ impl Function {
             Some(source) => Cow::Owned(self.node.with_source(source.into())?),
             None => Cow::Borrowed(&*self.node),
         };
-        let node = if args.is_empty() { node } else { Cow::Owned(node.with_args(args.into_iter().map(Expr::from).collect())?) };
+        let node = if args.is_empty() {
+            node
+        } else {
+            Cow::Owned(node.with_args(args.into_iter().map(Expr::from).collect())?)
+        };
         node.eval(&self.env)
     }
 

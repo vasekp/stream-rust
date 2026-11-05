@@ -35,7 +35,11 @@ fn eval_nest(node: &Node, env: &Env) -> SResult<Item> {
             body: Function::new(body, env),
         }))
     } else if !body.args.is_empty() && node.source.is_none() {
-        let init = body.args.iter().map(|arg| arg.eval(env)).collect::<SResult<Vec<_>>>()?;
+        let init = body
+            .args
+            .iter()
+            .map(|arg| arg.eval(env))
+            .collect::<SResult<Vec<_>>>()?;
         let bare = Rc::new(Node { head: body.head.clone(), source: None, args: vec![] });
         Ok(Item::new_stream(NestArgs { head: node.head.clone(), body: Function::new(&bare, env), init }))
     } else {

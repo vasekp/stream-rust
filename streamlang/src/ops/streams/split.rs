@@ -3,16 +3,12 @@ use crate::base::*;
 fn eval_split(node: &Node, env: &Env) -> SResult<Item> {
     let cond = node.only_arg_checked()?.as_func()?;
     match node.source_checked()?.eval(env)? {
-        Item::Stream(stm) => Ok(Item::new_stream(Split {
-            cond: Function::new(cond, env),
-            source: stm,
-            head: node.head.clone(),
-        })),
-        Item::String(stm) => Ok(Item::new_stream(Split {
-            cond: Function::new(cond, env),
-            source: stm,
-            head: node.head.clone(),
-        })),
+        Item::Stream(stm) => {
+            Ok(Item::new_stream(Split { cond: Function::new(cond, env), source: stm, head: node.head.clone() }))
+        },
+        Item::String(stm) => {
+            Ok(Item::new_stream(Split { cond: Function::new(cond, env), source: stm, head: node.head.clone() }))
+        },
         _ => Err(StreamError::usage(&node.head)),
     }
 }
