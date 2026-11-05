@@ -80,29 +80,36 @@ const TEST: u32 = 5;
 
 #[track_caller]
 fn test_advance_impl<I: ItemType + PartialEq + Debug>(stm: &Rc<dyn Stream<I>>) -> SResult<()> {
-    let (mut i1, mut i2) = (stm.iter(), stm.iter());
-    assert_eq!(
-        i1.next(),
-        match i2.advance(&UNumber::zero())? {
-            Some(_) => Ok(None),
-            None => i2.next(), // same None, same element or same error
-        },
-        "advance(0) = no-op on fresh iterator"
-    );
+    'a: for n in 0..TEST {
+        let (mut i1, mut i2) = (stm.iter(), stm.iter());
+        match i1.advance(&UNumber::from(n))? {
+            Some(rem) => {
+                let rem = u32::try_from(rem).expect("advance({n}) -> {rem} larger than u32");
+                for m in 0..(n - rem) {
+                    // checks for rem <= n in test
+                    match i2.next() {
+                        Ok(Some(_)) => (),
+                        Err(_) => continue 'a,
+                        Ok(None) => panic!("advance({n}) -> {rem} but stream ended after {m}"),
+                    }
+                }
+                assert_eq!(i2.next()?, None, "advance({n}) -> {rem} but stream did not end");
+            },
+            None => {
+                for m in 0..n {
+                    match i2.next() {
+                        Ok(Some(_)) => (),
+                        Err(_) => continue 'a,
+                        Ok(None) => panic!("advance({n}) -> None but stream ended at {m}"),
+                    }
+                }
+                assert_eq!(i1.next()?, i2.next()?, "next() after advance({n}) -> None");
+            },
+        }
+    }
 
     if !stm.is_empty()? {
         assert_ne!(stm.iter().next()?, None, "first next() if !is_empty()"); // panics if the first item is Err
-
-        let (mut i1, mut i2) = (stm.iter(), stm.iter());
-        i1.next()?;
-        assert_eq!(
-            i1.next(),
-            match i2.advance(&UNumber::one())? {
-                Some(_) => Ok(None),
-                None => i2.next(),
-            },
-            "advance(1) = next() on fresh iterator"
-        );
 
         match stm.len() {
             Length::Exact(len) => test_advance_exact_impl(stm, len)?,
