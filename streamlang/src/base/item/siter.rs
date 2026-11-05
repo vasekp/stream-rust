@@ -27,6 +27,19 @@ pub trait SIterator<I = Item> {
     /// without remainder, but that `next()` should not be called again. If `Ok(None)` is returned
     /// in such case, `next()` may be called but must return `Ok(None)` for consistency.
     ///
+    /// # Contract
+    ///
+    /// Position and remainder must be exact: `advance(n)` followed by `next()` must yield the same
+    /// item as `n + 1` calls to `next()` would, and a returned remainder must be the true number
+    /// of missing items.
+    ///
+    /// Errors need not be: an implementation may skip the per-item computation `next()` performs,
+    /// so an error at a skipped position goes unreported. This is deliberate, it is what keeps
+    /// indexing into lazily computed streams O(1), and the language documents it in `[]` and
+    /// `skip`. An item that the implementation does inspect while skipping, however, must be
+    /// treated exactly as `next()` would treat it, errors included, so that the position stays
+    /// exact.
+    ///
     /// The default implementation calls `next()` an appropriate number of times, checking for an
     /// interrupt request in between, and thus is reasonably usable only for small values of `n`.
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {

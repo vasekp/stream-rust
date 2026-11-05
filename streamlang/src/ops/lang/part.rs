@@ -175,6 +175,7 @@ In its simplest form `stream.?(index)`, evaluates to the `index`-th item in `str
 Part specifications can be given to greater depth using multiple arguments.
 If a certain argument is a stream of indices, evaluates to a stream of concrete part specifications.
 The shorthand for `stream.?(arg1, arg2, ...)` is `stream[arg1, arg2, ...]`.
+* Items before the requested one are skipped without being evaluated, so an error among them goes unreported.
 = stream.?(arg1, arg2, ...)
 = string.?(index or stream)
 = stream[arg1, arg2, ...]
@@ -184,6 +185,8 @@ The shorthand for `stream.?(arg1, arg2, ...)` is `stream[arg1, arg2, ...]`.
 > ?range(10, 20).?(2..5) => [11, 12, 13, 14]
 > [[1, 2], ['a', 'b']].?(2, 1) => 'a' ; take second item (['a', 'b']), then first item of that
 > "abcde".?(3..4) => "cd"
+> (10/?range(-3, 3)).?(4) => !division by zero
+> (10/?range(-3, 3)).?(7) => 3 ; items before the index are skipped, not evaluated
 : range
 "#);
 }

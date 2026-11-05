@@ -66,6 +66,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Skips the first `count` items of `stream` or the first `count` characters of `string`.
 If `count` is omitted, it defaults to one.
 If `count` exceeds the length of the input, the result is empty.
+* The skipped items are not evaluated, so an error among them goes unreported.
 = stream.?
 = stream.?(count)
 = string.?
@@ -74,6 +75,7 @@ If `count` exceeds the length of the input, the result is empty.
 > ?seq.?(10) => [11, 12, 13, 14, 15, ...]
 > "Hello".?(2) => "llo"
 > "Hello".?(5) => ""
+> (10/?range(-3, 3)).?(4) => [10, 5, 3] ; the division by zero at the fourth item is skipped
 : last
 : first
 : droplast
