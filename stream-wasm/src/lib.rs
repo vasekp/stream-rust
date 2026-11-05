@@ -114,6 +114,7 @@ impl BoxedIterator {
     /// with an error object if the iteration failed, or `{done: true}` at the end of the stream.
     /// After an error or the end, the iterator is finished and further calls return
     /// `{done: true}`.
+    #[allow(clippy::should_implement_trait)] // the JS iterator protocol requires this name
     pub fn next(&mut self) -> Result<JsValue, JsValue> {
         if self.done {
             let obj = Object::new();
