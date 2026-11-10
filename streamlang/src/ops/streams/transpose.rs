@@ -85,6 +85,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["transpose", "trans"], eval_transpose, r#"
 Takes a stream of streams and returns another, transposed.
 The shortest inner stream determines the length.
+! The outer stream is read completely first, so it must be finite.
 = stream.?
 > [?seq, [4, 5], "text".?chars].? : 10 => [[1, 4, 't'], [2, 5, 'e']]
 : zip

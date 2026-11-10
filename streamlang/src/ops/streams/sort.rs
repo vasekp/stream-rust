@@ -177,8 +177,10 @@ Sorts the input `stream`. Arrays of numbers, characters, strings, or streams can
 Strings and streams are sorted in lexicographic order.
 If `func` is provided, compares `item`s using the value of `item.func`.
 The relative order of items whose keys compare equal is unspecified.
+! The whole input is read before the first item is produced, so it must be finite.
 = stream.?
 = stream.?{func}
+= stream.?(op)
 > [5, 2, 9, 3, 5].? => [2, 3, 5, 5, 9]
 > [5, 2, 9, 3, 5].?{-#} => [9, 5, 5, 3, 2] ; reverse sort
 > ['b', 'a', 'c'].? => ['a', 'b', 'c']

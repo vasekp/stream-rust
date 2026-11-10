@@ -3,6 +3,9 @@ use crate::base::*;
 fn eval_collect(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = Function::new(node.only_arg_checked()?.as_func()?, env);
+    if stm.len() == Length::Infinite {
+        return Err("stream is infinite".into());
+    }
     let mut map: Vec<(Item, Vec<Item>)> = Vec::new();
     'a: for res in stm.iter().transposed() {
         check_stop!();
@@ -29,6 +32,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("collect", eval_collect, r#"
 Groups the elements `x` of `stream` by the value of `x.func`.
 Returns a stream of pairs `[key, [x1, x2, ...]]`; keys appear in order of first appearance and elements keep their original order within each group.
+! The whole input is read, so it must be finite.
 = stream.?(func)
 > ["one", "two", "three"].?(?last) : 15 => [['e', ["one", "three"]], ['o', ["two"]]]
 : group
@@ -43,5 +47,6 @@ mod tests {
     fn test_collect() {
         use super::*;
         test_eval!("(1..7).collect{#%3}" : 20 => "[[1, [1, 4, 7]], [2, [2, 5]], [0, [3, 6]]]");
+        test_eval!("seq.collect{#%3}" => err);
     }
 }

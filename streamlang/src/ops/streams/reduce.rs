@@ -3,6 +3,9 @@ use crate::base::*;
 fn eval_reduce(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.eval(env)?.to_stream()?;
     let func = Function::new(node.only_arg_checked()?.as_func()?, env);
+    if stm.len() == Length::Infinite {
+        return Err("stream is infinite".into());
+    }
     let mut iter = stm.iter();
     let Some(mut val) = iter.next()? else {
         return Err("stream is empty".into());
@@ -18,10 +21,12 @@ fn eval_reduce(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("reduce", eval_reduce, r#"
 Merges all elements of `stream` using `func` as `func(func(x1, x2), x3)` etc.
+! The whole input is read, so it must be finite.
 = stream.?{func}
 = stream.?(func)
 > (1..5).?(?plus) => 15 ; also see ?total
 > ?range(10,1,-2).?(?times) => 3840 ; double factorial
+> [].?(?plus) => !stream is empty
 : fold
 : cat
 "#);
@@ -38,5 +43,6 @@ mod tests {
         test_eval!("[1, [2, 3]].reduce(plus)" => "[3, 4]");
         test_eval!("[1].reduce(plus)" => "1");
         test_eval!("[].reduce(plus)" => err);
+        test_eval!("seq.reduce(plus)" => err);
     }
 }
