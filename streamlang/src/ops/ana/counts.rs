@@ -82,11 +82,11 @@ fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<Item> {
             counts.push((item, 1));
         }
     }
-    let mut ret = counts
+    let ret = counts
         .into_iter()
         .map(|(item, count)| Item::from(vec![item.into(), Item::new_number(count)]))
         .collect::<Vec<_>>();
-    if ret.len() == 1 { Ok(ret.pop().unwrap()) } else { Ok(Item::from(ret)) }
+    Ok(Item::from(ret))
 }
 
 #[rustfmt::skip]
@@ -95,6 +95,8 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Form without arguments: counts unique items in `stream`, or unique characters in `string`, returning a stream of pairs `[item, count]` in order of first appearance.
 Form with arguments: only counts appearances of the given `item`s or `char`s, returning a stream of counts in order of the arguments.
 In the latter form and with string input, `?` can also count substrings, including partial overlaps.
+With exactly one argument, the result is a plain number.
+! The whole input is read, so it must be finite.
 = stream.?
 = string.?
 = stream.?(item, ...)
@@ -127,5 +129,16 @@ mod tests {
         test_eval!("\"The quick brown fox jumps over the lazy dog.\".lcase.counts@alpha" : 26 => 
         "[1, 1, 1, 1, 3, 1, 1, 2, 1, 1, 1, 1, 1, 1, 4, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 1]");
         test_eval!("\"Hello world!\".counts" : 15 => "[['H', 1], ['e', 1], ['l', 3], ['o', 2], [' ', 1], ...]");
+
+        // single distinct item: still a stream of pairs
+        test_eval!("[5,5,5].counts" => "[[5, 3]]");
+        test_eval!("[5,5,5].count" => "[[5, 3]]");
+        test_eval!("\"aaa\".counts" => "[['a', 3]]");
+        test_eval!("[].counts" => "[]");
+        test_eval!("\"\".counts" => "[]");
+        test_eval!("[5,5,5].counts(5)" => "3");
+        test_eval!("[[1],1,[1],true,'a',1,\"a\",'a',[]].counts" : 80 => "[[[1], 2], [1, 2], [true, 1], ['a', 2], [\"a\", 1], [[], 1]]");
+        test_eval!("[[1,2],[1,2],[1,[2]]].counts" : 80 => "[[[1, 2], 2], [[1, [2]], 1]]");
+        test_eval!("[[1,'a'/2],[1,2]].counts" => err);
     }
 }
