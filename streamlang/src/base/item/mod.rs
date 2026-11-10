@@ -10,6 +10,7 @@ mod siter;
 mod itemtype;
 mod list;
 mod rndacc;
+mod distinct;
 
 pub use chr::{Char, CharCase};
 pub use stream::*;
@@ -18,6 +19,7 @@ pub use siter::*;
 pub use itemtype::*;
 pub(crate) use list::*;
 pub(crate) use rndacc::RandomAccess;
+pub(crate) use distinct::Distinct;
 
 #[cfg(test)]
 mod tests;

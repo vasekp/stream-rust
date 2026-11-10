@@ -27,7 +27,7 @@ impl Describe for DDup {
 
 impl Stream for DDup {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        DDupIter { iter: self.source.iter(), seen: vec![], node: self }.wrap()
+        DDupIter { iter: self.source.iter(), seen: Distinct::default(), node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -38,25 +38,21 @@ impl Stream for DDup {
 struct DDupIter {
     node: Rc<DDup>,
     iter: Box<dyn SIterator>,
-    seen: Vec<Item>,
+    seen: Distinct,
 }
 
 impl PreIterator for DDupIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        'a: loop {
+        loop {
             check_stop!();
             let item = iter_try!(self.iter.next());
             let key = match &self.node.func {
                 None => item.clone(),
                 Some(func) => func.call_source(item.clone())?,
             };
-            for seen in &self.seen {
-                if key.try_eq(seen)? {
-                    continue 'a;
-                }
+            if self.seen.insert(&key)?.1 {
+                return Ok(Some(item));
             }
-            self.seen.push(key);
-            return Ok(Some(item));
         }
     }
 
@@ -98,5 +94,10 @@ mod tests {
         test_eval!("(1..3).repeat(5).ddup{#}" => "[1, 2, 3]");
         test_len!("[].ddup{#+'a'}" => 0);
         test_describe!("seq.ddup{#}" => "seq.ddup({#})");
+
+        test_eval!("[1,[1],1,[1],\"a\",'a',[1,2],[1,2]].ddup" : 80 => "[1, [1], \"a\", 'a', [1, 2]]");
+        test_eval!("range(30000).ddup.len" => "30000");
+        test_eval!("range(10^4).repeat(3).ddup.len" => "10000");
+        test_eval!("range(30000).ddup{#%7}" => "[1, 2, 3, 4, 5, ...]");
     }
 }

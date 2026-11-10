@@ -68,23 +68,22 @@ fn string_counts_listed_impl(stm: &Rc<dyn Stream<Char>>, chars: &[Vec<Char>]) ->
 }
 
 fn counts_free_impl<I: ItemType>(stm: &Rc<dyn Stream<I>>) -> SResult<Item> {
-    let mut counts: Vec<(I, usize)> = Vec::new();
+    let mut distinct = Distinct::default();
+    let mut counts: Vec<usize> = Vec::new();
     for item in stm.iter().transposed() {
         check_stop!();
-        let item = item?;
-        'a: {
-            for (cmp, count) in &mut counts {
-                if item.try_eq(cmp)? {
-                    *count += 1;
-                    break 'a;
-                }
-            }
-            counts.push((item, 1));
+        let (index, new) = distinct.insert(&item?.into())?;
+        if new {
+            counts.push(1);
+        } else {
+            counts[index] += 1;
         }
     }
-    let ret = counts
+    let ret = distinct
+        .into_items()
         .into_iter()
-        .map(|(item, count)| Item::from(vec![item.into(), Item::new_number(count)]))
+        .zip(counts)
+        .map(|(item, count)| Item::from(vec![item, Item::new_number(count)]))
         .collect::<Vec<_>>();
     Ok(Item::from(ret))
 }
@@ -140,5 +139,8 @@ mod tests {
         test_eval!("[[1],1,[1],true,'a',1,\"a\",'a',[]].counts" : 80 => "[[[1], 2], [1, 2], [true, 1], ['a', 2], [\"a\", 1], [[], 1]]");
         test_eval!("[[1,2],[1,2],[1,[2]]].counts" : 80 => "[[[1, 2], 2], [[1, [2]], 1]]");
         test_eval!("[[1,'a'/2],[1,2]].counts" => err);
+        // many distinct items
+        test_eval!("range(30000).counts.len" => "30000");
+        test_eval!("range(10^4).repeat(3).counts[10^4]" => "[10000, 3]");
     }
 }
