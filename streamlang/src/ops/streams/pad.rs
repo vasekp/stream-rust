@@ -62,11 +62,11 @@ impl<I: ItemType> Stream<I> for PadLeft<I> {
         if self.source.len() == Length::Infinite {
             return self.source.iter();
         }
-        let len = match self.source.try_count() {
-            Ok(len) => len,
+        // only `len` items need to be read ahead to find the padding amount
+        let pad_remain = match self.source.iter().advance(&self.len) {
+            Ok(rem) => rem.unwrap_or_default(),
             Err(err) => return iter_error(err, &self),
         };
-        let pad_remain = if len < self.len { &self.len - &len } else { UNumber::zero() };
         PadLeftIter { source: self.source.iter(), pad_remain, node: self }.wrap()
     }
 
@@ -173,15 +173,24 @@ impl<I: ItemType> PreIterator<I> for PadRightIter<I> {
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        self.pos += n;
+        let mut n = n.clone();
         if let Some(ref mut iter) = self.source {
-            if iter.advance(n)?.is_none() {
-                return Ok(None);
-            } else {
-                self.source = None;
+            match iter.advance(&n)? {
+                None => {
+                    self.pos += n;
+                    return Ok(None);
+                },
+                Some(rem) => {
+                    self.source = None;
+                    self.pos += &n - &rem;
+                    n = rem;
+                },
             }
         }
-        if self.pos > self.node.len { Ok(Some(&self.pos - &self.node.len)) } else { Ok(None) }
+        // `pos` is now the source length, which may exceed `len`
+        let padding = if self.pos < self.node.len { &self.node.len - &self.pos } else { UNumber::zero() };
+        self.pos += &n;
+        if n > padding { Ok(Some(n - padding)) } else { Ok(None) }
     }
 
     fn origin(&self) -> &Rc<PadRight<I>> {
@@ -194,6 +203,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["padleft", "padl"], eval_padl, r#"
 Left-pads the input `stream` (or `string`) to `length` using copies of `item` (or `char`, respectively).
 If the input length is already `length` or more, returns unchanged.
+! Reads up to `length` items of the input before producing anything.
 = stream.?(length, item)
 = string.?(length, char)
 > [1, 2].?(5, 0) => [0, 0, 0, 1, 2]
@@ -230,6 +240,10 @@ mod tests {
         test_advance("range(50,100).padleft(100, 0)");
         test_advance("range(100).padleft(100, 0)");
         test_describe!("(1..2).padleft(3, '0')" => "(1..2).padleft(3, '0')");
+        // only `length` items of the input are read ahead
+        test_eval!("seq.select{true}.padleft(3, 0).first(3)" => "[1, 2, 3]");
+        test_eval!("(1..2).select{true}.padleft(3, 0)" => "[0, 1, 2]");
+        test_eval!("(1..5).select{true}.padleft(3, 0)" => "[1, 2, 3, 4, 5]");
 
         test_eval!("[].padright(0, 0)" => "[]");
         test_eval!("[].padright(3, 0)" => "[0, 0, 0]");
@@ -246,5 +260,11 @@ mod tests {
         test_advance("[].padright(100, 0)");
         test_advance("range(50,100).padright(100, 0)");
         test_advance("range(100).padright(100, 0)");
+        // source longer than `length` ends during an advance
+        test_eval!("(range(6).padright(5, 0)~range(10))[8]" => "2");
+        test_eval!("(range(6).padright(5, 0)~range(10)).skip(7)" : 10 => "[2, 3, 4, 5, 6, 7, 8, 9, 10]");
+        test_eval!("(range(3).padright(5, 0)~range(10)).skip(7)" : 10 => "[3, 4, 5, 6, 7, 8, 9, 10]");
+        test_advance("range(6).padright(5, 0)");
+        test_advance("range(6).padright(0, 0)");
     }
 }

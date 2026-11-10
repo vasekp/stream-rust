@@ -69,7 +69,10 @@ impl<I: ItemType> PreIterator<I> for FirstIter<I> {
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         if n > &self.count_rem {
-            Ok(Some(n - std::mem::take(&mut self.count_rem)))
+            let count_rem = std::mem::take(&mut self.count_rem);
+            let excess = n - &count_rem;
+            // the source may end before the count, which adds to the remainder
+            Ok(Some(self.source.advance(&count_rem)?.unwrap_or_default() + excess))
         } else {
             self.count_rem -= n;
             self.source.advance(n)
@@ -95,6 +98,7 @@ If `count` is omitted, returns the first item (or character) itself rather than 
 > [1, 2, 3].?(10) => [1, 2, 3]
 > "abc".? => 'a'
 > "abc".?(2) => "ab"
+> [].? => !stream is empty
 : last
 : skip
 : partition
@@ -128,6 +132,11 @@ mod tests {
         test_advance("seq.first(10^10)");
         test_advance("range(10^9).first(10^10)");
         test_advance("range(10^11).first(10^10)");
+        // source shorter than count: the remainder counts the missing source items
+        test_eval!("([1,2].first(5)~[1,2,3,4,5,6,7]).skip(7)" => "[6, 7]");
+        test_eval!("([1,2].first(5)~[1,2,3,4,5,6,7]).skip(2)" : 10 => "[1, 2, 3, 4, 5, 6, 7]");
+        test_eval!("(\"ab\".first(5)~\"xyz\").skip(3)" => "\"yz\"");
+        test_advance("[1,2].first(5)");
         test_describe!("(1..3).first" => "1");
         test_describe!("(1..3).first(4)" => "(1..3).first(4)");
         test_describe!("(1..3).take(4)" => "(1..3).take(4)");
