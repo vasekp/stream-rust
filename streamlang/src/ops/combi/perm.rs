@@ -85,6 +85,14 @@ struct PermIter {
 
 impl PreIterator for PermIter {
     fn next(&mut self) -> SResult<Option<Item>> {
+        if self.node.len.as_ref().is_some_and(UNumber::is_zero) {
+            // the only permutation of an empty source, produced once
+            if !self.num_read.is_zero() {
+                return Ok(None);
+            }
+            self.num_read += 1;
+            return Ok(Some(Item::empty_stream()));
+        }
         if self.order.is_empty() {
             self.order = vec![0];
         } else {
@@ -127,7 +135,7 @@ impl PreIterator for PermIter {
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
         self.num_read += n;
         if let Some(count) = &self.node.count
-            && count <= &self.num_read
+            && count < &self.num_read
         {
             return Ok(Some(&self.num_read - count));
         }
@@ -210,5 +218,15 @@ mod tests {
         test_advance("range(10).perm");
         test_advance("seq.perm:first(5)");
         test_describe!("[2,4,6].perm" => "[2, 4, 6].perm");
+
+        test_eval!("[].perm" => "[[]]");
+        test_eval!("[].perm[1]" => "[]");
+        test_eval!("[].perm[2]" => err);
+        test_eval!("[].perm.skip(1)" => "[]");
+        test_len!("[].perm" => 1);
+        test_advance("[].perm");
+        test_eval!("[1].perm" => "[[1]]");
+        test_len!("[1].perm" => 1);
+        test_advance("[1].perm");
     }
 }
