@@ -43,8 +43,8 @@ impl Stream for SelfRef {
             Ok((stm, hist)) => (stm, hist),
             Err(err) => return iter_error(err, &self),
         };
-        let iter = if let Some(vec) = &self.pre { vec.iter() } else { Box::new(std::iter::empty()) };
-        SelfRefIter { pre: iter, inner: stm.to_iter(), hist, node: self }.wrap()
+        let pre = self.pre.as_ref().map(|stm| stm.iter());
+        SelfRefIter { pre, inner: stm.to_iter(), hist, node: self }.wrap()
     }
 
     fn len(&self) -> Length {
@@ -56,14 +56,21 @@ type CacheHistory = RefCell<Vec<Item>>;
 
 struct SelfRefIter {
     node: Rc<SelfRef>,
-    pre: Box<dyn SIterator>,
+    // Dropped once exhausted so that `inner` takes over for good.
+    pre: Option<Box<dyn SIterator>>,
     inner: Box<dyn SIterator>,
     hist: Rc<CacheHistory>,
 }
 
 impl PreIterator for SelfRefIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let item = if let Some(item) = self.pre.next()? { item.clone() } else { iter_try!(self.inner.next()) };
+        let item = match self.pre.as_mut().map(|pre| pre.next()).transpose()?.flatten() {
+            Some(item) => item,
+            None => {
+                self.pre = None;
+                iter_try!(self.inner.next())
+            },
+        };
         self.hist.borrow_mut().push(item.clone());
         Ok(Some(item))
     }
@@ -122,8 +129,10 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("self", eval_self, r#"
 A stream evaluating `func` on its own output, which is put in place of `#`.
 If `stream` is present, uses its items first to populate the history.
+* `#` may only be read up to the items already produced, reading further is an error. The whole history is kept in memory.
 = ?{func}
 = stream.?{func}
+> [1].?{#+1} => [1, 2, 3, 4, 5, ...]
 > [1].self{alternate(#,1-#)} : 7 => [1, 1, 0, 1, 0, 0, 1, ...] ; Thue-Morse sequence
 : nest
 "#);
@@ -150,6 +159,8 @@ mod tests {
         test_eval!("self{#[1]}" => "[<!>");
         test_eval!("self{#.len}" => "[<!>");
         test_eval!("1.{#~self{0~#}}" => "[1, 0, 0, 0, 0, ...]");
+        // an exhausted `stream` is not consulted again
+        test_eval!("[1,5,2].while{#<3}.self{#+1}" => "[1, 2, 3, 4, 5, ...]");
         test_len!("self{\"pokus\".chars+(\"ab\".chars~#)}" => 5);
         test_advance("self{1~(#+1)}");
         test_describe!("self{#}" => "self({#})");
