@@ -8,7 +8,7 @@ fn eval_gcd(node: &Node, env: &Env) -> SResult<Item> {
     let Some(first) = iter.next() else {
         return Err(StreamError::usage(&node.head));
     };
-    Ok(Item::Number(args.iter().fold(first.clone(), |a, b| gcd(&a, b))))
+    Ok(Item::Number(iter.fold(first.abs(), |a, b| gcd(&a, b))))
 }
 
 fn gcd(a: &Number, b: &Number) -> Number {
@@ -50,12 +50,12 @@ fn eval_lcm(node: &Node, env: &Env) -> SResult<Item> {
     let Some(first) = iter.next() else {
         return Err(StreamError::usage(&node.head));
     };
-    Ok(Item::Number(args.iter().fold(first.clone(), |a, b| lcm(&a, b))))
+    Ok(Item::Number(iter.fold(first.abs(), |a, b| lcm(&a, b))))
 }
 
 fn lcm(a: &Number, b: &Number) -> Number {
     let g = gcd(a, b);
-    if g.is_zero() { g } else { a / g * b }
+    if g.is_zero() { g } else { (a / g * b).abs() }
 }
 
 fn eval_chinese(node: &Node, env: &Env) -> SResult<Item> {
@@ -91,9 +91,12 @@ fn eval_chinese(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("gcd", eval_gcd, r#"
 Greatest common divisor of all inputs.
+The result is always nonnegative; for a single argument it is its absolute value.
 = ?(number, number, ...)
 > ?(100, 85) => 5
 > ?(50, 20, 15) => 5
+> ?(-4, 6) => 2
+> ?(0, 0) => 0
 : egcd
 : lcm
 : crt
@@ -108,9 +111,12 @@ Extended greatest common divisor.
 "#);
     symbols.insert("lcm", eval_lcm, r#"
 Least common multiple of all inputs.
+The result is always nonnegative; for a single argument it is its absolute value.
 = ?(number, number, ...)
 > ?(100, 85) => 1700
 > ?(50, 20, 15) => 300
+> ?(-4, 6) => 12
+> ?(0, 5) => 0
 : gcd
 "#);
     symbols.insert("crt", eval_chinese, r#"
@@ -140,6 +146,14 @@ mod tests {
         test_eval!("gcd(10^61-1,7)" => "1");
         test_eval!("gcd(20,15,4)" => "1");
         test_eval!("gcd(20,16,8)" => "4");
+        test_eval!("gcd(-4,6)" => "2");
+        test_eval!("gcd(4,-6)" => "2");
+        test_eval!("gcd(-4,-6)" => "2");
+        test_eval!("gcd(5)" => "5");
+        test_eval!("gcd(-5)" => "5");
+        test_eval!("gcd(0)" => "0");
+        test_eval!("gcd()" => err);
+        test_eval!("gcd(2,'a')" => err);
     }
 
     #[test]
@@ -163,9 +177,16 @@ mod tests {
         test_eval!("lcm(10,10)" => "10");
         test_eval!("lcm(0,5)" => "0");
         test_eval!("lcm(0,0)" => "0");
-        test_eval!("lcm(10,-3)" => "-30");
+        test_eval!("lcm(10,-3)" => "30");
+        test_eval!("lcm(-3,10)" => "30");
+        test_eval!("lcm(-10,-3)" => "30");
+        test_eval!("lcm(0,-3)" => "0");
         test_eval!("lcm(20,15,4)" => "60");
         test_eval!("lcm(20,16,8)" => "80");
+        test_eval!("lcm(2,-3,4)" => "12");
+        test_eval!("lcm(5)" => "5");
+        test_eval!("lcm(-5)" => "5");
+        test_eval!("lcm()" => err);
     }
 
     #[test]
