@@ -192,7 +192,11 @@ impl PreIterator for MathOpIter {
                 .collect::<SResult<Option<Vec<_>>>>()
         );
         let node = Node { head: self.node.head.clone(), source: None, args: inputs };
-        MathOp::eval_with(&node, &self.node.env, self.func).map(Option::Some)
+        match node.args[0] {
+            Item::String(_) => StringOp::eval(&node, &self.node.env),
+            _ => MathOp::eval_with(&node, &self.node.env, self.func),
+        }
+        .map(Option::Some)
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
@@ -234,6 +238,13 @@ impl StringOp {
             func,
             env: env.clone(),
         }))
+    }
+
+    fn rest_is_const(&self) -> bool {
+        !self
+            .rest
+            .iter()
+            .any(|item| matches!(item, Item::Stream(_) | Item::String(_)))
     }
 
     fn find_fn(head: &Head) -> SResult<StringFunc> {
@@ -335,25 +346,23 @@ impl PreIterator<Char> for StringOpIter {
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
-        let mut n_chars: usize = 0;
+        if self.node.rest_is_const() {
+            return self.first.advance(n);
+        }
         let mut remain = n.clone();
         while !remain.is_zero() {
-            match self.first.next()? {
-                Some(ch) => {
-                    if self.node.env.alpha.contains(&ch) {
-                        n_chars += 1;
+            check_stop!();
+            let Some(ch) = self.first.next()? else { return Ok(Some(remain)) };
+            if self.node.env.alpha.contains(&ch) {
+                for iter in &mut self.rest {
+                    if iter.advance(&UNumber::one())?.is_some() {
+                        return Ok(Some(remain));
                     }
-                },
-                None => break,
+                }
             }
             remain -= 1;
         }
-        for iter in self.rest.iter_mut() {
-            if let Some(r) = iter.advance(&n_chars.into())? {
-                remain = std::cmp::max(remain, r);
-            }
-        }
-        if remain.is_zero() { Ok(None) } else { Ok(Some(remain)) }
+        Ok(None)
     }
 
     fn origin(&self) -> &Rc<StringOp> {
@@ -365,8 +374,11 @@ impl PreIterator<Char> for StringOpIter {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("+", eval_op, r#"
 Addition. Can add numbers to numbers, numbers to characters or strings,
-or strings and characters together (shifting in alphabet with wrap-around).
+or strings and characters together (shifting in the current alphabet with wrap-around, keeping the letter case).
 Automatically threads over streams to arbitrary depth, or adds streams and constants.
+* The first operand determines the type: `"bc" + 'a'` works, `'a' + "bc"` is an error.
+Non-alphabetic characters pass through unchanged, but only in the first string.
+* A string combined with a stream ends when either of them ends.
 = op1 + op2 + ...
 > 1 + 2 + 3 => 6
 > [1, [2, [3]]] + 10 => [11, [12, [13]]]
@@ -374,10 +386,13 @@ Automatically threads over streams to arbitrary depth, or adds streams and const
 > 3 + 'a' => !expected number ; not the other way!
 > "a, a, a" + ?seq => "b, c, d" ; non-alphabetic characters are skipped
 > "Aaa" + "bbb" => "Ccc" ; the first string fixes the letter cases
+> "abc" + [1, 2] => "bd"
 > [1, 2, 3] + [5, 6] => [6, 8] ; the stream that ends first determines the length
+> ["ab", "cd"] + 1 => ["bc", "de"]
 > 5 + 10 * 10 => 105 ; multiplication takes precedence
 : plus
 : *
+: alpha
 "#);
     symbols.insert("plus", eval_op, r#"
 The total of all arguments.
@@ -573,5 +588,32 @@ mod tests {
         test_eval!("alpha(\"bac\", \"abc\"+1)" => "\"cab\"");
         test_describe!("alpha(\"bac\", \"abc\"+1)" => "alpha(['b', 'a', 'c'], \"abc\"+1)");
         test_describe!("alpha(\"bac\", alpha(alpha.rev, \"abc\"+1))" => "alpha(['c', 'a', 'b'], \"abc\"+1)");
+
+        // strings nested in streams
+        test_eval!(r#"["ab","cd"]+1"# => r#"["bc", "de"]"#);
+        test_eval!(r#"["ab",["cd"]]+[1,2]"# => r#"["bc", ["ef"]]"#);
+        test_eval!(r#"["ab","cd"]+"xy""# => r#"["ya", "ac"]"#);
+        test_eval!(r#"["ab",1]*2"# => "[<!>");
+        test_eval!(r#"[1,"ab"]-1"# => r#"[0, "za"]"#);
+        test_eval!(r#"[1,"ab"]*1"# => "[1, <!>");
+
+        // string op stream: ends with the stream, also when skipping
+        test_eval!(r#""abc"+[1,2]"# => r#""bd""#);
+        test_eval!(r#""ab c"+[1]"# => r#""b""#);
+        test_eval!(r#"(("ab c"+[1])~"xyz")[1..4]"# => r#""bxyz""#);
+        test_eval!(r#"(("ab c"+[1])~"xyz")[5]"# => err);
+        test_advance(r#""ab c"+[1]"#);
+        test_advance(r#""a b c d"+[1,2]"#);
+        test_advance(r#""abc, def"+"xyz""#);
+        test_advance(r#""a b c d".repeat+[1,2,3]"#);
+        test_advance(r#""ab c"+[1].$lenUU"#);
+        test_advance(r#""ab c"+[1]+seq"#);
+
+        // constant rest: advance delegates to the string
+        test_eval!(r#"("a".repeat+1)[10^12]"# => "'b'");
+        test_eval!(r#"("a b".repeat+1+'b')[10^12+2]"# => "'e'");
+        test_eval!(r#"("abc"+1)[3]"# => "'d'");
+        test_eval!(r#"("abc"+1)[4]"# => err);
+        test_advance(r#""a b c"+1"#);
     }
 }
