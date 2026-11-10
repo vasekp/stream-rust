@@ -118,6 +118,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("riffle", eval_riffle, r#"
 Interleaves `stream` with copies of `filler`.
 If `filler` is itself a stream, its items are used in turn and the result ends as soon as either input is exhausted.
+The result never ends with a filler. A string `filler` counts as a single item.
 = stream.?(filler)
 > ?seq.?(0) => [1, 0, 2, 0, 3, ...]
 > ?range(1, 2).?(0) => [1, 0, 2]

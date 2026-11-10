@@ -4,10 +4,14 @@ use std::collections::VecDeque;
 
 fn eval_weave(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
-    node.check_no_source()?;
     node.check_args_nonempty()?;
-    let streams = node.args.iter().map(Item::to_stream).collect::<SResult<Vec<_>>>()?;
-    Ok(Item::new_stream(Weave { head: node.head.clone(), streams }))
+    let streams = node
+        .source
+        .iter()
+        .chain(&node.args)
+        .map(Item::to_stream)
+        .collect::<SResult<_>>()?;
+    Ok(Item::new_stream(Weave { head: node.head, streams }))
 }
 
 struct Weave {
@@ -94,8 +98,10 @@ impl PreIterator for WeaveIter {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["weave", "alternate"], eval_weave, r#"
 Interleaves the items of the given streams, taking one from each in turn, until one of them runs out.
-= ?(stream, stream, ...)
+= ?(stream1, ..., streamM)
+= stream1.?(stream2, ..., streamM)
 > ?(?seq, ?alpha) => [1, 'a', 2, 'b', 3, ...]
+> ?seq.?(?alpha) => [1, 'a', 2, 'b', 3, ...]
 : zip
 : riffle
 : cat
@@ -122,6 +128,13 @@ mod tests {
         test_eval!("weave(seq, [])" => "[1]");
         test_len!("weave(1..5, 1..6, 1..7)" => 15);
         test_len!("weave(1..7, 1..6, 1..5)" => 17);
+        test_eval!("seq.weave(alpha)" : 10 => "[1, 'a', 2, 'b', 3, 'c', 4, 'd', 5, 'e', ...]");
+        test_eval!("(1..3).weave('a'..'c', 'A'..'B')" : 10 => "[1, 'a', 'A', 2, 'b', 'B', 3, 'c']");
+        test_eval!("seq.weave" => err);
+        test_eval!("\"ab\".weave(seq)" => err);
+        test_len!("(1..7).weave(1..6, 1..5)" => 17);
+        test_describe!("seq.weave(seq+3)" => "weave(seq, seq+3)");
+        test_advance("(1..5).weave(1..10)");
         test_advance("weave(1..5, 1..10)");
         // Inner streams whose advance() reports an exact end (Some(0))
         test_eval!("weave(seq, (1..10).unweave(2)).skip(4)" => "[3]");
