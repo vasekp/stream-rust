@@ -250,7 +250,7 @@ mod tests {
         test_describe!("[3,1,2].sort" => "[1, 2, 3]");
         test_describe!("[3,1,2].sort{-#}" => "[3, 2, 1]");
         test_describe!("range(1000).sort" => "range(1000).sort");
-        test_describe!("range(1000).rev.sort{-#}" => "range(1000).rev.sort({-#})");
+        test_describe!("range(1000).sort{-#}" => "range(1000).sort({-#})");
         test_describe!("alpha(\"cba\", ['a','b','c'].repeat(50).sort)" => "alpha(['c', 'b', 'a'], ['a', 'b', 'c'].repeat(50).sort)");
     }
 }

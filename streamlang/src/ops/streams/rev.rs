@@ -13,7 +13,9 @@ fn eval_rev(node: &Node, env: &Env) -> SResult<Item> {
 fn eval_rev_impl<I: ItemType>(head: &Head, source: &Rc<dyn Stream<I>>) -> SResult<Item> {
     match source.len() {
         Length::Infinite => Err("input is infinite".into()),
-        Length::Exact(len) if usize::try_from(&len).is_ok_and(|len| len > CACHE_LEN) => {
+        // Only an input too long to hold in memory is read lazily in chunks from the end, which
+        // re-reads it for every chunk.
+        Length::Exact(len) if len > UNumber::from(RESERVE_CAP) => {
             Ok(Item::from(
                 Rc::new(Rev { head: head.clone(), source: Rc::clone(source), length: len }) as Rc<dyn Stream<I>>
             ))
@@ -111,7 +113,7 @@ impl<I: ItemType> PreIterator<I> for RevIter<I> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("rev", eval_rev, r#"
 The input `stream` or `string`, reversed.
-! May need to evaluate the entire contents of the input.
+! Reads the whole input. A very long input of known length is instead re-read in chunks from the end.
 = stream.?
 = string.?
 > ?range(5).? => [5, 4, 3, 2, 1]
@@ -134,6 +136,13 @@ mod tests {
         test_eval!("seq.rev" => err);
         test_advance("range(1000).rev");
         test_advance("range(10^10).rev");
+        test_advance("range(10^6).rev");
+        test_advance("range(10^6+1).rev");
+        // short inputs are held in memory even if their advance is slow
+        test_eval!("1.nest{#+1}.first(3*10^4).rev.select{true}.len" => "30000");
+        // lazy for any exact length, not only one fitting usize
+        test_eval!("range(10^20).rev[3]" => "99999999999999999998");
+        test_len!("range(10^20).rev" => Length::Exact(UNumber::from(10u32).pow(20)));
         //test_describe!("\"abc\".rev" => "\"abc\".rev"); // TODO caching
     }
 }
