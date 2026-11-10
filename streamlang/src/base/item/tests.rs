@@ -255,13 +255,19 @@ fn test_advance_exact_impl<I: ItemType + PartialEq + Debug>(stm: &Rc<dyn Stream<
     assert_eq!(i2.advance(&half)?, None, "advance(len/2)");
     assert_eq!(i1.next(), i2.next(), "advance(len/2) direct vs. after advance(0)");
 
-    // advance(1) = next() later in stream
+    // advance(1) = next() later in stream (for len == 1 this lands on the end, where Some(0) is allowed)
     let (mut i1, mut i2) = (stm.iter(), stm.iter());
     assert_eq!(i1.advance(&half)?, None, "advance(len/2)");
-    assert_eq!(i1.advance(&UNumber::one())?, None, "advance(len/2) + advance(1)");
+    let ret = i1.advance(&UNumber::one())?;
     assert_eq!(i2.advance(&half)?, None, "advance(len/2)");
     assert_ne!(i2.next()?, None, "advance(len/2) + next()");
-    assert_eq!(i1.next(), i2.next(), "next() after advance(len/2) + [advance(1) | next()]");
+    match ret {
+        None => assert_eq!(i1.next(), i2.next(), "next() after advance(len/2) + [advance(1) | next()]"),
+        Some(rem) => {
+            assert_eq!(rem, UNumber::zero(), "advance(len/2) + advance(1)");
+            assert_eq!(i2.next()?, None, "advance(len/2) + advance(1) -> Some(0) but stream did not end");
+        },
+    }
 
     // next() followed by advance() = advance(1 + n)
     if &half + 1u32 < len {
@@ -281,8 +287,14 @@ fn test_advance_exact_impl<I: ItemType + PartialEq + Debug>(stm: &Rc<dyn Stream<
     half += 1;
     rest += 1; // now half + rest = len + 1
     let mut it = stm.iter();
-    assert_eq!(it.advance(&half)?, None, "advance(len/2)");
-    assert_eq!(it.advance(&rest)?, Some(UNumber::one()), "advance(len/2) + advance(rest + 1)");
+    match it.advance(&half)? {
+        None => assert_eq!(it.advance(&rest)?, Some(UNumber::one()), "advance(len/2) + advance(rest + 1)"),
+        Some(rem) => {
+            // the first skip may land on the end only for len == 1, where Some(0) is allowed
+            assert_eq!(half, len, "advance(len/2 + 1) ended early");
+            assert_eq!(rem, UNumber::zero(), "advance(len)");
+        },
+    }
 
     // test actually comparing a few elements after a small skip
     if len > (2 * TEST).into() {
