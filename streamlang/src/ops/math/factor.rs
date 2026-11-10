@@ -54,6 +54,9 @@ impl PreIterator for FactorIter {
         }
         loop {
             check_stop!();
+            if &self.prime * &self.prime > self.x {
+                return Ok(Some(Item::new_number(std::mem::replace(&mut self.x, UNumber::one()))));
+            }
             let (div, rem) = (&self.x).div_rem(&self.prime);
             if rem.is_zero() {
                 self.x = div;
@@ -75,6 +78,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Prime factors of `number` in increasing order, each repeated according to its multiplicity.
 = number.?
 > 20.? => [2, 2, 5]
+> 1.? => []
 : primes
 : isprime
 "#);
@@ -87,5 +91,11 @@ mod tests {
         use super::*;
         test_eval!("100.factor" => "[2, 2, 5, 5]");
         test_eval!("10.factorial.factor.counts" : 12 => "[[2, 8], [3, 4], [5, 2], [7, 1]]");
+        test_eval!("1.factor" => "[]");
+        // a large prime cofactor is found without testing primes up to itself
+        test_eval!("100000007.factor" => "[100000007]");
+        test_eval!("(2*100000007).factor" => "[2, 100000007]");
+        test_eval!("(10007^2).factor" => "[10007, 10007]");
+        test_eval!("(2^10*10007^2).factor.counts" : 30 => "[[2, 10], [10007, 2]]");
     }
 }

@@ -90,17 +90,23 @@ impl PreIterator for DivisorsIter {
         }
         loop {
             check_stop!();
-            let (div, rem) = (&self.x).div_rem(&self.prime);
-            if rem.is_zero() {
-                self.x = div;
-                match self.factors.last_mut() {
-                    Some((p, max, cur)) if *p == self.prime => *max += 1,
-                    _ => self.factors.push((self.prime.clone(), 1, 0)),
-                }
-                return Ok(self.advance().map(Item::new_number));
+            let prime = if &self.prime * &self.prime > self.x {
+                // the remainder is prime
+                std::mem::replace(&mut self.x, UNumber::one())
             } else {
-                self.prime = self.iter.get_next();
+                let (div, rem) = (&self.x).div_rem(&self.prime);
+                if !rem.is_zero() {
+                    self.prime = self.iter.get_next();
+                    continue;
+                }
+                self.x = div;
+                self.prime.clone()
+            };
+            match self.factors.last_mut() {
+                Some((p, max, _)) if *p == prime => *max += 1,
+                _ => self.factors.push((prime, 1, 0)),
             }
+            return Ok(self.advance().map(Item::new_number));
         }
     }
 
@@ -115,6 +121,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 All positive divisors of a positive `number`, in unspecified order.
 = number.?
 > 20.? : 10 => [1, 2, 4, 5, 10, 20]
+> 1.? => [1]
 : factor
 "#);
 }
@@ -126,5 +133,13 @@ mod tests {
         use super::*;
         test_eval!("100.divisors" : 10 => "[1, 2, 4, 5, 10, 20, 25, 50, 100]");
         test_eval!("10.factorial.divisors.len" => "270");
+        test_eval!("1.divisors" => "[1]");
+        test_eval!("0.divisors" => err);
+        // a large prime cofactor is found without testing primes up to itself
+        test_eval!("100000007.divisors" : 30 => "[1, 100000007]");
+        test_eval!("(2*100000007).divisors.len" => "4");
+        test_eval!("(10007^2).divisors" : 40 => "[1, 10007, 100140049]");
+        test_eval!("(2^10*10007^2).divisors.len" => "33");
+        test_eval!("(4*25).divisors.len" => "9");
     }
 }
