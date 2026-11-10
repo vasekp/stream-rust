@@ -21,7 +21,7 @@ fn droplast_impl<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNumb
         return Ok(stm.into());
     }
     match stm.len() {
-        Length::Exact(len) if len < count => Ok(I::empty()),
+        Length::Exact(len) | Length::AtMost(len) if len < count => Ok(I::empty()),
         Length::Exact(len) => {
             Ok(Item::from(
                 Rc::new(KnownLen { head: head.clone(), source: Rc::clone(stm), ceiling: len - &count, count })
@@ -185,6 +185,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Drops the last `count` items of `stream` or the last `count` characters of `string`.
 If `count` is omitted, it defaults to one.
 If `count` exceeds the length of the input, the result is empty.
+! If the input length is not known in advance, `count` items are held in memory.
 = stream.?
 = stream.?(count)
 = string.?
@@ -245,6 +246,8 @@ mod tests {
         test_eval!("((1..10).$lenUF.droplast(2)~[0]).skip(9)" => "[]");
         test_eval!("((1..10).$lenUF.droplast(2)~[0]).skip(8)" => "[0]");
         test_eval!("((1..10).$lenUF.droplast(2)~[0]).skip(7)" => "[8, 0]");
+        // an upper bound below the count gives an empty result without buffering
+        test_eval!("range(5).while{#<3}.droplast(10^30)" => "[]");
         test_advance("range(10^9).droplast(10^10)");
         test_advance("(1..10).droplast(2)");
         test_advance("(1..10).$lenUF.droplast(2)");

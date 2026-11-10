@@ -48,7 +48,7 @@ fn eval_last_count<I: ItemType>(head: &Head, stm: &Rc<dyn Stream<I>>, count: UNu
         return Ok(I::empty());
     }
     match stm.len() {
-        Length::Exact(len) if len < count => Ok(stm.into()),
+        Length::Exact(len) | Length::AtMost(len) if len < count => Ok(stm.into()),
         Length::Exact(len) => {
             Ok(Item::from(Rc::new(Last { head: head.clone(), source: Rc::clone(stm), skip: len - &count, count })
                 as Rc<dyn Stream<I>>))
@@ -115,6 +115,7 @@ If `count` is omitted, returns the last item (or character) itself rather than a
 > ?seq.? => !stream is infinite
 > "abc".? => 'c'
 > "abc".?(2) => "bc"
+> [].? => !stream is empty
 : first
 : skip
 : droplast
@@ -147,6 +148,11 @@ mod tests {
         test_eval!("\"abcde\".$lenUF.last(1)" => "\"e\"");
         test_eval!("\"abcde\".$lenUF.last(0)" => "\"\"");
         test_eval!("seq.last(10^10)" => err);
+        // an upper bound below the count gives the whole input without buffering
+        test_eval!("range(5).while{#<3}.last(10^30)" => "[1, 2]");
+        test_eval!("range(5).while{#<3}.last(3)" => "[1, 2]");
+        test_describe!("range(5).while{#<3}.last(10^30)" => "range(5).while({#<3})");
+        test_eval!("\"abc\".$lenUF.last(10^30)" => err);
         test_eval!("range(10^9).last(10^10).len" => "1000000000");
         test_eval!("range(10^11).last(10^10).len" => "10000000000");
         test_eval!("range(10^10).last(10^9).first" => "9000000001");
