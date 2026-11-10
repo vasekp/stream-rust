@@ -55,8 +55,8 @@ fn eval_unichr(node: &Node, env: &Env) -> SResult<Item> {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("ord", eval_ord, r#"
-Converts `char` to its order in the current alphabet, or one provided in the argument
-(in the same form as for `?alpha`).
+Converts `char` to its order in the current alphabet, or one provided in the argument (in the same form as for `?alpha`, an empty one meaning the default).
+* Case is ignored.
 = char.?
 = char.?(string or stream)
 > 'z'.? => 26
@@ -69,7 +69,7 @@ Converts `char` to its order in the current alphabet, or one provided in the arg
 "#);
     symbols.insert("chr", eval_chr, r#"
 Converts `number` to the character of that order in the current alphabet. In the default alphabet the result is lowercase; in a custom alphabet the character is returned as listed.
-If a custom alphabet is provided in the argument (in same form as for `?alpha`), it is used instead.
+If a custom alphabet is provided in the argument (in the same form as for `?alpha`, an empty one meaning the default), it is used instead.
 * This function wraps automatically.
 = number.?
 = number.?(string or stream)
@@ -112,6 +112,11 @@ mod tests {
         test_eval!("\"abc\".chars:ord" => "[1, 2, 3]");
         test_eval!("\"x y z\".chars.select(isalpha):ord" => "[24, 25, 26]");
         test_eval!("alpha(\"bad\",\"abc\".chars:ord)" => "[2, 1, <!>");
+        test_eval!("'A'.ord" => "1");
+        test_eval!("'A'.ord(\"xyz\")" => err);
+        // empty alphabet argument is the built-in default, as in alpha([], ...)
+        test_eval!("'a'.ord(\"\")" => "1");
+        test_eval!("alpha(\"xyz\", 'z'.ord([]))" => "26");
     }
 
     #[test]
@@ -120,5 +125,6 @@ mod tests {
         test_eval!("((-2)..2):chr" => "['x', 'y', 'z', 'a', 'b']");
         test_eval!("\"abc\".chars:ord:{#+13}:chr.string" => "\"nop\"");
         test_eval!("alpha(['á', 'ch'],100.chr)" => "'ch'");
+        test_eval!("alpha(\"xyz\", 1.chr(\"\"))" => "'a'");
     }
 }
