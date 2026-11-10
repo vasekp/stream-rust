@@ -90,7 +90,8 @@ impl PreIterator<Char> for CatIter {
             } else {
                 match self.outer.next()? {
                     Some(Item::String(s)) => self.inner = Some(s.to_iter()),
-                    Some(_) => n -= 1,
+                    Some(Item::Char(_)) => n -= 1,
+                    Some(item) => return Err(StreamError::with_expr("expected string or character", &item)),
                     None => return Ok(Some(n)),
                 }
             }
@@ -189,13 +190,15 @@ impl PreIterator<Char> for RiffleCatIter {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("cat", eval_cat, r#"
 Concatenates a stream of strings or characters into a single string.
-If a `filler` (character or string) is given, it is inserted between neighbouring items.
+If a `filler` (character or string) is given, it is inserted between neighbouring items, also next to empty strings.
+* For a stream of single characters, `?string` is more efficient.
 = stream.?
 = stream.?(filler)
 > ["Hello", ' ', "world"].? => "Hello world"
 > ['a', 'b', 'c'].?(", ") => "a, b, c"
 : join
 : riffle
+: string
 "#);
 }
 
@@ -207,6 +210,10 @@ mod tests {
     fn test_cat() {
         test_eval!("['a', \"b\", \"cde\"].cat" => "\"abcde\"");
         test_eval!("[\"x\", 'y', 1].cat" => "\"xy<!>");
+        // a non-string item is rejected also when skipped over
+        test_eval!("[\"x\", 1, \"abc\"].cat[3]" => err);
+        test_eval!("[\"x\", 1, \"abc\"].cat(\"-\")[4]" => err);
+        test_eval!("[\"a\", \"\", \"b\"].cat(\"-\")" => "\"a--b\"");
         test_eval!("[\"ab\",\"\",\"\",\"cd\"].cat" => "\"abcd\"");
         test_eval!("\"abc\".chars.cat(\", \")" => "\"a, b, c\"");
         test_eval!("\"abc\".chars.cat(' ')" => "\"a b c\"");
