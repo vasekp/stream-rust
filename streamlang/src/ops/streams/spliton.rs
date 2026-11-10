@@ -46,7 +46,7 @@ impl Stream for SplitString {
     }
 
     fn len(&self) -> Length {
-        Length::at_most(self.source.len())
+        Length::at_most(self.source.len() + UNumber::one())
     }
 }
 
@@ -107,7 +107,7 @@ impl Stream for SplitStream {
     }
 
     fn len(&self) -> Length {
-        Length::at_most(self.source.len())
+        Length::at_most(self.source.len() + UNumber::one())
     }
 }
 
@@ -141,6 +141,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("spliton", eval_spliton, r#"
 Splits `string` at every occurrence of any of the `delimiter`s, each of which may be a character or a nonempty string.
 For streams: the `delimiter`s are any items, which are compared for exact match.
+At each position the `delimiter`s are tried in the given order. The result always has at least one element, even for an empty input.
 = string.?(delimiter...)
 = stream.?(delimiter...)
 > "Hello, world".?(", ") => ["Hello", "world"]
@@ -170,5 +171,13 @@ mod tests {
         test_eval!("range(10).spliton(3)" => "[[1, 2], [4, ...]]");
         test_eval!("range('a', 'e').spliton('c')" => "[['a', 'b'], ['d', ...]]");
         test_eval!("range('a', 'e').spliton(\"c\")" => "[['a', 'b', 'c', 'd', ...]]");
+
+        test_eval!("\"\".spliton(' ') == [\"\"]" => "true");
+        test_eval!("\"a\".spliton('a') == [\"\", \"\"]" => "true");
+        test_eval!("[1].spliton(1) == [[], []]" => "true");
+        test_eval!("[].spliton(1) == [[]]" => "true");
+        test_len!("\"a\".spliton('a')" => Length::AtMost(2usize.into()));
+        test_len!("[1].spliton(1)" => Length::AtMost(2usize.into()));
+        test_len!("seq.spliton(1)" => Length::Unknown);
     }
 }

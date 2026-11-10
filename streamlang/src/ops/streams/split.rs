@@ -40,7 +40,7 @@ impl<I: ItemType> Stream for Split<I> {
     }
 
     fn len(&self) -> Length {
-        Length::at_most(self.source.len())
+        Length::at_most(self.source.len() + UNumber::one())
     }
 }
 
@@ -73,6 +73,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("split", eval_split, r#"
 Splits `stream` into substreams by evaluating `cond` on each item. Every time the condition is `true`, the item is dropped and a new substream starts.
 If the input is a string, evaluates `cond` on characters and returns a stream of strings similarly.
+`cond` must evaluate to a boolean. The result always has at least one element, even for an empty input.
 = stream.?{cond}
 = string.?{cond}
 > [1, 2, -1, 0, 5].?{# < 0} : 6 => [[1, 2], [0, 5]]
@@ -91,5 +92,13 @@ mod tests {
         test_eval!("range(10).split(iseven)" => "[[1], [3], [...], ...]");
         test_describe!("range(10).split(iseven)" => "range(10).split(iseven)");
         test_describe!("range(10).split{#<3}" => "range(10).split({#<3})");
+
+        test_eval!("[1].split{true}==[[],[]]" => "true");
+        test_eval!("[].split{true}==[[]]" => "true");
+        test_eval!("\"\".split{true}==[\"\"]" => "true");
+        test_len!("[1].split{true}" => Length::AtMost(2usize.into()));
+        test_len!("seq.split{true}" => Length::Unknown);
+        test_len!("seq.while{true}.split{true}" => Length::Unknown);
+        test_eval!("[1,2].split{1}" => "[<!>");
     }
 }
