@@ -71,7 +71,7 @@ impl Stream for StrDig {
 #[rustfmt::skip]
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("digstr", eval_digstr, r#"
-Converts a stream of digits into a string.
+Converts a stream of digits into a string. Digits 10 to 35 become 'A' to 'Z'.
 = stream.?
 > [1, 2, 15].? => "12F"
 : strdig
@@ -80,7 +80,7 @@ Converts a stream of digits into a string.
 : digits
 "#);
     symbols.insert("strdig", eval_strdig, r#"
-Converts a string of digit characters into a stream of numeric digits.
+Converts a string of digit characters into a stream of numeric digits. Letters of either case stand for 10 to 35.
 = string.?
 > "12F".? => [1, 2, 15]
 : digstr

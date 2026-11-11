@@ -137,7 +137,7 @@ impl<I: ItemType> PreIterator for HetPartitionIter<I> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["partition", "ptt", "chunks"], eval_partition, r#"
 Splits `stream` into consecutive non-overlapping chunks of up to `size` items, or `string` into substrings of up to `size` characters.
-The size may be given as a number or a stream of numbers. The special element of `[]` means "the rest of input".
+The size may be given as a number or a stream of numbers. The special element of `[]` means "the rest of input"; without it, the result ends together with the stream of sizes.
 = stream.?(number)
 = stream.?(stream)
 = string.?(number)

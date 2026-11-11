@@ -177,6 +177,8 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Substitutes occurrences of `patt` with `repl`, or occurrences of `pattM` with `replM`.
 For strings, each `patt` and each `repl` may be a character or a substring.
 For streams, the latter variant is not available, as `[patt1, ...]` is treated as a valid `patt` itself.
+If several patterns match, the one whose occurrence ends first is replaced, or the one listed first if they end together.
+* The replacements are not searched for patterns again.
 = string.?(patt, repl)
 = string.?([patt1, patt2, ...], [repl1, repl2, ...])
 = stream.?(patt, repl)

@@ -102,6 +102,7 @@ If `offset` is given, starts at index `1 + offset` instead.
 > ?seq.?(5) => [1, 6, 11, 16, 21, ...]
 > ?seq.?(5, 2) => [3, 8, 13, 18, 23, ...]
 : part
+: unweave
 "#);
 }
 

@@ -30,6 +30,7 @@ fn eval_some(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert(["all", "each"], eval_all, r#"
 Evaluates to `true` if `x.cond` is `true` for every item `x` of `stream`, `false` otherwise.
+* Stops at the first item for which it is `false`.
 = stream.?{cond}
 > [1, 2, -1, 0, 5].?{# > 0} => false
 > "hello".?chars.?(?isascii) => true
@@ -37,6 +38,7 @@ Evaluates to `true` if `x.cond` is `true` for every item `x` of `stream`, `false
 "#);
     symbols.insert(["some", "any"], eval_some, r#"
 Evaluates to `true` if `x.cond` is `true` for at least one item `x` of `stream`, `false` otherwise.
+* Stops at the first item for which it is `true`.
 = stream.?{cond}
 > [1, 2, -1, 0, 5].?{# > 0} => true
 > "hello".?chars.?(?isupper) => false

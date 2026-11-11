@@ -159,6 +159,7 @@ A stream of the digits of π (pi). If `base` is omitted, it defaults to 10 (deci
 = ?(base)
 > ? => [3, 1, 4, 1, 5, ...]
 > ?(16) => [3, 2, 4, 3, 15, ...]
+> ?(2) => [1, 1, 0, 0, 1, ...] ; the integer part in base 2 is 11
 "#);
 }
 

@@ -35,6 +35,7 @@ fn eval_clamp(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("floor", eval_floor, r#"
 If number `x` is smaller than `min`, evaluates to `min`, otherwise to `x`.
+* This is a lower bound, not rounding.
 = x.?(min)
 > (1..5):?(3) => [3, 3, 3, 4, 5]
 : ceiling
@@ -44,6 +45,7 @@ If number `x` is smaller than `min`, evaluates to `min`, otherwise to `x`.
 "#);
     symbols.insert(["ceiling", "ceil"], eval_ceil, r#"
 If number `x` is greater than `max`, evaluates to `max`, otherwise to `x`.
+* This is an upper bound, not rounding.
 = x.?(max)
 > (1..5):?(3) => [1, 2, 3, 3, 3]
 : floor

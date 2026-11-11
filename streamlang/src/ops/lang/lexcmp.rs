@@ -38,6 +38,7 @@ fn lex_chain(items: &[Item], func: fn(Ordering) -> bool, env: &Env) -> SResult<b
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("<<", eval_lex, r#"
 Lexical comparison: Evaluates to `true` if each `op` compares before the next.
+Characters are compared by their position in the current alphabet, ignoring case.
 = op1 ? op2 ? ...
 > "abc" ? "abd" ? "ac" => true
 > "a" ? "A" => false
@@ -52,6 +53,7 @@ Lexical comparison: Evaluates to `true` if each `op` compares before the next.
 "#);
     symbols.insert(">>", eval_lex, r#"
 Lexical comparison: Evaluates to `true` if each `op` compares after the next.
+Characters are compared by their position in the current alphabet, ignoring case.
 = op1 ? op2 ? ...
 > "abc" ? "aba" ? "ab" => true
 > "a" ? "A" => false
@@ -66,6 +68,7 @@ Lexical comparison: Evaluates to `true` if each `op` compares after the next.
 "#);
     symbols.insert("<<=", eval_lex, r#"
 Lexical comparison: Evaluates to `true` if each `op` compares before or equally with the next.
+Characters are compared by their position in the current alphabet, ignoring case.
 = op1 ? op2 ? ...
 > "abc" ? "abd" ? "ac" => true
 > "a" ? "A" => true
@@ -80,6 +83,7 @@ Lexical comparison: Evaluates to `true` if each `op` compares before or equally 
 "#);
     symbols.insert(">>=", eval_lex, r#"
 Lexical comparison: Evaluates to `true` if each `op` compares after or equally with the next.
+Characters are compared by their position in the current alphabet, ignoring case.
 = op1 ? op2 ? ...
 > "abc" ? "abc" ? "ab" => true
 > "a" ? "A" => true

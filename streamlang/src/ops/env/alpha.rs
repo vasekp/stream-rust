@@ -32,6 +32,8 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Without arguments: returns the current alphabet as a stream of characters.
 With arguments: changes the alphabet for the evaluation of `expr`.
 The new alphabet can be given as a list of characters, or a string. An empty one restores the default.
+Letters are matched regardless of case, so each may only appear once. Multi-letter characters and non-letters are allowed.
+! The alphabet also defines the ordering for `?<<`, `?sort` and character ranges.
 * Functions defined by `?with` keep the alphabet in effect where they were defined. Session globals and blocks `${...}` use the default alphabet.
 = ?
 = ?(stream, expr)

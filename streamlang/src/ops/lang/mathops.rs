@@ -468,10 +468,12 @@ Automatically threads over streams to arbitrary depth, or accepts streams and co
     symbols.insert("^", eval_op, r#"
 Power operation (to a nonnegative exponent).
 Automatically threads over streams to arbitrary depth, or accepts streams and constants.
+! `a^b^c` is evaluated as `(a^b)^c`.
 = op1 ^ op2
 > 10^10 => 10000000000
 > [2, 3, 4, 5]^2 => [4, 9, 16, 25]
 > 2^[2, 3, 4, 5] => [4, 8, 16, 32]
+> 2^3^2 => 64
 "#);
 }
 

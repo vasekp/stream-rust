@@ -127,6 +127,7 @@ Flattens nested streams inside `stream` up to `depth` levels deep. If `depth` is
 > [1, [2, [3]]].? => [1, 2, 3]
 > [1, [2, [3, [4]]]].?(1) : 10 => [1, 2, [3, [4]]]
 > [1, [], [2], [], 3].? => [1, 2, 3]
+: join
 "#);
 }
 

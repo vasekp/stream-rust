@@ -147,10 +147,13 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("with", eval_with, r#"
 Defines or redefines symbols (local variables) for the evaluation of `expr`.
 Both values and functions can be assigned: expressions enclosed in `{}` can refer to `#, #1, ...` and are evaluated only when used.
+* Variable names are case-insensitive.
 * The assignments are processed from left to right, so one assignment can already be used in defining the next.
 * Scoping is lexical: a function body sees the variables and the alphabet in effect where it was defined, not where it is used.
 * Blocks `${...}` do not see local variables and use the default alphabet, which makes them the way to reach a keyword hidden by a local.
 = ?(var1=value1, ..., expr)
+= ?(func={body}, ..., expr)
+= ?(var1=var2=value, ..., expr)
 > ?(str="input", str~", "~str) => "input, input"
 > ?(func={#.isodd & #>=3}, (1..5).?filter(func)) => [3, 5]
 > ?(a = [3, 4, 5], b = a + 1, b - a) => [1, 1, 1]

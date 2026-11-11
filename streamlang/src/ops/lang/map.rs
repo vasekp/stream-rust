@@ -69,12 +69,16 @@ impl Stream<Char> for CharMap {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_raw("[map]", eval_map);
     symbols.insert(["foreach", "map"], eval_map, r#"
-Applies `func` on each item in `stream`.
+Applies `func` on each item in `stream`, or on each character of `string`.
 The shorthand for `stream.?(func)` or `stream.?{#.func(args)}` is `stream:func` or `stream:func(args)`.
+* For a `string` the result is again a string, so `func` must return a character; use `?chars` for other results.
 = stream.?{func}
+= string.?{func}
 = stream:func(args)
+= string:func(args)
 > ?seq.?{#*3} => [3, 6, 9, 12, 15, ...]
 > ?seq.?{#*#1}(5) => [5, 10, 15, 20, 25, ...]
+> "abc".?{#+1} => "bcd"
 "#);
 }
 

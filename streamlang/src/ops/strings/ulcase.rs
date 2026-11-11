@@ -43,6 +43,7 @@ impl Stream<Char> for ULCase {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("ucase", eval_ulcase, r#"
 Converts `char` or `string` to uppercase.
+* A character may expand to several letters, which still count as one character (`'ß'.?` is `'SS'`).
 = char.?
 = string.?
 > "Hello".? => "HELLO"

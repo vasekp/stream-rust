@@ -182,6 +182,7 @@ The shorthand for `?range(from, to)` is `from..to`.
 > ?(0, 10, 3) => [0, 3, 6, 9]
 > ?(1, 2, 0) => [1, 1, 1, 1, 1, ...]
 > ?(10, 0, -3) => [10, 7, 4, 1]
+> ?(5, 3) => [] ; counting down needs a negative step
 : seq
 : ..
 "#);

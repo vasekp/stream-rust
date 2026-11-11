@@ -75,7 +75,7 @@ If `min_width` is given, the string is zero-padded if shorter.
 : numdig
 "#);
     symbols.insert("strnum", eval_strnum, r#"
-Converts `string` into a number.
+Converts `string` into a number. It may start with a `+` or `-` sign.
 If `base` is given, it needs to be between 2 and 36 (inclusive). If omitted, it defaults to 10 (decimal).
 = string.?
 = string.?(base)

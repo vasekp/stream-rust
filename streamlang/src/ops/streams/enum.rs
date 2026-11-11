@@ -61,6 +61,7 @@ Pairs every item of `stream` with its position (counted from 1), as `[item, posi
 = stream.?
 > ["one", "two", "three"].? : 10 => [["one", 1], ["two", 2], ["three", 3]]
 : index
+: zip
 "#);
 }
 
