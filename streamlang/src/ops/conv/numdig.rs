@@ -1,13 +1,20 @@
 use crate::base::*;
 use super::digits::Digits;
 
+fn to_radix(num: &Number) -> SResult<u32> {
+    if num > &Number::from(u32::MAX) {
+        return Err("base too large".into());
+    }
+    num.try_cast_within(2u32..)
+}
+
 fn eval_numdig(node: &Node, env: &Env) -> SResult<Item> {
     let node = node.eval_all(env)?;
     let num = node.source_checked()?.to_num()?;
     let (radix, minw) = match &node.args[..] {
         [] => (10, None),
-        [Item::Number(radix)] => (radix.try_cast_within(2u32..)?, None),
-        [Item::Number(radix), Item::Number(minw)] => (radix.try_cast_within(2u32..)?, Some(minw.try_unsign()?)),
+        [Item::Number(radix)] => (to_radix(radix)?, None),
+        [Item::Number(radix), Item::Number(minw)] => (to_radix(radix)?, Some(minw.try_unsign()?)),
         _ => return Err(StreamError::usage(&node.head)),
     };
     let digits = Digits::new(num.try_unsign()?, radix)
@@ -27,7 +34,7 @@ fn eval_dignum(node: &Node, env: &Env) -> SResult<Item> {
     let stm = node.source_checked()?.as_stream()?;
     let radix = match &node.args[..] {
         [] => 10,
-        [Item::Number(radix)] => radix.try_cast_within(2u32..)?,
+        [Item::Number(radix)] => to_radix(radix)?,
         _ => return Err(StreamError::usage(&node.head)),
     };
     let vec = stm.listout_with(|item| item.into_num()?.try_cast_within(0..radix))?;
@@ -94,6 +101,7 @@ mod tests {
         test_eval!("65535.numdig(256)" => "[255, 255]");
         test_eval!("65535.numdig(257)" => "[255, 0]");
         test_eval!("(10^10).numdig(10^9)" => "[10, 0]");
+        test_eval!("42.numdig(2^32)" => err);
     }
 
     #[test]
