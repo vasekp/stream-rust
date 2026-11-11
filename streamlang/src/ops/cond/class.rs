@@ -100,6 +100,7 @@ fn eval_inner(head: &Head, item: &Item, env: &Env) -> SResult<bool> {
                 None => return Ok(false),
             };
             for ch in iter.transposed() {
+                check_stop!();
                 match ch? {
                     Char::Single(x) if x.is_ascii_digit() => nonempty = true,
                     _ => return Ok(false),
@@ -242,6 +243,7 @@ Evaluates to `true` if `char` is alphabetic (a member of `?alpha`), `false` othe
     symbols.insert("isascii", eval_class, r#"
 For characters: evaluates to `true` if `char` is ASCII, `false` otherwise.
 For strings: evaluates to `true` if all characters are ASCII, `false` otherwise.
+* A multi-character character like `'ch'` is never ASCII.
 = char.?
 = string.?
 > 'a'.? => true
@@ -260,6 +262,7 @@ For strings: evaluates to `true` if all characters are ASCII, `false` otherwise.
 Evaluates to `true` if `char` is a valid digit in base `base`, `false` otherwise.
 If `base` is omitted, it defaults to 10 (digits `0` through `9`).
 = char.?
+= char.?(base)
 > 'a'.? => false
 > 'a'.?(15) => true
 > '5'.? => true
@@ -292,6 +295,7 @@ Evaluates to `true` if `char` is a whitespace character, `false` otherwise.
     symbols.insert("isupper", eval_class, r#"
 For characters: evaluates to `true` if `char` is uppercase, `false` otherwise.
 For strings: evaluates to `true` if all alphabetic characters are uppercase and there is at least one of them.
+* A titlecase or mixed-case character (`'ǅ'`, `'Ch'`) is neither uppercase nor lowercase.
 = char.?
 = string.?
 > ' '.? => false
@@ -312,6 +316,7 @@ For strings: evaluates to `true` if all alphabetic characters are uppercase and 
     symbols.insert("islower", eval_class, r#"
 For characters: evaluates to `true` if `char` is lowercase, `false` otherwise.
 For strings: evaluates to `true` if all alphabetic characters are lowercase and there is at least one of them.
+* A titlecase or mixed-case character (`'ǅ'`, `'Ch'`) is neither uppercase nor lowercase.
 = char.?
 = string.?
 > ' '.? => false
@@ -375,12 +380,15 @@ mod tests {
         test_eval!("['0','3','A','b']:isdigit(11)" => "[true, true, true, false]");
         test_eval!("['0','3','A','b','z']:isdigit(35)" => "[true, true, true, true, false]");
         test_eval!("[' ','.','\r','\n']:iswhite" => "[true, false, true, true]");
-        test_eval!("['á','Á','ch','Ch','CH']:isupper" => "[false, true, false, false, true]");
-        test_eval!("['á','Á','ch','Ch','CH']:islower" => "[true, false, true, false, false]");
+        test_eval!("['á','Á','ch','Ch','CH','ǅ']:isupper" : 80 => "[false, true, false, false, true, false]");
+        test_eval!("['á','Á','ch','Ch','CH','ǅ']:islower" : 80 => "[true, false, true, false, false, false]");
+        test_eval!("[\"ǅ\", \"AǅB\", \"aǅb\"]:isupper" => "[false, false, false]");
+        test_eval!("[\"ǅ\", \"AǅB\", \"aǅb\"]:islower" => "[false, false, false]");
         test_eval!("[' ','  ',\"A B\",\"A b\",['Ch'].string]:isupper" => "[false, false, true, false, false]");
         test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
         test_eval!("[' ','  ',\"a b\",['Ch'].string,['ch'].string]:islower" => "[false, false, true, false, true]");
         test_eval!("['0', '+', \"0\", \"+\", 0]:isnumeric" => "[true, false, true, false, <!>");
         test_eval!("[\"-123\",\"+-1\",'a'.repeat,'00',[1].string]:isnumeric" => "[true, false, false, false, <!>");
+        test_eval!("[\"007\", \"-0\", \"0x1\", \"\"]:isnumeric" => "[true, true, false, false]");
     }
 }

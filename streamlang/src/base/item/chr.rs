@@ -26,8 +26,10 @@ impl Char {
                     CharCase::Lower
                 } else if ch.is_uppercase() {
                     CharCase::Upper
-                } else {
+                } else if ch.to_lowercase().eq(std::iter::once(*ch)) {
                     CharCase::Indeterminate
+                } else {
+                    CharCase::Mixed // titlecase
                 }
             },
             Char::Multi(ch) => match (ch == &ch.to_lowercase(), ch == &ch.to_uppercase()) {
@@ -157,6 +159,7 @@ mod tests {
         assert_eq!(Char::Single('á').case(), CharCase::Lower);
         assert_eq!(Char::Single(' ').case(), CharCase::Indeterminate);
         assert_eq!(Char::Single('❤').case(), CharCase::Indeterminate);
+        assert_eq!(Char::Single('ǅ').case(), CharCase::Mixed);
 
         assert_eq!(Char::from("ch").case(), CharCase::Lower);
         assert_eq!(Char::from("Ch").case(), CharCase::Mixed);
