@@ -172,7 +172,7 @@ A range of values (numbers or characters).
 "#);
     symbols.insert("range", eval_range, r#"
 A range of values. If `from` or `step` are not given, they default to 1.
-Also works for characters, in this case `from` must be given. `step` remains numeric.
+Also works for characters; then `from` must be given and `step`, if present, is still a number. The letter case of the result follows `from`.
 The shorthand for `?range(from, to)` is `from..to`.
 = ?(to)
 = ?(from, to)

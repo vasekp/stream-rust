@@ -20,7 +20,7 @@ fn eval_digits(node: &Node, env: &Env) -> SResult<Item> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("digits", eval_digits, r#"
 The list of digits in base `base` as characters.
-If `base` is not specified, it defaults to 10. If it exceeds 10, uppercase letters are used.
+If `base` is omitted it defaults to 10; it must be between 2 and 36. For bases above 10 the uppercase letters 'A'–'Z' are used.
 = ?
 = ?(base)
 > ? : 10 => ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']

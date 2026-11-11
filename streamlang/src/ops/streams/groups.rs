@@ -78,7 +78,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 Splits `stream` into consecutive non-overlapping groups of `size` items.
 If `func` is given, each group is passed to it as arguments (`#1`, `#2`, ...) and the results are returned instead.
 = stream.?(size)
-= stream.?(size, {func})
+= stream.?(size, func)
 > ?seq.?(3) : 10 => [[1, 2, 3], [4, 5, 6], [7, ...], ...]
 > ?seq.?(3, ?plus) => [6, 15, 24, 33, 42, ...]
 > (1..5).?(2) : 10 => [[1, 2], [3, 4]] ; an incomplete trailing group is discarded, see ?chunks

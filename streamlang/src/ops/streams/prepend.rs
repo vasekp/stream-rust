@@ -133,8 +133,8 @@ impl<I: ItemType> Stream<I> for Append<I> {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert("prepend", eval_prepend, r#"
 Prepends `item`s (in order of the arguments) to `stream` or `string`.
-In the case of `string` source, the `items` may be characters or strings.
-This is equivalent to `join` or `cat`, but better suited for chaining.
+If the source is a string, the arguments must be characters or strings. With a stream source every argument is inserted as a single item, even if it is a stream itself.
+Equivalent to `?join` (`~`), but more convenient in a chain.
 = stream.?(item, ...)
 = string.?(item, ...)
 > (1..3).?(5) => [5, 1, 2, 3]
@@ -147,8 +147,8 @@ This is equivalent to `join` or `cat`, but better suited for chaining.
 "#);
     symbols.insert("append", eval_append, r#"
 Appends `item`s (in order of the arguments) to `stream` or `string`.
-In the case of `string` source, the `items` may be characters or strings.
-This is equivalent to `join` or `cat`, but better suited for chaining.
+If the source is a string, the arguments must be characters or strings. With a stream source every argument is inserted as a single item, even if it is a stream itself.
+Equivalent to `?join` (`~`), but more convenient in a chain.
 = stream.?(item, ...)
 = string.?(item, ...)
 > (1..3).?(5) => [1, 2, 3, 5]

@@ -60,7 +60,7 @@ Usual choices are `base = 0` (the default) and `base = 1`.
 : modpow
 "#);
     symbols.insert("modinv", eval_modinv, r#"
-Modular inverse, i.e., the unique `x` such that `(number * x).?mod(modulus) == 1`.
+Modular inverse, i.e., the unique `x` in `0..modulus-1` such that `(number * x).?mod(modulus) == 1`.
 = number.?(modulus)
 > 3.?(10) => 7
 > 5.?(10) => !does not have an inverse
