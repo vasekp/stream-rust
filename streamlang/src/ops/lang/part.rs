@@ -19,16 +19,11 @@ fn eval_enode(node: &Node<Item>, env: &Env) -> SResult<Item> {
     {
         (Item::Number(index), rest) => {
             let part = match source {
-                Item::Stream(stm) => eval_index_impl(stm, index)?,
-                Item::String(stm) => eval_index_impl(stm, index).map(Item::Char)?,
+                Item::Stream(stm) => eval_index_impl(&mut RandomAccess::new(Rc::clone(stm)), index)?,
+                Item::String(stm) => eval_index_impl(&mut RandomAccess::new(Rc::clone(stm)), index).map(Item::Char)?,
                 _ => return Err("expected stream or string".into()),
             };
-            if rest.is_empty() {
-                Ok(part)
-            } else {
-                let nnode = Node { head: node.head.clone(), source: Some(part), args: rest.to_owned() };
-                eval_enode(&nnode, env).map_err(|err| err.wrap(&nnode))
-            }
+            eval_rest(node, part, rest, env)
         },
         (Item::Stream(indices), rest) => match source {
             Item::Stream(stm) => Ok(Item::new_stream(Part {
@@ -50,20 +45,20 @@ fn eval_enode(node: &Node<Item>, env: &Env) -> SResult<Item> {
     }
 }
 
-fn eval_index_impl<I: ItemType>(source: &Rc<dyn Stream<I>>, index: &Number) -> SResult<I> {
+fn eval_rest(node: &Node<Item>, part: Item, rest: &[Item], env: &Env) -> SResult<Item> {
+    if rest.is_empty() {
+        Ok(part)
+    } else {
+        let nnode = Node { head: node.head.clone(), source: Some(part), args: rest.to_owned() };
+        eval_enode(&nnode, env).map_err(|err| err.wrap(&nnode))
+    }
+}
+
+fn eval_index_impl<I: ItemType>(cursor: &mut RandomAccess<I>, index: &Number) -> SResult<I> {
     let index = index.try_cast_within(UNumber::one()..)?;
-    match source.len() {
-        Length::Exact(len) | Length::AtMost(len) if len < index => return Err("index past end of stream".into()),
-        _ => (),
-    }
-    let mut iter = source.iter();
-    if iter.advance(&(index - 1u32))?.is_some() {
-        return Err("index past end of stream".into());
-    }
-    match iter.next()? {
-        Some(value) => Ok(value),
-        None => Err("index past end of stream".into()),
-    }
+    cursor
+        .nth_from_start(index - 1u32)?
+        .ok_or_else(|| "index past end of stream".into())
 }
 
 struct Part {
@@ -76,7 +71,12 @@ struct Part {
 
 impl Stream for Part {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator> {
-        PartIter { iter: self.indices.iter(), node: self }.wrap()
+        PartIter {
+            iter: self.indices.iter(),
+            cursor: RandomAccess::new(Rc::clone(&self.source)),
+            node: self,
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
@@ -97,18 +97,28 @@ impl Describe for Part {
 struct PartIter {
     node: Rc<Part>,
     iter: Box<dyn SIterator>,
+    cursor: RandomAccess,
+}
+
+impl PartIter {
+    // A numeric index is looked up from the last position, anything else as a fresh part spec.
+    fn eval_part(&mut self, node: &Node<Item>) -> SResult<Item> {
+        let Some((Item::Number(index), rest)) = node.args.split_first() else {
+            return eval_enode(node, &self.node.env);
+        };
+        let part = eval_index_impl(&mut self.cursor, index)?;
+        eval_rest(node, part, rest, &self.node.env)
+    }
 }
 
 impl PreIterator for PartIter {
     fn next(&mut self) -> SResult<Option<Item>> {
         let part = iter_try!(self.iter.next());
-        // TODO: smarter - number tracks increments, stream unfolds?
+        // TODO: smarter - stream unfolds?
         let mut args = self.node.rest.clone();
         args.insert(0, part);
         let node = Node { head: LangItem::Part.into(), source: Some(self.node.source.clone().into()), args };
-        eval_enode(&node, &self.node.env)
-            .map(Option::Some)
-            .map_err(|err| err.wrap(&node))
+        self.eval_part(&node).map(Option::Some).map_err(|err| err.wrap(&node))
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
@@ -128,7 +138,12 @@ struct StringPart {
 
 impl Stream<Char> for StringPart {
     fn to_iter(self: Rc<Self>) -> Box<dyn SIterator<Char>> {
-        StringPartIter { iter: self.indices.iter(), node: self }.wrap()
+        StringPartIter {
+            iter: self.indices.iter(),
+            cursor: RandomAccess::new(Rc::clone(&self.source)),
+            node: self,
+        }
+        .wrap()
     }
 
     fn len(&self) -> Length {
@@ -148,12 +163,13 @@ impl Describe for StringPart {
 struct StringPartIter {
     node: Rc<StringPart>,
     iter: Box<dyn SIterator>,
+    cursor: RandomAccess<Char>,
 }
 
 impl PreIterator<Char> for StringPartIter {
     fn next(&mut self) -> SResult<Option<Char>> {
         match iter_try!(self.iter.next()) {
-            Item::Number(index) => eval_index_impl(&self.node.source, &index).map(Option::Some),
+            Item::Number(index) => eval_index_impl(&mut self.cursor, &index).map(Option::Some),
             item => Err(StreamError::with_expr("expected number", &item)),
         }
     }
@@ -171,9 +187,9 @@ impl PreIterator<Char> for StringPartIter {
 pub fn init(symbols: &mut crate::symbols::Symbols) {
     symbols.insert_raw("[part]", eval_part);
     symbols.insert("part", eval_part, r#"
-In its simplest form `stream.?(index)`, evaluates to the `index`-th item in `stream`.
+In its simplest form `stream.?(index)`, evaluates to the `index`-th item in `stream`, counting from 1.
 Part specifications can be given to greater depth using multiple arguments.
-If a certain argument is a stream of indices, evaluates to a stream of concrete part specifications.
+If an argument is a stream of indices, evaluates to the stream (or string) of the corresponding parts.
 The shorthand for `stream.?(arg1, arg2, ...)` is `stream[arg1, arg2, ...]`.
 * Items before the requested one are skipped without being evaluated, so an error among them goes unreported.
 = stream.?(arg1, arg2, ...)
@@ -187,7 +203,10 @@ The shorthand for `stream.?(arg1, arg2, ...)` is `stream[arg1, arg2, ...]`.
 > "abcde".?(3..4) => "cd"
 > (10/?range(-3, 3)).?(4) => !division by zero
 > (10/?range(-3, 3)).?(7) => 3 ; items before the index are skipped, not evaluated
+> [1, 2, 3].?(4) => !index past end of stream
 : range
+: first
+: last
 "#);
 }
 
@@ -227,6 +246,12 @@ mod tests {
         test_eval!("\"abc\"[[1,'a']][1]" => "'a'");
         test_eval!("\"abc\"[[1,'a']][2]" => err);
         test_len!("seq[[2,5]]" => 2);
+        // indices are looked up from the last position, restarting only when going backwards
+        test_eval!("seq[[5, 2, 8, 8, 1]]" => "[5, 2, 8, 8, 1]");
+        test_eval!("(1..5).while{true}[[3, 9]]" => "[3, <!>");
+        test_eval!("(1..5)[[2, 2, 9]]" => "[2, 2, <!>");
+        test_eval!("\"abcde\"[[5, 2, 5]]" => "\"ebe\"");
+        test_eval!("seq.while{true}[1..6000].countif{true}" => "6000");
         test_len!("seq[[]]" => 0);
 
         test_describe!("seq[[3]]" => "seq[[3]]");

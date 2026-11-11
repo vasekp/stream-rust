@@ -39,6 +39,10 @@ impl<I: ItemType> RandomAccess<I> {
     }
 
     pub(crate) fn nth_from_start(&mut self, index: UNumber) -> SResult<Option<I>> {
+        match self.source.len() {
+            Length::Exact(len) | Length::AtMost(len) if len <= index => return Ok(None),
+            _ => (),
+        }
         if self.move_to(index)?.is_some() {
             return Ok(None);
         }
