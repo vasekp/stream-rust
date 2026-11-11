@@ -100,25 +100,16 @@ struct PartIter {
     cursor: RandomAccess,
 }
 
-impl PartIter {
-    // A numeric index is looked up from the last position, anything else as a fresh part spec.
-    fn eval_part(&mut self, node: &Node<Item>) -> SResult<Item> {
-        let Some((Item::Number(index), rest)) = node.args.split_first() else {
-            return eval_enode(node, &self.node.env);
-        };
-        let part = eval_index_impl(&mut self.cursor, index)?;
-        eval_rest(node, part, rest, &self.node.env)
-    }
-}
-
 impl PreIterator for PartIter {
     fn next(&mut self) -> SResult<Option<Item>> {
-        let part = iter_try!(self.iter.next());
-        // TODO: smarter - stream unfolds?
+        let index = iter_try!(self.iter.next()).into_num()?;
+        let part = eval_index_impl(&mut self.cursor, &index);
         let mut args = self.node.rest.clone();
-        args.insert(0, part);
+        args.insert(0, Item::Number(index));
         let node = Node { head: LangItem::Part.into(), source: Some(self.node.source.clone().into()), args };
-        self.eval_part(&node).map(Option::Some).map_err(|err| err.wrap(&node))
+        part.and_then(|part| eval_rest(&node, part, &self.node.rest, &self.node.env))
+            .map(Option::Some)
+            .map_err(|err| err.wrap(&node))
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
@@ -168,10 +159,8 @@ struct StringPartIter {
 
 impl PreIterator<Char> for StringPartIter {
     fn next(&mut self) -> SResult<Option<Char>> {
-        match iter_try!(self.iter.next()) {
-            Item::Number(index) => eval_index_impl(&mut self.cursor, &index).map(Option::Some),
-            item => Err(StreamError::with_expr("expected number", &item)),
-        }
+        let index = iter_try!(self.iter.next()).into_num()?;
+        eval_index_impl(&mut self.cursor, &index).map(Option::Some)
     }
 
     fn advance(&mut self, n: &UNumber) -> SResult<Option<UNumber>> {
@@ -239,7 +228,10 @@ mod tests {
         test_eval!("seq:{seq^#}[[1,2],[1,2,3]]" => "[[1, 2, 3], [...]]");
         test_eval!("seq[2,5]" => err);
         test_eval!("seq[[2,5]]" => "[2, 5]");
-        test_eval!("seq[[[2,5]]]" => "[[2, 5]]"); // subject to change
+        test_eval!("seq[[[2,5]]]" => "[<!>");
+        test_eval!("seq[[2,[5]]]" => "[2, <!>");
+        test_eval!("seq[[[2,5]]][1]" => err);
+        test_eval!("seq[['a']]" => "[<!>");
         test_eval!("\"abc\"[['a']]" => "\"<!>");
         test_eval!("\"abc\"[['a']][1]" => err);
         test_eval!("\"abc\"[[[1,2]]][1]" => err);
