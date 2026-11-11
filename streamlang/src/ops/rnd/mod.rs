@@ -126,6 +126,7 @@ pub fn init(symbols: &mut crate::symbols::Symbols) {
 An infinite stream of uniformly random samples from the input `stream`.
 The generator is deterministic: a `seed` (any integer) must be given, and the same seed always yields the same stream.
 * For a different seed in each invocation, you may use `$#`, which increases by one in each successfully evaluated input.
+* Every sample is read from `stream` anew.
 = stream.?(seed)
 > (1..6).?(0) : 10 => [5, 3, 1, 1, 3, 3, 6, 1, 3, 4, ...] ; always the same for seed == 0
 > ?seq.?(0) => !stream is infinite
@@ -147,6 +148,7 @@ mod tests {
         test_eval!("range(10^30).rnd(1).first(1)" => "[46998348545369961395328856068]");
         test_eval!("[].rnd(1)" => err);
         test_eval!("\"abc\".rnd(1)" => err);
+        test_eval!("\"abc\".chars.rnd(1)" => "['c', 'c', 'b', 'a', 'a', ...]");
         test_eval!("seq.rnd(1)" => err);
         // test fairness of rejection sampling
         test_eval!("(range(2^64*3/4).rnd(0)/2^62).first(1000).counts(0,1,2)" => "[319, 354, 327]");
