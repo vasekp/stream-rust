@@ -63,9 +63,22 @@ pub fn process(input: String) -> Result<JsValue, JsValue> {
     Ok(obj.into())
 }
 
+/// Drops the session: the history, the global variables and the environment. Also clears a
+/// pending stop request.
+///
+/// The session belongs to the thread that calls `process()`, so this must be called on the same
+/// thread, between requests; it cannot cut a running evaluation short. Free any `BoxedIterator`
+/// first: one that is still alive stays usable, but keeps its stream (and anything it cached)
+/// alive.
+#[wasm_bindgen]
+pub fn reset() {
+    stream::base::stop::reset_stop();
+    SESS.with(|sess| *sess.borrow_mut() = Session::new());
+}
+
 /// Requests the running evaluation to stop. The request stays in effect until the next
-/// `process()` or `get_iter()` call clears it, so a stop issued between two `next()` calls still
-/// interrupts the next one. The page must not issue a request while another one is outstanding,
+/// `process()`, `get_iter()` or `reset()` call clears it, so a stop issued between two `next()`
+/// calls still interrupts the next one. The page must not issue a request while another one is outstanding,
 /// otherwise the queued request would clear a stop meant for it.
 #[wasm_bindgen]
 pub fn stop() {

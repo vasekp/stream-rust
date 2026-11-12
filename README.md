@@ -473,3 +473,4 @@ The package exports:
 | `validate(input)` | Checks the syntax only, returning the position of an error. |
 | `get_iter(index)` | Returns an iterator over the items of a stream in the history, for listing it lazily. |
 | `stop()` | Asks the running evaluation to stop. |
+| `reset()` | Drops the session, with its history and global variables, and starts an empty one. |
