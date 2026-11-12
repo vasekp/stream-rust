@@ -190,3 +190,114 @@ pub fn get_iter(index: usize) -> Result<BoxedIterator, JsValue> {
         Ok(BoxedIterator { iter: stm.iter(), done: false })
     })
 }
+
+fn object(fields: &[(&str, JsValue)]) -> Result<JsValue, JsValue> {
+    let obj = Object::new();
+    for (key, value) in fields {
+        Reflect::set(&obj, &(*key).into(), value)?;
+    }
+    Ok(obj.into())
+}
+
+/// A line of documentation in the form described at `help()`. A reference to `page` itself is
+/// left a plain string.
+fn help_line(line: &str, sym: &str, page: &stream::docs::DocRecord) -> Result<JsValue, JsValue> {
+    use stream::docs::{LinePart, RefStringItem};
+    let mut parts = Array::new();
+    for LinePart { content, is_code } in stream::docs::parse_line(line, sym) {
+        let mut items = Array::new();
+        for item in content {
+            items.extend([match item {
+                RefStringItem::Ref(name) if stream::find_docs(name).is_some_and(|docs| !std::ptr::eq(docs, page)) => {
+                    object(&[("ref", name.into()), ("text", name.into())])?
+                },
+                RefStringItem::Base(text) | RefStringItem::Ref(text) => text.into(),
+            }]);
+        }
+        parts.extend([object(&[("code", is_code.into()), ("items", items.into())])?]);
+    }
+    Ok(parts.into())
+}
+
+/// Returns the documentation of a symbol or a help page on the language: the quick guide under
+/// an empty `name`, its sections under the names it refers to, which start with `?`.
+///
+/// The result is `{found: true, title, synonyms, usage, desc, examples, see}`. `usage` is an
+/// array of lines (see below), `desc` of `{kind, line}` with a kind of `"base"`, `"tip"` or
+/// `"warn"`, `examples` of `{input, comment, output, failed}` where `input` and the optional
+/// `comment` are lines and `output` is the result or, if `failed`, the error message. `see` is
+/// an array of references.
+///
+/// A line is an array of parts `{code, items}`, where `code` tells whether the part is program
+/// text and each item is either a string or a reference. A reference is `{ref, text}`: the
+/// name of another page, to be passed to this function, and the text to show for it.
+///
+/// For an unknown name the result is `{found: false, topic}`; `topic` tells that a help page of
+/// that name exists, which is to be asked for as `?name`.
+///
+/// This does not touch the session, so it may be called on any thread at any time.
+#[wasm_bindgen]
+pub fn help(name: String) -> Result<JsValue, JsValue> {
+    use stream::docs::DescType;
+    let Some(docs) = stream::find_docs(&name) else {
+        let topic = stream::find_docs(&format!("?{name}")).is_some();
+        return object(&[("found", false.into()), ("topic", topic.into())]);
+    };
+    // A help page has a title of its own, and a lone `?` in it stands for itself.
+    let sym = if docs.title.is_some() { "?" } else { name.as_str() };
+    let line = |text: &str| help_line(text, sym, docs);
+
+    let synonyms = docs
+        .symbols
+        .iter()
+        .filter(|s| **s != sym)
+        .map(|s| JsValue::from(*s))
+        .collect::<Array>();
+    let usage = docs
+        .usage
+        .iter()
+        .map(|text| line(text))
+        .collect::<Result<Array, _>>()?;
+    let desc = docs
+        .desc
+        .iter()
+        .map(|(text, kind)| {
+            let kind = match kind {
+                DescType::Base => "base",
+                DescType::Tip => "tip",
+                DescType::Warn => "warn",
+            };
+            object(&[("kind", kind.into()), ("line", line(text)?)])
+        })
+        .collect::<Result<Array, _>>()?;
+    let examples = docs
+        .examples
+        .iter()
+        .map(|example| {
+            object(&[
+                ("input", line(example.input)?),
+                ("comment", example.comment.map(line).transpose()?.into()),
+                ("output", example.output.unwrap_or_else(|err| err).into()),
+                ("failed", example.output.is_err().into()),
+            ])
+        })
+        .collect::<Result<Array, _>>()?;
+    let see = docs
+        .see
+        .iter()
+        .map(|name| {
+            let text = stream::find_docs(name).and_then(|docs| docs.title).unwrap_or(name);
+            object(&[("ref", (*name).into()), ("text", text.into())])
+        })
+        .collect::<Result<Array, _>>()?;
+
+    object(&[
+        ("found", true.into()),
+        ("title", docs.title.unwrap_or(sym).into()),
+        ("synonyms", synonyms.into()),
+        ("usage", usage.into()),
+        ("desc", desc.into()),
+        ("examples", examples.into()),
+        ("see", see.into()),
+    ])
+}

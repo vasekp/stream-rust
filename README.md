@@ -474,3 +474,4 @@ The package exports:
 | `get_iter(index)` | Returns an iterator over the items of a stream in the history, for listing it lazily. |
 | `stop()` | Asks the running evaluation to stop. |
 | `reset()` | Drops the session, with its history and global variables, and starts an empty one. |
+| `help(name)` | Returns the documentation of a builtin or an operator, or a help page (the quick guide for an empty name), as structured data for display. |
