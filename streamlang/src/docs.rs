@@ -1,5 +1,8 @@
 #[derive(Default)]
 pub struct DocRecord {
+    /// A title to display instead of the symbol and its synonyms. Set for help pages which do
+    /// not describe a symbol; in those, a lone `?` stands for itself.
+    pub title: Option<&'static str>,
     pub desc: Vec<(&'static str, DescType)>,
     pub symbols: Vec<&'static str>,
     pub usage: Vec<&'static str>,

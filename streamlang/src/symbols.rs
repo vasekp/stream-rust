@@ -66,17 +66,33 @@ impl<T, const N: usize> AsSlice<T> for [T; N] {
     }
 }
 
+/// Finds the documentation of a symbol, or a help page on the language: the quick guide under
+/// an empty `name` and its sections under the names it refers to, which start with `?`.
 pub fn find_docs(name: &str) -> Option<&DocRecord> {
-    Symbols::find_docs(name)
+    Symbols::find_docs(name).or_else(|| crate::help::Topics::find_docs(name))
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::docs;
 
     #[derive(Debug)]
-    struct DocError;
+    pub(crate) struct DocError;
+
+    /// The first name of every documented symbol which is a word rather than an operator.
+    pub(crate) fn documented_names() -> Vec<&'static str> {
+        let mut names = SYMBOLS
+            .0
+            .values()
+            .filter_map(|rec| rec.1.as_ref())
+            .map(|docs| docs.symbols[0])
+            .filter(|sym| sym.starts_with(|c: char| c.is_ascii_alphabetic()))
+            .collect::<Vec<_>>();
+        names.sort();
+        names.dedup();
+        names
+    }
 
     #[test]
     fn test_docs() -> Result<(), DocError> {
@@ -119,7 +135,7 @@ mod tests {
         res
     }
 
-    fn test_example(ex: &docs::Example, sym: &str) -> Result<(), DocError> {
+    pub(crate) fn test_example(ex: &docs::Example, sym: &str) -> Result<(), DocError> {
         let [line] = &docs::parse_line(ex.input, sym)[..] else {
             panic!("malformed example in {}: {}", sym, ex.input);
         };
@@ -157,7 +173,7 @@ mod tests {
         }
     }
 
-    fn check_refs(line: &str, sym: &str) -> Result<(), DocError> {
+    pub(crate) fn check_refs(line: &str, sym: &str) -> Result<(), DocError> {
         use crate::docs;
         use crate::docs::RefStringItem;
         let mut res = Ok(());
@@ -177,8 +193,8 @@ mod tests {
         res
     }
 
-    fn check_ref(sym: &str, referrer: &str) -> Result<(), DocError> {
-        if !SYMBOLS.0.contains_key(sym) {
+    pub(crate) fn check_ref(sym: &str, referrer: &str) -> Result<(), DocError> {
+        if !SYMBOLS.0.contains_key(sym) && crate::help::Topics::find_docs(sym).is_none() {
             println!("{referrer} references {sym} which does not exist");
             Err(DocError)
         } else {

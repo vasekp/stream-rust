@@ -138,7 +138,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let sym = input[1..].trim();
             // TODO check validity
             if let Some(docs) = find_docs(sym) {
-                print!("{}", sym.white().bold());
+                // A help page has a title of its own, and a lone `?` in it stands for itself.
+                let sym = if docs.title.is_some() { "?" } else { sym };
+                print!("{}", docs.title.unwrap_or(sym).white().bold());
                 let synonyms = &docs.symbols;
                 if synonyms.len() > 1 {
                     print!(" (synonyms: ");

@@ -2,6 +2,7 @@ pub mod base;
 pub mod parser;
 mod symbols;
 pub mod docs;
+mod help;
 mod ops;
 mod interner;
 pub mod session;
