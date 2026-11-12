@@ -1,0 +1,60 @@
+# Publishes the web UI (the stream-ui submodule, at the commit recorded here) on GitHub Pages
+# together with a fresh build of the stream-wasm package.
+name: Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # The toolchain is the one selected by stream-wasm/rust-toolchain.toml.
+      - name: Install the Rust toolchain
+        working-directory: stream-wasm
+        run: rustup toolchain install nightly --profile minimal --component rust-src --target wasm32-unknown-unknown
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: Collect the page
+        run: |
+          mkdir _site
+          git -C stream-ui archive HEAD | tar -x -C _site
+
+      # Has to run inside stream-wasm, where its .cargo/config.toml applies.
+      - name: Build the Wasm package
+        working-directory: stream-wasm
+        run: |
+          wasm-pack build --release --target web --out-dir ../_site/pkg
+          rm -f ../_site/pkg/.gitignore
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

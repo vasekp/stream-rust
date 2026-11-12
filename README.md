@@ -19,6 +19,8 @@ calculated with as letters of an alphabet.
 %6: [2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987, 1597, 2584, 4181, 6...
 ```
 
+**[Try it in your browser](https://vasekp.github.io/stream-rust/)**, nothing to install.
+
 This repository contains the base language library, its command-line REPL interface, and a
 WebAssembly port for deployment in web applications.
 
