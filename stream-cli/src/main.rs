@@ -130,82 +130,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     println!("{}: {}", first.describe(), err.reason());
                 },
+                Some("help") => {
+                    if iter.next().is_some() {
+                        eprintln!("{}", "invalid command".red());
+                        continue;
+                    }
+                    show_help("");
+                },
                 None => eprintln!("{}", "malformed command".red()),
                 _ => eprintln!("{}", "unknown command".red()),
             }
             continue;
         } else if input.as_bytes()[0] == b'?' {
-            let sym = input[1..].trim();
-            // TODO check validity
-            if let Some(docs) = find_docs(sym) {
-                // A help page has a title of its own, and a lone `?` in it stands for itself.
-                let sym = if docs.title.is_some() { "?" } else { sym };
-                print!("{}", docs.title.unwrap_or(sym).white().bold());
-                let synonyms = &docs.symbols;
-                if synonyms.len() > 1 {
-                    print!(" (synonyms: ");
-                    let mut iter = synonyms.iter().filter(|x| *x != &sym);
-                    if let Some(s) = iter.next() {
-                        print!("{}", s.white());
-                    }
-                    for s in iter {
-                        print!(", {}", s.white());
-                    }
-                    print!(")");
-                }
-                println!();
-                if !docs.usage.is_empty() {
-                    println!();
-                    println!("{}", "Usage:".yellow().bold());
-                    for usage in &docs.usage {
-                        println!("{}", format_cli(usage, sym).white());
-                    }
-                }
-                println!();
-                for (s, typ) in &docs.desc {
-                    use docs::DescType;
-                    let prefix = match typ {
-                        DescType::Base => Default::default(),
-                        DescType::Tip => "[*] ".bright_yellow(),
-                        DescType::Warn => "[!] ".bright_red(),
-                    };
-                    println!("{}{}", prefix, format_cli(s, sym));
-                }
-                if !docs.examples.is_empty() {
-                    println!();
-                    println!("{}", "Examples:".yellow().bold());
-                    let mut index = 1;
-                    for example in &docs.examples {
-                        print!("> {}", format_cli(example.input, sym).white());
-                        if let Some(comment) = example.comment {
-                            println!("{}", format!(" ; {}", format_cli(comment, sym)).white().dimmed().italic());
-                        } else {
-                            println!();
-                        }
-                        match example.output {
-                            Ok(out) => {
-                                println!("{}", format!("{} {}", format!("%{}:", index).dimmed(), out).white());
-                                index += 1;
-                            },
-                            Err(err) => {
-                                println!("{}", format!("! {}", err).bright_red());
-                            },
-                        }
-                    }
-                }
-                let mut iter = docs.see.iter();
-                if let Some(see) = iter.next() {
-                    println!();
-                    print!("{}", "See also: ".yellow().bold());
-                    print!("{}", see.white().underline());
-                    for see in iter {
-                        print!(", {}", see.white().underline());
-                    }
-                    println!();
-                }
-            } else {
-                println!("{}", format!("No documentation found for '{sym}'").red());
-            }
+            show_help(input[1..].trim());
             continue;
         }
         match stream::parse(input) {
@@ -271,4 +208,86 @@ fn format_cli(line: &str, sym: &str) -> String {
         }
     }
     ret
+}
+
+/// Prints the documentation of a symbol or a help page. An empty `sym` or `?` gives the quick guide.
+fn show_help(sym: &str) {
+    let sym = match sym.strip_prefix('?').map(str::trim_start) {
+        Some("") => String::new(),
+        Some(topic) => format!("?{topic}"),
+        None => sym.to_owned(),
+    };
+    let sym = sym.as_str();
+    // TODO check validity
+    if let Some(docs) = find_docs(sym) {
+        // A help page has a title of its own, and a lone `?` in it stands for itself.
+        let sym = if docs.title.is_some() { "?" } else { sym };
+        print!("{}", docs.title.unwrap_or(sym).white().bold());
+        let synonyms = &docs.symbols;
+        if synonyms.len() > 1 {
+            print!(" (synonyms: ");
+            let mut iter = synonyms.iter().filter(|x| *x != &sym);
+            if let Some(s) = iter.next() {
+                print!("{}", s.white());
+            }
+            for s in iter {
+                print!(", {}", s.white());
+            }
+            print!(")");
+        }
+        println!();
+        if !docs.usage.is_empty() {
+            println!();
+            println!("{}", "Usage:".yellow().bold());
+            for usage in &docs.usage {
+                println!("{}", format_cli(usage, sym).white());
+            }
+        }
+        println!();
+        for (s, typ) in &docs.desc {
+            use docs::DescType;
+            let prefix = match typ {
+                DescType::Base => Default::default(),
+                DescType::Tip => "[*] ".bright_yellow(),
+                DescType::Warn => "[!] ".bright_red(),
+            };
+            println!("{}{}", prefix, format_cli(s, sym));
+        }
+        if !docs.examples.is_empty() {
+            println!();
+            println!("{}", "Examples:".yellow().bold());
+            let mut index = 1;
+            for example in &docs.examples {
+                print!("> {}", format_cli(example.input, sym).white());
+                if let Some(comment) = example.comment {
+                    println!("{}", format!(" ; {}", format_cli(comment, sym)).white().dimmed().italic());
+                } else {
+                    println!();
+                }
+                match example.output {
+                    Ok(out) => {
+                        println!("{}", format!("{} {}", format!("%{}:", index).dimmed(), out).white());
+                        index += 1;
+                    },
+                    Err(err) => {
+                        println!("{}", format!("! {}", err).bright_red());
+                    },
+                }
+            }
+        }
+        let mut iter = docs.see.iter();
+        if let Some(see) = iter.next() {
+            println!();
+            print!("{}", "See also: ".yellow().bold());
+            print!("{}", see.white().underline());
+            for see in iter {
+                print!(", {}", see.white().underline());
+            }
+            println!();
+        }
+    } else if find_docs(&format!("?{sym}")).is_some() {
+        println!("{}", format!("No documentation found for '{sym}'. Did you mean ??{sym}?").red());
+    } else {
+        println!("{}", format!("No documentation found for '{sym}'").red());
+    }
 }
